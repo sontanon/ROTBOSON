@@ -73,7 +73,7 @@ void csr_z_pseudo_exp_decay_2nd(
 	double u0, D1z_u, D2z_u;
 
 	// Equations constants.
-	double k0, k1, k2, k3;
+	double k0, k1, k2;
 
 	// RHS and scale factor.
 	double f = 1.0;
@@ -222,7 +222,7 @@ void csr_r_pseudo_exp_decay_2nd(
 	double u0, D1r_u, D2r_u;
 
 	// Equations constants.
-	double k0, k1, k2, k3;
+	double k0, k1, k2;
 
 	// RHS and scale factor.
 	double f = 1.0;
@@ -371,7 +371,7 @@ void csr_corner_pseudo_exp_decay_2nd(
 	double u0, D1d_u, D2d_u;
 
 	// Equations constants.
-	double k0, k1, k2, k3;
+	double k0, k1, k2;
 
 	// RHS and scale factor.
 	double f = 1.0;
