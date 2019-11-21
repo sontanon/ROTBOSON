@@ -23,6 +23,7 @@ double sigmaR	= 4.0;
 double sigmaZ	= 4.0;
 double rExt	= 16.0;
 double w0 	= 0.7;
+MKL_INT w_idx = 84500;
 MKL_INT fixedPhiR 	= 1;
 MKL_INT fixedPhiZ 	= 1;
 
@@ -85,6 +86,7 @@ extern double sigmaR;
 extern double sigmaZ;
 extern double rExt;
 extern double w0;
+extern MKL_INT w_idx;
 extern MKL_INT fixedPhiR;
 extern MKL_INT fixedPhiZ;
 
