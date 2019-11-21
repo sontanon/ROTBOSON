@@ -1,3 +1,4 @@
 .vscode/c_cpp_properties.json
 obj/*.o
 .vscode/settings.json
+VSC_Workspace
