@@ -12,10 +12,10 @@ const double D22 = +1.0;
 
 
 // Calculate u1 = log(alpha) part.
-void f1(double *a, int *ia, int *ja,
-		const int offset, const int NrTotal, const int NzTotal, const int dim,
-		const int i, const int j, const double dr, const double dz,
-		const int l, const double m, const double chi,
+void f1(double *a, MKL_INT *ia, MKL_INT *ja,
+		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
+		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
+		const MKL_INT l, const double m, const double chi,
 		const double u101, const double u110, const double u111, const double u112, const double u121,
 		const double u201, const double u210, const double u211, const double u212, const double u221,
 		const double u301, const double u310, const double u311, const double u312, const double u321,
@@ -109,10 +109,10 @@ void f1(double *a, int *ia, int *ja,
 }
 
 // Calculate u2 = Omega part.
-void f2(double *a, int *ia, int *ja,
-		const int offset, const int NrTotal, const int NzTotal, const int dim,
-		const int i, const int j, const double dr, const double dz,
-		const int l, const double m, const double chi,
+void f2(double *a, MKL_INT *ia, MKL_INT *ja,
+		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
+		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
+		const MKL_INT l, const double m, const double chi,
 		const double u101, const double u110, const double u111, const double u112, const double u121,
 		const double u201, const double u210, const double u211, const double u212, const double u221,
 		const double u301, const double u310, const double u311, const double u312, const double u321,
@@ -203,10 +203,10 @@ void f2(double *a, int *ia, int *ja,
 }
 
 // Calculate u3 = log(h) part.
-void f3(double *a, int *ia, int *ja,
-		const int offset, const int NrTotal, const int NzTotal, const int dim,
-		const int i, const int j, const double dr, const double dz,
-		const int l, const double m, const double chi,
+void f3(double *a, MKL_INT *ia, MKL_INT *ja,
+		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
+		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
+		const MKL_INT l, const double m, const double chi,
 		const double u101, const double u110, const double u111, const double u112, const double u121,
 		const double u201, const double u210, const double u211, const double u212, const double u221,
 		const double u301, const double u310, const double u311, const double u312, const double u321,
@@ -296,10 +296,10 @@ void f3(double *a, int *ia, int *ja,
 }
 
 // Calculate u4 = log(a) part.
-void f4(double *a, int *ia, int *ja,
-		const int offset, const int NrTotal, const int NzTotal, const int dim,
-		const int i, const int j, const double dr, const double dz,
-		const int l, const double m, const double chi,
+void f4(double *a, MKL_INT *ia, MKL_INT *ja,
+		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
+		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
+		const MKL_INT l, const double m, const double chi,
 		const double u101, const double u110, const double u111, const double u112, const double u121,
 		const double u201, const double u210, const double u211, const double u212, const double u221,
 		const double u301, const double u310, const double u311, const double u312, const double u321,
@@ -409,10 +409,10 @@ void f4(double *a, int *ia, int *ja,
 }
 
 // Calculate u5 = phi / r**l part.
-void f5(double *a, int *ia, int *ja,
-		const int offset, const int NrTotal, const int NzTotal, const int dim,
-		const int i, const int j, const double dr, const double dz,
-		const int l, const double m, const double chi,
+void f5(double *a, MKL_INT *ia, MKL_INT *ja,
+		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
+		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
+		const MKL_INT l, const double m, const double chi,
 		const double u101, const double u110, const double u111, const double u112, const double u121,
 		const double u201, const double u210, const double u211, const double u212, const double u221,
 		const double u301, const double u310, const double u311, const double u312, const double u321,
