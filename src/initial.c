@@ -1,6 +1,6 @@
+#include "tools.h"
 #include "param.h"
 
-#include "tools.h"
 #include "omega_calc.h"
 
 void initial_guess(double *u)
@@ -40,7 +40,7 @@ void initial_guess(double *u)
 		#pragma omp parallel shared(u)
 		{
 			#pragma omp for schedule(guided)
-			for (i = 0 * dim; i <  1 * dim; i++)
+			for (i = 0 * dim; i <  1 * dim; ++i)
 			{
 			    u[i] = 0.0;
 			}
@@ -57,7 +57,7 @@ void initial_guess(double *u)
 		#pragma omp parallel shared(u)
 		{
 			#pragma omp for schedule(guided)
-			for (i = 1 * dim; i <  2 * dim; i++)
+			for (i = 1 * dim; i <  2 * dim; ++i)
 			{
 			    u[i] = 0.0;
 			}
@@ -74,7 +74,7 @@ void initial_guess(double *u)
 		#pragma omp parallel shared(u)
 		{
 			#pragma omp for schedule(guided)
-			for (i = 2 * dim; i <  3 * dim; i++)
+			for (i = 2 * dim; i <  3 * dim; ++i)
 			{
 			    u[i] = 0.0;
 			}
@@ -91,7 +91,7 @@ void initial_guess(double *u)
 		#pragma omp parallel shared(u)
 		{
 			#pragma omp for schedule(guided)
-			for (i = 3 * dim; i <  4 * dim; i++)
+			for (i = 3 * dim; i <  4 * dim; ++i)
 			{
 			    u[i] = 0.0;
 			}
@@ -109,12 +109,12 @@ void initial_guess(double *u)
 		#pragma omp parallel shared(u) private(j, r, z, rr)
 		{
 			#pragma omp for schedule(guided)
-			for (i = 1; i < NrTotal; i++)
+			for (i = 1; i < NrTotal; ++i)
 			{
 			    r = dr * (i - 0.5);
 			    //rl = pow(r, l);
 
-			    for (j = 0; j < NzTotal; j++)
+			    for (j = 0; j < NzTotal; ++j)
 			    {
 				z = dz * (j - 0.5);
 				rr = sqrt(r * r + z * z);
@@ -134,7 +134,7 @@ void initial_guess(double *u)
 		#pragma omp parallel shared(u) 
 		{
 			#pragma omp for schedule(guided)
-			for (i = 0; i < dim; i++)
+			for (i = 0; i < dim; ++i)
 			{
 				u[4 * dim + i] = exp(u[4 * dim + i]);
 			}
@@ -155,7 +155,7 @@ void initial_guess(double *u)
 	#pragma omp parallel shared(u)
 	{
 	    	#pragma omp for schedule(guided)
-	    	for (j = 1; j < NzTotal; j++)
+	    	for (j = 1; j < NzTotal; ++j)
 	    	{
 	    		u[0 * dim + IDX(0, j)] = u[0 * dim + IDX(1, j)];
 	    		u[1 * dim + IDX(0, j)] = u[1 * dim + IDX(1, j)];
@@ -168,7 +168,7 @@ void initial_guess(double *u)
 	#pragma omp parallel shared(u)
 	{
 		#pragma omp for schedule(guided)
-		for (i = 1; i < NrTotal; i++)
+		for (i = 1; i < NrTotal; ++i)
 		{
 			u[0 * dim + IDX(i, 0)] = u[0 * dim + IDX(i, 1)];
 			u[1 * dim + IDX(i, 0)] = u[1 * dim + IDX(i, 1)];

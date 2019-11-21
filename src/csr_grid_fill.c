@@ -104,7 +104,7 @@ void csr_grid_fill_2nd(csr_matrix A, const MKL_INT start_offset,
 	#pragma omp parallel shared(A) private(offset)
 	{
 		#pragma omp for schedule(guided)
-		for (j = 1; j < NzInterior + 2; j++)
+		for (j = 1; j < NzInterior + 2; ++j)
 		{
 			// Each j iteration fills 2 elements.
 			offset = t_offset + 2 * (j - 1);
@@ -125,7 +125,7 @@ void csr_grid_fill_2nd(csr_matrix A, const MKL_INT start_offset,
 	#pragma omp parallel shared(A) private(offset, j)
 	{
 		#pragma omp for schedule(guided)
-		for (i = 1; i < NrInterior + 1; i++)
+		for (i = 1; i < NrInterior + 1; ++i)
 		{
 			// Each iteration of i loop will fill p_center * NzInterior + (2 + p_bound) values.
 			offset = t_offset + (i - 1) * (2 + p_bound + p_center * NzInterior);
@@ -138,7 +138,7 @@ void csr_grid_fill_2nd(csr_matrix A, const MKL_INT start_offset,
 			offset += 2;
 
 			// Now loop over interior points.
-			for (j = 1; j < NzInterior + 1; j++)
+			for (j = 1; j < NzInterior + 1; ++j)
 			{
 				// Fill matrix coefficients.
 				(*f_center)(A.a, A.ia, A.ja,
@@ -189,7 +189,7 @@ void csr_grid_fill_2nd(csr_matrix A, const MKL_INT start_offset,
 	#pragma omp parallel shared(A), private(offset)
 	{
 		#pragma omp for schedule(guided)
-		for (j = 1; j < NzInterior + 1; j++)
+		for (j = 1; j < NzInterior + 1; ++j)
 		{
 			// Each iteration of the loop fills p_bound elements.
 			offset = t_offset + p_bound * (j - 1);
