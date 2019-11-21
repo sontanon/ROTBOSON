@@ -32,7 +32,7 @@ void array_sum(double *z, const double alpha, const double *x, const double beta
 	#pragma omp parallel shared(z) 
 	{
 		#pragma omp for schedule(guided)
-		for (i = 0; i < dim; i++) 
+		for (i = 0; i < dim; ++i) 
 			z[i] = alpha * x[i] + beta * y[i];
 	} 
 	return;
@@ -103,7 +103,7 @@ void write_single_file_1d(const double *u, const char *fname, const MKL_INT dim)
 	FILE *fp = fopen(fname, "w");
 
 	// Loop over r and write values.
-	for (i = 0; i < dim; i++)
+	for (i = 0; i < dim; ++i)
 	{
 		fprintf(fp, "%9.18E\n", u[i]);
 	}
@@ -124,9 +124,9 @@ void write_single_file_2d(const double *u, const char *fname, const MKL_INT NrTo
 	FILE *fp = fopen(fname, "w");
 
 	// Loop over r and write values.
-	for (i = 0; i < NrTotal; i++)
+	for (i = 0; i < NrTotal; ++i)
 	{
-		for (j = 0; j < NzTotal; j++)
+		for (j = 0; j < NzTotal; ++j)
 		{
 			fprintf(fp, (j < NzTotal - 1) ? "%9.18E\t" : "%9.18E\n", u[IDX(i, j)]);
 		}
@@ -148,7 +148,7 @@ void read_single_file_1d(double *u, const char *fname, const MKL_INT dim, const 
 	FILE *fp = fopen(fname, "r");
 
 	// Loop over values. 
-	for (i = 0; i < dim; i++)
+	for (i = 0; i < dim; ++i)
 	{
 		err = fscanf(fp, "%lE", u + i);
 
@@ -177,9 +177,9 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 	FILE *fp = fopen(fname, "r");
 
 	// Loop over r and read values.
-	for (i = 0; i < NrTotalInitial; i++)
+	for (i = 0; i < NrTotalInitial; ++i)
 	{
-		for (j = 0; j < NzTotalInitial; j++)
+		for (j = 0; j < NzTotalInitial; ++j)
 		{
 			err = fscanf(fp, "%lE", u + IDX(i, j));
 
@@ -192,25 +192,25 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 	}
 
 	// Fill other values.
-	for (i = 0; i < NrTotalInitial; i++)
+	for (i = 0; i < NrTotalInitial; ++i)
 	{
-		for (j = NzTotalInitial; j < NzTotal; j++)
+		for (j = NzTotalInitial; j < NzTotal; ++j)
 		{
 			u[IDX(i, j)] = u[IDX(i, NzTotalInitial - 1)];
 		}
 	}
 
-	for (j = 0; j < NzTotalInitial; j++)
+	for (j = 0; j < NzTotalInitial; ++j)
 	{
-		for (i = NrTotalInitial; i < NrTotal; i++)
+		for (i = NrTotalInitial; i < NrTotal; ++i)
 		{
 			u[IDX(i, j)] = u[IDX(NrTotalInitial - 1, j)];
 		}
 	}
 
-	for (i = NrTotalInitial; i < NrTotal; i++)
+	for (i = NrTotalInitial; i < NrTotal; ++i)
 	{
-		for (j = NzTotalInitial; j < NzTotal; j++)
+		for (j = NzTotalInitial; j < NzTotal; ++j)
 		{
 			u[IDX(i, j)] = 0.5 * (u[IDX(i, NzTotalInitial - 1)] + u[IDX(NrTotalInitial - 1, j)]);
 		}
@@ -272,14 +272,14 @@ void csr_print(csr_matrix *A, const char *vA, const char *iA, const char *jA)
 	MKL_INT k = 0;
 
 	// Loop over number of nonzeros and write A.a and A.ja.
-	for (k = 0; k < A->nnz; k++)
+	for (k = 0; k < A->nnz; ++k)
 	{
 		fprintf(fvA, "%9.18E\n", A->a[k]);
 		fprintf(fjA, "%ld\n", A->ja[k]);
 	}
 
 	// Loop over A.nrows + 1 and write A.ia.
-	for (k = 0; k < A->nrows + 1; k++)
+	for (k = 0; k < A->nrows + 1; ++k)
 		fprintf(fiA, "%ld\n", A->ia[k]);
 
 	// Close files.
