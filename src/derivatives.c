@@ -1,10 +1,10 @@
 #include "param.h"
 #include "tools.h"
 
-void diff1r(double *dvar, const double *var, const int symr)
+void diff1r(double *dvar, const double *var, const MKL_INT symr)
 {
 	// Auxiliary integers.
-	int i, j;
+	MKL_INT i, j;
 
 	// Inverse spatial step.
 	double idr = 1.0 / dr;
@@ -117,10 +117,10 @@ void diff1r(double *dvar, const double *var, const int symr)
 	return;
 }
 
-void diff1z(double *dvar, const double *var, const int symz)
+void diff1z(double *dvar, const double *var, const MKL_INT symz)
 {
 	// Auxiliary integers.
-	int i, j;
+	MKL_INT i, j;
 
 	// Inverse spatial step.
 	double idz = 1.0 / dz;
@@ -234,10 +234,10 @@ void diff1z(double *dvar, const double *var, const int symz)
 	return;
 }
 
-void diff2r(double *dvar, const double *var, const int symr)
+void diff2r(double *dvar, const double *var, const MKL_INT symr)
 {
 	// Auxiliary integers.
-	int i, j;
+	MKL_INT i, j;
 
 	// Inverse step squared.
 	double idr2 = 1.0 / (dr * dr);
@@ -349,10 +349,10 @@ void diff2r(double *dvar, const double *var, const int symr)
 	return;
 }
 
-void diff2z(double *dvar, const double *var, const int symz)
+void diff2z(double *dvar, const double *var, const MKL_INT symz)
 {
 	// Auxiliary integers.
-	int i, j;
+	MKL_INT i, j;
 
 	// Inverse step squared.
 	double idz2 = 1.0 / (dz * dz);
@@ -465,9 +465,9 @@ void diff2z(double *dvar, const double *var, const int symz)
 	return;
 }
 
-void diff2rz(double *dvar, const double *var, const int symr, const int symz)
+void diff2rz(double *dvar, const double *var, const MKL_INT symr, const MKL_INT symz)
 {
-	int i, j;
+	MKL_INT i, j;
 
 	double idr = 1.0 / dr, idz = 1.0 / dz;
 	double idrz = idr * idz;
@@ -555,7 +555,7 @@ void diff2rz(double *dvar, const double *var, const int symr, const int symz)
 	}
 
 	// Symmetries on axis and equator.
-	int k;
+	MKL_INT k;
 	for (k = 0; k < ghost; k++)
 	{
 		#pragma omp parallel shared(dvar)
