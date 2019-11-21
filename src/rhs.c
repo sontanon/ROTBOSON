@@ -4,6 +4,10 @@
 #include "derivatives.h"
 #include "omega_calc.h"
 
+#include "rhs_vars.h"
+#include "rhs_pseudo_robin.h"
+#include "rhs_pseudo_exp_decay.h"
+
 #define EVEN 1
 
 void rhs(double *f, const double *u)
@@ -14,7 +18,6 @@ void rhs(double *f, const double *u)
     // Loop counters.
     MKL_INT i = 0;
     MKL_INT j = 0;
-    MKL_INT k = 0;
 
     // Calculate derivatives.
 	diff1r(Dr_u          , u          , EVEN);
@@ -104,28 +107,63 @@ void rhs(double *f, const double *u)
     }
 
     // Z boundary condition.
+    #pragma omp parallel shared(f) private(i, j)
+    {
+        #pragma omp for schedule(dynamic, 1)
+        for (i = ghost; i < ghost + NrInterior; ++i)
+        {
+            for (j = ghost + NzInterior; j < NzTotal; ++j)
+            {
+                rhs_z_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 1, i, j, dr, dz, 1, alphaBoundOrder, 0.0, -1.0);
+                rhs_z_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 2, i, j, dr, dz, 1, betaBoundOrder, 0.0, -1.0);
+                rhs_z_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, aBoundOrder, 0.0, -1.0);
+                rhs_z_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 4, i, j, dr, dz, 1, hBoundOrder, 0.0, -1.0);
+                rhs_z_pseudo_exp_decay_2nd(f, u, NrTotal, NzTotal, dim, 5, i, j, dr, dz, phiBoundOrder, -1.0, w_idx, m, l);
+            }
+        }
+    }
 
     // Lower-right corner with parity.
-    for (j = 0; j < ghost; ++j)
+    for (i = ghost + NzInterior; i < NzTotal; ++i)
     {
-        for (i = ghost + NzInterior; i < NzTotal; ++i)
+        for (j = 0; j < ghost; ++j)
         {
             f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
         }
     }
 
     // R boundary condition.
+    #pragma omp parallel shared(f) private(i, j)
+    {
+        #pragma omp for schedule(dynamic, 1)
+        for (j = ghost; j < ghost + NzInterior; ++j)
+        {
+            for (i = ghost + NrInterior; i < NzTotal; ++i)
+            {
+                rhs_r_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 1, i, j, dr, dz, 1, alphaBoundOrder, 0.0, -1.0);
+                rhs_r_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 2, i, j, dr, dz, 1, betaBoundOrder, 0.0, -1.0);
+                rhs_r_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, aBoundOrder, 0.0, -1.0);
+                rhs_r_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 4, i, j, dr, dz, 1, hBoundOrder, 0.0, -1.0);
+                rhs_r_pseudo_exp_decay_2nd(f, u, NrTotal, NzTotal, dim, 5, i, j, dr, dz, phiBoundOrder, -1.0, w_idx, m, l);
+            }
+        }
+    }
 
     // Top-right corner boundary condition.
-    for (i = 0; i < ghost; ++i)
+    for (i = ghost + NrInterior; i < NrTotal; ++i)
     {
         for (j = ghost + NzInterior; j < NzTotal; ++j)
         {
-            f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
+            rhs_corner_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 1, i, j, dr, dz, 1, alphaBoundOrder, 0.0, -1.0);
+            rhs_corner_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 2, i, j, dr, dz, 1, betaBoundOrder, 0.0, -1.0);
+            rhs_corner_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, aBoundOrder, 0.0, -1.0);
+            rhs_corner_pseudo_robin_2nd(f, u, NrTotal, NzTotal, dim, 4, i, j, dr, dz, 1, hBoundOrder, 0.0, -1.0);
+            rhs_corner_pseudo_exp_decay_2nd(f, u, NrTotal, NzTotal, dim, 5, i, j, dr, dz, phiBoundOrder, -1.0, w_idx, m, l);
         }
     }
 
     // Omega constraint.
+    f[w_idx] = 0.0;
 
     // All done. 
     return;
