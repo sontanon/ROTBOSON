@@ -10,7 +10,6 @@ void rhs_z_pseudo_exp_decay_2nd(
     const double dr,        // R spatial step.
     const double dz,        // Z spatial step.
     const MKL_INT bound_error,  // What type of Robin condition to use.
-    const double u_inf,     // Function value at infinity.
     const double scale,     // Multiply equation by an overall factor.
     const MKL_INT w_idx,    // Omega index.
     const double m,         // Scalar field mass.
@@ -28,7 +27,6 @@ void rhs_r_pseudo_exp_decay_2nd(
     const double dr,        // R spatial step.
     const double dz,        // Z spatial step.
     const MKL_INT bound_error,  // What type of Robin condition to use.
-    const double u_inf,     // Function value at infinity.
     const double scale,     // Multiply equation by an overall factor.
     const MKL_INT w_idx,    // Omega index.
     const double m,         // Scalar field mass.
@@ -46,7 +44,6 @@ void rhs_corner_pseudo_exp_decay_2nd(
     const double dr,        // R spatial step.
     const double dz,        // Z spatial step.
     const MKL_INT bound_error,  // What type of Robin condition to use.
-    const double u_inf,     // Function value at infinity.
     const double scale,     // Multiply equation by an overall factor.
     const MKL_INT w_idx,    // Omega index.
     const double m,         // Scalar field mass.
