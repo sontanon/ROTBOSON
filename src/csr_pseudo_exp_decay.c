@@ -171,10 +171,10 @@ void csr_z_pseudo_exp_decay_2nd(
 			f = (k0 * D2z_u + k1 * D1z_u + k2 * u0);
 
 			// Set values.
-			a[offset + 0] = (-1.0) * k0;
-			a[offset + 1] = (+4.0) * k0 + (+0.5) * k1;
-			a[offset + 2] = (-5.0) * k0 + (-2.0) * k1;
-			a[offset + 3] = (+2.0) * k0 + (+1.5) * k1 + k2;
+			a[offset + 0] = ((-1.0) * k0) * scale; // CONSTANT!
+			a[offset + 1] = ((+4.0) * k0 + (+0.5) * k1) * scale; // CONSTANT!
+			a[offset + 2] = ((-5.0) * k0 + (-2.0) * k1) * scale; // CONSTANT!
+			a[offset + 3] = ((+2.0) * k0 + (+1.5) * k1 + k2) * scale;
 			a[offset + 4] = scale * ((2.0 * (rr * sec_theta * D1z_u + (chi * rr + l + 2.0) * u0) + f) * rr * (-dz * w / sqrt(m2 - w2)) * dw_du(v, m));
 
 			// Column indices.
@@ -320,10 +320,10 @@ void csr_r_pseudo_exp_decay_2nd(
 			f = (k0 * D2r_u + k1 * D1r_u + k2 * u0);
 
 			// Set values.
-			a[offset + 0] = (-1.0) * k0;
-			a[offset + 1] = (+4.0) * k0 + (+0.5) * k1;
-			a[offset + 2] = (-5.0) * k0 + (-2.0) * k1;
-			a[offset + 3] = (+2.0) * k0 + (+1.5) * k1 + k2;
+			a[offset + 0] = ((-1.0) * k0) * scale; // CONSTANT!
+			a[offset + 1] = ((+4.0) * k0 + (+0.5) * k1) * scale; // CONSTANT!
+			a[offset + 2] = ((-5.0) * k0 + (-2.0) * k1) * scale; // CONSTNAT!
+			a[offset + 3] = ((+2.0) * k0 + (+1.5) * k1 + k2) * scale;
 			a[offset + 4] = scale * ((2.0 * (rr * csc_theta * D1r_u + (chi * rr + l + 2.0) * u0) + f) * rr * (-dr * w / sqrt(m2 - w2)) * dw_du(v, m));
 
 			// Column indices.
@@ -469,10 +469,10 @@ void csr_corner_pseudo_exp_decay_2nd(
 			f = (k0 * D2d_u + k1 * D1d_u + k2 * u0);
 
 			// Set values.
-			a[offset + 0] = (-1.0) * k0;
-			a[offset + 1] = (+4.0) * k0 + (+0.5) * k1;
-			a[offset + 2] = (-5.0) * k0 + (-2.0) * k1;
-			a[offset + 3] = (+2.0) * k0 + (+1.5) * k1 + k2;
+			a[offset + 0] = ((-1.0) * k0) * scale; // CONSTANT!
+			a[offset + 1] = ((+4.0) * k0 + (+0.5) * k1) * scale; // CONSTANT!
+			a[offset + 2] = ((-5.0) * k0 + (-2.0) * k1) * scale; // CONSTANT!
+			a[offset + 3] = ((+2.0) * k0 + (+1.5) * k1 + k2) * scale; 
 			a[offset + 4] = scale * ((2.0 * (rr * dif_theta * D1d_u + (chi * rr + l + 2.0) * u0) + f) * rr * (-dr * w / sqrt(m2 - w2)) * dw_du(v, m));
 
 			// Column indices.
