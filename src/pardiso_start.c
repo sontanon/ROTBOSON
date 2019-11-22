@@ -2,7 +2,7 @@
 #define PARDISO_MAIN_FILE
 #include "pardiso_param.h"
 
-#define DEBUG
+#undef DEBUG
 
 // Initialize PARDISO parameters and memory.
 #ifdef FORTRAN

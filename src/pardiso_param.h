@@ -1,7 +1,7 @@
 // Verbose output in pardiso_wrapper.
-#define VERBOSE
+#undef VERBOSE
 // PARDISO message level.
-#define MESSAGE_LEVEL 1
+#define MESSAGE_LEVEL 0
 // Standard headers for allocation.
 #include <stdio.h>
 #include <stdlib.h>
