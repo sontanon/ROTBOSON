@@ -24,8 +24,10 @@ double sigmaZ	= 4.0;
 double rExt	= 16.0;
 double w0 	= 0.7;
 MKL_INT w_idx = 84500;
+MKL_INT fixedPhi    = 1;
 MKL_INT fixedPhiR 	= 1;
 MKL_INT fixedPhiZ 	= 1;
+MKL_INT fixedOmega  = 0;
 
 /* INITIAL DATA */
 MKL_INT readInitialData = 0;
@@ -87,8 +89,10 @@ extern double sigmaZ;
 extern double rExt;
 extern double w0;
 extern MKL_INT w_idx;
+extern MKL_INT fixedPhi;
 extern MKL_INT fixedPhiR;
 extern MKL_INT fixedPhiZ;
+extern MKL_INT fixedOmega;
 
 /* INITIAL DATA */
 extern MKL_INT readInitialData;

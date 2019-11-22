@@ -108,10 +108,13 @@ void parser(const char *fname)
 	{
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"NzInterior\" from parameter file. Setting to default value, NzInterior = %lld\n", NzInterior);
 	}
-	// DO NOT FORGET TO CALCULATE NRTOTAL, NZTOTAL AND DIM!
+
+	// DO NOT FORGET TO CALCULATE NRTOTAL, NZTOTAL, DIM, AND W_IDX!
 	NrTotal = NrInterior + 2;
 	NzTotal = NzInterior + 2;
 	dim = NrTotal * NzTotal;
+	w_idx = 5 * dim;
+
 	// order.
 	if (config_lookup_int64(&cfg, "order", &order) == CONFIG_TRUE)
 	{
@@ -156,103 +159,71 @@ void parser(const char *fname)
 	{
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"m\" value from parameter file. Setting to default value, m = %3.5E\n", m);
 	}
-	// psi0.
-	if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
+	// fixedPhi.
+	if (config_lookup_int64(&cfg, "fixedPhi",&fixedPhi) == CONFIG_TRUE)
 	{
-		if (MAX_PSI0 < psi0 || psi0 < MIN_PSI0)
+		if (fixedPhi != 0 && fixedPhi != 1)
 		{
-			fprintf(stderr, "PARSER: ERROR! psi0 = %3.5E is not in range [%3.5E, %3.5E]\n", psi0, MIN_PSI0, MAX_PSI0);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"psi0\" value from parameter file. Setting to default value, psi0 = %3.5E\n", psi0);
-	}
-	// sigmaR.
-	if (config_lookup_float(&cfg, "sigmaR", &sigmaR) == CONFIG_TRUE)
-	{
-		if (MAX_SIGMA < sigmaR || sigmaR < MIN_SIGMA)
-		{
-			fprintf(stderr, "PARSER: ERROR! sigmaR = %3.5E is not in range [%3.5E, %3.5E]\n", sigmaR, MIN_SIGMA, MAX_SIGMA);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"sigmaR\" value from parameter file. Setting to default value, sigmaR = %3.5E\n", sigmaR);
-	}
-	// sigmaZ.
-	if (config_lookup_float(&cfg, "sigmaZ", &sigmaZ) == CONFIG_TRUE)
-	{
-		if (MAX_SIGMA < sigmaZ || sigmaZ < MIN_SIGMA)
-		{
-			fprintf(stderr, "PARSER: ERROR! sigmaZ = %3.5E is not in range [%3.5E, %3.5E]\n", sigmaZ, MIN_SIGMA, MAX_SIGMA);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"sigmaZ\" value from parameter file. Setting to default value, sigmaZ = %3.5E\n", sigmaZ);
-	}
-	// rExt.
-	if (config_lookup_float(&cfg, "rExt", &rExt) == CONFIG_TRUE)
-	{
-		if (MAX_R_EXT < rExt || rExt < MIN_R_EXT)
-		{
-			fprintf(stderr, "PARSER: ERROR! rExt = %3.5E is not in range [%3.5E, %3.5E]\n", rExt, MIN_R_EXT, MAX_R_EXT);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rExt\" value from parameter file. Setting to default value, rExt = %3.5E\n", rExt);
-	}
-	// w0.
-	if (config_lookup_float(&cfg, "w0", &w0) == CONFIG_TRUE)
-	{
-		if (MAX_W0 < w0 / m || w0 / m < MIN_W0)
-		{
-			fprintf(stderr, "PARSER: ERROR! (w0 / m) = (%3.5E / m) is not in range (%3.5E, %3.5E)\n", w0, MIN_W0, MAX_W0);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"w0\" value from parameter file. Setting to default value, w0 = %3.5E\n", w0);
-	}	
-	// fixedPhiR.
-	if (config_lookup_int64(&cfg, "fixedPhiR", &fixedPhiR) == CONFIG_TRUE)
-	{
-		if (NrInterior < fixedPhiR || fixedPhiR < 1)
-		{
-			fprintf(stderr, "PARSER: ERROR! fixedPhiR = %lld is not in range [%lld, %lld]\n", fixedPhiR, 1LL, NrInterior);
+			fprintf(stderr, "PARSER: ERROR! fixedPhi = %lld must be a boolean value 0 or 1.\n", fixedPhi);
 			fprintf(stderr, "        Please input proper value in parameter file.\n");
 			exit(-1);
 		}
 	}
-	else
+	// fixedOmega.
+	if (config_lookup_int64(&cfg, "fixedOmega",&fixedOmega) == CONFIG_TRUE)
 	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"fixedPhiR\" from parameter file. Setting to default value, fixedPhiR = %lld\n", fixedPhiR);
-	}
-	// fixedPhiZ.
-	if (config_lookup_int64(&cfg, "fixedPhiZ", &fixedPhiZ) == CONFIG_TRUE)
-	{
-		if (NzInterior < fixedPhiZ || fixedPhiZ < 1)
+		if (fixedOmega != 0 && fixedOmega != 1)
 		{
-			fprintf(stderr, "PARSER: ERROR! fixedPhiZ = %lld is not in range [%lld, %lld]\n", fixedPhiZ, 1LL, NzInterior);
+			fprintf(stderr, "PARSER: ERROR! fixedOmega = %lld must be a boolean value 0 or 1.\n", fixedOmega);
 			fprintf(stderr, "        Please input proper value in parameter file.\n");
 			exit(-1);
 		}
 	}
-	else
+	// Assert that one of the two last variables is fixed.
+	if (!fixedOmega && !fixedPhi)
 	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"fixedPhiZ\" from parameter file. Setting to default value, fixedPhiZ = %lld\n", fixedPhiZ);
+		fprintf(stderr, "PARSER: ERROR! fixedPhi = %lld and fixedOmega = %lld. One quantity must be held fixed.\n", fixedPhi, fixedOmega);
+		fprintf(stderr, "        Please specify whether Phi or Omega is held fixed in parameter file.\n");
+		exit(-1);
+	}
+	if (fixedOmega && fixedPhi)
+	{
+		fprintf(stderr, "PARSER: ERROR! fixedPhi = %lld and fixedOmega = %lld. Only one variable can be fixed.\n", fixedPhi, fixedOmega);
+		fprintf(stderr, "        Please specify which variable (and only one variable) is to be fixed.\n");
+		exit(-1);
+	}
+
+	// Read fixed coordinates.
+	if (fixedPhi)
+	{
+		// fixedPhiR.
+		if (config_lookup_int64(&cfg, "fixedPhiR", &fixedPhiR) == CONFIG_TRUE)
+		{
+			if (NrInterior < fixedPhiR || fixedPhiR < 1)
+			{
+				fprintf(stderr, "PARSER: ERROR! fixedPhiR = %lld is not in range [%lld, %lld]\n", fixedPhiR, 1LL, NrInterior);
+				fprintf(stderr, "        Please input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: WARNING! Could not properly read \"fixedPhiR\" from parameter file. Setting to default value, fixedPhiR = %lld\n", fixedPhiR);
+		}
+		// fixedPhiZ.
+		if (config_lookup_int64(&cfg, "fixedPhiZ", &fixedPhiZ) == CONFIG_TRUE)
+		{
+			if (NzInterior < fixedPhiZ || fixedPhiZ < 1)
+			{
+				fprintf(stderr, "PARSER: ERROR! fixedPhiZ = %lld is not in range [%lld, %lld]\n", fixedPhiZ, 1LL, NzInterior);
+				fprintf(stderr, "        Please input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: WARNING! Could not properly read \"fixedPhiZ\" from parameter file. Setting to default value, fixedPhiZ = %lld\n", fixedPhiZ);
+		}
 	}
 
 	// INITIAL DATA.
@@ -271,6 +242,7 @@ void parser(const char *fname)
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"readInitialData\" from parameter file. Setting to default value, readInitialData = %lld\n", readInitialData);
 	}
 
+	// Read initial data parameters.
 	if (readInitialData)
 	{
 		config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i);
@@ -293,6 +265,84 @@ void parser(const char *fname)
 			NrTotalInitial = NrTotal;
 			NzTotalInitial = NzTotal;
 		}
+	}
+	// Otherwise generate initial data analytically.
+	else
+	{
+		// psi0.
+		if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
+		{
+			if (MAX_PSI0 < psi0 || psi0 < MIN_PSI0)
+			{
+				fprintf(stderr, "PARSER: ERROR! psi0 = %3.5E is not in range [%3.5E, %3.5E]\n", psi0, MIN_PSI0, MAX_PSI0);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: WARNING! Could not properly read \"psi0\" value from parameter file. Setting to default value, psi0 = %3.5E\n", psi0);
+		}
+		// sigmaR.
+		if (config_lookup_float(&cfg, "sigmaR", &sigmaR) == CONFIG_TRUE)
+		{
+			if (MAX_SIGMA < sigmaR || sigmaR < MIN_SIGMA)
+			{
+				fprintf(stderr, "PARSER: ERROR! sigmaR = %3.5E is not in range [%3.5E, %3.5E]\n", sigmaR, MIN_SIGMA, MAX_SIGMA);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: WARNING! Could not properly read \"sigmaR\" value from parameter file. Setting to default value, sigmaR = %3.5E\n", sigmaR);
+		}
+		// sigmaZ.
+		if (config_lookup_float(&cfg, "sigmaZ", &sigmaZ) == CONFIG_TRUE)
+		{
+			if (MAX_SIGMA < sigmaZ || sigmaZ < MIN_SIGMA)
+			{
+				fprintf(stderr, "PARSER: ERROR! sigmaZ = %3.5E is not in range [%3.5E, %3.5E]\n", sigmaZ, MIN_SIGMA, MAX_SIGMA);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: WARNING! Could not properly read \"sigmaZ\" value from parameter file. Setting to default value, sigmaZ = %3.5E\n", sigmaZ);
+		}
+		// rExt.
+		if (config_lookup_float(&cfg, "rExt", &rExt) == CONFIG_TRUE)
+		{
+			if (MAX_R_EXT < rExt || rExt < MIN_R_EXT)
+			{
+				fprintf(stderr, "PARSER: ERROR! rExt = %3.5E is not in range [%3.5E, %3.5E]\n", rExt, MIN_R_EXT, MAX_R_EXT);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: WARNING! Could not properly read \"rExt\" value from parameter file. Setting to default value, rExt = %3.5E\n", rExt);
+		}
+	}
+	// Initial frequency.
+	if (!w_i)
+	{
+		// w0.
+		if (config_lookup_float(&cfg, "w0", &w0) == CONFIG_TRUE)
+		{
+			if (MAX_W0 < w0 / m || w0 / m < MIN_W0)
+			{
+				fprintf(stderr, "PARSER: ERROR! (w0 / m) = (%3.5E / m) is not in range (%3.5E, %3.5E)\n", w0, MIN_W0, MAX_W0);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: WARNING! Could not properly read \"w0\" value from parameter file. Setting to default value, w0 = %3.5E\n", w0);
+		}	
 	}
 
 	// SOLVER PARAMETERS.
