@@ -9,7 +9,7 @@
 #include "pardiso_start.h"
 #include "pardiso_stop.h"
 #include "omega_calc.h"
-//#include "csr.h"
+#include "csr.h"
 #include "nleq_err.h"
 #include "nleq_res.h"
 #include "vector_algebra.h"
@@ -41,9 +41,9 @@ int main(int argc, char *argv[])
 	printf("***              ICN UNAM, Mexico City             \n");
 	printf("***                                                \n");
 	printf("***                                                \n");
-	printf("***             First Revision: 01/8/2019          \n");
+	printf("***             First Revision: 01/08/2019         \n");
 	printf("***                                                \n");
-	printf("***             Last  Revision: 26/9/2019          \n");
+	printf("***             Last  Revision: 21/11/2019         \n");
 	printf("***                                                \n");
 	printf("******************************************************\n");
 
@@ -79,8 +79,8 @@ int main(int argc, char *argv[])
 	printf("***            dirname    = %-18s     \n", dirname);
 	printf("***                                                \n");
 	printf("***           GRID:                                \n");
-	printf("***            dr          = %-12.10lf          \n", dr);
-	printf("***            dz          = %-12.10lf          \n", dz);
+	printf("***            dr          = %-12.10E          \n", dr);
+	printf("***            dz          = %-12.10E          \n", dz);
 	printf("***            dim         = %-7lld               \n", dim);
 	printf("***            NrInterior  = %-7lld               \n", NrInterior);
 	printf("***            NzInterior  = %-7lld               \n", NzInterior);
@@ -88,9 +88,18 @@ int main(int argc, char *argv[])
 	printf("***                                                \n");
 	printf("***           SCALAR FIELD:                        \n");
 	printf("***            l           = %-7lld               \n", l);
-	printf("***            m           = %-12.10lf          \n", m);
-	printf("***            r(fixedPhi) = %-12.10lf          \n", dr * (fixedPhiR - 0.5));
-	printf("***            z(fixedPhi) = %-12.10lf          \n", dz * (fixedPhiZ - 0.5));
+	printf("***            m           = %-12.10E          \n", m);
+	if (fixedPhi)
+	{
+		printf("***            Scalar Field is Fixed at:           \n");
+		printf("***            r(fixedPhi) = %-12.10E          \n", dr * (fixedPhiR - 0.5));
+		printf("***            z(fixedPhi) = %-12.10E          \n", dz * (fixedPhiZ - 0.5));
+
+	}
+	else if (fixedOmega)
+	{
+		printf("***            Initial Omega is Fixed.             \n");
+	}
 	printf("***                                                \n");
 	printf("***           INITIAL DATA:                        \n");
 	printf("***            readInitialData = %lld     \n", readInitialData);
@@ -105,11 +114,14 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		printf("***            psi0        = %-12.10lf          \n", psi0);
-		printf("***            sigmaR      = %-12.10lf          \n", sigmaR);
-		printf("***            sigmaZ      = %-12.10lf          \n", sigmaZ);
-		printf("***            rExt        = %-12.10lf          \n", rExt);
-		printf("***            w0          = %-12.10lf          \n", w0);
+		printf("***            psi0        = %-12.10E          \n", psi0);
+		printf("***            sigmaR      = %-12.10E          \n", sigmaR);
+		printf("***            sigmaZ      = %-12.10E          \n", sigmaZ);
+		printf("***            rExt        = %-12.10E          \n", rExt);
+	}
+	if (!w_i)
+	{
+		printf("***            w0          = %-12.10E          \n", w0);
 	}
 	printf("***                                                \n");
 	printf("***           BOUNDARY TYPES:                      \n");
@@ -121,10 +133,10 @@ int main(int argc, char *argv[])
 	printf("***                                                \n");
 	printf("***           SOLVER:                              \n");
 	printf("***            solverType    = %-18s  \n", (solverType == 1) ? "Error" : "Residual");
-	printf("***            epsilon       = %-12.10lf        \n", epsilon);
+	printf("***            epsilon       = %-12.10E        \n", epsilon);
 	printf("***            maxNewtonIter = %-4lld                \n", maxNewtonIter);
-	printf("***            lambda0       = %-12.10lf        \n", lambda0);
-	printf("***            lambdaMin     = %-12.10lf        \n", lambdaMin);
+	printf("***            lambda0       = %-12.10E        \n", lambda0);
+	printf("***            lambdaMin     = %-12.10E        \n", lambdaMin);
 	printf("***            useLowRank    = %lld       \n", useLowRank);
 	printf("***                                                \n");
 	printf("******************************************************\n");
@@ -228,10 +240,8 @@ int main(int argc, char *argv[])
 
 	// Allocate CSR matrix.
 	csr_matrix J;
-	/*
 	MKL_INT nnz = nnz_jacobian();
 	csr_allocate(&J, 5 * dim + 1, 5 * dim + 1, nnz);
-	*/
 
 	printf("***                                                \n");
 	printf("***            Allocated CSR matrix with:          \n");
@@ -303,7 +313,6 @@ int main(int argc, char *argv[])
 	void (*linear_solve_2)(double *, csr_matrix *, double *);
 	linear_solve_2 = pardiso_repeated_solve;
 
-	/*
 	// Start Newton iterations.
 	if (maxNewtonIter > 0)
 	{
@@ -315,7 +324,7 @@ int main(int argc, char *argv[])
 						du, du_bar, norm_du, norm_du_bar,
 						Theta, mu, lambda_prime, mu_prime,
 						&J, epsilon, maxNewtonIter, lambdaMin, localSolver,
-						rhs_calc, csr_gen_jacobian, norm2, dot, 
+						rhs, csr_gen_jacobian, norm2, dot, 
 						linear_solve_1, linear_solve_2);
 				break;
 			// Residual-based algorithm.
@@ -323,7 +332,7 @@ int main(int argc, char *argv[])
 				k = nleq_res(&errCode, u, f, lambda,
 						du, norm_f, Theta, mu, lambda_prime, mu_prime,
 						&J, epsilon, maxNewtonIter, lambdaMin, 0, 
-						rhs_calc, csr_gen_jacobian, norm2, dot,
+						rhs, csr_gen_jacobian, norm2, dot,
 						linear_solve_1);
 				break;
 		}
@@ -349,10 +358,9 @@ int main(int argc, char *argv[])
 		printf("******************************************************\n");
 		k = 0;
 	}
-	*/
 
 	// Get omega.
-	double w = omega_calc(u[k][5 * dim], m);
+	double w = omega_calc(u[k][w_idx], m);
 	
 	// Calculate Schwarschild mass.
 	//schwarschild_mass(M, u[j] + dim);
@@ -414,7 +422,7 @@ int main(int argc, char *argv[])
 	printf("***************************************************\n");
 	printf("***                                                \n");
 	printf("***           SCHWARSCHILD MASS:                   \n");
-	printf("***            M          = %-12.10lf           \n", M[dim - 1]);
+	printf("***            M          = %-12.10E           \n", M[dim - 1]);
 	printf("***                                                \n");
 	printf("***************************************************\n");
 	*/
