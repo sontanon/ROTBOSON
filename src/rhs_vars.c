@@ -21,18 +21,20 @@ void rhs_vars(double *f,
     )
 {
     // Omega.
-    double w2 = w * w;
+    //double w2 = w * w;
     double m2 = m * m;
 
     // Auxiliary doubles.
-	double r, z;
+	double r;
+    //double z;
 	double r2, rlm1, rl;
-	double z2, rz, rr, scale;
-	double l_alpha, Dr_l_alpha, Dz_l_alpha, Drr_l_alpha, Dzz_l_alpha, Drz_l_alpha;
-	double l_h, Dr_l_h, Dz_l_h, Drr_l_h, Dzz_l_h, Drz_l_h;
-	double l_a, Dr_l_a, Dz_l_a, Drr_l_a, Dzz_l_a, Drz_l_a;
+	//double z2, rz, rr, scale;
+	double l_alpha, Dr_l_alpha, Dz_l_alpha, Drr_l_alpha, Dzz_l_alpha;
+	double l_h, Dr_l_h, Dz_l_h, Drr_l_h, Dzz_l_h;
+	//double l_a, Dr_l_a, Dz_l_a, Drr_l_a, Dzz_l_a;
+    double l_a, Drr_l_a, Dzz_l_a;
 	double psi, Dr_psi, Dz_psi, Drr_psi, Dzz_psi;
-	double beta,  Dr_beta,  Dz_beta,  Drr_beta,  Dzz_beta, Drz_beta;
+	double beta,  Dr_beta,  Dz_beta,  Drr_beta,  Dzz_beta;
 
     // Step ratio.
     double dzodr = dz / dr;
@@ -63,8 +65,8 @@ void rhs_vars(double *f,
     Drr_l_h = Drr_u[2 * dim + IDX(i, j)];
     Dzz_l_h = Dzz_u[2 * dim + IDX(i, j)];
     l_a     = u[3 * dim + IDX(i, j)];
-    Dr_l_a  = Dr_u[3 * dim + IDX(i, j)];
-    Dz_l_a  = Dz_u[3 * dim + IDX(i, j)];
+    //Dr_l_a  = Dr_u[3 * dim + IDX(i, j)];
+    //Dz_l_a  = Dz_u[3 * dim + IDX(i, j)];
     Drr_l_a = Drr_u[3 * dim + IDX(i, j)];
     Dzz_l_a = Dzz_u[3 * dim + IDX(i, j)];
     psi     = u[4 * dim + IDX(i, j)];
@@ -72,6 +74,12 @@ void rhs_vars(double *f,
     Dz_psi  = Dz_u[4 * dim + IDX(i, j)];
     Drr_psi = Drr_u[4 * dim + IDX(i, j)];
     Dzz_psi = Dzz_u[4 * dim + IDX(i, j)];
+
+    // Coordinates.
+    r = dr * (i - 0.5);
+    r2 = r * r;
+    rlm1 = (l ==1) ? 1.0 : pow(r, l - 1);
+    rl = rlm1 * r;
     
     // Auxiliary variables.
     alpha2 = exp(2.0 * l_alpha);

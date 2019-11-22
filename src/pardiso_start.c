@@ -81,7 +81,7 @@ void pardiso_start(const int matrix_dim)
 	printf("\nPARDISO IPARM and DPARM parameters:\n");
 	for (k = 0; k < 64; k++)
 	{
-		printf("iparm[%ld] = %ld\n", k + 1, iparm[k]);
+		printf("iparm[%lld] = %lld\n", k + 1, iparm[k]);
 	}
 #endif
 

@@ -8,7 +8,7 @@ config_t cfg;
 double dr      	= 0.0625;
 double dz      	= 0.0625;
 MKL_INT NrInterior 	= 128;
-MKL_INT NzInterior 	= 128
+MKL_INT NzInterior 	= 128;
 MKL_INT NrTotal	= 130;
 MKL_INT NzTotal	= 130;
 MKL_INT dim       	= 16900;

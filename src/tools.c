@@ -48,7 +48,7 @@ void *safe_malloc(const size_t n, const char *file, const MKL_INT line)
 
 	if (!x)
 	{
-		fprintf(stderr, "CRITICAL ERROR! Failed memory allocation on file %s:%ld.\n", file, line);
+		fprintf(stderr, "CRITICAL ERROR! Failed memory allocation on file %s:%lld.\n", file, line);
 		exit(1);
 	}
 	else
@@ -63,7 +63,7 @@ void safe_free(void *x, const char *file, const MKL_INT line)
 {
 	if (!x)
 	{
-		fprintf(stderr, "WARNING! Memory block attempting to free already points to NULL on file %s:%ld.\n", file, line);
+		fprintf(stderr, "WARNING! Memory block attempting to free already points to NULL on file %s:%lld.\n", file, line);
 	}
 	else
 	{
@@ -155,7 +155,7 @@ void read_single_file_1d(double *u, const char *fname, const MKL_INT dim, const 
 		// Check that read was successfull.
 		if (!err)
 		{
-			fprintf(stderr, "CRITICAL ERROR READING FILE \"%s\"! at %s.%ld.\n", fname, source_file, source_line);
+			fprintf(stderr, "CRITICAL ERROR READING FILE \"%s\"! at %s.%lld.\n", fname, source_file, source_line);
 			exit(1);
 		}
 	}
@@ -186,7 +186,7 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 			// Check that read was successfull.
 			if (!err)
 			{
-				fprintf(stderr, "CRITICAL ERROR READING FILE \"%s\"! at %s.%ld.\n", fname, source_file, source_line);
+				fprintf(stderr, "CRITICAL ERROR READING FILE \"%s\"! at %s.%lld.\n", fname, source_file, source_line);
 			}
 		}
 	}
@@ -275,12 +275,12 @@ void csr_print(csr_matrix *A, const char *vA, const char *iA, const char *jA)
 	for (k = 0; k < A->nnz; ++k)
 	{
 		fprintf(fvA, "%9.18E\n", A->a[k]);
-		fprintf(fjA, "%ld\n", A->ja[k]);
+		fprintf(fjA, "%lld\n", A->ja[k]);
 	}
 
 	// Loop over A.nrows + 1 and write A.ia.
 	for (k = 0; k < A->nrows + 1; ++k)
-		fprintf(fiA, "%ld\n", A->ia[k]);
+		fprintf(fiA, "%lld\n", A->ia[k]);
 
 	// Close files.
 	fclose(fvA);

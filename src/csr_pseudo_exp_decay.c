@@ -105,6 +105,7 @@ void csr_z_pseudo_exp_decay_2nd(
 		//               inf
 		case 0:
 			// Calculate RHS without exponential.
+			u0 = u[k + IDX(i, j)];
 			f = u0;
 
 			// Set values.
@@ -254,6 +255,7 @@ void csr_r_pseudo_exp_decay_2nd(
 		//               inf
 		case 0:
 			// Calculate RHS without exponential.
+			u0 = u[k + IDX(i, j)];
 			f = u0;
 
 			// Set values.
@@ -403,6 +405,7 @@ void csr_corner_pseudo_exp_decay_2nd(
 		//               inf
 		case 0:
 			// Calculate RHS without exponential.
+			u0 = u[k + IDX(i, j)];
 			f = u0;
 
 			// Set values.

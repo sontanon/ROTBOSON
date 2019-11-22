@@ -51,14 +51,14 @@ void pardiso_simple_solve(
 
 	if (error != 0)
 	{
-		printf("ERROR during symbolic factorization: %ld.\n", error);
+		printf("ERROR during symbolic factorization: %lld.\n", error);
 		exit(1);
 	}
 
 #ifdef VERBOSE
 	printf("PARDISO: Reordering completed.\n");
-	printf("PARDISO: Number of nonzeros in factors = %ld.\n", iparm[18 - 1]);
-	printf("PARDISO: Number of factorization MFLOPS = %ld.\n", iparm[19 - 1]);
+	printf("PARDISO: Number of nonzeros in factors = %lld.\n", iparm[18 - 1]);
+	printf("PARDISO: Number of factorization MFLOPS = %lld.\n", iparm[19 - 1]);
 #endif
 
 	// Numerical factorization.
@@ -69,7 +69,7 @@ void pardiso_simple_solve(
 
 	if (error != 0)
 	{
-		printf("ERROR during numerical factorization: %ld.\n", error);
+		printf("ERROR during numerical factorization: %lld.\n", error);
 		exit(2);
 	}
 
@@ -85,8 +85,8 @@ void pardiso_simple_solve(
 
 	if (error != 0)
 	{
-		printf("ERROR during solution: %ld,\n", error);
-		printf("iparm(30) = %ld\n", iparm[30 - 1]);
+		printf("ERROR during solution: %lld,\n", error);
+		printf("iparm(30) = %lld\n", iparm[30 - 1]);
 		exit(3);
 	}
 
@@ -134,7 +134,7 @@ void pardiso_solve_low_rank(
 	{
 #ifdef VERBOSE
 		printf("PARDISO: Using Low Rank update to skip analysis phase.\n");
-		printf("PARDISO: ndiff = %ld.\n", diff[0]);
+		printf("PARDISO: ndiff = %lld.\n", diff[0]);
 #endif
 		// Numerical factorization.
 		phase = 22;
@@ -144,7 +144,7 @@ void pardiso_solve_low_rank(
 
 		if (error != 0)
 		{
-			printf("ERROR during numerical factorization: %ld.\n", error);
+			printf("ERROR during numerical factorization: %lld.\n", error);
 			exit(2);
 		}
 
@@ -160,7 +160,7 @@ void pardiso_solve_low_rank(
 
 		if (error != 0)
 		{
-			printf("ERROR during solution: %ld,\n", error);
+			printf("ERROR during solution: %lld,\n", error);
 			exit(3);
 		}
 
@@ -177,14 +177,14 @@ void pardiso_solve_low_rank(
 
 		if (error != 0)
 		{
-			printf("ERROR during symbolic factorization: %ld.\n", error);
+			printf("ERROR during symbolic factorization: %lld.\n", error);
 			exit(1);
 		}
 
 #ifdef VERBOSE
 		printf("PARDISO: Reordering completed.\n");
-		printf("PARDISO: Number of nonzeros in factors = %ld.\n", iparm[18 - 1]);
-		printf("PARDISO: Number of factorization MFLOPS = %ld.\n", iparm[19 - 1]);
+		printf("PARDISO: Number of nonzeros in factors = %lld.\n", iparm[18 - 1]);
+		printf("PARDISO: Number of factorization MFLOPS = %lld.\n", iparm[19 - 1]);
 #endif
 
 		// Now that we have done the analysis phase, set the matrix handle.
@@ -198,7 +198,7 @@ void pardiso_solve_low_rank(
 
 		if (error != 0)
 		{
-			printf("ERROR during numerical factorization: %ld.\n", error);
+			printf("ERROR during numerical factorization: %lld.\n", error);
 			exit(2);
 		}
 
@@ -214,7 +214,7 @@ void pardiso_solve_low_rank(
 
 		if (error != 0)
 		{
-			printf("ERROR during solution: %ld,\n", error);
+			printf("ERROR during solution: %lld,\n", error);
 			exit(3);
 		}
 	}
@@ -244,7 +244,7 @@ void pardiso_repeated_solve(
 
 	if (error != 0)
 	{
-		printf("ERROR during numerical factorization: %ld.\n", error);
+		printf("ERROR during numerical factorization: %lld.\n", error);
 		exit(2);
 	}
 
@@ -260,7 +260,7 @@ void pardiso_repeated_solve(
 
 	if (error != 0)
 	{
-		printf("ERROR during solution: %ld,\n", error);
+		printf("ERROR during solution: %lld,\n", error);
 		exit(3);
 	}
 
