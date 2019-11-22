@@ -1,12 +1,16 @@
-CC = icc
+#CC = icc
+CC = gcc
 
-CFLAGS = -DMKL_ILP64 -Wall -O3 -qopenmp
+#CFLAGS = -DMKL_ILP64 -Wall -O3 -qopenmp
+CFLAGS = -DMKL_ILP64 -Wall -O3 -fopenmp -m64
 
 INCLUDES = -I${MKLROOT}/include 
 
-LFLAGS = -L${MKLROOT}/lib/intel64 
+#LFLAGS = -L${MKLROOT}/lib/intel64 
+LFLAGS = -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed
 
-LIBS = -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl
+#LIBS = -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -lconfig
+LIBS = -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -lconfig
 
 SRC_DIR := ./src
 OBJ_DIR := ./obj
@@ -24,7 +28,7 @@ obj/%.o: src/%.c
 
 $(MAIN): $(OBJS)
 	@echo "Compiling object files..."
-#	$(CC) $(CFLAGS) $(INCLUDES) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(MAIN) $(OBJS) $(LFLAGS) $(LIBS)
 
 clean:
 	rm -rf obj/*.o $(MAIN)
