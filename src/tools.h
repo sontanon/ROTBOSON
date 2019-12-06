@@ -7,6 +7,7 @@
 #ifdef WIN
 #define _USE_MATH_DEFINES
 #endif
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <time.h>
 #include <assert.h>

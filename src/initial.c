@@ -141,8 +141,8 @@ void initial_guess(double *u)
 		}
 		*/
 	}
-	// Rescale: Value at origin is psi0.
-	//cblas_dscal(dim, psi0 / u[4 * dim + IDX(1, 1)], u + 4 * dim, 1);
+	// Rescale scalar field by constant psi0.
+	cblas_dscal(dim, psi0, u + 4 * dim, 1);
 
 	// Assert symmetries since they might not be automatic.
 	// Corner.

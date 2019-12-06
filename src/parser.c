@@ -265,6 +265,17 @@ void parser(const char *fname)
 			NrTotalInitial = NrTotal;
 			NzTotalInitial = NzTotal;
 		}
+
+		// psi0.
+		if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
+		{
+			if (MAX_PSI0 < psi0 || psi0 < MIN_PSI0)
+			{
+				fprintf(stderr, "PARSER: ERROR! psi0 = %3.5E is not in range [%3.5E, %3.5E]\n", psi0, MIN_PSI0, MAX_PSI0);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
 	}
 	// Otherwise generate initial data analytically.
 	else
