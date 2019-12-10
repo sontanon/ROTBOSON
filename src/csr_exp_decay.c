@@ -410,7 +410,7 @@ void z_so_exp_decay_4th_order
 }
 
 // Robin along r but with semi-onesided z derivative.
-void r_so_robin_4th_order
+void r_so_exp_decay_4th_order
 (
 	double *aa, 		// CSR matrix values.
 	MKL_INT *ia, 		// CSR matrix row beginnings.

@@ -186,7 +186,7 @@ void rhs_bdry(
 	double l_a     = u[3 * dim + IDX(i, j)];
 	double Dr_l_a  = Dr_u[3 * dim + IDX(i, j)];
 	double Dz_l_a  = Dz_u[3 * dim + IDX(i, j)];
-	double psi     = u[4 * dim + IDX(i, j)];
+	//double psi     = u[4 * dim + IDX(i, j)];
 	double Dr_psi  = Dr_u[4 * dim + IDX(i, j)];
 	double Dz_psi  = Dz_u[4 * dim + IDX(i, j)];
 

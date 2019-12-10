@@ -65,13 +65,14 @@ void rhs(double *f, const double *u)
 		#pragma omp parallel shared(f) private(j)
 		{
 			#pragma omp for schedule(dynamic, 1)
-			for (j = ghost; j < ghost + NzInterior; ++j)
+			for (j = ghost; j < NzTotal; ++j)
 			{
 				f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
 			}
 		}
 	}
 
+	/*
 	// Top-left corner with parity.
 	for (i = 0; i < ghost; ++i)
 	{
@@ -80,6 +81,7 @@ void rhs(double *f, const double *u)
 			f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
 		}
 	}
+	*/
 
 	// Parity on z axis.
 	for (j = 0; j < ghost; ++j)
@@ -87,7 +89,7 @@ void rhs(double *f, const double *u)
 		#pragma omp parallel shared(f) private(i)
 		{
 			#pragma omp for schedule(dynamic, 1)
-			for (i = ghost; i < ghost + NrInterior; ++i)
+			for (i = ghost; i < NrTotal; ++i)
 			{
 				f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
 			}
@@ -117,6 +119,7 @@ void rhs(double *f, const double *u)
 		}
 	}
 
+	/*
 	// Lower-right corner with parity.
 	for (i = ghost + NzInterior; i < NzTotal; ++i)
 	{
@@ -125,13 +128,14 @@ void rhs(double *f, const double *u)
 			f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
 		}
 	}
+	*/
 
 	// R boundary condition.
 	i = NrTotal - 1;
 	#pragma omp parallel shared(f) private(j)
 	{
 		#pragma omp for schedule(dynamic, 1)
-		for (j = ghost; j < ghost + NzInterior; ++j)
+		for (j = ghost; j < NzTotal - 1; ++j)
 		{
 			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, -1.0);
 		}

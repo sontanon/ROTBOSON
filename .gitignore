@@ -6,5 +6,5 @@ ROTBOSON
 ROTBOSON_WS
 src/.vscode/c_cpp_properties.json
 src/.vscode/settings.json
-out/*
+out*/*
 parfile.par

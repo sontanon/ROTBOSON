@@ -1,12 +1,12 @@
 #include "tools.h"
 
-const double D10 = -0.5;
-const double D11 = 0.0;
-const double D12 = +0.5;
+#define D10 (-0.5)
+#define D11 (+0.0)
+#define D12 (+0.5)
 
-const double S10 = +0.5;
-const double S11 = -2.0;
-const double S12 = +1.5;
+#define S10 (+0.5)
+#define S11 (-2.0)
+#define S12 (+1.5)
 
 // Robin comes from approximating the function u as only a function of the radius rr:
 //                       n
@@ -239,23 +239,23 @@ void corner_robin_2nd_order
 	return;
 }
 
-const double D1_4_0 = +1.0 / 12.0;
-const double D1_4_1 = -2.0 / 3.0;
-const double D1_4_2 = 0.0;
-const double D1_4_3 = +2.0 / 3.0;
-const double D1_4_4 = -1.0 / 12.0;
+#define D1_4_0 (+1.0 / 12.0)
+#define D1_4_1 (-2.0 / 3.0)
+#define D1_4_2 (+0.0)
+#define D1_4_3 (+2.0 / 3.0)
+#define D1_4_4 (-1.0 / 12.0)
 
-const double S1_4_0 = +0.25;
-const double S1_4_1 = -4.0 / 3.0;
-const double S1_4_2 = +3.0;
-const double S1_4_3 = -4.0;
-const double S1_4_4 = 25.0 / 12.0;
+#define S1_4_0 (+0.25)
+#define S1_4_1 (-4.0 / 3.0)
+#define S1_4_2 (+3.0)
+#define S1_4_3 (-4.0)
+#define S1_4_4 (25.0 / 12.0)
 
-const double SO1_4_0 = -1.0 / 12.0;
-const double SO1_4_1 = +0.5;
-const double SO1_4_2 = -1.5;
-const double SO1_4_3 = +5.0 / 6.0;
-const double SO1_4_4 = +0.25;
+#define SO1_4_0 (-1.0 / 12.0)
+#define SO1_4_1 (+0.5)
+#define SO1_4_2 (-1.5)
+#define SO1_4_3 (+5.0 / 6.0)
+#define SO1_4_4 (+0.25)
 
 // Robin along z direction.
 void z_robin_4th_order
