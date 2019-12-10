@@ -106,9 +106,9 @@ void initial_guess(double *u)
 	if (!psi_i)
 	{
 		// Now do initial guess for phi.
-		#pragma omp parallel shared(u) private(j, r, z, rr)
+		#pragma omp parallel shared(u) private(i, j, r, z, rr)
 		{
-			#pragma omp for schedule(guided)
+			#pragma omp for schedule(dynamic, 1)
 			for (i = 1; i < NrTotal; ++i)
 			{
 			    r = dr * (i - 0.5);
@@ -119,62 +119,68 @@ void initial_guess(double *u)
 				z = dz * (j - 0.5);
 				rr = sqrt(r * r + z * z);
 
+				u[4 * dim + IDX(i, j)] = log(psi0) - 0.5 * (r * r / (sigmaR * sigmaR) + z * z / (sigmaZ * sigmaZ));
+				/* Previous deprecated inital data: phi = r**l * psi.
 				u[4 * dim + IDX(i, j)] = psi0 * exp(-0.5 * r * r / (sigmaR * sigmaR)) * exp(-0.5 * z * z / (sigmaZ * sigmaZ))
 					+ (psi0 * exp(-chi * rr) / pow(rr, l + 1)) * (0.5 + 0.5 * erf(2.0 * (rr - rExt) / M_2_SQRTPI));	
+				*/
 			    }
 			}
 		}
 	}
 	else
 	{
+		// Rescale scalar field by constant psi0.
+		cblas_dscal(dim, psi0, u + 4 * dim, 1);
+
 		read_single_file_2d(u + 4 * dim, psi_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
 		printf("***           Read psi initial data.        \n");
-		/*
-		// Exponentiate.
-		#pragma omp parallel shared(u) 
-		{
-			#pragma omp for schedule(guided)
-			for (i = 0; i < dim; ++i)
-			{
-				u[4 * dim + i] = exp(u[4 * dim + i]);
-			}
-		}
-		*/
 	}
-	// Rescale scalar field by constant psi0.
-	cblas_dscal(dim, psi0, u + 4 * dim, 1);
 
 	// Assert symmetries since they might not be automatic.
+	// All functions are even with respect to the axis and equator.
 	// Corner.
-	u[0 * dim + IDX(0, 0)] = u[0 * dim + IDX(1, 1)];
-	u[1 * dim + IDX(0, 0)] = u[1 * dim + IDX(1, 1)];
-	u[2 * dim + IDX(0, 0)] = u[2 * dim + IDX(1, 1)];
-	u[3 * dim + IDX(0, 0)] = u[3 * dim + IDX(1, 1)];
-	u[4 * dim + IDX(0, 0)] = u[4 * dim + IDX(1, 1)];
-	// Axis.
-	#pragma omp parallel shared(u)
+	for (i = 0; i < ghost; ++i)
 	{
-	    	#pragma omp for schedule(guided)
-	    	for (j = 1; j < NzTotal; ++j)
+		for (j = 0; j < ghost; ++j)
+		{
+			u[0 * dim + IDX(i, j)] = u[0 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
+			u[1 * dim + IDX(i, j)] = u[1 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
+			u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
+			u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
+			u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
+		}
+	}
+	// Axis.
+	#pragma omp parallel shared(u) private(i, j)
+	{
+	    	#pragma omp for schedule(dynamic, 1)
+	    	for (j = ghost; j < NzTotal; ++j)
 	    	{
-	    		u[0 * dim + IDX(0, j)] = u[0 * dim + IDX(1, j)];
-	    		u[1 * dim + IDX(0, j)] = u[1 * dim + IDX(1, j)];
-	    		u[2 * dim + IDX(0, j)] = u[2 * dim + IDX(1, j)];
-	    		u[3 * dim + IDX(0, j)] = u[3 * dim + IDX(1, j)];
-	    		u[4 * dim + IDX(0, j)] = u[4 * dim + IDX(1, j)];
+			for (i = 0; i < ghost; ++i)
+			{
+				u[0 * dim + IDX(i, j)] = u[0 * dim + IDX(2 * ghost - (i + 1), j)];
+				u[1 * dim + IDX(i, j)] = u[1 * dim + IDX(2 * ghost - (i + 1), j)];
+				u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(2 * ghost - (i + 1), j)];
+				u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(2 * ghost - (i + 1), j)];
+				u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(2 * ghost - (i + 1), j)];
+			}
 	    	}
 	}
 	// Equator.
-	#pragma omp parallel shared(u)
+	#pragma omp parallel shared(u) private(i, j)
 	{
-		#pragma omp for schedule(guided)
-		for (i = 1; i < NrTotal; ++i)
+		#pragma omp for schedule(dynamic, 1)
+		for (i = ghost; i < NrTotal; ++i)
 		{
-			u[0 * dim + IDX(i, 0)] = u[0 * dim + IDX(i, 1)];
-			u[1 * dim + IDX(i, 0)] = u[1 * dim + IDX(i, 1)];
-			u[2 * dim + IDX(i, 0)] = u[2 * dim + IDX(i, 1)];
-			u[3 * dim + IDX(i, 0)] = u[3 * dim + IDX(i, 1)];
-			u[4 * dim + IDX(i, 0)] = u[4 * dim + IDX(i, 1)];
+			for (j = 0; j < ghost; ++j)
+			{
+				u[0 * dim + IDX(i, j)] = u[0 * dim + IDX(i, 2 * ghost - (j + 1))];
+				u[1 * dim + IDX(i, j)] = u[1 * dim + IDX(i, 2 * ghost - (j + 1))];
+				u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(i, 2 * ghost - (j + 1))];
+				u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(i, 2 * ghost - (j + 1))];
+				u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(i, 2 * ghost - (j + 1))];
+			}
 		}
 	}
 

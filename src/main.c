@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
 	printf("***            NrInterior  = %-7lld               \n", NrInterior);
 	printf("***            NzInterior  = %-7lld               \n", NzInterior);
 	printf("***            order       = %lld                     \n", order);
+	printf("***            ghost       = %lld                     \n", ghost);
 	printf("***                                                \n");
 	printf("***           SCALAR FIELD:                        \n");
 	printf("***            l           = %-7lld               \n", l);

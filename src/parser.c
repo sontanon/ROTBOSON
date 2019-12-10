@@ -108,13 +108,6 @@ void parser(const char *fname)
 	{
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"NzInterior\" from parameter file. Setting to default value, NzInterior = %lld\n", NzInterior);
 	}
-
-	// DO NOT FORGET TO CALCULATE NRTOTAL, NZTOTAL, DIM, AND W_IDX!
-	NrTotal = NrInterior + 2;
-	NzTotal = NzInterior + 2;
-	dim = NrTotal * NzTotal;
-	w_idx = 5 * dim;
-
 	// order.
 	if (config_lookup_int64(&cfg, "order", &order) == CONFIG_TRUE)
 	{
@@ -129,6 +122,21 @@ void parser(const char *fname)
 	{
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"order\" from parameter file. Setting to default value, order = %lld\n", order);
 	}
+	// Determine parity ghost zones.
+	if (order == 2)
+	{
+		ghost = 1;
+	}
+	else if (order == 4)
+	{
+		ghost = 2;
+	}
+
+	// DO NOT FORGET TO CALCULATE NRTOTAL, NZTOTAL, DIM, AND W_IDX!
+	NrTotal = NrInterior + 2 * ghost;
+	NzTotal = NzInterior + 2 * ghost;
+	dim = NrTotal * NzTotal;
+	w_idx = 5 * dim;
 
 	// SCALAR FIELD PARAMETERS.
 	// l.
