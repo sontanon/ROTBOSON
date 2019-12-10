@@ -1,6 +1,8 @@
 #include "tools.h"
 #include "qnerr.h"
 
+#define DEBUG_PRINT 0
+
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0).
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
@@ -77,7 +79,7 @@ MKL_INT nleq_err(
 		//            J(u^k) du^k = -f(u^k).
 
 		/* Now calculate Jacobian matrix J(u^k) into matrix. */
-		JACOBIAN_CALC(*J, u[k], 0);
+		JACOBIAN_CALC(*J, u[k], DEBUG_PRINT);
 
 		/* Solve linear system. */
 		LINEAR_SOLVE_1(du[k], J, f[k]);

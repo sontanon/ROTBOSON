@@ -43,7 +43,7 @@ void z_robin_2nd_order
 )
 {
 	// Grid offset.
-	MKL_INT k = (g_num - 1) * dim;
+	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
 	double r, z;
@@ -115,7 +115,7 @@ void r_robin_2nd_order
 )
 {
 	// Grid offset.
-	MKL_INT k = (g_num - 1) * dim;
+	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
 	double r, z;
@@ -187,7 +187,7 @@ void corner_robin_2nd_order
 )
 {
 	// Grid offset.
-	MKL_INT k = (g_num - 1) * dim;
+	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
 	double r, z;
@@ -277,7 +277,7 @@ void z_robin_4th_order
 )
 {
 	// Grid offset.
-	MKL_INT k = (g_num - 1) * dim;
+	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
 	double r, z;
@@ -357,7 +357,7 @@ void r_robin_4th_order
 )
 {
 	// Grid offset.
-	MKL_INT k = (g_num - 1) * dim;
+	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
 	double r, z;
@@ -437,7 +437,7 @@ void corner_robin_4th_order
 )
 {
 	// Grid offset.
-	MKL_INT k = (g_num - 1) * dim;
+	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
 	double r, z;
@@ -517,7 +517,7 @@ void z_so_robin_4th_order
 )
 {
 	// Grid offset.
-	MKL_INT k = (g_num - 1) * dim;
+	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
 	double r, z;
@@ -597,7 +597,7 @@ void r_so_robin_4th_order
 )
 {
 	// Grid offset.
-	MKL_INT k = (g_num - 1) * dim;
+	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
 	double r, z;

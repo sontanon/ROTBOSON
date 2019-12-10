@@ -9,7 +9,7 @@
 #include "pardiso_start.h"
 #include "pardiso_stop.h"
 #include "omega_calc.h"
-//#include "csr.h"
+#include "csr.h"
 #include "nleq_err.h"
 #include "nleq_res.h"
 #include "vector_algebra.h"
@@ -241,10 +241,8 @@ int main(int argc, char *argv[])
 
 	// Allocate CSR matrix.
 	csr_matrix J;
-	/*
 	MKL_INT nnz = nnz_jacobian();
 	csr_allocate(&J, 5 * dim + 1, 5 * dim + 1, nnz);
-	*/
 
 	printf("***                                                \n");
 	printf("***            Allocated CSR matrix with:          \n");
@@ -320,7 +318,7 @@ int main(int argc, char *argv[])
 	void (*linear_solve_2)(double *, csr_matrix *, double *);
 	linear_solve_2 = pardiso_repeated_solve;
 
-	/* MAIN ALGORITHM: NEWTON SOLVER
+	/* MAIN ALGORITHM: NEWTON SOLVER */
 	// Start Newton iterations.
 	if (maxNewtonIter > 0)
 	{
@@ -366,7 +364,6 @@ int main(int argc, char *argv[])
 		printf("******************************************************\n");
 		k = 0;
 	}
-	*/
 
 	// Get omega.
 	double w = omega_calc(u[k][w_idx], m);
@@ -464,7 +461,7 @@ int main(int argc, char *argv[])
 	printf("***                                                \n");
 
 	pardiso_stop();
-	//csr_deallocate(&J);
+	csr_deallocate(&J);
 
 	for (i = 0; i < maxNewtonIter + 1; i++)
 	{

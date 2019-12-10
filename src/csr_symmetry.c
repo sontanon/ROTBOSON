@@ -18,15 +18,15 @@ void z_symmetry
 )
 {
 	// Row starts at offset.
-	ia[(g_num - 1) * dim + IDX(i, j)] = BASE + offset;
+	ia[g_num * dim + IDX(i, j)] = BASE + offset;
 
 	// Set values.
 	aa[offset    ] = 1.0;
 	aa[offset + 1] = -(double)z_sym;
 
 	// Set column values.
-	ja[offset    ] = BASE + (g_num - 1) * dim + IDX(i, j);
-	ja[offset + 1] = BASE + (g_num - 1) * dim + IDX(i, 2 * ghost - (j + 1));
+	ja[offset    ] = BASE + g_num * dim + IDX(i, j);
+	ja[offset + 1] = BASE + g_num * dim + IDX(i, 2 * ghost - (j + 1));
 
 	// All done.
 	return;
@@ -50,15 +50,15 @@ void r_symmetry
 )
 {
 	// Row starts at offset.
-	ia[(g_num - 1) * dim + IDX(i, j)] = BASE + offset;
+	ia[g_num * dim + IDX(i, j)] = BASE + offset;
 
 	// Set values.
 	aa[offset    ] = 1.0;
 	aa[offset + 1] = -(double)r_sym;
 
 	// Set column values.
-	ja[offset    ] = BASE + (g_num - 1) * dim + IDX(i, j);
-	ja[offset + 1] = BASE + (g_num - 1) * dim + IDX(2 * ghost - (i + 1), j);
+	ja[offset    ] = BASE + g_num * dim + IDX(i, j);
+	ja[offset + 1] = BASE + g_num * dim + IDX(2 * ghost - (i + 1), j);
 
 	// All done.
 	return;
@@ -83,15 +83,15 @@ void corner_symmetry
 )
 {
 	// Row starts at offset.
-	ia[(g_num - 1) * dim + IDX(i, j)] = BASE + offset;
+	ia[g_num * dim + IDX(i, j)] = BASE + offset;
 
 	// Set values.
 	aa[offset    ] = 1.0;
 	aa[offset + 1] = -(double)(r_sym * z_sym);
 
 	// Set column values.
-	ja[offset    ] = BASE + (g_num - 1) * dim + IDX(i, j);
-	ja[offset + 1] = BASE + (g_num - 1) * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1));
+	ja[offset    ] = BASE + g_num * dim + IDX(i, j);
+	ja[offset + 1] = BASE + g_num * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1));
 
 	// All done.
 	return;
