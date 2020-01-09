@@ -3,6 +3,8 @@
 
 #include "omega_calc.h"
 
+#undef BDRY_DEBUG
+
 void initial_guess(double *u)
 {
 	// The main idea is to set:
@@ -25,7 +27,7 @@ void initial_guess(double *u)
 	MKL_INT j = 0;
 
 	// Auxiliary variables.
-	double r, z;
+	double r, z, rr;
 	/*
 	double m2 = m * m;
 	double w2 = w0 * w0;
@@ -47,6 +49,25 @@ void initial_guess(double *u)
 			    u[i] = 0.0;
 			}
 		}
+
+#ifdef BDRY_DEBUG
+		#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = ghost; i < NrTotal; ++i)
+			{
+			    r = dr * (i + 0.5 - ghost);
+
+			    for (j = ghost; j < NzTotal; ++j)
+			    {
+				z = dz * (j + 0.5 - ghost);
+				rr = sqrt(r * r + z * z);
+
+				u[0 * dim + IDX(i, j)] = log(1.0 + 1.0 / rr);
+			    }
+			}
+		}
+#endif
 	}
 	else
 	{
@@ -64,6 +85,25 @@ void initial_guess(double *u)
 			    u[i] = 0.0;
 			}
 		}
+
+#ifdef BDRY_DEBUG
+		#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = ghost; i < NrTotal; ++i)
+			{
+			    r = dr * (i + 0.5 - ghost);
+
+			    for (j = ghost; j < NzTotal; ++j)
+			    {
+				z = dz * (j + 0.5 - ghost);
+				rr = sqrt(r * r + z * z);
+
+				u[1 * dim + IDX(i, j)] = 1.0 / pow(rr, 3);
+			    }
+			}
+		}
+#endif
 	}
 	else
 	{
@@ -81,6 +121,24 @@ void initial_guess(double *u)
 			    u[i] = 0.0;
 			}
 		}
+#ifdef BDRY_DEBUG
+		#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = ghost; i < NrTotal; ++i)
+			{
+			    r = dr * (i + 0.5 - ghost);
+
+			    for (j = ghost; j < NzTotal; ++j)
+			    {
+				z = dz * (j + 0.5 - ghost);
+				rr = sqrt(r * r + z * z);
+
+				u[2 * dim + IDX(i, j)] = log(1.0 + 1.0 / rr);
+			    }
+			}
+		}
+#endif
 	}
 	else
 	{
@@ -98,6 +156,24 @@ void initial_guess(double *u)
 			    u[i] = 0.0;
 			}
 		}
+#ifdef BDRY_DEBUG
+		#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = ghost; i < NrTotal; ++i)
+			{
+			    r = dr * (i + 0.5 - ghost);
+
+			    for (j = ghost; j < NzTotal; ++j)
+			    {
+				z = dz * (j + 0.5 - ghost);
+				rr = sqrt(r * r + z * z);
+
+				u[3 * dim + IDX(i, j)] = log(1.0 + 1.0 / rr);
+			    }
+			}
+		}
+#endif
 	}
 	else
 	{
@@ -111,14 +187,14 @@ void initial_guess(double *u)
 		#pragma omp parallel shared(u) private(i, j, r, z) // rr.
 		{
 			#pragma omp for schedule(dynamic, 1)
-			for (i = 1; i < NrTotal; ++i)
+			for (i = ghost; i < NrTotal; ++i)
 			{
-			    r = dr * (i - 0.5);
+			    r = dr * (i + 0.5 - ghost);
 			    //rl = pow(r, l);
 
-			    for (j = 0; j < NzTotal; ++j)
+			    for (j = ghost; j < NzTotal; ++j)
 			    {
-				z = dz * (j - 0.5);
+				z = dz * (j + 0.5 - ghost);
 				//rr = sqrt(r * r + z * z);
 
 				u[4 * dim + IDX(i, j)] = log(psi0) - 0.5 * (r * r / (sigmaR * sigmaR) + z * z / (sigmaZ * sigmaZ));
@@ -129,6 +205,24 @@ void initial_guess(double *u)
 			    }
 			}
 		}
+#ifdef BDRY_DEBUG
+		#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = ghost; i < NrTotal; ++i)
+			{
+			    r = dr * (i + 0.5 - ghost);
+
+			    for (j = ghost; j < NzTotal; ++j)
+			    {
+				z = dz * (j + 0.5 - ghost);
+				rr = sqrt(r * r + z * z);
+
+				u[4 * dim + IDX(i, j)] = -(l + 1.0) * log(rr);
+			    }
+			}
+		}
+#endif
 	}
 	else
 	{

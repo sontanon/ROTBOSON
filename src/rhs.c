@@ -8,6 +8,8 @@
 
 #define EVEN 1
 
+#undef DERIVATIVE_DEBUG
+
 void rhs(double *f, const double *u)
 {
 	// Omega.
@@ -41,6 +43,20 @@ void rhs(double *f, const double *u)
 	diff2z(Dzz_u + 2 * dim, u + 2 * dim, EVEN);
 	diff2z(Dzz_u + 3 * dim, u + 3 * dim, EVEN);
 	diff2z(Dzz_u + 4 * dim, u + 4 * dim, EVEN);
+
+#ifdef DERIVATIVE_DEBUG
+	write_single_file_2d(Dr_u, "Dr_log_alpha.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dr_u + dim, "Dr_beta.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dr_u + 2 * dim, "Dr_log_h.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dr_u + 3 * dim, "Dr_log_a.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dr_u + 4 * dim, "Dr_psi.asc", NrTotal, NzTotal);
+
+	write_single_file_2d(Dz_u, "Dz_log_alpha.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dz_u + dim, "Dz_beta.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dz_u + 2 * dim, "Dz_log_h.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dz_u + 3 * dim, "Dz_log_a.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dz_u + 4 * dim, "Dz_psi.asc", NrTotal, NzTotal);
+#endif
 
 	/* Mixed derivatives should not be used.
 	diff2rz(Drz_u           , u          , EVEN, EVEN);

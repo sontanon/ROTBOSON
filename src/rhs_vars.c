@@ -171,7 +171,9 @@ void rhs_bdry(
 {
 	// Auxiliary doubles.
 	double r = dr * (i + 0.5 - ghost);
-	double z = dz * (i + 0.5 - ghost);
+	double z = dz * (j + 0.5 - ghost);
+	double rr2 = r * r + z * z;
+	double scale = dr * dz / rr2;
 
 	// Fetch values.
 	double l_alpha     = u[IDX(i, j)];
@@ -191,15 +193,15 @@ void rhs_bdry(
 	double Dz_psi  = Dz_u[4 * dim + IDX(i, j)];
 
 	// Robin and exponential decay boundary conditions.
-	f[IDX(i, j)] = rescale * (r * Dr_l_alpha + z * Dz_l_alpha + l_alpha);
+	f[IDX(i, j)] = rescale * scale * (r * Dr_l_alpha + z * Dz_l_alpha + l_alpha);
 	
-	f[dim + IDX(i, j)] = rescale * (r * Dr_beta + z * Dz_beta + 3.0 * beta);
+	f[dim + IDX(i, j)] = rescale * scale * (r * Dr_beta + z * Dz_beta + 3.0 * beta);
 
-	f[2 * dim + IDX(i, j)] = rescale * (r * Dr_l_h + z * Dz_l_h + l_h);
+	f[2 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_h + z * Dz_l_h + l_h);
 
-	f[3 * dim + IDX(i, j)] = rescale * (r * Dr_l_a + z * Dz_l_a + l_a);
+	f[3 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_a + z * Dz_l_a + l_a);
 
-	f[4 * dim + IDX(i, j)] = rescale * (r * Dr_psi + z * Dz_psi + (l + 1.0));
+	f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (l + 1.0));
 
 	// All done.
 	return;
