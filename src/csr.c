@@ -93,7 +93,7 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 		// Interior points plus parity boundaries.
 		nnz1 = 18 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz2 = 17 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
-		nnz3 = 17 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
+		nnz3 = 16 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz4 = 26 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz5 = 18 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 
@@ -140,7 +140,7 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 				nnz5 += 1 + (NrInterior + NzInterior);
 				break;
 			case 1:
-				nnz5 += 5 * (1 + (NrInterior + NzInterior));
+				nnz5 += 6 * (1 + (NrInterior + NzInterior));
 				break;
 		}
 	}
@@ -181,8 +181,8 @@ void csr_gen_jacobian(csr_matrix A, const double *u, const int print)
 	MKL_INT z_sym[5] = {EVEN, EVEN, EVEN, EVEN, EVEN};
 	MKL_INT bound_order[5] = {alphaBoundOrder, betaBoundOrder, hBoundOrder, aBoundOrder, phiBoundOrder};
 	MKL_INT nnzs[5] = {nnz1, nnz2, nnz3, nnz4, nnz5};
-	MKL_INT p_center[5] = {18, 17, 17, 26, 18};
-	MKL_INT p_bound[5] = {5, 5, 5, 5, 5};
+	MKL_INT p_center[5] = {18, 17, 16, 26, 18};
+	MKL_INT p_bound[5] = {5, 5, 5, 5, 6};
 
 
 	// Check for order and fill matrix.

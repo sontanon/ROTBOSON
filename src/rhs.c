@@ -56,6 +56,18 @@ void rhs(double *f, const double *u)
 	write_single_file_2d(Dz_u + 2 * dim, "Dz_log_h.asc", NrTotal, NzTotal);
 	write_single_file_2d(Dz_u + 3 * dim, "Dz_log_a.asc", NrTotal, NzTotal);
 	write_single_file_2d(Dz_u + 4 * dim, "Dz_psi.asc", NrTotal, NzTotal);
+
+	write_single_file_2d(Drr_u, "Drr_log_alpha.asc", NrTotal, NzTotal);
+	write_single_file_2d(Drr_u + dim, "Drr_beta.asc", NrTotal, NzTotal);
+	write_single_file_2d(Drr_u + 2 * dim, "Drr_log_h.asc", NrTotal, NzTotal);
+	write_single_file_2d(Drr_u + 3 * dim, "Drr_log_a.asc", NrTotal, NzTotal);
+	write_single_file_2d(Drr_u + 4 * dim, "Drr_psi.asc", NrTotal, NzTotal);
+
+	write_single_file_2d(Dzz_u, "Dzz_log_alpha.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dzz_u + dim, "Dzz_beta.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dzz_u + 2 * dim, "Dzz_log_h.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dzz_u + 3 * dim, "Dzz_log_a.asc", NrTotal, NzTotal);
+	write_single_file_2d(Dzz_u + 4 * dim, "Dzz_psi.asc", NrTotal, NzTotal);
 #endif
 
 	/* Mixed derivatives should not be used.
@@ -131,7 +143,7 @@ void rhs(double *f, const double *u)
 		#pragma omp for schedule(dynamic, 1)
 		for (i = ghost; i < NrTotal - 1; ++i)
 		{
-			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, -1.0);
+			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
 		}
 	}
 
@@ -153,14 +165,14 @@ void rhs(double *f, const double *u)
 		#pragma omp for schedule(dynamic, 1)
 		for (j = ghost; j < NzTotal - 1; ++j)
 		{
-			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, -1.0);
+			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
 		}
 	}
 
 	// Top-right corner boundary condition.
 	i = NrTotal - 1;
 	j = NzTotal - 1;
-	rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, -1.0);
+	rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
 
 	// Omega constraint.
 	f[w_idx] = 0.0;

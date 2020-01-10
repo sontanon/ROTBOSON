@@ -58,21 +58,25 @@ void rhs_vars(
 	Dz_l_alpha  = Dz_u[IDX(i, j)];
 	Drr_l_alpha = Drr_u[IDX(i, j)];
 	Dzz_l_alpha = Dzz_u[IDX(i, j)];
+
 	beta      = u[dim + IDX(i, j)];
 	Dr_beta   = Dr_u[dim + IDX(i, j)];
 	Dz_beta   = Dz_u[dim + IDX(i, j)];
 	Drr_beta  = Drr_u[dim + IDX(i, j)];
 	Dzz_beta  = Dzz_u[dim + IDX(i, j)];
+
 	l_h     = u[2 * dim + IDX(i, j)];
 	Dr_l_h  = Dr_u[2 * dim + IDX(i, j)];
 	Dz_l_h  = Dz_u[2 * dim + IDX(i, j)];
 	Drr_l_h = Drr_u[2 * dim + IDX(i, j)];
 	Dzz_l_h = Dzz_u[2 * dim + IDX(i, j)];
+
 	l_a     = u[3 * dim + IDX(i, j)];
 	//Dr_l_a  = Dr_u[3 * dim + IDX(i, j)];
 	//Dz_l_a  = Dz_u[3 * dim + IDX(i, j)];
 	Drr_l_a = Drr_u[3 * dim + IDX(i, j)];
 	Dzz_l_a = Dzz_u[3 * dim + IDX(i, j)];
+
 	psi     = u[4 * dim + IDX(i, j)];
 	Dr_psi  = Dr_u[4 * dim + IDX(i, j)];
 	Dz_psi  = Dz_u[4 * dim + IDX(i, j)];
@@ -94,8 +98,10 @@ void rhs_vars(
 	a2 = exp(2.0 * l_a);
 	w_plus_l_beta = w + (double)l * beta;
 	w_plus_l_beta2 = w_plus_l_beta * w_plus_l_beta;
-	phi = rl * exp(-chi * rr) * exp(psi);
-	phi_over_r = rlm1 * exp(-chi * rr) * exp(psi);
+	//phi = rl * exp(-chi * rr) * exp(psi);
+	phi = rl * psi;
+	//phi_over_r = rlm1 * exp(-chi * rr) * exp(psi);
+	phi_over_r = rlm1 * psi;
 	phi2 = phi * phi;
 	phi2_over_r2 = phi_over_r * phi_over_r;
 
@@ -136,6 +142,21 @@ void rhs_vars(
 	f[3 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_l_a + Dzz_l_a
 		- D_l_alpha_D_l_h - 0.25 * r2_h2_over_alpha2_D_beta_D_beta 
 		- (Dr_l_alpha / r)
+		+ 4.0 * M_PI * ((l * l * (1.0 - a2 / h2) + a2 * r2 * w_plus_l_beta2 / alpha2) * phi2_over_r2
+			+ (2.0 * l * r * psi * Dr_psi + r2 * D_psi_D_psi) * (rlm1 * rlm1))));
+
+	// u5 = log(phi / r**l)
+	f[4 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_psi + Dzz_psi + (2.0 * l + 1.0) * (Dr_psi / r)
+		+ D_l_alpha_D_psi + D_l_h_D_psi
+		+ l * ((Dr_l_alpha / r) + (Dr_l_h / r)) * psi
+		+ a2 * (w_plus_l_beta2 / alpha2 - m2) * psi)
+		- dzodr * l * l * ((a2 - h2) / (r2 / (dr * dr))) * psi / h2);
+
+	/*
+	// u4 = log(a).
+	f[3 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_l_a + Dzz_l_a
+		- D_l_alpha_D_l_h - 0.25 * r2_h2_over_alpha2_D_beta_D_beta 
+		- (Dr_l_alpha / r)
 		+ 4.0 * M_PI * (a2 * (r2 * w_plus_l_beta2 / alpha2 - l * l / h2)
 			+ r2 * (D_psi_D_psi + chi * (chi - 2.0 * Dx_psi))
 			+ 2.0 * l * r * Dr_psi + l * l) * phi2_over_r2));
@@ -145,8 +166,9 @@ void rhs_vars(
 		+ D_psi_D_psi + D_l_alpha_D_psi + D_l_h_D_psi
 		+ l * ((Dr_l_alpha / r) + (Dr_l_h / r))
 		+ a2 * (w_plus_l_beta2 / alpha2 - m2)
-		+ chi * (chi - (2.0 * l + 1.0) / rr - 2.0 * Dx_psi - Dx_l_alpha - Dx_l_h))
+		+ chi * (chi - (2.0 * (l + 1.0)) / rr - 2.0 * Dx_psi - Dx_l_alpha - Dx_l_h))
 		- dzodr * l * l * ((a2 - h2) / (r2 / (dr * dr))) / h2);
+	*/
 
 	// All done.
 	return;
@@ -166,6 +188,8 @@ void rhs_bdry(
 	const double dr,
 	const double dz,
 	const MKL_INT l,
+	const double m,
+	const double w,
 	const double rescale
 )
 {
@@ -173,7 +197,13 @@ void rhs_bdry(
 	double r = dr * (i + 0.5 - ghost);
 	double z = dz * (j + 0.5 - ghost);
 	double rr2 = r * r + z * z;
+	double rr = sqrt(rr2);
 	double scale = dr * dz / rr2;
+
+	// Omega.
+	double w2 = w * w;
+	double m2 = m * m;
+	double chi = sqrt(m2 - w2);
 
 	// Fetch values.
 	double l_alpha     = u[IDX(i, j)];
@@ -188,7 +218,7 @@ void rhs_bdry(
 	double l_a     = u[3 * dim + IDX(i, j)];
 	double Dr_l_a  = Dr_u[3 * dim + IDX(i, j)];
 	double Dz_l_a  = Dz_u[3 * dim + IDX(i, j)];
-	//double psi     = u[4 * dim + IDX(i, j)];
+	double psi     = u[4 * dim + IDX(i, j)];
 	double Dr_psi  = Dr_u[4 * dim + IDX(i, j)];
 	double Dz_psi  = Dz_u[4 * dim + IDX(i, j)];
 
@@ -201,7 +231,8 @@ void rhs_bdry(
 
 	f[3 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_a + z * Dz_l_a + l_a);
 
-	f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (l + 1.0));
+	f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi);
+	//f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (l + 1.0));
 
 	// All done.
 	return;

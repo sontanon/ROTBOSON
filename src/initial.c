@@ -28,11 +28,9 @@ void initial_guess(double *u)
 
 	// Auxiliary variables.
 	double r, z, rr;
-	/*
 	double m2 = m * m;
 	double w2 = w0 * w0;
 	double chi = sqrt(m2 - w2);
-	*/
 
 	// log(alpha)	= 0.0
 	// beta 	= 0.0
@@ -184,7 +182,7 @@ void initial_guess(double *u)
 	if (!psi_i)
 	{
 		// Now do initial guess for phi.
-		#pragma omp parallel shared(u) private(i, j, r, z) // rr.
+		#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
 		{
 			#pragma omp for schedule(dynamic, 1)
 			for (i = ghost; i < NrTotal; ++i)
@@ -195,9 +193,12 @@ void initial_guess(double *u)
 			    for (j = ghost; j < NzTotal; ++j)
 			    {
 				z = dz * (j + 0.5 - ghost);
-				//rr = sqrt(r * r + z * z);
+				rr = sqrt(r * r + z * z);
 
-				u[4 * dim + IDX(i, j)] = log(psi0) - 0.5 * (r * r / (sigmaR * sigmaR) + z * z / (sigmaZ * sigmaZ));
+				u[4 * dim + IDX(i, j)] = psi0 * exp(-0.5 * r * r / (sigmaR * sigmaR)) * exp(-0.5 * z * z / (sigmaZ * sigmaZ))
+					+ (psi0 * exp(-chi * rr) / pow(rr, l + 1)) * (0.5 + 0.5 * erf(2.0 * (rr - rExt) / M_2_SQRTPI));	
+
+				//u[4 * dim + IDX(i, j)] = log(psi0) - 0.5 * (r * r / (sigmaR * sigmaR) + z * z / (sigmaZ * sigmaZ));
 				/* Previous deprecated inital data: phi = r**l * psi.
 				u[4 * dim + IDX(i, j)] = psi0 * exp(-0.5 * r * r / (sigmaR * sigmaR)) * exp(-0.5 * z * z / (sigmaZ * sigmaZ))
 					+ (psi0 * exp(-chi * rr) / pow(rr, l + 1)) * (0.5 + 0.5 * erf(2.0 * (rr - rExt) / M_2_SQRTPI));	

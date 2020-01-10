@@ -1,4 +1,5 @@
 #include "tools.h"
+#include "omega_calc.h"
 
 const double D10 = -0.5;
 const double D11 = 0.0;
@@ -7,6 +8,220 @@ const double D12 = +0.5;
 const double S10 = +0.5;
 const double S11 = -2.0;
 const double S12 = +1.5;
+
+void z_decay_2nd_order
+(
+	double *aa, 		// CSR matrix values.
+	MKL_INT *ia, 		// CSR matrix row beginnings.
+	MKL_INT *ja,		// CSR matrix column indices.
+	const MKL_INT offset, 	// Number of elements previously filled into CSR a array.
+	const MKL_INT NrTotal, 	// R total dimension.
+	const MKL_INT NzTotal, 	// Z total dimension.
+	const MKL_INT dim,	// Grid function total dimension: dim = NrTotal * NzTotal.
+	const MKL_INT g_num, 	// Grid number.
+	const MKL_INT i, 	// R integer coordinate.
+	const MKL_INT j, 	// Z integer coordinate.
+	const double dr, 	// R spatial step.
+	const double dz, 	// Z spatial step.
+	const double *u,	// Solution u.
+	const MKL_INT w_idx,	// Omega index.
+	const double m,		// Scalar field mass.
+	const MKL_INT l 	// Scalar field rotation number.
+)
+{
+	// Grid offset.
+	MKL_INT k = g_num * dim;
+
+	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
+	double r, z;
+	double rr2, rr;
+	double scale;
+
+	// Row starts at offset.
+	ia[k + IDX(i, j)] = BASE + offset;
+
+	// Coordinates.
+	r = (double)i - 0.5;
+	z = (double)j - 0.5;
+	rr2 = r * r * dr * dr + z * z * dz * dz;
+	rr = sqrt(rr2);
+	scale = dr * dz / rr2;
+
+	// Omega.
+	double v = u[w_idx];
+	double w = omega_calc(v, m);
+	double w2 = w * w;
+	double m2 = m * m;
+	double chi = sqrt(m2 - w2);
+
+	// RHS.
+	double psi = u[k + IDX(i, j)];
+	double f = r * (D10 * u[k + IDX(i - 1, j)] + D12 * u[k + IDX(i + 1, j)]) 
+		+ z * (S10 * u[k + IDX(i, j - 2)] + S11 * u[k + IDX(i, j - 1)] + S12 * psi) 
+		+ (rr * chi + l + 1.0) * psi;
+
+	// Set values.
+	aa[offset + 0] = ((D10) * r) * scale;
+	aa[offset + 1] = ((S10) * z) * scale;
+	aa[offset + 2] = ((S11) * z) * scale;
+	aa[offset + 3] = ((S12) * z + (rr * chi + l + 1.0)) * scale;
+	aa[offset + 4] = ((D12) * r) * scale;
+	aa[offset + 5] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
+
+	// Column indices.
+	ja[offset + 0] = BASE + k + IDX(i - 1, j);
+	ja[offset + 1] = BASE + k + IDX(i, j - 2);
+	ja[offset + 2] = BASE + k + IDX(i, j - 1);
+	ja[offset + 3] = BASE + k + IDX(i, j    );
+	ja[offset + 4] = BASE + k + IDX(i + 1, j);
+	ja[offset + 5] = BASE + w_idx;
+
+	// All done.
+	return;
+}
+
+void r_decay_2nd_order
+(
+	double *aa, 		// CSR matrix values.
+	MKL_INT *ia, 		// CSR matrix row beginnings.
+	MKL_INT *ja,		// CSR matrix column indices.
+	const MKL_INT offset, 	// Number of elements previously filled into CSR a array.
+	const MKL_INT NrTotal, 	// R total dimension.
+	const MKL_INT NzTotal, 	// Z total dimension.
+	const MKL_INT dim,	// Grid function total dimension: dim = NrTotal * NzTotal.
+	const MKL_INT g_num, 	// Grid number.
+	const MKL_INT i, 	// R integer coordinate.
+	const MKL_INT j, 	// Z integer coordinate.
+	const double dr, 	// R spatial step.
+	const double dz, 	// Z spatial step.
+	const double *u,	// Solution u.
+	const MKL_INT w_idx,	// Omega index.
+	const double m,		// Scalar field mass.
+	const MKL_INT l 	// Scalar field rotation number.
+)
+{
+	// Grid offset.
+	MKL_INT k = g_num * dim;
+
+	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
+	double r, z;
+	double rr2, rr;
+	double scale;
+
+	// Row starts at offset.
+	ia[k + IDX(i, j)] = BASE + offset;
+
+	// Coordinates.
+	r = (double)i - 0.5;
+	z = (double)j - 0.5;
+	rr2 = r * r * dr * dr + z * z * dz * dz;
+	rr = sqrt(rr2);
+	scale = dr * dz / rr2;
+
+	// Omega.
+	double v = u[w_idx];
+	double w = omega_calc(v, m);
+	double w2 = w * w;
+	double m2 = m * m;
+	double chi = sqrt(m2 - w2);
+
+	// RHS.
+	double psi = u[k + IDX(i, j)];
+	double f = r * (S10 * u[k + IDX(i - 2, j)] + S11 * u[k + IDX(i - 1, j)] + S12 * psi) 
+		+ z * (D10 * u[k + IDX(i, j - 1)] + D12 * u[k + IDX(i, j + 1)]) 
+		+ (rr * chi + l + 1.0) * psi;
+
+	// Set values.
+	aa[offset + 0] = ((S10) * r) * scale;
+	aa[offset + 1] = ((S11) * r) * scale;
+	aa[offset + 2] = ((D10) * z) * scale;
+	aa[offset + 3] = ((S12) * r + (rr * chi + l + 1.0)) * scale;
+	aa[offset + 4] = ((D12) * z) * scale;
+	aa[offset + 5] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
+
+	// Column indices.
+	ja[offset + 0] = BASE + k + IDX(i - 2, j);
+	ja[offset + 1] = BASE + k + IDX(i - 1, j);
+	ja[offset + 2] = BASE + k + IDX(i, j - 1);
+	ja[offset + 3] = BASE + k + IDX(i, j    );
+	ja[offset + 4] = BASE + k + IDX(i, j + 1);
+	ja[offset + 5] = BASE + w_idx;
+
+	// All done.
+	return;
+}
+
+void corner_decay_2nd_order
+(
+	double *aa, 		// CSR matrix values.
+	MKL_INT *ia, 		// CSR matrix row beginnings.
+	MKL_INT *ja,		// CSR matrix column indices.
+	const MKL_INT offset, 	// Number of elements previously filled into CSR a array.
+	const MKL_INT NrTotal, 	// R total dimension.
+	const MKL_INT NzTotal, 	// Z total dimension.
+	const MKL_INT dim,	// Grid function total dimension: dim = NrTotal * NzTotal.
+	const MKL_INT g_num, 	// Grid number.
+	const MKL_INT i, 	// R integer coordinate.
+	const MKL_INT j, 	// Z integer coordinate.
+	const double dr, 	// R spatial step.
+	const double dz, 	// Z spatial step.
+	const double *u,	// Solution u.
+	const MKL_INT w_idx,	// Omega index.
+	const double m,		// Scalar field mass.
+	const MKL_INT l 	// Scalar field rotation number.
+)
+{
+	// Grid offset.
+	MKL_INT k = g_num * dim;
+
+	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
+	double r, z;
+	double rr2, rr;
+	double scale;
+
+	// Row starts at offset.
+	ia[k + IDX(i, j)] = BASE + offset;
+
+	// Coordinates.
+	r = (double)i - 0.5;
+	z = (double)j - 0.5;
+	rr2 = r * r * dr * dr + z * z * dz * dz;
+	rr = sqrt(rr2);
+	scale = dr * dz / rr2;
+
+	// Omega.
+	double v = u[w_idx];
+	double w = omega_calc(v, m);
+	double w2 = w * w;
+	double m2 = m * m;
+	double chi = sqrt(m2 - w2);
+
+	// RHS.
+	double psi = u[k + IDX(i, j)];
+	double f = r * (S10 * u[k + IDX(i - 2, j)] + S11 * u[k + IDX(i - 1, j)] + S12 * psi) 
+		+ z * (S10 * u[k + IDX(i, j - 2)] + S11 * u[k + IDX(i, j - 1)] + S12 * psi) 
+		+ (rr * chi + l + 1.0) * psi;
+
+	// Set values.
+	aa[offset + 0] = ((S10) * r) * scale;
+	aa[offset + 1] = ((S11) * r) * scale;
+	aa[offset + 2] = ((S10) * z) * scale;
+	aa[offset + 3] = ((S11) * z) * scale;
+	aa[offset + 4] = ((S12) * (r + z) + (rr * chi + l + 1.0)) * scale;
+	aa[offset + 5] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
+
+	// Column indices.
+	ja[offset + 0] = BASE + k + IDX(i - 2, j);
+	ja[offset + 1] = BASE + k + IDX(i - 1, j);
+	ja[offset + 2] = BASE + k + IDX(i, j - 2);
+	ja[offset + 3] = BASE + k + IDX(i, j - 1);
+	ja[offset + 4] = BASE + k + IDX(i, j);
+	ja[offset + 5] = BASE + w_idx;
+
+	// All done.
+	return;
+}
+
 
 // This boundary condition is derived from a variable u that has the following
 // asymptotic behavior:
