@@ -8,3 +8,5 @@ src/.vscode/c_cpp_properties.json
 src/.vscode/settings.json
 out*/*
 parfile.par
+*.ipynb
+.ipynb_checkpoints/*

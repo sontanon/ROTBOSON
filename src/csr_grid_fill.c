@@ -159,7 +159,8 @@ void csr_grid_fill_2nd(
 			z_robin_2nd_order(A.a, A.ia, A.ja, offset[1], NrTotal, NzTotal, dim, 1, i, j, dr, dz, 3, bound_order[1]);
 			z_robin_2nd_order(A.a, A.ia, A.ja, offset[2], NrTotal, NzTotal, dim, 2, i, j, dr, dz, 1, bound_order[2]);
 			z_robin_2nd_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
-			z_exp_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz);
+			z_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz, u, w_idx, m, l);
+			//z_exp_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz);
 			// Increase offsets.
 			for (k = 0; k < 5; ++k)
 				offset[k] += p_bound[k];
@@ -195,7 +196,8 @@ void csr_grid_fill_2nd(
 			r_robin_2nd_order(A.a, A.ia, A.ja, offset[1], NrTotal, NzTotal, dim, 1, i, j, dr, dz, 3, bound_order[1]);
 			r_robin_2nd_order(A.a, A.ia, A.ja, offset[2], NrTotal, NzTotal, dim, 2, i, j, dr, dz, 1, bound_order[2]);
 			r_robin_2nd_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
-			r_exp_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz);
+			r_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz, u, w_idx, m, l);
+			//r_exp_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz);
 			// Increase offsets.
 			for (k = 0; k < 5; ++k)
 				offset[k] += p_bound[k];
@@ -212,7 +214,8 @@ void csr_grid_fill_2nd(
 	corner_robin_2nd_order(A.a, A.ia, A.ja, offset[1], NrTotal, NzTotal, dim, 1, i, j, dr, dz, 3, bound_order[1]);
 	corner_robin_2nd_order(A.a, A.ia, A.ja, offset[2], NrTotal, NzTotal, dim, 2, i, j, dr, dz, 1, bound_order[2]);
 	corner_robin_2nd_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
-	corner_exp_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz);
+	corner_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz, u, w_idx, m, l);
+	//corner_exp_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, 4, i, j, dr, dz);
 	// Increase offsets.
 	for (k = 0; k < 5; ++k)
 		offset[k] += p_bound[k];
