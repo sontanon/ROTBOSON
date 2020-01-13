@@ -5,6 +5,7 @@ void jacobian_2nd_order_variable_omega_cc(
 	const MKL_INT NrTotal, 	// Grid total dimension in r.
 	const MKL_INT NzTotal, 	// Grid total dimension in z.
 	const MKL_INT dim,	// Grid total 2D dimension: dim = NrTotal * NzTotal.
+	const MKL_INT ghost, 	// Number of ghost zones.
 	const MKL_INT i, 	// Integer coordinate for r: 0 <= i < NrTotal.
 	const MKL_INT j, 	// Integer coordinate for z: 0 <= j < NzTotal.
 	const double dr, 	// Spatial step in r.
@@ -31,6 +32,7 @@ void jacobian_4th_order_variable_omega_cc(
 	const MKL_INT NrTotal, 	// Grid total dimension in r.
 	const MKL_INT NzTotal, 	// Grid total dimension in z.
 	const MKL_INT dim,	// Grid total 2D dimension: dim = NrTotal * NzTotal.
+	const MKL_INT ghost, 	// Number of ghost zones.
 	const MKL_INT i, 	// Integer coordinate for r: 0 <= i < NrTotal.
 	const MKL_INT j, 	// Integer coordinate for z: 0 <= j < NzTotal.
 	const double dr, 	// Spatial step in r.
@@ -57,6 +59,7 @@ void jacobian_4th_order_variable_omega_cs(
 	const MKL_INT NrTotal, 	// Grid total dimension in r.
 	const MKL_INT NzTotal, 	// Grid total dimension in z.
 	const MKL_INT dim,	// Grid total 2D dimension: dim = NrTotal * NzTotal.
+	const MKL_INT ghost, 	// Number of ghost zones.
 	const MKL_INT i, 	// Integer coordinate for r: 0 <= i < NrTotal.
 	const MKL_INT j, 	// Integer coordinate for z: 0 <= j < NzTotal.
 	const double dr, 	// Spatial step in r.
@@ -83,6 +86,7 @@ void jacobian_4th_order_variable_omega_sc(
 	const MKL_INT NrTotal, 	// Grid total dimension in r.
 	const MKL_INT NzTotal, 	// Grid total dimension in z.
 	const MKL_INT dim,	// Grid total 2D dimension: dim = NrTotal * NzTotal.
+	const MKL_INT ghost, 	// Number of ghost zones.
 	const MKL_INT i, 	// Integer coordinate for r: 0 <= i < NrTotal.
 	const MKL_INT j, 	// Integer coordinate for z: 0 <= j < NzTotal.
 	const double dr, 	// Spatial step in r.
@@ -109,6 +113,7 @@ void jacobian_4th_order_variable_omega_ss(
 	const MKL_INT NrTotal, 	// Grid total dimension in r.
 	const MKL_INT NzTotal, 	// Grid total dimension in z.
 	const MKL_INT dim,	// Grid total 2D dimension: dim = NrTotal * NzTotal.
+	const MKL_INT ghost, 	// Number of ghost zones.
 	const MKL_INT i, 	// Integer coordinate for r: 0 <= i < NrTotal.
 	const MKL_INT j, 	// Integer coordinate for z: 0 <= j < NzTotal.
 	const double dr, 	// Spatial step in r.
@@ -127,51 +132,3 @@ void jacobian_4th_order_variable_omega_ss(
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
 	const MKL_INT offset5);	// Number of elements filled before filling function 5
-
-/* OLD DEPRECATED SUBROUTINES.
-void f1(double *a, MKL_INT *ia, MKL_INT *ja,
-		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
-		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
-		const MKL_INT l, const double m, const double chi,
-		const double u101, const double u110, const double u111, const double u112, const double u121,
-		const double u201, const double u210, const double u211, const double u212, const double u221,
-		const double u301, const double u310, const double u311, const double u312, const double u321,
-		const double u401, const double u410, const double u411, const double u412, const double u421,
-		const double u501, const double u510, const double u511, const double u512, const double u521);
-void f2(double *a, MKL_INT *ia, MKL_INT *ja,
-		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
-		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
-		const MKL_INT l, const double m, const double chi,
-		const double u101, const double u110, const double u111, const double u112, const double u121,
-		const double u201, const double u210, const double u211, const double u212, const double u221,
-		const double u301, const double u310, const double u311, const double u312, const double u321,
-		const double u401, const double u410, const double u411, const double u412, const double u421,
-		const double u501, const double u510, const double u511, const double u512, const double u521);
-void f3(double *a, MKL_INT *ia, MKL_INT *ja,
-		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
-		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
-		const MKL_INT l, const double m, const double chi,
-		const double u101, const double u110, const double u111, const double u112, const double u121,
-		const double u201, const double u210, const double u211, const double u212, const double u221,
-		const double u301, const double u310, const double u311, const double u312, const double u321,
-		const double u401, const double u410, const double u411, const double u412, const double u421,
-		const double u501, const double u510, const double u511, const double u512, const double u521);
-void f4(double *a, MKL_INT *ia, MKL_INT *ja,
-		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
-		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
-		const MKL_INT l, const double m, const double chi,
-		const double u101, const double u110, const double u111, const double u112, const double u121,
-		const double u201, const double u210, const double u211, const double u212, const double u221,
-		const double u301, const double u310, const double u311, const double u312, const double u321,
-		const double u401, const double u410, const double u411, const double u412, const double u421,
-		const double u501, const double u510, const double u511, const double u512, const double u521);
-void f5(double *a, MKL_INT *ia, MKL_INT *ja,
-		const MKL_INT offset, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
-		const MKL_INT i, const MKL_INT j, const double dr, const double dz,
-		const MKL_INT l, const double m, const double chi,
-		const double u101, const double u110, const double u111, const double u112, const double u121,
-		const double u201, const double u210, const double u211, const double u212, const double u221,
-		const double u301, const double u310, const double u311, const double u312, const double u321,
-		const double u401, const double u410, const double u411, const double u412, const double u421,
-		const double u501, const double u510, const double u511, const double u512, const double u521);
-*/
