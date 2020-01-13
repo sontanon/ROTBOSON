@@ -1,6 +1,6 @@
-.vscode/c_cpp_properties.json
+#.vscode/c_cpp_properties.json
 obj/*.o
-.vscode/settings.json
+#.vscode/settings.json
 VSC_Workspace
 ROTBOSON
 ROTBOSON_WS
