@@ -499,9 +499,9 @@ void corner_robin_4th_order
 			aa[offset + 3] = ((S1_4_3) * r) * scale;
 			aa[offset + 4] = ((S1_4_0) * z) * scale;
 			aa[offset + 5] = ((S1_4_1) * z) * scale;
-			aa[offset + 7] = ((S1_4_2) * z) * scale;
-			aa[offset + 8] = ((S1_4_3) * z) * scale;
-			aa[offset + 6] = ((double)n + (S1_4_4) * (r + z)) * scale;
+			aa[offset + 6] = ((S1_4_2) * z) * scale;
+			aa[offset + 7] = ((S1_4_3) * z) * scale;
+			aa[offset + 8] = ((double)n + (S1_4_4) * (r + z)) * scale;
 
 			// Column indices.
 			ja[offset + 0] = BASE + k + IDX(i - 4, j);
@@ -667,8 +667,8 @@ void r_so_robin_4th_order
 			aa[offset + 3] = ((S1_4_3) * r) * scale;
 			aa[offset + 4] = ((SO1_4_0) * z) * scale;
 			aa[offset + 5] = ((SO1_4_1) * z) * scale;
-			aa[offset + 7] = ((SO1_4_2) * z) * scale;
-			aa[offset + 6] = ((double)n + (S1_4_4) * r + (SO1_4_3) * z) * scale;
+			aa[offset + 6] = ((SO1_4_2) * z) * scale;
+			aa[offset + 7] = ((double)n + (S1_4_4) * r + (SO1_4_3) * z) * scale;
 			aa[offset + 8] = ((SO1_4_4) * z) * scale;
 
 			// Column indices.
