@@ -50,23 +50,23 @@ void jacobian_2nd_order_variable_omega_cc
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
-	double zi = (double)j + 0.5 - ghost;
+	//double zi = (double)j + 0.5 - ghost;
 	double r = ri * dr;
-	double z = zi * dz;
+	//double z = zi * dz;
 	double r2 = r * r;
-	double z2 = z * z;
-	double rr = sqrt(r2 + z2);
+	//double z2 = z * z;
+	//double rr = sqrt(r2 + z2);
 
 	// Step ratios.
 	double dzodr = dz / dr;
 	double drodz = dr / dz;
 	double dr2 = dr * dr;
-	double dz2 = dz * dz;
+	//double dz2 = dz * dz;
 
 	// Scalar field mass and frequency.
 	double w = omega_calc(xi, m);
 	double m2 = m * m;
-	double w2 = w * w;
+	//double w2 = w * w;
 	//double chi = sqrt(m2 - w2);
 
 	// Scalar field.
@@ -453,23 +453,23 @@ void jacobian_4th_order_variable_omega_cc
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
-	double zi = (double)j + 0.5 - ghost;
+	//double zi = (double)j + 0.5 - ghost;
 	double r = ri * dr;
-	double z = zi * dz;
+	//double z = zi * dz;
 	double r2 = r * r;
-	double z2 = z * z;
-	double rr = sqrt(r2 + z2);
+	//double z2 = z * z;
+	//double rr = sqrt(r2 + z2);
 
 	// Step ratios.
 	double dzodr = dz / dr;
 	double drodz = dr / dz;
 	double dr2 = dr * dr;
-	double dz2 = dz * dz;
+	//double dz2 = dz * dz;
 
 	// Scalar field mass and frequency.
 	double w = omega_calc(xi, m);
 	double m2 = m * m;
-	double w2 = w * w;
+	//double w2 = w * w;
 	//double chi = sqrt(m2 - w2);
 
 	// Scalar field.
@@ -968,22 +968,22 @@ void jacobian_4th_order_variable_omega_cs
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
-	double zi = (double)j + 0.5 - ghost;
+	//double zi = (double)j + 0.5 - ghost;
 	double r = ri * dr;
-	double z = zi * dz;
+	//double z = zi * dz;
 	double r2 = r * r;
-	double z2 = z * z;
-	double rr = sqrt(r2 + z2);
+	//double z2 = z * z;
+	//double rr = sqrt(r2 + z2);
 
 	// Step ratios.
 	double dzodr = dz / dr;
 	double drodz = dr / dz;
 	double dr2 = dr * dr;
-	double dz2 = dz * dz;
+	//double dz2 = dz * dz;
 
 	// Scalar field mass and frequency.
 	double m2 = m * m;
-	double w2 = w * w;
+	//double w2 = w * w;
 	//double chi = sqrt(m2 - w2);
 
 	// Scalar field.
@@ -1495,22 +1495,22 @@ void jacobian_4th_order_variable_omega_sc
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
-	double zi = (double)j + 0.5 - ghost;
+	//double zi = (double)j + 0.5 - ghost;
 	double r = ri * dr;
-	double z = zi * dz;
+	//double z = zi * dz;
 	double r2 = r * r;
-	double z2 = z * z;
-	double rr = sqrt(r2 + z2);
+	//double z2 = z * z;
+	//double rr = sqrt(r2 + z2);
 
 	// Step ratios.
 	double dzodr = dz / dr;
 	double drodz = dr / dz;
 	double dr2 = dr * dr;
-	double dz2 = dz * dz;
+	//double dz2 = dz * dz;
 
 	// Scalar field mass and frequency.
 	double m2 = m * m;
-	double w2 = w * w;
+	//double w2 = w * w;
 	//double chi = sqrt(m2 - w2);
 
 	// Scalar field.
@@ -2022,22 +2022,22 @@ void jacobian_4th_order_variable_omega_ss
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
-	double zi = (double)j + 0.5 - ghost;
+	//double zi = (double)j + 0.5 - ghost;
 	double r = ri * dr;
-	double z = zi * dz;
+	//double z = zi * dz;
 	double r2 = r * r;
-	double z2 = z * z;
-	double rr = sqrt(r2 + z2);
+	//double z2 = z * z;
+	//double rr = sqrt(r2 + z2);
 
 	// Step ratios.
 	double dzodr = dz / dr;
 	double drodz = dr / dz;
 	double dr2 = dr * dr;
-	double dz2 = dz * dz;
+	//double dz2 = dz * dz;
 
 	// Scalar field mass and frequency.
 	double m2 = m * m;
-	double w2 = w * w;
+	//double w2 = w * w;
 	//double chi = sqrt(m2 - w2);
 
 	// Scalar field.

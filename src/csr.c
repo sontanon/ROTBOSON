@@ -45,46 +45,46 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 		switch (alphaBoundOrder)
 		{
 			case 0:
-				nnz1 += 1 + (NrInterior + NzInterior);
+				nnz1 += 3 + (NrInterior + NzInterior);
 				break;
 			case 1:
-				nnz1 += 9 * (1 + (NrInterior + NzInterior));
+				nnz1 += 9 * (3 + (NrInterior + NzInterior));
 				break;
 		}
 		switch (betaBoundOrder)
 		{
 			case 0:
-				nnz2 += 1 + (NrInterior + NzInterior);
+				nnz2 += 3 + (NrInterior + NzInterior);
 				break;
 			case 1:
-				nnz2 += 9 * (1 + (NrInterior + NzInterior));
+				nnz2 += 9 * (3 + (NrInterior + NzInterior));
 				break;
 		}
 		switch (hBoundOrder)
 		{
 			case 0:
-				nnz3 += 1 + (NrInterior + NzInterior);
+				nnz3 += 3 + (NrInterior + NzInterior);
 				break;
 			case 1:
-				nnz3 += 9 * (1 + (NrInterior + NzInterior));
+				nnz3 += 9 * (3 + (NrInterior + NzInterior));
 				break;
 		}
 		switch (aBoundOrder)
 		{
 			case 0:
-				nnz4 += 1 + (NrInterior + NzInterior);
+				nnz4 += 3 + (NrInterior + NzInterior);
 				break;
 			case 1:
-				nnz4 += 9 * (1 + (NrInterior + NzInterior));
+				nnz4 += 9 * (3 + (NrInterior + NzInterior));
 				break;
 		}
 		switch (phiBoundOrder)
 		{
 			case 0:
-				nnz5 += 1 + (NrInterior + NzInterior);
+				nnz5 += 3 + (NrInterior + NzInterior);
 				break;
 			case 1:
-				nnz5 += 10 * (1 + (NrInterior + NzInterior));
+				nnz5 += 10 * (3 + (NrInterior + NzInterior));
 				break;
 		}
 	}
@@ -182,20 +182,43 @@ void csr_gen_jacobian(csr_matrix A, const double *u, const int print)
 	MKL_INT bound_order[5] = {alphaBoundOrder, betaBoundOrder, hBoundOrder, aBoundOrder, phiBoundOrder};
 	MKL_INT nnzs[5] = {nnz1, nnz2, nnz3, nnz4, nnz5};
 
-	MKL_INT p_center[5] = {0, 0, 0, 0, 0};
+	MKL_INT p_cc[5] = {0, 0, 0, 0, 0};
+	MKL_INT p_cs[5] = {0, 0, 0, 0, 0};
+	MKL_INT p_sc[5] = {0, 0, 0, 0, 0};
+	MKL_INT p_ss[5] = {0, 0, 0, 0, 0};
 	MKL_INT p_bound[5] = {0, 0, 0, 0, 0};
 
+	// Set integer arrays according to order.
 	if (order == 4)
 	{
-		// TO DO.
+		p_cc[0] = 30;
+		p_cc[1] = 29;
+		p_cc[2] = 28;
+		p_cc[3] = 46;
+		p_cc[4] = 30;
+
+		p_cs[0] = p_sc[0] = 31;
+		p_cs[1] = p_sc[1] = 31;
+		p_cs[2] = p_sc[2] = 30;
+		p_cs[3] = p_sc[3] = 47;
+		p_cs[4] = p_sc[4] = 31;
+
+		p_ss[0] = 32;
+		p_ss[1] = 32;
+		p_ss[2] = 31;
+		p_ss[3] = 48;
+		p_ss[4] = 32;
+
+		p_bound[0] = p_bound[1] = p_bound[2] = p_bound[3] = 9;
+		p_bound[4] = 10;
 	}
 	else
 	{
-		p_center[0] = 18;
-		p_center[1] = 17;
-		p_center[2] = 16;
-		p_center[3] = 26;
-		p_center[4] = 18;
+		p_cc[0] = 18;
+		p_cc[1] = 17;
+		p_cc[2] = 16;
+		p_cc[3] = 26;
+		p_cc[4] = 18;
 
 		p_bound[0] = p_bound[1] = p_bound[2] = p_bound[3] = 5;
 		p_bound[4] = 6;
@@ -205,14 +228,20 @@ void csr_gen_jacobian(csr_matrix A, const double *u, const int print)
 	// Check for order and fill matrix.
 	if (order == 4)
 	{
-		// TO DO.
+		csr_grid_fill_4th(A,
+			NrInterior, NzInterior, dr, dz, u,l, m,
+			r_sym, z_sym, bound_order, nnzs, p_cc, p_cs, p_sc, p_ss, p_bound,
+			jacobian_4th_order_variable_omega_cc,
+			jacobian_4th_order_variable_omega_cs,
+			jacobian_4th_order_variable_omega_sc,
+			jacobian_4th_order_variable_omega_ss);
 	}
 	// Second order default.
 	else
 	{
 		csr_grid_fill_2nd(A, 
 			NrInterior, NzInterior, dr, dz, u, l, m, 
-			r_sym, z_sym, bound_order, nnzs, p_center, p_bound,
+			r_sym, z_sym, bound_order, nnzs, p_cc, p_bound,
 			jacobian_2nd_order_variable_omega_cc);
 	}
 

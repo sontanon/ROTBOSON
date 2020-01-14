@@ -23,15 +23,15 @@ void rhs_vars(
 )
 {
 	// Omega.
-	double w2 = w * w;
+	//double w2 = w * w;
 	double m2 = m * m;
-	double chi = sqrt(m2 - w2);
+	//double chi = sqrt(m2 - w2);
 
 	// Auxiliary doubles.
 	double r;
-	double z;
+	//double z;
 	double r2, rlm1, rl;
-	double z2, rr;
+	//double z2, rr;
 	//double scale;
 	double l_alpha, Dr_l_alpha, Dz_l_alpha, Drr_l_alpha, Dzz_l_alpha;
 	double l_h, Dr_l_h, Dz_l_h, Drr_l_h, Dzz_l_h;
@@ -86,9 +86,9 @@ void rhs_vars(
 	// Coordinates.
 	r = dr * (i + 0.5 - ghost);
 	r2 = r * r;
-	z = dz * (j + 0.5 - ghost);
-	z2 = z * z;
-	rr = sqrt(r2 + z2);
+	//z = dz * (j + 0.5 - ghost);
+	//z2 = z * z;
+	//rr = sqrt(r2 + z2);
 	rlm1 = (l ==1) ? 1.0 : pow(r, l - 1);
 	rl = rlm1 * r;
 
@@ -117,9 +117,9 @@ void rhs_vars(
 	D_l_h_D_psi = Dr_psi * Dr_l_h + Dz_psi * Dz_l_h;
 	
 	// Radial derivatives.
-	double Dx_l_alpha = (r / rr) * Dr_l_alpha + (z / rr) * Dz_l_alpha;
-	double Dx_l_h 	= (r / rr) * Dr_l_h + (z / rr) * Dz_l_h;
-	double Dx_psi	= (r / rr) * Dr_psi + (z / rr) * Dz_psi;
+	//double Dx_l_alpha = (r / rr) * Dr_l_alpha + (z / rr) * Dz_l_alpha;
+	//double Dx_l_h 	= (r / rr) * Dr_l_h + (z / rr) * Dz_l_h;
+	//double Dx_psi	= (r / rr) * Dr_psi + (z / rr) * Dz_psi;
 
 	// u1 = log(alpha).
 	f[IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_l_alpha + Dzz_l_alpha + (Dr_l_alpha / r)
