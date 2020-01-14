@@ -1,16 +1,16 @@
-#CC = icc
-CC = gcc
+CC = icc
+#CC = gcc
 
-#CFLAGS = -DMKL_ILP64 -Wall -O3 -qopenmp
-CFLAGS = -DMKL_ILP64 -Wall -fopenmp -m64 -O3 #-ggdb
+CFLAGS = -DMKL_ILP64 -Wall -O3 -qopenmp
+#CFLAGS = -DMKL_ILP64 -Wall -fopenmp -m64 -O3 #-ggdb
 
 INCLUDES = -I${MKLROOT}/include 
 
-#LFLAGS = -L${MKLROOT}/lib/intel64 
-LFLAGS = -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed
+LFLAGS = -L${MKLROOT}/lib/intel64 -L/usr/lib/x86_64-linux-gnu
+#LFLAGS = -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed
 
-#LIBS = -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -lconfig
-LIBS = -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -lconfig
+LIBS = -lmkl_intel_ilp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm -ldl -lconfig
+#LIBS = -lmkl_intel_ilp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl -lconfig
 
 SRC_DIR := ./src
 OBJ_DIR := ./obj
