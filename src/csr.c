@@ -13,6 +13,9 @@
 #define ROBIN_TYPE_1  	 1
 #define ROBIN_TYPE_3  	 3
 
+// Print nnz cumulative sum.
+#undef DEBUG
+
 //
 // FOR NOW, ONLY SECOND ORDER IS SUPPORTED!
 //
@@ -160,6 +163,17 @@ int nnz_jacobian(void)
 	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0;
 
 	nnz_jacobian_get_nnzs(&nnz1, &nnz2, &nnz3, &nnz4, &nnz5);
+#ifdef DEBUG
+	printf("nnz1 = %lld,\n", nnz1);
+	printf("nnz2 = %lld,\n", nnz2);
+	printf("nnz3 = %lld,\n", nnz3);
+	printf("nnz4 = %lld,\n", nnz4);
+	printf("nnz5 = %lld,\n", nnz5);
+	printf("\n");
+	printf("nnz1 + nnz2 = %lld,\n", nnz1 + nnz2);
+	printf("nnz1 + nnz2 + nnz3 = %lld,\n", nnz1 + nnz2 + nnz3);
+	printf("nnz1 + nnz2 + nnz3 + nnz4 = %lld.\n", nnz1 + nnz2 + nnz3 + nnz4);
+#endif
 
 	// Total number of nonzeros.
 	return nnz1 + nnz2 + nnz3 + nnz4 + nnz5 + 1;
