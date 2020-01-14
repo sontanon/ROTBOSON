@@ -130,7 +130,7 @@ void csr_grid_fill_4th(
 			{
 				// Each j iteration fills 2 elements.
 				for (k = 0; k < 5; ++k)
-					offset[k] = t_offset[k] + 2 * (j - 1);
+					offset[k] = t_offset[k] + 2 * (j - ghost);
 
 				r_symmetry(A.a, A.ia, A.ja, offset[0], NrTotal, NzTotal, dim, 0, i, j, ghost, r_sym[0]);
 				r_symmetry(A.a, A.ia, A.ja, offset[1], NrTotal, NzTotal, dim, 1, i, j, ghost, r_sym[1]);
