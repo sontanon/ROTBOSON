@@ -31,8 +31,8 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 		nnz2 = 29 * NrInterior * NzInterior 
 			+ 31 * (NrInterior + NzInterior) + 32
 			+ 4 * (NrInterior + NzInterior) + 24;
-		nnz3 = 29 * NrInterior * NzInterior 
-			+ 31 * (NrInterior + NzInterior) + 32
+		nnz3 = 28 * NrInterior * NzInterior 
+			+ 30 * (NrInterior + NzInterior) + 31
 			+ 4 * (NrInterior + NzInterior) + 24;
 		nnz4 = 46 * NrInterior * NzInterior 
 			+ 47 * (NrInterior + NzInterior) + 48
@@ -84,7 +84,7 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 				nnz5 += 1 + (NrInterior + NzInterior);
 				break;
 			case 1:
-				nnz5 += 9 * (1 + (NrInterior + NzInterior));
+				nnz5 += 10 * (1 + (NrInterior + NzInterior));
 				break;
 		}
 	}
@@ -181,14 +181,31 @@ void csr_gen_jacobian(csr_matrix A, const double *u, const int print)
 	MKL_INT z_sym[5] = {EVEN, EVEN, EVEN, EVEN, EVEN};
 	MKL_INT bound_order[5] = {alphaBoundOrder, betaBoundOrder, hBoundOrder, aBoundOrder, phiBoundOrder};
 	MKL_INT nnzs[5] = {nnz1, nnz2, nnz3, nnz4, nnz5};
-	MKL_INT p_center[5] = {18, 17, 16, 26, 18};
-	MKL_INT p_bound[5] = {5, 5, 5, 5, 6};
+
+	MKL_INT p_center[5] = {0, 0, 0, 0, 0};
+	MKL_INT p_bound[5] = {0, 0, 0, 0, 0};
+
+	if (order == 4)
+	{
+		// TO DO.
+	}
+	else
+	{
+		p_center[0] = 18;
+		p_center[1] = 17;
+		p_center[2] = 16;
+		p_center[3] = 26;
+		p_center[4] = 18;
+
+		p_bound[0] = p_bound[1] = p_bound[2] = p_bound[3] = 5;
+		p_bound[4] = 6;
+	}
 
 
 	// Check for order and fill matrix.
 	if (order == 4)
 	{
-		// TODO.
+		// TO DO.
 	}
 	// Second order default.
 	else
@@ -197,54 +214,6 @@ void csr_gen_jacobian(csr_matrix A, const double *u, const int print)
 			NrInterior, NzInterior, dr, dz, u, l, m, 
 			r_sym, z_sym, bound_order, nnzs, p_center, p_bound,
 			jacobian_2nd_order_variable_omega_cc);
-
-		/*
-		// START BY FILLING IN u1 = alpha.
-		//printf("ROTBOSON-JACOBIAN: Starting u1...\n");
-		gnum = 1;
-		offset = 0;
-		p_center = 18;
-		csr_grid_fill_2nd(A, offset, NrInterior, NzInterior, dr, dz, u, l, m,
-				gnum, EVEN, EVEN, ROBIN_TYPE_1, alphaBoundOrder, f1, p_center);
-		//printf("ROTBOSON-JACOBIAN: Done u1.\n");
-
-		// NEXT IS u2 = beta.
-		//printf("ROTBOSON-JACOBIAN: Starting u2...\n");
-		gnum = 2;
-		offset = nnz1;
-		p_center = 17;
-		csr_grid_fill_2nd(A, offset, NrInterior, NzInterior, dr, dz, u, l, m,
-				gnum, EVEN, EVEN, ROBIN_TYPE_3, betaBoundOrder, f2, p_center);
-
-		//printf("ROTBOSON-JACOBIAN: Done u2.\n");
-
-		// NEXT IS u3 = h.
-		//printf("ROTBOSON-JACOBIAN: Starting u3...\n");
-		gnum = 3;
-		p_center = 16;
-		offset = nnz1 + nnz2;
-		csr_grid_fill_2nd(A, offset, NrInterior, NzInterior, dr, dz, u, l, m,
-				gnum, EVEN, EVEN, ROBIN_TYPE_1, hBoundOrder, f3, p_center);
-		//printf("ROTBOSON-JACOBIAN: Done u3.\n");
-
-		// NEXT IS u4 = a.
-		//printf("ROTBOSON-JACOBIAN: Starting u4...\n");
-		gnum = 4;
-		p_center = 26;
-		offset = nnz1 + nnz2 + nnz3;
-		csr_grid_fill_2nd(A, offset, NrInterior, NzInterior, dr, dz, u, l, m,
-				gnum, EVEN, EVEN, ROBIN_TYPE_1, aBoundOrder, f4, p_center);
-		//printf("ROTBOSON-JACOBIAN: Done u4.\n");
-
-		// NEXT IS u5 = phi / r**l.
-		//printf("ROTBOSON-JACOBIAN: Starting u5...\n");
-		gnum = 5;
-		p_center = 18;
-		offset = nnz1 + nnz2 + nnz3 + nnz4;
-		csr_grid_fill_2nd(A, offset, NrInterior, NzInterior, dr, dz, u, l, m,
-				gnum, EVEN, EVEN, EXP_DECAY_TYPE, phiBoundOrder, f5, p_center);
-		//printf("ROTBOSON-JACOBIAN: Done u5.\n");
-		*/
 	}
 
 	// FINALLY FILL OMEGA EQUATION OR u5(1,1) CONSTRAINT.
