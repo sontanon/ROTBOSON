@@ -102,7 +102,7 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		// Else: Evaluate Jacobian matrix J(u^k). Solve linear system J(u^k) du^k = -f(u^k).
 
 		/* Now calculate Jacobian matrix J(u^k) into matrix. */
-		JACOBIAN_CALC(*J, u[k], (k == 0));
+		JACOBIAN_CALC(*J, u[k], 0);
 
 		/* Solve linear system. */
 		LINEAR_SOLVE(du[k], J, f[k]);
