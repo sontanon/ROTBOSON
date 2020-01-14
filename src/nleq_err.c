@@ -29,8 +29,8 @@ MKL_INT nleq_err(
 		const MKL_INT	qnerr,			// INPUT: Boolean to indicate whether to use QNERR.
 		      void	(*RHS_CALC)(double *, const double *),		// INPUT: RHS calculation subroutine.
 		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *, const MKL_INT)	,			// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *, const MKL_INT)	,	// INPUT: Dot product calculation subroutine.
+		      double	(*NORM)(const double *)	,			// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(const double *, const double *)	,	// INPUT: Dot product calculation subroutine.
 		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),	// INPUT: Linear solver subroutine.
 		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)	// INPUT: Linear solver subroutine.
 	)
@@ -86,7 +86,7 @@ MKL_INT nleq_err(
 
 		/* Calculate ||du^k||. */
 		//norm_du[k] = NORM(du[k] + g_num * subdim, subdim);
-		norm_du[k] = NORM(du[k], dim);
+		norm_du[k] = NORM(du[k]);
 
 		/* Print table header every 50 iterations. */
 		if (k % 50 == 0)
@@ -127,7 +127,7 @@ MKL_INT nleq_err(
 			/* Auxiliary memory block calculation */
 			ARRAY_SUM(aux, 1.0, du_bar[k], -1.0, du[k]);
 			//norm_du_bar_minus_du = NORM(aux + g_num * subdim, subdim);
-			norm_du_bar_minus_du = NORM(aux, dim);
+			norm_du_bar_minus_du = NORM(aux);
 
 			mu[k] = (norm_du[k - 1] * norm_du_bar[k] * lambda[k - 1]) / (norm_du_bar_minus_du * norm_du[k]);
 
@@ -165,7 +165,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		RHS_CALC(f[k + 1], u[k + 1]);
 		LINEAR_SOLVE_2(du_bar[k + 1], J, f[k + 1]);
 		//norm_du_bar[k + 1] = NORM(du_bar[k + 1] + g_num * subdim, subdim);
-		norm_du_bar[k + 1] = NORM(du_bar[k + 1], dim);
+		norm_du_bar[k + 1] = NORM(du_bar[k + 1]);
 
 		// 3. Compute the monitoring quantities
 		//    Theta_k    = ||du_bar^{k + 1}|| / ||du^k||
@@ -174,7 +174,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		/* Auxiliary memory block. */
 		ARRAY_SUM(aux, 1.0, du_bar[k + 1], (lambda[k] - 1.0), du[k]);
 		//norm_du_bar_minus_one_minus_lambda_du = NORM(aux + g_num * subdim, subdim);
-		norm_du_bar_minus_one_minus_lambda_du = NORM(aux, dim);
+		norm_du_bar_minus_one_minus_lambda_du = NORM(aux);
 
 		Theta[k]    = norm_du_bar[k + 1] / norm_du[k];
 		mu_prime[k] = 0.5 * norm_du[k] * lambda[k] * lambda[k] / norm_du_bar_minus_one_minus_lambda_du;

@@ -16,8 +16,8 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 	const	MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.
 		void	(*RHS_CALC)(double *, const double *),		// INPUT: RHS calculation subroutine.
 	   	void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		double	(*NORM)(const double *, const MKL_INT)	,			// INPUT: Norm calculation subroutine.
-		double	(*DOT)(const double *, const double *, const MKL_INT)	,	// INPUT: Dot product calculation subroutine.
+		double	(*NORM)(const double *)	,			// INPUT: Norm calculation subroutine.
+		double	(*DOT)(const double *, const double *)	,	// INPUT: Dot product calculation subroutine.
 		void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),	
 		void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)	
 	 )
@@ -38,7 +38,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 	LINEAR_SOLVE_1(du[l], J, f[l]);
 
 	// Calculate ||du^0||.
-	norm_du[l] = NORM(du[l], dim);
+	norm_du[l] = NORM(du[l]);
 
 	// 1. Step l.
 	for (l = 0; l < max_newton_iterations; ++l)
@@ -66,7 +66,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 			for (i = 1; i < l + 1; ++i)
 			{
 				// alpha_bar = (du_bar^{l+1} . du^{i-1}) / ||du^{i-1}||^2.
-				alpha_bar = DOT(du_bar[l + 1], du[i - 1], dim) / (norm_du[i - 1] * norm_du[i - 1]);
+				alpha_bar = DOT(du_bar[l + 1], du[i - 1]) / (norm_du[i - 1] * norm_du[i - 1]);
 				// du_bar^{l+1} += alpha_bar * du^i.
 				ARRAY_SUM(du_bar[l + 1], 1.0, du_bar[l + 1], alpha_bar, du[i]);
 			}
@@ -74,8 +74,8 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 
 		// 3. Compute.
 		// alpha_{l+1} = (du_bar^{l+1} . du^l) / ||du^l||^2.
-		alpha[l + 1] = DOT(du_bar[l + 1], du[l], dim) / (norm_du[l] * norm_du[l]);
-		norm_du_bar[l + 1] = NORM(du_bar[l + 1], dim);
+		alpha[l + 1] = DOT(du_bar[l + 1], du[l]) / (norm_du[l] * norm_du[l]);
+		norm_du_bar[l + 1] = NORM(du_bar[l + 1]);
 		// Theta_l = ||du_bar^{l+1}|| / ||du^l||.
 		Theta[l] = norm_du_bar[l + 1] / norm_du[l];
 
@@ -97,7 +97,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		// 4. Compute.
 		// du^{l+1} = du_bar^{l+1} / (1 - alpha_{l+1}).
 		ARRAY_SUM(du[l + 1], 1.0 / (1.0 - alpha[l + 1]), du_bar[l + 1], 0.0, du[l + 1]);
-		norm_du[l + 1] = NORM(du[l + 1], dim);
+		norm_du[l + 1] = NORM(du[l + 1]);
 
 		// Convergence test: If ||du^{l+1}|| < epsilon: stop. Solution found u* = u^{l+1} + du^{l+1}.
 		if (norm_du[l + 1] < epsilon)

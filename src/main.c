@@ -282,11 +282,11 @@ int main(int argc, char *argv[])
 	// Initial guess norms.
 	double f_norms[5];
 
-	f_norms[0] = norm2(f[0]          , dim);
-	f_norms[1] = norm2(f[0] +     dim, dim);
-	f_norms[2] = norm2(f[0] + 2 * dim, dim);
-	f_norms[3] = norm2(f[0] + 3 * dim, dim);
-	f_norms[4] = norm2(f[0] + 4 * dim, dim);
+	f_norms[0] = norm2_interior(f[0]          );
+	f_norms[1] = norm2_interior(f[0] +     dim);
+	f_norms[2] = norm2_interior(f[0] + 2 * dim);
+	f_norms[3] = norm2_interior(f[0] + 3 * dim);
+	f_norms[4] = norm2_interior(f[0] + 4 * dim);
 	
 	printf("***                                                \n");
 	printf("***        INITIAL GUESS:                          \n");
@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
 						du, du_bar, norm_du, norm_du_bar,
 						Theta, mu, lambda_prime, mu_prime,
 						&J, epsilon, maxNewtonIter, lambdaMin, localSolver,
-						rhs, csr_gen_jacobian, norm2, dot, 
+						rhs, csr_gen_jacobian, norm2_interior, dot_interior, 
 						linear_solve_1, linear_solve_2);
 				break;
 			// Residual-based algorithm.
@@ -338,7 +338,7 @@ int main(int argc, char *argv[])
 				k = nleq_res(&errCode, u, f, lambda,
 						du, norm_f, Theta, mu, lambda_prime, mu_prime,
 						&J, epsilon, maxNewtonIter, lambdaMin, 0, 
-						rhs, csr_gen_jacobian, norm2, dot,
+						rhs, csr_gen_jacobian, norm2_interior, dot_interior,
 						linear_solve_1);
 				break;
 		}
@@ -400,11 +400,11 @@ int main(int argc, char *argv[])
 	write_single_file_2d(f[k] + 3 * dim, "f4_f.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[k] + 4 * dim, "f5_f.asc", NrTotal, NzTotal);
 
-	f_norms[0] = norm2(f[k]          , dim);
-	f_norms[1] = norm2(f[k] +     dim, dim);
-	f_norms[2] = norm2(f[k] + 2 * dim, dim);
-	f_norms[3] = norm2(f[k] + 3 * dim, dim);
-	f_norms[4] = norm2(f[k] + 4 * dim, dim);
+	f_norms[0] = norm2_interior(f[k]          );
+	f_norms[1] = norm2_interior(f[k] +     dim);
+	f_norms[2] = norm2_interior(f[k] + 2 * dim);
+	f_norms[3] = norm2_interior(f[k] + 3 * dim);
+	f_norms[4] = norm2_interior(f[k] + 4 * dim);
 	
 	printf("***                                                \n");
 	printf("***        FINAL ITERATION:                        \n");

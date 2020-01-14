@@ -18,7 +18,7 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		const MKL_INT	qnres,			// INPUT: Boolean to indicate whether to use QNERR.
 		      void	(*RHS_CALC)(double *, const double *),		// INPUT: RHS calculation subroutine.
 		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *, const MKL_INT)	,			// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *, const MKL_INT)	,	// INPUT: Dot product calculation subroutine.
+		      double	(*NORM)(const double *)	,			// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(const double *, const double *)	,	// INPUT: Dot product calculation subroutine.
 		      void 	(*LINEAR_SOLVE)(double *, csr_matrix *, double *)	// INPUT: Linear solver subroutine.
 	);

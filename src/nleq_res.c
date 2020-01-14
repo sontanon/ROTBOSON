@@ -23,8 +23,8 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		const MKL_INT	qnres,			// INPUT: Boolean to indicate whether to use QNERR.
 		      void	(*RHS_CALC)(double *, const double *),		// INPUT: RHS calculation subroutine.
 		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *, const MKL_INT)	,			// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *, const MKL_INT)	,	// INPUT: Dot product calculation subroutine.
+		      double	(*NORM)(const double *)	,			// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(const double *, const double *)	,	// INPUT: Dot product calculation subroutine.
 		      void 	(*LINEAR_SOLVE)(double *, csr_matrix *, double *)	// INPUT: Linear solver subroutine.
 	)
 {
@@ -63,7 +63,7 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		"***** \n", epsilon, max_newton_iterations, lambda[0], lambda_min, dim, J->nnz);
 
 	/* Calculate initial RHS norm. */
-	norm_f[0] = NORM(f[0], dim);
+	norm_f[0] = NORM(f[0]);
 
 	// For iteration index k = 0, 1, ... , max_newton_iterations - 1 do:
 	for (k = 0; k < max_newton_iterations;++k)
@@ -143,7 +143,7 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 		//          f(u^{k+1}) and its norm.
 TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		RHS_CALC(f[k + 1], u[k + 1]);
-		norm_f[k + 1] = NORM(f[k + 1], dim);
+		norm_f[k + 1] = NORM(f[k + 1]);
 
 		// 3. Compute the monitoring quantities.
 		//    Theta_k    = ||f(u^{k+1})|| / ||f(u^k)||.
@@ -151,7 +151,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		/* Auxiliary memory block. */
 		ARRAY_SUM(aux, 1.0, f[k + 1], (lambda[k] - 1.0), f[k]);
-		norm_f_minus_one_minus_lambda_f = NORM(aux, dim);
+		norm_f_minus_one_minus_lambda_f = NORM(aux);
 
 		Theta[k]    = norm_f[k + 1] / norm_f[k];
 		mu_prime[k] = 0.5 * norm_f[k] * lambda[k] * lambda[k] / norm_f_minus_one_minus_lambda_f;
