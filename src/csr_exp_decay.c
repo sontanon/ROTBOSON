@@ -308,7 +308,7 @@ void z_decay_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2, rr;
 	double scale;
 
@@ -316,9 +316,9 @@ void z_decay_4th_order
 	ia[k + IDX(i, j)] = BASE + offset;
 
 	// Coordinates.
-	r = (double)i + 0.5 - ghost;
-	z = (double)j + 0.5 - ghost;
-	rr2 = r * r * dr * dr + z * z * dz * dz;
+	ri = (double)i + 0.5 - ghost;
+	zi = (double)j + 0.5 - ghost;
+	rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 	rr = sqrt(rr2);
 	// Scale factor.
 	scale = dr * dz / rr2;
@@ -334,18 +334,18 @@ void z_decay_4th_order
 	double psi = u[k + IDX(i, j)];
 	double Dr_psi = D1_4_0 * u[k + IDX(i - 2, j)] + D1_4_1 * u[k + IDX(i - 1, j)] + D1_4_3 * u[k + IDX(i + 1, j)] + D1_4_4 * u[k + IDX(i + 2, j)];
 	double Dz_psi = S1_4_0 * u[k + IDX(i, j - 4)] + S1_4_1 * u[k + IDX(i, j - 3)] + S1_4_2 * u[k + IDX(i, j - 2)] + S1_4_3 * u[k + IDX(i, j - 1)] + S1_4_4 * psi;
-	double f = r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi;
+	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
 
 	// Set values.
-	aa[offset + 0] = ((D1_4_0) * r) * scale;
-	aa[offset + 1] = ((D1_4_1) * r) * scale;
-	aa[offset + 2] = ((S1_4_0) * z) * scale;
-	aa[offset + 3] = ((S1_4_1) * z) * scale;
-	aa[offset + 4] = ((S1_4_2) * z) * scale;
-	aa[offset + 5] = ((S1_4_3) * z) * scale;
-	aa[offset + 6] = ((S1_4_4) * z + (rr * chi + l + 1.0)) * scale;
-	aa[offset + 7] = ((D1_4_3) * r) * scale;
-	aa[offset + 8] = ((D1_4_4) * r) * scale;
+	aa[offset + 0] = ((D1_4_0) * ri) * scale;
+	aa[offset + 1] = ((D1_4_1) * ri) * scale;
+	aa[offset + 2] = ((S1_4_0) * zi) * scale;
+	aa[offset + 3] = ((S1_4_1) * zi) * scale;
+	aa[offset + 4] = ((S1_4_2) * zi) * scale;
+	aa[offset + 5] = ((S1_4_3) * zi) * scale;
+	aa[offset + 6] = ((S1_4_4) * zi + (rr * chi + l + 1.0)) * scale;
+	aa[offset + 7] = ((D1_4_3) * ri) * scale;
+	aa[offset + 8] = ((D1_4_4) * ri) * scale;
 	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
@@ -390,7 +390,7 @@ void r_decay_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2, rr;
 	double scale;
 
@@ -398,9 +398,9 @@ void r_decay_4th_order
 	ia[k + IDX(i, j)] = BASE + offset;
 
 	// Coordinates.
-	r = (double)i + 0.5 - ghost;
-	z = (double)j + 0.5 - ghost;
-	rr2 = r * r * dr * dr + z * z * dz * dz;
+	ri = (double)i + 0.5 - ghost;
+	zi = (double)j + 0.5 - ghost;
+	rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 	rr = sqrt(rr2);
 	// Scale factor.
 	scale = dr * dz / rr2;
@@ -416,18 +416,18 @@ void r_decay_4th_order
 	double psi = u[k + IDX(i, j)];
 	double Dr_psi = S1_4_0 * u[k + IDX(i - 4, j)] + S1_4_1 * u[k + IDX(i - 3, j)] + S1_4_2 * u[k + IDX(i - 2, j)] + S1_4_3 * u[k + IDX(i - 1, j)] + S1_4_4 * psi;
 	double Dz_psi = D1_4_0 * u[k + IDX(i, j - 2)] + D1_4_1 * u[k + IDX(i, j - 1)] + D1_4_3 * u[k + IDX(i, j + 1)] + D1_4_4 * u[k + IDX(i, j + 2)];
-	double f = r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi;
+	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
 
 	// Set values.
-	aa[offset + 0] = ((S1_4_0) * r) * scale;
-	aa[offset + 1] = ((S1_4_1) * r) * scale;
-	aa[offset + 2] = ((S1_4_2) * r) * scale;
-	aa[offset + 3] = ((S1_4_3) * r) * scale;
-	aa[offset + 4] = ((D1_4_0) * z) * scale;
-	aa[offset + 5] = ((D1_4_1) * z) * scale;
-	aa[offset + 6] = ((S1_4_4) * r + (rr * chi + l + 1.0)) * scale;
-	aa[offset + 7] = ((D1_4_3) * z) * scale;
-	aa[offset + 8] = ((D1_4_4) * z) * scale;
+	aa[offset + 0] = ((S1_4_0) * ri) * scale;
+	aa[offset + 1] = ((S1_4_1) * ri) * scale;
+	aa[offset + 2] = ((S1_4_2) * ri) * scale;
+	aa[offset + 3] = ((S1_4_3) * ri) * scale;
+	aa[offset + 4] = ((D1_4_0) * zi) * scale;
+	aa[offset + 5] = ((D1_4_1) * zi) * scale;
+	aa[offset + 6] = ((S1_4_4) * ri + (rr * chi + l + 1.0)) * scale;
+	aa[offset + 7] = ((D1_4_3) * zi) * scale;
+	aa[offset + 8] = ((D1_4_4) * zi) * scale;
 	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
@@ -472,7 +472,7 @@ void corner_decay_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2, rr;
 	double scale;
 
@@ -480,9 +480,9 @@ void corner_decay_4th_order
 	ia[k + IDX(i, j)] = BASE + offset;
 
 	// Coordinates.
-	r = (double)i + 0.5 - ghost;
-	z = (double)j + 0.5 - ghost;
-	rr2 = r * r * dr * dr + z * z * dz * dz;
+	ri = (double)i + 0.5 - ghost;
+	zi = (double)j + 0.5 - ghost;
+	rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 	rr = sqrt(rr2);
 	// Scale factor.
 	scale = dr * dz / rr2;
@@ -498,18 +498,18 @@ void corner_decay_4th_order
 	double psi = u[k + IDX(i, j)];
 	double Dr_psi = S1_4_0 * u[k + IDX(i - 4, j)] + S1_4_1 * u[k + IDX(i - 3, j)] + S1_4_2 * u[k + IDX(i - 2, j)] + S1_4_3 * u[k + IDX(i - 1, j)] + S1_4_4 * psi;
 	double Dz_psi = S1_4_0 * u[k + IDX(i, j - 4)] + S1_4_1 * u[k + IDX(i, j - 3)] + S1_4_2 * u[k + IDX(i, j - 2)] + S1_4_3 * u[k + IDX(i, j - 1)] + S1_4_4 * psi;
-	double f = r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi;
+	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
 
 	// Set values.
-	aa[offset + 0] = ((S1_4_0) * r) * scale;
-	aa[offset + 1] = ((S1_4_1) * r) * scale;
-	aa[offset + 2] = ((S1_4_2) * r) * scale;
-	aa[offset + 3] = ((S1_4_3) * r) * scale;
-	aa[offset + 4] = ((S1_4_0) * z) * scale;
-	aa[offset + 5] = ((S1_4_1) * z) * scale;
-	aa[offset + 6] = ((S1_4_2) * z) * scale;
-	aa[offset + 7] = ((S1_4_3) * z) * scale;
-	aa[offset + 8] = ((S1_4_4) * (r + z) + (chi * rr + l + 1.0)) * scale;
+	aa[offset + 0] = ((S1_4_0) * ri) * scale;
+	aa[offset + 1] = ((S1_4_1) * ri) * scale;
+	aa[offset + 2] = ((S1_4_2) * ri) * scale;
+	aa[offset + 3] = ((S1_4_3) * ri) * scale;
+	aa[offset + 4] = ((S1_4_0) * zi) * scale;
+	aa[offset + 5] = ((S1_4_1) * zi) * scale;
+	aa[offset + 6] = ((S1_4_2) * zi) * scale;
+	aa[offset + 7] = ((S1_4_3) * zi) * scale;
+	aa[offset + 8] = ((S1_4_4) * (ri + zi) + (chi * rr + l + 1.0)) * scale;
 	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
@@ -554,7 +554,7 @@ void z_so_decay_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2, rr;
 	double scale;
 
@@ -562,9 +562,9 @@ void z_so_decay_4th_order
 	ia[k + IDX(i, j)] = BASE + offset;
 
 	// Coordinates.
-	r = (double)i + 0.5 - ghost;
-	z = (double)j + 0.5 - ghost;
-	rr2 = r * r * dr * dr + z * z * dz * dz;
+	ri = (double)i + 0.5 - ghost;
+	zi = (double)j + 0.5 - ghost;
+	rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 	rr = sqrt(rr2);
 	// Scale factor.
 	scale = dr * dz / rr2;
@@ -580,18 +580,18 @@ void z_so_decay_4th_order
 	double psi = u[k + IDX(i, j)];
 	double Dr_psi = SO1_4_0 * u[k + IDX(i - 3, j)] + SO1_4_1 * u[k + IDX(i - 2, j)] + SO1_4_2 * u[k + IDX(i - 1, j)] + SO1_4_3 * psi + SO1_4_4 * u[k + IDX(i + 1, j)];
 	double Dz_psi = S1_4_0 * u[k + IDX(i, j - 4)] + S1_4_1 * u[k + IDX(i, j - 3)] + S1_4_2 * u[k + IDX(i, j - 2)] + S1_4_3 * u[k + IDX(i, j - 1)] + S1_4_4 * psi;
-	double f = r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi;
+	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
 
 	// Set values.
-	aa[offset + 0] = ((SO1_4_0) * r) * scale;
-	aa[offset + 1] = ((SO1_4_1) * r) * scale;
-	aa[offset + 2] = ((SO1_4_2) * r) * scale;
-	aa[offset + 3] = ((S1_4_0) * z) * scale;
-	aa[offset + 4] = ((S1_4_1) * z) * scale;
-	aa[offset + 5] = ((S1_4_2) * z) * scale;
-	aa[offset + 6] = ((S1_4_3) * z) * scale;
-	aa[offset + 7] = ((S1_4_4) * z + (SO1_4_3) * r + (rr * chi + l + 1.0)) * scale;
-	aa[offset + 8] = ((SO1_4_4) * r) * scale;
+	aa[offset + 0] = ((SO1_4_0) * ri) * scale;
+	aa[offset + 1] = ((SO1_4_1) * ri) * scale;
+	aa[offset + 2] = ((SO1_4_2) * ri) * scale;
+	aa[offset + 3] = ((S1_4_0) * zi) * scale;
+	aa[offset + 4] = ((S1_4_1) * zi) * scale;
+	aa[offset + 5] = ((S1_4_2) * zi) * scale;
+	aa[offset + 6] = ((S1_4_3) * zi) * scale;
+	aa[offset + 7] = ((S1_4_4) * zi + (SO1_4_3) * ri + (rr * chi + l + 1.0)) * scale;
+	aa[offset + 8] = ((SO1_4_4) * ri) * scale;
 	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
@@ -636,7 +636,7 @@ void r_so_decay_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2, rr;
 	double scale;
 
@@ -644,9 +644,9 @@ void r_so_decay_4th_order
 	ia[k + IDX(i, j)] = BASE + offset;
 
 	// Coordinates.
-	r = (double)i + 0.5 - ghost;
-	z = (double)j + 0.5 - ghost;
-	rr2 = r * r * dr * dr + z * z * dz * dz;
+	ri = (double)i + 0.5 - ghost;
+	zi = (double)j + 0.5 - ghost;
+	rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 	rr = sqrt(rr2);
 	// Scale factor.
 	scale = dr * dz / rr2;
@@ -662,18 +662,18 @@ void r_so_decay_4th_order
 	double psi = u[k + IDX(i, j)];
 	double Dr_psi = S1_4_0 * u[k + IDX(i - 4, j)] + S1_4_1 * u[k + IDX(i - 3, j)] + S1_4_2 * u[k + IDX(i - 2, j)] + S1_4_3 * u[k + IDX(i - 1, j)] + S1_4_4 * psi;
 	double Dz_psi = SO1_4_0 * u[k + IDX(i, j - 3)] + SO1_4_1 * u[k + IDX(i, j - 2)] + SO1_4_2 * u[k + IDX(i, j - 1)] + SO1_4_3 * psi + SO1_4_4 * u[k + IDX(i, j + 1)];
-	double f = r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi;
+	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
 
 	// Set values.
-	aa[offset + 0] = ((S1_4_0) * r) * scale;
-	aa[offset + 1] = ((S1_4_1) * r) * scale;
-	aa[offset + 2] = ((S1_4_2) * r) * scale;
-	aa[offset + 3] = ((S1_4_3) * r) * scale;
-	aa[offset + 4] = ((SO1_4_0) * z) * scale;
-	aa[offset + 5] = ((SO1_4_1) * z) * scale;
-	aa[offset + 6] = ((SO1_4_2) * z) * scale;
-	aa[offset + 7] = ((S1_4_4) * r + (SO1_4_3) * z + (rr * chi + l + 1.0)) * scale;
-	aa[offset + 8] = ((SO1_4_4) * z) * scale;
+	aa[offset + 0] = ((S1_4_0) * ri) * scale;
+	aa[offset + 1] = ((S1_4_1) * ri) * scale;
+	aa[offset + 2] = ((S1_4_2) * ri) * scale;
+	aa[offset + 3] = ((S1_4_3) * ri) * scale;
+	aa[offset + 4] = ((SO1_4_0) * zi) * scale;
+	aa[offset + 5] = ((SO1_4_1) * zi) * scale;
+	aa[offset + 6] = ((SO1_4_2) * zi) * scale;
+	aa[offset + 7] = ((S1_4_4) * ri + (SO1_4_3) * zi + (rr * chi + l + 1.0)) * scale;
+	aa[offset + 8] = ((SO1_4_4) * zi) * scale;
 	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.

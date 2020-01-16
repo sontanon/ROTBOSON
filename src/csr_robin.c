@@ -292,7 +292,7 @@ void z_robin_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2;
 	double scale;
 
@@ -319,21 +319,21 @@ void z_robin_4th_order
 		//                inf       rr    inf          inf 
 		case 1:
 			// Coordinates.
-			r = (double)i - 1.5;
-			z = (double)j - 1.5;
-			rr2 = r * r * dr * dr + z * z * dz * dz;
+			ri = (double)i - 1.5;
+			zi = (double)j - 1.5;
+			rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 			scale = dr * dz / rr2;
 
 			// Set values.
-			aa[offset + 0] = ((D1_4_0) * r) * scale;
-			aa[offset + 1] = ((D1_4_1) * r) * scale;
-			aa[offset + 2] = ((S1_4_0) * z) * scale;
-			aa[offset + 3] = ((S1_4_1) * z) * scale;
-			aa[offset + 4] = ((S1_4_2) * z) * scale;
-			aa[offset + 5] = ((S1_4_3) * z) * scale;
-			aa[offset + 6] = ((double)n + (S1_4_4) * z) * scale;
-			aa[offset + 7] = ((D1_4_3) * r) * scale;
-			aa[offset + 8] = ((D1_4_4) * r) * scale;
+			aa[offset + 0] = ((D1_4_0) * ri) * scale;
+			aa[offset + 1] = ((D1_4_1) * ri) * scale;
+			aa[offset + 2] = ((S1_4_0) * zi) * scale;
+			aa[offset + 3] = ((S1_4_1) * zi) * scale;
+			aa[offset + 4] = ((S1_4_2) * zi) * scale;
+			aa[offset + 5] = ((S1_4_3) * zi) * scale;
+			aa[offset + 6] = ((double)n + (S1_4_4) * zi) * scale;
+			aa[offset + 7] = ((D1_4_3) * ri) * scale;
+			aa[offset + 8] = ((D1_4_4) * ri) * scale;
 
 			// Column indices.
 			ja[offset + 0] = BASE + k + IDX(i - 2, j);
@@ -376,7 +376,7 @@ void r_robin_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2;
 	double scale;
 
@@ -403,21 +403,21 @@ void r_robin_4th_order
 		//                inf       rr    inf          inf 
 		case 1:
 			// Coordinates.
-			r = (double)i - 1.5;
-			z = (double)j - 1.5;
-			rr2 = r * r * dr * dr + z * z * dz * dz;
+			ri = (double)i - 1.5;
+			zi = (double)j - 1.5;
+			rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 			scale = dr * dz / rr2;
 
 			// Set values.
-			aa[offset + 0] = ((S1_4_0) * r) * scale;
-			aa[offset + 1] = ((S1_4_1) * r) * scale;
-			aa[offset + 2] = ((S1_4_2) * r) * scale;
-			aa[offset + 3] = ((S1_4_3) * r) * scale;
-			aa[offset + 4] = ((D1_4_0) * z) * scale;
-			aa[offset + 5] = ((D1_4_1) * z) * scale;
-			aa[offset + 6] = ((double)n + (S1_4_4) * r) * scale;
-			aa[offset + 7] = ((D1_4_3) * z) * scale;
-			aa[offset + 8] = ((D1_4_4) * z) * scale;
+			aa[offset + 0] = ((S1_4_0) * ri) * scale;
+			aa[offset + 1] = ((S1_4_1) * ri) * scale;
+			aa[offset + 2] = ((S1_4_2) * ri) * scale;
+			aa[offset + 3] = ((S1_4_3) * ri) * scale;
+			aa[offset + 4] = ((D1_4_0) * zi) * scale;
+			aa[offset + 5] = ((D1_4_1) * zi) * scale;
+			aa[offset + 6] = ((double)n + (S1_4_4) * ri) * scale;
+			aa[offset + 7] = ((D1_4_3) * zi) * scale;
+			aa[offset + 8] = ((D1_4_4) * zi) * scale;
 
 			// Column indices.
 			ja[offset + 0] = BASE + k + IDX(i - 4, j);
@@ -460,7 +460,7 @@ void corner_robin_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2;
 	double scale;
 
@@ -487,21 +487,21 @@ void corner_robin_4th_order
 		//                inf       rr    inf          inf 
 		case 1:
 			// Coordinates.
-			r = (double)i - 1.5;
-			z = (double)j - 1.5;
-			rr2 = r * r * dr * dr + z * z * dz * dz;
+			ri = (double)i - 1.5;
+			zi = (double)j - 1.5;
+			rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 			scale = dr * dz / rr2;
 
 			// Set values.
-			aa[offset + 0] = ((S1_4_0) * r) * scale;
-			aa[offset + 1] = ((S1_4_1) * r) * scale;
-			aa[offset + 2] = ((S1_4_2) * r) * scale;
-			aa[offset + 3] = ((S1_4_3) * r) * scale;
-			aa[offset + 4] = ((S1_4_0) * z) * scale;
-			aa[offset + 5] = ((S1_4_1) * z) * scale;
-			aa[offset + 6] = ((S1_4_2) * z) * scale;
-			aa[offset + 7] = ((S1_4_3) * z) * scale;
-			aa[offset + 8] = ((double)n + (S1_4_4) * (r + z)) * scale;
+			aa[offset + 0] = ((S1_4_0) * ri) * scale;
+			aa[offset + 1] = ((S1_4_1) * ri) * scale;
+			aa[offset + 2] = ((S1_4_2) * ri) * scale;
+			aa[offset + 3] = ((S1_4_3) * ri) * scale;
+			aa[offset + 4] = ((S1_4_0) * zi) * scale;
+			aa[offset + 5] = ((S1_4_1) * zi) * scale;
+			aa[offset + 6] = ((S1_4_2) * zi) * scale;
+			aa[offset + 7] = ((S1_4_3) * zi) * scale;
+			aa[offset + 8] = ((double)n + (S1_4_4) * (ri + zi)) * scale;
 
 			// Column indices.
 			ja[offset + 0] = BASE + k + IDX(i - 4, j);
@@ -544,7 +544,7 @@ void z_so_robin_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2;
 	double scale;
 
@@ -571,21 +571,21 @@ void z_so_robin_4th_order
 		//                inf       rr    inf          inf 
 		case 1:
 			// Coordinates.
-			r = (double)i - 1.5;
-			z = (double)j - 1.5;
-			rr2 = r * r * dr * dr + z * z * dz * dz;
+			ri = (double)i - 1.5;
+			zi = (double)j - 1.5;
+			rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 			scale = dr * dz / rr2;
 
 			// Set values.
-			aa[offset + 0] = ((SO1_4_0) * r) * scale;
-			aa[offset + 1] = ((SO1_4_1) * r) * scale;
-			aa[offset + 2] = ((SO1_4_2) * r) * scale;
-			aa[offset + 3] = ((S1_4_0) * z) * scale;
-			aa[offset + 4] = ((S1_4_1) * z) * scale;
-			aa[offset + 5] = ((S1_4_2) * z) * scale;
-			aa[offset + 6] = ((S1_4_3) * z) * scale;
-			aa[offset + 7] = ((double)n + (S1_4_4) * z + (SO1_4_3) * r) * scale;
-			aa[offset + 8] = ((SO1_4_4) * r) * scale;
+			aa[offset + 0] = ((SO1_4_0) * ri) * scale;
+			aa[offset + 1] = ((SO1_4_1) * ri) * scale;
+			aa[offset + 2] = ((SO1_4_2) * ri) * scale;
+			aa[offset + 3] = ((S1_4_0) * zi) * scale;
+			aa[offset + 4] = ((S1_4_1) * zi) * scale;
+			aa[offset + 5] = ((S1_4_2) * zi) * scale;
+			aa[offset + 6] = ((S1_4_3) * zi) * scale;
+			aa[offset + 7] = ((double)n + (S1_4_4) * zi + (SO1_4_3) * ri) * scale;
+			aa[offset + 8] = ((SO1_4_4) * ri) * scale;
 
 			// Column indices.
 			ja[offset + 0] = BASE + k + IDX(i - 3, j);
@@ -628,7 +628,7 @@ void r_so_robin_4th_order
 	MKL_INT k = g_num * dim;
 
 	// Normalized coordinate values, i.e. dr and dz have been factored and canceled.
-	double r, z;
+	double ri, zi;
 	double rr2;
 	double scale;
 
@@ -655,21 +655,21 @@ void r_so_robin_4th_order
 		//                inf       rr    inf          inf 
 		case 1:
 			// Coordinates.
-			r = (double)i - 1.5;
-			z = (double)j - 1.5;
-			rr2 = r * r * dr * dr + z * z * dz * dz;
+			ri = (double)i - 1.5;
+			zi = (double)j - 1.5;
+			rr2 = ri * ri * dr * dr + zi * zi * dz * dz;
 			scale = dr * dz / rr2;
 
 			// Set values.
-			aa[offset + 0] = ((S1_4_0) * r) * scale;
-			aa[offset + 1] = ((S1_4_1) * r) * scale;
-			aa[offset + 2] = ((S1_4_2) * r) * scale;
-			aa[offset + 3] = ((S1_4_3) * r) * scale;
-			aa[offset + 4] = ((SO1_4_0) * z) * scale;
-			aa[offset + 5] = ((SO1_4_1) * z) * scale;
-			aa[offset + 6] = ((SO1_4_2) * z) * scale;
-			aa[offset + 7] = ((double)n + (S1_4_4) * r + (SO1_4_3) * z) * scale;
-			aa[offset + 8] = ((SO1_4_4) * z) * scale;
+			aa[offset + 0] = ((S1_4_0) * ri) * scale;
+			aa[offset + 1] = ((S1_4_1) * ri) * scale;
+			aa[offset + 2] = ((S1_4_2) * ri) * scale;
+			aa[offset + 3] = ((S1_4_3) * ri) * scale;
+			aa[offset + 4] = ((SO1_4_0) * zi) * scale;
+			aa[offset + 5] = ((SO1_4_1) * zi) * scale;
+			aa[offset + 6] = ((SO1_4_2) * zi) * scale;
+			aa[offset + 7] = ((double)n + (S1_4_4) * ri + (SO1_4_3) * zi) * scale;
+			aa[offset + 8] = ((SO1_4_4) * zi) * scale;
 
 			// Column indices.
 			ja[offset + 0] = BASE + k + IDX(i - 4, j);
