@@ -47,7 +47,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		if (l % 50 == 0)
 		{
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
-		"***** | QNERR ITER | alpha_bar    | Theta[l]    | alpha[l+1]   | ||du[l+1]|| | STATUS      |\n"
+		"***** | QNERR ITER | ||du[l+1]||  | alpha_bar   | Theta[l]     | alpha[l+1]  | STATUS      |\n"
 		"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
 		}
 
@@ -84,7 +84,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		{
 
 			/* Print message. */
-	printf(	"***** | %-10lld | % -9.5E | %-11.5E | % -9.5E |             | %-11s |\n", l, alpha_bar, Theta[l], alpha[l + 1], "EXIT QNERR");
+	printf(	"***** | %-10lld |              | %-11.5E | % -9.5E | %-11.5E | %-11s |\n", l, alpha_bar, Theta[l], alpha[l + 1], "EXIT QNERR");
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.5. */
@@ -106,7 +106,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 			ARRAY_SUM(u[l + 1], 1.0, u[l + 1], 1.0, du[l + 1]);
 			
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | %-11.5E | % -9.5E | %-11.5E | %-11s |\n", l, alpha_bar, Theta[l], alpha[l + 1], norm_du[l + 1], "CONVERGED C");
+	printf(	"***** | %-10lld | % -9.5E | %-11.5E | % -9.5E | %-11.5E | %-11s |\n", l, norm_du[l + 1], alpha_bar, Theta[l], alpha[l + 1], "CONVERGED C");
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* No error code. */
@@ -116,7 +116,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 			return l + 1;
 		}
 		/* Print message before continuing. */
-	printf(	"***** | %-10lld | % -9.5E | %-11.5E | % -9.5E | %-11.5E | %-11s |\n", l, alpha_bar, Theta[l], alpha[l + 1], norm_du[l+1], "ACCEPT");
+	printf(	"***** | %-10lld | % -9.5E | %-11.5E | % -9.5E | %-11.5E | %-11s |\n", l, norm_du[l+1], alpha_bar, Theta[l], alpha[l + 1], "ACCEPT");
 	}
 
 	/* If we reach this point we did not converge after the maximum iterations. */
