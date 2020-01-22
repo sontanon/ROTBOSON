@@ -153,6 +153,8 @@ int main(int argc, char *argv[])
 			printf("***            Currently running on %d              \n", omp_get_num_threads());
 			printf("***                                                \n");
 			printf("******************************************************\n");
+			mkl_set_dynamic(0);
+			mkl_set_num_threads(omp_get_num_threads());
 		}
 	}
 
