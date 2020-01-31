@@ -488,13 +488,13 @@ void jacobian_4th_order_variable_omega_cc
 	double dRu1 = D10 * u102 + D11 * u112 + D13 * u132 + D14 * u142;
 	double dRu2 = D10 * u202 + D11 * u212 + D13 * u232 + D14 * u242;
 	double dRu3 = D10 * u302 + D11 * u312 + D13 * u332 + D14 * u342;
-	double dRu4 = D10 * u402 + D11 * u412 + D13 * u432 + D14 * u442;
+	//double dRu4 = D10 * u402 + D11 * u412 + D13 * u432 + D14 * u442;
 	double dRu5 = D10 * u502 + D11 * u512 + D13 * u532 + D14 * u542;
 
 	double dZu1 = D10 * u120 + D11 * u121 + D13 * u123 + D14 * u124;
 	double dZu2 = D10 * u220 + D11 * u221 + D13 * u223 + D14 * u224;
 	double dZu3 = D10 * u320 + D11 * u321 + D13 * u323 + D14 * u324;
-	double dZu4 = D10 * u420 + D11 * u421 + D13 * u423 + D14 * u424;
+	//double dZu4 = D10 * u420 + D11 * u421 + D13 * u423 + D14 * u424;
 	double dZu5 = D10 * u520 + D11 * u521 + D13 * u523 + D14 * u524;
 
 	// Radial derivatives.
@@ -2082,11 +2082,11 @@ void jacobian_4th_order_variable_omega_ss
 	ia[IDX(i, j)] = BASE + offset1;
 
 	// Values.
-	aa[offset1 +  0] = dzodr*((S20));
+	aa[offset1 +  0] = dzodr*((S20)); // CONSTANT!
 	aa[offset1 +  1] = dzodr*((S21) + (S11)*(1.0/ri + 2.0*dRu1 + dRu3));
 	aa[offset1 +  2] = dzodr*((S22) + (S12)*(1.0/ri + 2.0*dRu1 + dRu3));
 	aa[offset1 +  3] = dzodr*((S23) + (S13)*(1.0/ri + 2.0*dRu1 + dRu3));
-	aa[offset1 +  4] = drodz*((S20));
+	aa[offset1 +  4] = drodz*((S20)); // CONSTANT!
 	aa[offset1 +  5] = drodz*((S21) + (S11)*(2.0*dZu1 + dZu3));
 	aa[offset1 +  6] = drodz*((S22) + (S12)*(2.0*dZu1 + dZu3));
 	aa[offset1 +  7] = drodz*((S23) + (S13)*(2.0*dZu1 + dZu3));
@@ -2174,11 +2174,11 @@ void jacobian_4th_order_variable_omega_ss
 	aa[offset2 +  7] = drodz*((S15)*(-dZu2));
 	aa[offset2 +  8] = dzodr*((S15)*(-dRu2));
 
-	aa[offset2 +  9] = dzodr*((S20));
+	aa[offset2 +  9] = dzodr*((S20)); // CONSTANT!
 	aa[offset2 + 10] = dzodr*((S21) + (S11)*(3.0/ri - dRu1 + 3.0*dRu3));
 	aa[offset2 + 11] = dzodr*((S22) + (S12)*(3.0/ri - dRu1 + 3.0*dRu3));
 	aa[offset2 + 12] = dzodr*((S23) + (S13)*(3.0/ri - dRu1 + 3.0*dRu3));
-	aa[offset2 + 13] = drodz*((S20));
+	aa[offset2 + 13] = drodz*((S20)); // CONSTANT!
 	aa[offset2 + 14] = drodz*((S21) + (S11)*(-dZu1 + 3.0*dZu3));
 	aa[offset2 + 15] = drodz*((S22) + (S12)*(-dZu1 + 3.0*dZu3));
 	aa[offset2 + 16] = drodz*((S23) + (S13)*(-dZu1 + 3.0*dZu3));
@@ -2266,11 +2266,11 @@ void jacobian_4th_order_variable_omega_ss
 	aa[offset3 + 16] = drodz*((S15)*(r2*h2*dZu2/alpha2));
 	aa[offset3 + 17] = dzodr*((S15)*(r2*h2*dRu2/alpha2));
 	
-	aa[offset3 + 18] = dzodr*((S20));
+	aa[offset3 + 18] = dzodr*((S20)); // CONSTANT!
 	aa[offset3 + 19] = dzodr*((S21) + (S11)*(2.0/ri + dRu1 + 2.0*dRu3));
 	aa[offset3 + 20] = dzodr*((S22) + (S12)*(2.0/ri + dRu1 + 2.0*dRu3));
 	aa[offset3 + 21] = dzodr*((S23) + (S13)*(2.0/ri + dRu1 + 2.0*dRu3));
-	aa[offset3 + 22] = drodz*((S20));
+	aa[offset3 + 22] = drodz*((S20)); // CONSTANT!
 	aa[offset3 + 23] = drodz*((S21) + (S11)*(dZu1 + 2.0*dZu3));
 	aa[offset3 + 24] = drodz*((S22) + (S12)*(dZu1 + 2.0*dZu3));
 	aa[offset3 + 25] = drodz*((S23) + (S13)*(dZu1 + 2.0*dZu3));

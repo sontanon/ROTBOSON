@@ -15,7 +15,7 @@
 #include "vector_algebra.h"
 #include "pardiso_solve.h"
 //#include "schwarschild_mass.h"
-//#include "low_rank.h"
+#include "low_rank.h"
 
 int main(int argc, char *argv[])
 {
@@ -302,7 +302,7 @@ int main(int argc, char *argv[])
 	printf("***                                                \n");
 	printf("******************************************************\n");
 
-	/* LOW RANK UPDATE
+	// LOW RANK UPDATE
 	// Linear Solver Subroutine.
 	void (*linear_solve_1)(double *, csr_matrix *, double *);
 	if (useLowRank)
@@ -312,9 +312,11 @@ int main(int argc, char *argv[])
 	}
 	else
 		linear_solve_1 = pardiso_simple_solve;
-	*/
+
+	/* NO LOW-RANK UPDATE
 	void (*linear_solve_1)(double *, csr_matrix *, double *);
 	linear_solve_1 = pardiso_simple_solve;
+	*/
 	
 	// Repeated solver.
 	void (*linear_solve_2)(double *, csr_matrix *, double *);
