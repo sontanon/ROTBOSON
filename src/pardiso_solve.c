@@ -112,6 +112,8 @@ void pardiso_solve_low_rank(
 		// No CGS.
 		iparm[4 - 1] = 0;
 		// Additional values.
+		iparm[ 6 - 1] = 0;
+		iparm[12 - 1] = 0;
 		iparm[28 - 1] = 0;
 		iparm[31 - 1] = 0;
 		iparm[36 - 1] = 0;

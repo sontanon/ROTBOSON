@@ -74,6 +74,8 @@ typedef struct csr_matrices
 // 
 // Write simple ASCII 1D file.
 void write_single_file_1d(const double *u, const char *fname, const MKL_INT dim);
+// Write simple integer ASCII 1D file.
+void write_single_integer_file_1d(const MKL_INT *u, const char *fname, const MKL_INT dim);
 // Write simple ASCII 2D file.
 void write_single_file_2d(const double *u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal);
 // Read simple ASCII 1D file.

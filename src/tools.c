@@ -115,6 +115,27 @@ void write_single_file_1d(const double *u, const char *fname, const MKL_INT dim)
 	return;
 }
 
+// Write simple integer ASCII 1D file.
+void write_single_integer_file_1d(const MKL_INT *u, const char *fname, const MKL_INT dim)
+{
+	// Auxiliary integers.
+	MKL_INT i;
+
+	// Open file.
+	FILE *fp = fopen(fname, "w");
+
+	// Loop over r and write values.
+	for (i = 0; i < dim; ++i)
+	{
+		fprintf(fp, "%lld\n", u[i]);
+	}
+
+	// Close file.
+	fclose(fp);
+
+	return;
+}
+
 // Write simple ASCII 2D file.
 void write_single_file_2d(const double *u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal)
 {

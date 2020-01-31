@@ -54,7 +54,7 @@ void pardiso_start(const int matrix_dim)
 	iparm[18 - 1] = 0;	// No Output: Number of nonzeros in the factor LU.
 	iparm[19 - 1] = 0;	// No Output: Mflops for LU factorization.
 	iparm[20 - 1] = 0;      // Output: Numbers of CG Iterations.
-	iparm[24 - 1] = 1;	// Parallel Numerical Factorization.
+	iparm[24 - 1] = 10;	// Parallel Numerical Factorization.
 	iparm[25 - 1] = 1;	// Parallel Forward/Backward Solve.
 	//iparm[60 - 1] = 2;	// OOC.
 	maxfct = 1;		// Maximum number of numerical factorizations.

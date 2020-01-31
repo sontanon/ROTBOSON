@@ -5,13 +5,10 @@
 void diff_gen(void)
 {
 	// Auxiliary integers.
-	MKL_INT i, j, k, offset1, offset2, offset3, offset4, offset5, offset6, offset7, offset8, offset9;
+	MKL_INT i, j, k, offset1, offset2, offset3, offset4, offset5, offset6;
 
 	// Number of different elements after update.
 	MKL_INT ndiff = 0;
-
-	// Elements at boundary.
-	MKL_INT p_bound = 0;
 
 	// Base ndiff with Dirichlet.
 	if (order == 4)
@@ -22,42 +19,16 @@ void diff_gen(void)
 		// Add boundary strip.
 		// 30 + 30 + 29 + 38 + 30 = 157.
 		ndiff += 157 * (NrInterior + NzInterior + 1);
-
 		// Add phiBoundOrder.
-		switch (phiBoundOrder)
-		{
-			case 0:
-				ndiff += 3 + NrInterior + NzInterior;
-				p_bound = 1;
-				break;
-			case 1:
-			case 2:
-			case 3:
-				ndiff += 2 * (NrInterior + NzInterior + 3);
-				p_bound = 2;
-				break;
-		}
+		ndiff += 2 * (NrInterior + NzInterior + 3);
 	}
 	else
 	{
 		// Main interior points.
-		// 18 + 22 + 16 + 17 + 18 = 91.
+		// 18 + 17 + 16 + 22 + 18 = 91.
 		ndiff = 91 * NrInterior * NzInterior;
-
 		// Add phiBoundOrder.
-		switch (phiBoundOrder)
-		{
-			case 0:
-				ndiff += (NrInterior + NzInterior) + 1;
-				p_bound = 1;
-				break;
-			case 1:
-			case 2:
-			case 3:
-				ndiff += 2 * (NrInterior + NzInterior) + 2;
-				p_bound = 2;
-				break;
-		}
+		ndiff += 2 * (NrInterior + NzInterior + 1);
 	}
 
 	// Allocate memory for diff array.
@@ -75,7 +46,7 @@ void diff_gen(void)
 		for (i = ghost; i < ghost + NrInterior; ++i)
 		{
 			// 1. log_alpha: 30 different points.
-			offset1 = 1 + 2 * (30 * NzInterior * (i - ghost));
+			offset1 = 1 + 2 * ((30 * NzInterior + 30) * (i - ghost));
 			for (j = ghost; j < ghost + NzInterior; ++j)
 			{
 				// Row indices are all row IDX(i, j).
@@ -114,9 +85,9 @@ void diff_gen(void)
 				diff[offset1 + 27 * 2 + 1] = 3 * dim + IDX(i    , j    );
 				diff[offset1 + 28 * 2 + 1] = 4 * dim + IDX(i    , j    );
 				diff[offset1 + 29 * 2 + 1] = 5 * dim;
+				// Update offset by 30.
+				offset1 += 2 * 30;
 			}
-			// Update offset by 30.
-			offset1 += 2 * 30 * NzInterior;
 			// Semi-one-sided: 30 points.
 			j = ghost + NzInterior;
 			// Row indices are all row IDX(i, j).
@@ -158,7 +129,7 @@ void diff_gen(void)
 
 			// 2. beta: 29 points.
 			offset2 = 1 + 2 * (30 * NrInterior * NzInterior + 30 * (NrInterior + NzInterior + 1)
-				+ 29 * NzInterior * (i - ghost));
+				+ (29 * NzInterior + 30) * (i - ghost));
 			for (j = ghost; j < ghost + NzInterior; ++j)
 			{
 				// Row indices are all row dim + IDX(i, j).
@@ -196,9 +167,9 @@ void diff_gen(void)
 				diff[offset2 + 26 * 2 + 1] = 3 * dim + IDX(i    , j    );
 				diff[offset2 + 27 * 2 + 1] = 4 * dim + IDX(i    , j    );
 				diff[offset2 + 28 * 2 + 1] = 5 * dim;
+				// Update offset by 29.
+				offset2 += 2 * 29;
 			}
-			// Update offset by 29.
-			offset2 += 2 * 29 * NzInterior;
 			// Semi-one-sided: 30 points.
 			j = ghost + NzInterior;
 			// Row indices are all row dim + IDX(i, j).
@@ -240,7 +211,7 @@ void diff_gen(void)
 
 			// 3. log_h: 28 points.
 			offset3 = 1 + 2 * ((30 + 29) * NrInterior * NzInterior + (30 + 30) * (NrInterior + NzInterior + 1)
-				+ 28 * NzInterior * (i - ghost));
+				+ (28 * NzInterior + 29) * (i - ghost));
 			for (j = ghost; j < ghost + NzInterior; ++j)
 			{
 				// Row indices are all row 2 * dim + IDX(i, j).
@@ -277,9 +248,9 @@ void diff_gen(void)
 				diff[offset3 + 25 * 2 + 1] = 2 * dim + IDX(i + 2, j    );
 				diff[offset3 + 26 * 2 + 1] = 3 * dim + IDX(i    , j    );
 				diff[offset3 + 27 * 2 + 1] = 4 * dim + IDX(i    , j    );
+				// Update offset by 28.
+				offset3 += 2 * 28;
 			}
-			// Update offset by 28.
-			offset3 += 2 * 28 * NzInterior;
 			// Semi-one-sided: 29 points.
 			j = ghost + NzInterior;
 			// Row indices are all row 2 * dim + IDX(i, j).
@@ -320,7 +291,7 @@ void diff_gen(void)
 
 			// 4. log_a: 38 points.
 			offset4 = 1 + 2 * ((30 + 29 + 28) * NrInterior * NzInterior + (30 + 30 + 29) * (NrInterior + NzInterior + 1)
-				+ 38 * NzInterior * (i - ghost));
+				+ (38 * NzInterior + 38) * (i - ghost));
 			for (j = ghost; j < ghost + NzInterior; ++j)
 			{
 				// Row indices are all row 3 * dim + IDX(i, j).
@@ -367,9 +338,9 @@ void diff_gen(void)
 				diff[offset4 + 35 * 2 + 1] = 4 * dim + IDX(i + 1, j    );
 				diff[offset4 + 36 * 2 + 1] = 4 * dim + IDX(i + 2, j    );
 				diff[offset4 + 37 * 2 + 1] = 5 * dim;
+				// Update offset by 38.
+				offset4 += 2 * 38;
 			}
-			// Update offset by 38.
-			offset4 += 2 * 38 * NzInterior;
 			// Semi-one-sided: 38 points.
 			j = ghost + NzInterior;
 			// Row indices are all row 3 * dim + IDX(i, j).
@@ -419,7 +390,7 @@ void diff_gen(void)
 
 			// 5. psi: 30 points.
 			offset5 = 1 + 2 * ((30 + 29 + 28 + 38) * NrInterior * NzInterior + (30 + 30 + 29 + 38) * (NrInterior + NzInterior + 1)
-				+ 30 * NzInterior * (i - ghost));
+				+ (30 * NzInterior + 30 + 2) * (i - ghost));
 			for (j = ghost; j < ghost + NzInterior; ++j)
 			{
 				// Row indices are all row 4 * dim + IDX(i, j).
@@ -458,9 +429,9 @@ void diff_gen(void)
 				diff[offset5 + 27 * 2 + 1] = 4 * dim + IDX(i + 1, j    );
 				diff[offset5 + 28 * 2 + 1] = 4 * dim + IDX(i + 2, j    );
 				diff[offset5 + 29 * 2 + 1] = 5 * dim;
+				// Update offset by 30.
+				offset5 += 2 * 30;
 			}
-			// Update offset by 30.
-			offset5 += 2 * 30 * NzInterior;
 			// Semi-one-sided: 30 points.
 			j = ghost + NzInterior;
 			// Row indices are all row 4 * dim + IDX(i, j).
@@ -688,7 +659,7 @@ void diff_gen(void)
 
 			// 5. psi: 30 points.
 			offset5 = 1 + 2 * ((30 + 29 + 28 + 38 + 30) * NrInterior * NzInterior + (30 + 30 + 29 + 38) * (NrInterior + NzInterior + 1)
-				+ 30 * NrInterior
+				+ 30 * NrInterior + 2 * NrInterior
 				+ 30 * (j - ghost));
 			// All rows are 4 * dim + IDX(i, j).
 			for (k = 0; k < 30; ++k)
@@ -899,7 +870,7 @@ void diff_gen(void)
 
 		// 5. psi: 30 points.
 		offset5 = 1 + 2 * ((30 + 29 + 28 + 38 + 30) * NrInterior * NzInterior + (30 + 30 + 29 + 38) * (NrInterior + NzInterior + 1)
-			+ 30 * (NrInterior + NzInterior));
+			+ 30 * (NrInterior + NzInterior) + 2 * NrInterior);
 		// All rows are 4 * dim + IDX(i, j).
 		for (k = 0; k < 30; ++k)
 		{
@@ -1009,6 +980,7 @@ void diff_gen(void)
 				diff[offset1 + 31] = 3 * dim + IDX(i    , j    );
 				diff[offset1 + 33] = 4 * dim + IDX(i    , j    );
 				diff[offset1 + 35] = 5 * dim;
+				offset1 += 36;
 			}
 
 			// beta: 17 different points.
@@ -1051,6 +1023,7 @@ void diff_gen(void)
 				diff[offset2 + 29] = 3 * dim + IDX(i    , j    );
 				diff[offset2 + 31] = 4 * dim + IDX(i    , j    );
 				diff[offset2 + 33] = 5 * dim;
+				offset2 += 34;
 			}
 
 			// log_h: 16 different points.
@@ -1091,6 +1064,7 @@ void diff_gen(void)
 				diff[offset3 + 27] = 2 * dim + IDX(i + 1, j    );
 				diff[offset3 + 29] = 3 * dim + IDX(i    , j    );
 				diff[offset3 + 31] = 4 * dim + IDX(i    , j    );
+				offset3 += 32;
 			}
 
 			// log_a: 22 different points.
@@ -1143,10 +1117,11 @@ void diff_gen(void)
 				diff[offset4 + 39] = 4 * dim + IDX(i    , j + 1);
 				diff[offset4 + 41] = 4 * dim + IDX(i + 1, j    );
 				diff[offset4 + 43] = 5 * dim;
+				offset4 += 44;
 			}
 
 			// psi: 18 different points, plus p_bound points.
-			offset5 = 1 + 146 * NrInterior * NzInterior + (36 * NzInterior + 2 * p_bound) * (i - ghost);
+			offset5 = 1 + 146 * NrInterior * NzInterior + (36 * NzInterior + 4) * (i - ghost);
 			for (j = ghost; j < NzInterior + ghost; j++)
 			{
 				// Row indices are all row 4 * dim + IDX(i, j).
@@ -1187,90 +1162,33 @@ void diff_gen(void)
 				diff[offset5 + 31] = 4 * dim + IDX(i    , j + 1);
 				diff[offset5 + 33] = 4 * dim + IDX(i + 1, j    );
 				diff[offset5 + 35] = 5 * dim;
+				offset5 += 36;
 			}
-			offset6 = offset5 + 36 * NzInterior;
 			j = NzInterior + ghost;
-			switch (phiBoundOrder)
-			{
-				// Dirichlet.
-				case 0:
-					// Row.
-					diff[offset6 + 0] = 4 * dim + IDX(i, j);
-					// Columns.
-					diff[offset6 + 1] = 5 * dim;
-					break;
-
-				// Exponential decay 1.
-				case 1:
-				case 2:
-				case 3:
-					// Row.
-					diff[offset6 +  0] = 4 * dim + IDX(i, j);
-					diff[offset6 +  2] = 4 * dim + IDX(i, j);
-					// Columns.
-					diff[offset6 +  1] = 4 * dim + IDX(i    , j    );
-					diff[offset6 +  3] = 5 * dim;
-					break;
-			}
+			// Row.
+			diff[offset5 +  0] = 4 * dim + IDX(i, j);
+			diff[offset5 +  2] = 4 * dim + IDX(i, j);
+			// Columns.
+			diff[offset5 +  1] = 4 * dim + IDX(i, j);
+			diff[offset5 +  3] = 5 * dim;
+		}
 			
-		}
-		
 		// Boundary points.
-		offset7 = 1 + 182 * NrInterior * NzInterior + 2 * p_bound * NrInterior;
+		offset5 = 1 + 182 * NrInterior * NzInterior + 4 * NrInterior;
 		i = NrInterior + ghost;
-		for (j = ghost; j < NzInterior + ghost; j++)
+		for (j = ghost; j < NzTotal; j++)
 		{
-			offset8 = offset7 + 2 * p_bound * (j - ghost);
-			switch (phiBoundOrder)
-			{
-				// Dirichlet.
-				case 0:
-					// Row.
-					diff[offset8 + 0] = 4 * dim + IDX(i, j);
-					// Columns.
-					diff[offset8 + 1] = 5 * dim;
-					break;
-
-				// Exponential decay 1.
-				case 1:
-				case 2:
-				case 3:
-					// Row.
-					diff[offset8 +  0] = 4 * dim + IDX(i, j);
-					diff[offset8 +  2] = 4 * dim + IDX(i, j);
-					// Columns.
-					diff[offset8 +  1] = 4 * dim + IDX(i    , j    );
-					diff[offset8 +  3] = 5 * dim;
-					break;
-			}
-		}
-
-		// Corner.
-		offset9 = 1 + 182 * NrInterior * NzInterior + 2 * p_bound * (NrInterior + NzInterior);
-		j = NzInterior + 1;
-		switch (phiBoundOrder)
-		{
-			// Dirichlet.
-			case 0:
-				// Row.
-				diff[offset9 + 0] = 4 * dim + IDX(i, j);
-				// Columns.
-				diff[offset9 + 1] = 5 * dim;
-				break;
-
-			// Exponential decay 1.
-			case 1:
-			case 2:
-			case 3:
-				// Row.
-				diff[offset9 +  0] = 4 * dim + IDX(i, j);
-				diff[offset9 +  2] = 4 * dim + IDX(i, j);
-				// Columns.
-				diff[offset9 +  1] = 4 * dim + IDX(i    , j    );
-				diff[offset9 +  3] = 5 * dim;
-				break;
+			// Row.
+			diff[offset5 +  0] = 4 * dim + IDX(i, j);
+			diff[offset5 +  2] = 4 * dim + IDX(i, j);
+			// Columns.
+			diff[offset5 +  1] = 4 * dim + IDX(i    , j    );
+			diff[offset5 +  3] = 5 * dim;
+			offset5 += 4;
 		}
 	}
+
+	write_single_integer_file_1d(diff, "diff.asc", 2 * ndiff + 1);
 
 	// All done.
 	return;
