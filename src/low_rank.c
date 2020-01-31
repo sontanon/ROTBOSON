@@ -2,6 +2,9 @@
 #include "param.h"
 #include "pardiso_param.h"
 
+// Debug diff printer.
+#undef DEBUG
+
 void diff_gen(void)
 {
 	// Auxiliary integers.
@@ -1188,7 +1191,9 @@ void diff_gen(void)
 		}
 	}
 
+#ifdef DEBUG
 	write_single_integer_file_1d(diff, "diff.asc", 2 * ndiff + 1);
+#endif
 
 	// All done.
 	return;
