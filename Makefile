@@ -4,7 +4,7 @@
 # C compiler.
 CC = gcc
 # C flags for 64-bit architecture, OpenMP and optimization.
-CFLAGS = -DMKL_ILP64 -Wall -m64 -O3 #-ggdb
+CFLAGS = -DMKL_ILP64 -Wall -m64 -ggdb # -O3
 # Linker flags.
 LDFLAGS = 
 # MKL.
@@ -89,7 +89,7 @@ $(shell mkdir -p $(OBJ_DIR))
 $(shell mkdir -p $(OUT_DIR))
 
 #SRCS = $(wildcard $(SRC_DIR)/*.c)
-SRCS = src/low_rank.c src/csr_exp_decay.c src/csr_omega_constraint.c src/csr_robin.c src/csr_symmetry.c src/csr_vars.c src/derivatives.c src/initial.c src/io.c src/main.c src/nleq_err.c src/nleq_res.c src/omega_calc.c src/pardiso_solve.c src/pardiso_start.c src/pardiso_stop.c src/parser.c src/qnerr.c src/rhs_vars.c src/rhs.c src/tools.c src/vector_algebra.c src/csr.c src/csr_grid_fill.c
+SRCS = src/bicubic_interpolation.c src/cart_to_pol.c src/low_rank.c src/csr_exp_decay.c src/csr_omega_constraint.c src/csr_robin.c src/csr_symmetry.c src/csr_vars.c src/derivatives.c src/initial.c src/io.c src/main.c src/nleq_err.c src/nleq_res.c src/omega_calc.c src/pardiso_solve.c src/pardiso_start.c src/pardiso_stop.c src/parser.c src/qnerr.c src/rhs_vars.c src/rhs.c src/tools.c src/vector_algebra.c src/csr.c src/csr_grid_fill.c
 OBJS = $(subst src/,obj/,$(subst .c,.o,$(SRCS)))
 
 MAIN = ROTBOSON

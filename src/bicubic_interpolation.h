@@ -1,0 +1,2 @@
+// Bicubic wrapper.
+double bicubic(const MKL_INT i1, const MKL_INT j1, const double di, const double dj, const double *u, const double *Dr_u, const double *Dz_u, const double *Drz_u, const double dr, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal);

@@ -1,7 +1,7 @@
 void cart_to_pol(
-	double *i_u,
-	double *rr,
-	double *th,
+	double **i_u,
+	double **i_rr,
+	double **i_th,
 	const double *r,
 	const double *z,
 	const double *u,

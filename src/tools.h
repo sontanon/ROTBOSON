@@ -33,6 +33,9 @@
 // Indexing macro: requires that NzTotal be defined in scope.
 #define IDX(i, j) ((i) * NzTotal + (j))
 
+// Polar indexing macro.
+#define P_IDX(i, j) ((i) * NthTotal + (j))
+
 // MIN/MAX macros.
 #define MIN(X, Y) ((X) < (Y)) ? (X) : (Y)
 #define MAX(X, Y) ((X) > (Y)) ? (X) : (Y)
@@ -78,6 +81,8 @@ void write_single_file_1d(const double *u, const char *fname, const MKL_INT dim)
 void write_single_integer_file_1d(const MKL_INT *u, const char *fname, const MKL_INT dim);
 // Write simple ASCII 2D file.
 void write_single_file_2d(const double *u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal);
+// Write simple ASCII 2D polar file.
+void write_single_file_2d_polar(const double *u, const char *fname, const MKL_INT NrrTotal, const MKL_INT NthTotal);
 // Read simple ASCII 1D file.
 void read_single_file_1d(double *u, const char *fname, const MKL_INT dim, const char *source_file, const MKL_INT source_line);
 // Read simple ASCII 2D file.

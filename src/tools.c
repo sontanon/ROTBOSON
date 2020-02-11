@@ -22,6 +22,9 @@
 // Indexing macro: requires that NzTotal be defined in scope.
 #define IDX(i, j) ((i) * NzTotal + (j))
 
+// Polar indexing macro.
+#define P_IDX(i, j) ((i) * NthTotal + (j))
+
 // CSR matrix index base.
 #define BASE 1
 
@@ -160,6 +163,29 @@ void write_single_file_2d(const double *u, const char *fname, const MKL_INT NrTo
 	return;
 }
 
+// Write simple ASCII 2D polar file.
+void write_single_file_2d_polar(const double *u, const char *fname, const MKL_INT NrrTotal, const MKL_INT NthTotal)
+{
+	// Auxiliary integers.
+	MKL_INT i, j;
+
+	// Open file.
+	FILE *fp = fopen(fname, "w");
+
+	// Loop over r and write values.
+	for (i = 0; i < NrrTotal; ++i)
+	{
+		for (j = 0; j < NthTotal; ++j)
+		{
+			fprintf(fp, (j < NthTotal - 1) ? "%9.18E\t" : "%9.18E\n", u[P_IDX(i, j)]);
+		}
+	}
+
+	// Close file.
+	fclose(fp);
+
+	return;
+}
 // Read simple ASCII 1D file.
 void read_single_file_1d(double *u, const char *fname, const MKL_INT dim, const char *source_file, const MKL_INT source_line)
 {

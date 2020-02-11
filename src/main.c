@@ -447,13 +447,15 @@ int main(int argc, char *argv[])
 	double *i_th = NULL;
 	double *i_u = NULL;
 	// Interpolate. Memory will be allocated in this subroutine.
-	cart_to_pol(i_u, i_rr, i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, 5);
+	cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, 5);
 	// Write to file.
-	write_single_file_2d(i_u            , "sph_log_alpha_f.asc", 	NrrTotal, NthTotal);
-	write_single_file_2d(i_u +     p_dim, "sph_beta_f.asc",		NrrTotal, NthTotal);
-	write_single_file_2d(i_u + 2 * p_dim, "sph_log_h_f.asc", 	NrrTotal, NthTotal);
-	write_single_file_2d(i_u + 3 * p_dim, "sph_log_a_f.asc", 	NrrTotal, NthTotal);
-	write_single_file_2d(i_u + 4 * p_dim, "sph_psi_f.asc", 		NrrTotal, NthTotal);
+	write_single_file_2d_polar(i_rr           , "sph_rr.asc", 		NrrTotal, NthTotal);
+	write_single_file_2d_polar(i_th           , "sph_th.asc", 		NrrTotal, NthTotal);
+	write_single_file_2d_polar(i_u            , "sph_log_alpha_f.asc", 	NrrTotal, NthTotal);
+	write_single_file_2d_polar(i_u +     p_dim, "sph_beta_f.asc",		NrrTotal, NthTotal);
+	write_single_file_2d_polar(i_u + 2 * p_dim, "sph_log_h_f.asc", 		NrrTotal, NthTotal);
+	write_single_file_2d_polar(i_u + 3 * p_dim, "sph_log_a_f.asc", 		NrrTotal, NthTotal);
+	write_single_file_2d_polar(i_u + 4 * p_dim, "sph_psi_f.asc", 		NrrTotal, NthTotal);
 
 
 	// Clear memory.
