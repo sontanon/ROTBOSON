@@ -44,6 +44,13 @@ void rhs(double *f, const double *u)
 	diff2z(Dzz_u + 3 * dim, u + 3 * dim, EVEN);
 	diff2z(Dzz_u + 4 * dim, u + 4 * dim, EVEN);
 
+	/* Mixed derivatives are only used for interpolation */
+	diff2rz(Drz_u           , u          , EVEN, EVEN);
+	diff2rz(Drz_u +     dim , u +     dim, EVEN, EVEN);
+	diff2rz(Drz_u + 2 * dim , u + 2 * dim, EVEN, EVEN);
+	diff2rz(Drz_u + 3 * dim , u + 3 * dim, EVEN, EVEN);
+	diff2rz(Drz_u + 4 * dim , u + 4 * dim, EVEN, EVEN);
+
 #ifdef DERIVATIVE_DEBUG
 	write_single_file_2d(Dr_u, "Dr_log_alpha.asc", NrTotal, NzTotal);
 	write_single_file_2d(Dr_u + dim, "Dr_beta.asc", NrTotal, NzTotal);
@@ -69,14 +76,6 @@ void rhs(double *f, const double *u)
 	write_single_file_2d(Dzz_u + 3 * dim, "Dzz_log_a.asc", NrTotal, NzTotal);
 	write_single_file_2d(Dzz_u + 4 * dim, "Dzz_psi.asc", NrTotal, NzTotal);
 #endif
-
-	/* Mixed derivatives should not be used.
-	diff2rz(Drz_u           , u          , EVEN, EVEN);
-	diff2rz(Drz_u +     dim , u +     dim, EVEN, EVEN);
-	diff2rz(Drz_u + 2 * dim , u + 2 * dim, EVEN, EVEN);
-	diff2rz(Drz_u + 3 * dim , u + 3 * dim, EVEN, EVEN);
-	diff2rz(Drz_u + 4 * dim , u + 4 * dim, EVEN, EVEN);
-	*/
 
 	// Lower-left corner with parity.
 	for (i = 0; i < ghost; ++i)

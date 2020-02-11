@@ -63,6 +63,14 @@ double *Drr_u;
 double *Dzz_u;
 double *Drz_u;
 
+/* SPHERICAL PARAMETERS FOR ANALYSIS */
+MKL_INT NrrTotal;
+MKL_INT NthTotal;
+MKL_INT p_dim;
+double drr;
+double dth;
+double rr_inf;
+
 /* OUTPUT */
 const char *dirname = "test";
 #else
@@ -127,6 +135,14 @@ extern MKL_INT betaBoundOrder;
 extern MKL_INT hBoundOrder;
 extern MKL_INT aBoundOrder;
 extern MKL_INT phiBoundOrder;
+
+/* SPHERICAL PARAMETERS FOR ANALYSIS */
+extern MKL_INT NrrTotal;
+extern MKL_INT NthTotal;
+extern MKL_INT p_dim;
+extern double drr;
+extern double dth;
+extern double rr_inf;
 
 /* OUTPUT */
 extern const char *dirname;

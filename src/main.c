@@ -14,8 +14,8 @@
 #include "nleq_res.h"
 #include "vector_algebra.h"
 #include "pardiso_solve.h"
-//#include "schwarschild_mass.h"
 #include "low_rank.h"
+#include "cart_to_pol.h"
 
 int main(int argc, char *argv[])
 {
@@ -190,9 +190,6 @@ int main(int argc, char *argv[])
 	Drr_u = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
 	Dzz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
 	Drz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-
-	// Schwarzschild mass array.
-	double *M = (double *)SAFE_MALLOC(dim * sizeof(double));
 
 	// Newton output parameters.
 	double *norm_f		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
@@ -371,9 +368,6 @@ int main(int argc, char *argv[])
 
 	// Get omega.
 	double w = omega_calc(u[k][w_idx], m);
-	
-	// Calculate Schwarschild mass.
-	//schwarschild_mass(M, u[j] + dim);
 
 	// Print final solutions
 	write_single_file_2d(u[k]          , "log_alpha_f.asc", 	NrTotal, NzTotal);
@@ -382,10 +376,6 @@ int main(int argc, char *argv[])
 	write_single_file_2d(u[k] + 3 * dim, "log_a_f.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[k] + 4 * dim, "psi_f.asc", 	NrTotal, NzTotal);
 	write_single_file_1d(&w, "w_f.asc", 1);
-
-	// Print Schwarschild mass.
-	//write_single_file_2d(M, 		"schwarschild_mass.asc", NrTotal, NzTotal);
-	//write_single_file_1d(M + dim - 1, 	"M_f.asc", 1);
 
 	// Print final update.
 	if (k > 0)
@@ -428,14 +418,6 @@ int main(int argc, char *argv[])
 	printf("***            w          = %-12.10E            \n", w);
 	printf("***                                                \n");
 	printf("******************************************************\n");
-	/*
-	printf("***************************************************\n");
-	printf("***                                                \n");
-	printf("***           SCHWARSCHILD MASS:                   \n");
-	printf("***            M          = %-12.10E           \n", M[dim - 1]);
-	printf("***                                                \n");
-	printf("***************************************************\n");
-	*/
 
 	// Also print Newton parameters.
 	switch (solverType)
@@ -458,6 +440,22 @@ int main(int argc, char *argv[])
 	// Print entire history of solutions and updates.
 	// TODO.
 
+	// ANALYSIS PHASE.
+	// Most analysis or global quantities are calcualted in spherical coordinates.
+	// Pointers to memory for spherical variables.
+	double *i_rr = NULL;
+	double *i_th = NULL;
+	double *i_u = NULL;
+	// Interpolate. Memory will be allocated in this subroutine.
+	cart_to_pol(i_u, i_rr, i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, 5);
+	// Write to file.
+	write_single_file_2d(i_u            , "sph_log_alpha_f.asc", 	NrrTotal, NthTotal);
+	write_single_file_2d(i_u +     p_dim, "sph_beta_f.asc",		NrrTotal, NthTotal);
+	write_single_file_2d(i_u + 2 * p_dim, "sph_log_h_f.asc", 	NrrTotal, NthTotal);
+	write_single_file_2d(i_u + 3 * p_dim, "sph_log_a_f.asc", 	NrrTotal, NthTotal);
+	write_single_file_2d(i_u + 4 * p_dim, "sph_psi_f.asc", 		NrrTotal, NthTotal);
+
+
 	// Clear memory.
 	printf("******************************************************\n");
 	printf("***                                                \n");
@@ -467,6 +465,7 @@ int main(int argc, char *argv[])
 	pardiso_stop();
 	csr_deallocate(&J);
 
+	// Free main variables with full maxNewtonIter size by looping inside them.
 	for (i = 0; i < maxNewtonIter + 1; i++)
 	{
 		SAFE_FREE(u[i]);
@@ -474,22 +473,24 @@ int main(int argc, char *argv[])
 		SAFE_FREE(du[i]);
 		SAFE_FREE(du_bar[i]);
 	}
-
-	SAFE_FREE(r);
-
+	// Once all clear, free top pointer.
 	SAFE_FREE(u);
 	SAFE_FREE(f);
 	SAFE_FREE(du);
 	SAFE_FREE(du_bar);
 
+	// Coordiante grids.
+	SAFE_FREE(r);
+	SAFE_FREE(z);
+
+	// Derivatives.
 	SAFE_FREE(Dr_u);
 	SAFE_FREE(Dz_u);
 	SAFE_FREE(Drr_u);
 	SAFE_FREE(Dzz_u);
 	SAFE_FREE(Drz_u);
 
-	SAFE_FREE(M);
-
+	// Newton variables.
 	SAFE_FREE(norm_f);
 	SAFE_FREE(norm_du);
 	SAFE_FREE(norm_du_bar);
@@ -498,6 +499,11 @@ int main(int argc, char *argv[])
 	SAFE_FREE(mu);
 	SAFE_FREE(lambda_prime);
 	SAFE_FREE(mu_prime);
+
+	// Analysis spherical variables.
+	SAFE_FREE(i_rr);
+	SAFE_FREE(i_th);
+	SAFE_FREE(i_u);
 
 	// Clear libconfig configuration.
 	config_destroy(&cfg);
