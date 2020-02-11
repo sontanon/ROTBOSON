@@ -1,1 +1,1 @@
-void pardiso_start(const int matrix_dim);
+void pardiso_start(const MKL_INT matrix_dim);

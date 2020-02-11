@@ -157,7 +157,7 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 	return;
 }
 
-int nnz_jacobian(void)
+MKL_INT nnz_jacobian(void)
 {
 	// Number of nonzero elements per grid function.
 	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0;
