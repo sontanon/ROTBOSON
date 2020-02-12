@@ -4,7 +4,7 @@
 # C compiler.
 CC = gcc
 # C flags for 64-bit architecture, OpenMP and optimization.
-CFLAGS = -DMKL_ILP64 -Wall -m64 -ggdb # -O3
+CFLAGS = -DMKL_ILP64 -Wall -m64 -O3 # -ggdb
 # Linker flags.
 LDFLAGS = 
 # MKL.
