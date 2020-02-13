@@ -1,0 +1,1 @@
+double simps(const double *y, const double dx, const MKL_INT dim);

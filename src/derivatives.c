@@ -460,3 +460,75 @@ void diff2rz(double *dvar, const double *var, const MKL_INT symr, const MKL_INT 
 	// All done.
 	return;
 }
+
+// Radial differentiation.
+void diff1rr(double *dvar, const double *var, const MKL_INT symrr)
+{
+	// Auxiliary integers.
+	MKL_INT i, j;
+
+	// Inverse spatial step.
+	double idrr = 1.0 / drr;
+
+	// Constants.
+	const double half = 0.5;
+	const double twelfth = 1.0 / 12.0;
+
+	// Second-order derivatives.
+	if (order == 2)
+	{
+		// Derivative on the origin and on the last point.
+		#pragma omp parallel shared(dvar) private(j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (j = 0; j < NthTotal; ++j)
+			{
+				dvar[P_IDX(0, j)] = half * idrr * var[P_IDX(1, j)] * (1.0 - (double)symrr);
+				dvar[P_IDX(NrrTotal - 1, j)] = half * idrr * (3.0 * var[P_IDX(NrrTotal - 1, j)] - 4.0 * var[P_IDX(NrrTotal - 2, j)] + var[P_IDX(NrrTotal - 3, j)]);
+			}
+		}
+		// Main interior points.
+		#pragma omp parallel shared(dvar) private(i, j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = 1; i < NrrTotal - 1; ++i)
+			{
+				for (j = 0; j < NthTotal; ++j)
+				{
+					dvar[P_IDX(i, j)] = half * idrr * (var[P_IDX(i + 1, j)] - var[P_IDX(i - 1, j)]);
+				}
+			}
+		}
+	}
+	// Fourth-order derivatives.
+	else if (order == 4)
+	{
+		// Derivative near the origin and on the last points.
+		#pragma omp parallel shared(dvar) private(j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (j = 0; j < NthTotal; ++j)
+			{
+				dvar[P_IDX(0, j)] = twelfth * idrr * (-var[P_IDX(2, j)] + 8.0 * var[P_IDX(1, j)]) * (1.0 - symrr);
+				dvar[P_IDX(1, j)] = twelfth * idrr * (-var[P_IDX(3, j)] + 8.0 * var[P_IDX(2, j)] - 8.0 * var[P_IDX(0, j)] + symrr * var[P_IDX(1, j)]);
+				dvar[P_IDX(NrrTotal - 2, j)] = twelfth * idrr * (3.0 * var[P_IDX(NrrTotal - 1, j)] + 10.0 * var[P_IDX(NrrTotal - 2, j)] - 18.0 * var[P_IDX(NrrTotal - 3, j)] + 6.0 * var[P_IDX(NrrTotal - 4, j)] - var[P_IDX(NrrTotal - 5, j)]);
+				dvar[P_IDX(NrrTotal - 1, j)] = twelfth * idrr * (25.0 * var[P_IDX(NrrTotal - 1, j)] - 48.0 * var[P_IDX(NrrTotal - 2, j)] + 36.0 * var[P_IDX(NrrTotal - 3, j)] - 16.0 * var[P_IDX(NrrTotal - 4, j)] + 3.0 * var[P_IDX(NrrTotal - 5, j)]);
+			}
+		}
+		// Main interior points.
+		#pragma omp parallel shared(dvar) private(i, j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = 2; i < NrrTotal - 2; ++i)
+			{
+				for (j = 0; j < NthTotal; ++j)
+				{
+					dvar[P_IDX(i, j)] = twelfth * idrr * (-(var[P_IDX(i + 2, j)] - var[P_IDX(i - 2, j)]) + 8.0 * (var[P_IDX(i + 1, j)] - var[P_IDX(i - 1, j)]));
+				}
+			}
+		}
+	}
+
+	// All done.
+	return;
+}
