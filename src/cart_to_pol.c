@@ -7,7 +7,7 @@
 // where derivatives are calculated using a centered stencil.
 //
 // Since we will later integrate using Simpson's rule, we want
-// a grid that is even in both extensions.
+// a grid that is uneven in both extensions.
 void cart_to_pol(
 	double **i_u,
 	double **i_rr,
@@ -33,17 +33,17 @@ void cart_to_pol(
 
 	// Establish polar grid sizes and dimensions.
 	// Maximum rr extension.
-	rr_inf = MAX(dr * NrInterior, dz * NzInterior);
+	rr_inf = MAX(dr * (NrInterior + ghost), dz * (NzInterior + ghost));
 	// Radial step size.
 	drr = MIN(dr, dz);
 	// Number of rr points.
 	NrrTotal = (MKL_INT)floor(rr_inf / drr);
-	// Assert that NrrTotal is even.
-	NrrTotal = (NrrTotal % 2 == 0) ? NrrTotal : NrrTotal - 1;
+	// Assert that NrrTotal is uneven.
+	NrrTotal = (NrrTotal % 2) ? NrrTotal : NrrTotal - 1;
 	// Number of th points.
 	NthTotal = MAX(NrInterior, NzInterior);
-	// Assert that NthTotal is even.
-	NthTotal = (NthTotal % 2 == 0) ? NthTotal : NthTotal - 1;
+	// Assert that NthTotal is uneven.
+	NthTotal = (NthTotal % 2) ? NthTotal : NthTotal - 1;
 	// Angular step size.
 	dth = 0.5 * M_PI / ((double)NthTotal - 1);
 
