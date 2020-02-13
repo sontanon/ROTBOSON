@@ -61,11 +61,13 @@ void cart_to_pol(
 	double *p_th = *i_th;
 	double *p_u = *i_u;
 
+	/*
 	printf("*** CARTESIAN TO POLAR INTERPOLATOR\n");
 	printf("*** \n");
 	printf("*** Parameters are: \n");
 	printf("*** rr_inf = %lf\t drr = %lf\t dth = %lf\t NrrTotal = %lld\t NthTotal = %lld\t p_dim = %lld\n", rr_inf, drr, dth, NrrTotal, NthTotal, p_dim);
 	printf("*** Doing bicubic interpolation...\n");
+	*/
 
 	// Fill coordinate grids.
 	#pragma omp parallel for schedule(dynamic, 1) private(i, j, aux_rr) shared(p_rr, p_th)
@@ -80,7 +82,7 @@ void cart_to_pol(
 			p_th[P_IDX(i, j)] = j * dth;
 		}
 	}
-	printf("*** Filled coordinate rr, th grids.\n");
+	//printf("*** Filled coordinate rr, th grids.\n");
 
 	// First deal with the origin, rr = 0.
 	// Loop over g_num of variables.
@@ -88,7 +90,7 @@ void cart_to_pol(
 	{
 		// Calculate center value.
 		aux_u = bicubic(ghost - 1, ghost - 1, 0.5, 0.5, u + k * dim, Dr_u + k * dim, Dz_u + k * dim, Drz_u + k * dim, dr, dz, NrTotal, NzTotal);
-		printf("*** i_u[%lld](0) = %lf\n", k, aux_u);
+		//printf("*** i_u[%lld](0) = %lf\n", k, aux_u);
 		// Fill in to trivial angular array.
 		#pragma omp parallel for schedule(dynamic, 1) private(j) shared(p_u)
 		for (j = 0; j < NthTotal; ++j)
@@ -96,7 +98,7 @@ void cart_to_pol(
 			p_u[k * p_dim + j] = aux_u; 
 		}
 	}
-	printf("*** Filled values at origin.\n");
+	//printf("*** Filled values at origin.\n");
 
 	// Now loop over other rr values.
 	#pragma omp parallel for schedule(dynamic, 1) private(aux_r, aux_z, aux_rr, aux_th,\
@@ -136,8 +138,10 @@ void cart_to_pol(
 			}
 		}
 	}
+	/*
 	printf("*** Finished all interpolation!\n");
 	printf("***\n");
+	*/
 
 	// All done.
 	return;

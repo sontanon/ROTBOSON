@@ -16,6 +16,7 @@
 #include "pardiso_solve.h"
 #include "low_rank.h"
 #include "cart_to_pol.h"
+#include "analysis.h"
 
 int main(int argc, char *argv[])
 {
@@ -449,7 +450,6 @@ int main(int argc, char *argv[])
 	double *i_rr = NULL;
 	double *i_th = NULL;
 	double *i_u = NULL;
-	double *i_D_rr_u = NULL;
 	// Interpolate. Memory will be allocated in this subroutine.
 	cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, 5);
 	// Write to file.
@@ -460,6 +460,8 @@ int main(int argc, char *argv[])
 	write_single_file_2d_polar(i_u + 2 * p_dim, "sph_log_h_f.asc", 		NrrTotal, NthTotal);
 	write_single_file_2d_polar(i_u + 3 * p_dim, "sph_log_a_f.asc", 		NrrTotal, NthTotal);
 	write_single_file_2d_polar(i_u + 4 * p_dim, "sph_psi_f.asc", 		NrrTotal, NthTotal);
+	// Do analysis.
+	analysis(i_u, i_rr, i_th, w);
 
 
 	// Clear memory.
@@ -510,7 +512,6 @@ int main(int argc, char *argv[])
 	SAFE_FREE(i_rr);
 	SAFE_FREE(i_th);
 	SAFE_FREE(i_u);
-	SAFE_FREE(i_D_rr_u);
 
 	// Clear libconfig configuration.
 	config_destroy(&cfg);
