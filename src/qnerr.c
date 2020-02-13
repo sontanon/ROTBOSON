@@ -46,9 +46,9 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		/* Print table header every 50 iterations. */
 		if (l % 50 == 0)
 		{
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
-		"***** | QNERR ITER | ||du[l+1]||  | alpha_bar   | Theta[l]     | alpha[l+1]  | STATUS      |\n"
-		"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
+		"***** | QNERR ITER | ||du[l+1]||  | alpha_bar    | Theta[l]     | alpha[l+1]   | STATUS      |\n"
+		"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
 		}
 
 		// New iterate u^{l+1} = u^l + du^l.
@@ -84,8 +84,8 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		{
 
 			/* Print message. */
-	printf(	"***** | %-10lld |              | %-11.5E | % -9.5E | %-11.5E | %-11s |\n", l, alpha_bar, Theta[l], alpha[l + 1], "EXIT QNERR");
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
+	printf(	"***** | %-10lld |              | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, alpha_bar, Theta[l], alpha[l + 1], "EXIT QNERR");
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.5. */
 			*err_code = -2;
@@ -106,8 +106,8 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 			ARRAY_SUM(u[l + 1], 1.0, u[l + 1], 1.0, du[l + 1]);
 			
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | %-11.5E | % -9.5E | %-11.5E | %-11s |\n", l, norm_du[l + 1], alpha_bar, Theta[l], alpha[l + 1], "CONVERGED C");
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
+	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l + 1], alpha_bar, Theta[l], alpha[l + 1], "CONVERGED C");
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
 
 			/* No error code. */
 			*err_code = 0;
@@ -116,11 +116,11 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 			return l + 1;
 		}
 		/* Print message before continuing. */
-	printf(	"***** | %-10lld | % -9.5E | %-11.5E | % -9.5E | %-11.5E | %-11s |\n", l, norm_du[l+1], alpha_bar, Theta[l], alpha[l + 1], "ACCEPT");
+	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l+1], alpha_bar, Theta[l], alpha[l + 1], "ACCEPT");
 	}
 
 	/* If we reach this point we did not converge after the maximum iterations. */
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
 
 	/* Error code -3: Reached maximum number of iterations. */
 	*err_code = -3;
