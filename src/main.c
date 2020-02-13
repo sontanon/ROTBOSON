@@ -369,6 +369,9 @@ int main(int argc, char *argv[])
 	// Get omega.
 	double w = omega_calc(u[k][w_idx], m);
 
+	// Print entire history of solutions and updates.
+	// TODO
+
 	// Print final solutions
 	write_single_file_2d(u[k]          , "log_alpha_f.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[k] +     dim, "beta_f.asc",		NrTotal, NzTotal);
@@ -394,31 +397,7 @@ int main(int argc, char *argv[])
 	write_single_file_2d(f[k] + 3 * dim, "f4_f.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[k] + 4 * dim, "f5_f.asc", NrTotal, NzTotal);
 
-	f_norms[0] = norm2_interior(f[k]          );
-	f_norms[1] = norm2_interior(f[k] +     dim);
-	f_norms[2] = norm2_interior(f[k] + 2 * dim);
-	f_norms[3] = norm2_interior(f[k] + 3 * dim);
-	f_norms[4] = norm2_interior(f[k] + 4 * dim);
 	
-	printf("***                                                \n");
-	printf("***        FINAL ITERATION:                        \n");
-	printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-	printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-	printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-	printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-	printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-	printf("***                                                \n");
-
-	printf("***                                                \n");
-	printf("******************************************************\n");
-
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***           FINAL OMEGA:                         \n");
-	printf("***            w          = %-12.10E            \n", w);
-	printf("***                                                \n");
-	printf("******************************************************\n");
-
 	// Also print Newton parameters.
 	switch (solverType)
 	{
@@ -437,8 +416,32 @@ int main(int argc, char *argv[])
 	write_single_file_1d(lambda_prime,	"lambda_prime.asc",	 k);
 	write_single_file_1d(mu_prime,	"mu_prime.asc",		 k);
 
-	// Print entire history of solutions and updates.
-	// TODO.
+	// Print final iteration's RHS's norms.
+	f_norms[0] = norm2_interior(f[k]          );
+	f_norms[1] = norm2_interior(f[k] +     dim);
+	f_norms[2] = norm2_interior(f[k] + 2 * dim);
+	f_norms[3] = norm2_interior(f[k] + 3 * dim);
+	f_norms[4] = norm2_interior(f[k] + 4 * dim);
+	printf("***                                                \n");
+	printf("***        FINAL ITERATION:                        \n");
+	printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
+	printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
+	printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
+	printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
+	printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+	printf("***                                                \n");
+
+	printf("***                                                \n");
+	printf("******************************************************\n");
+
+	// Also print omega.
+	printf("******************************************************\n");
+	printf("***                                                \n");
+	printf("***           FINAL OMEGA:                         \n");
+	printf("***            w          = %-12.10E            \n", w);
+	printf("***                                                \n");
+	printf("******************************************************\n");
+
 
 	// ANALYSIS PHASE.
 	// Most analysis or global quantities are calcualted in spherical coordinates.
@@ -446,6 +449,7 @@ int main(int argc, char *argv[])
 	double *i_rr = NULL;
 	double *i_th = NULL;
 	double *i_u = NULL;
+	double *i_D_rr_u = NULL;
 	// Interpolate. Memory will be allocated in this subroutine.
 	cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, 5);
 	// Write to file.
@@ -506,6 +510,7 @@ int main(int argc, char *argv[])
 	SAFE_FREE(i_rr);
 	SAFE_FREE(i_th);
 	SAFE_FREE(i_u);
+	SAFE_FREE(i_D_rr_u);
 
 	// Clear libconfig configuration.
 	config_destroy(&cfg);
