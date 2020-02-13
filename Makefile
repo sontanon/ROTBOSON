@@ -4,7 +4,8 @@
 # C compiler.
 CC = gcc
 # C flags for 64-bit architecture, OpenMP and optimization.
-CFLAGS = -DMKL_ILP64 -Wall -m64 -O3 # -ggdb
+CFLAGS = -DMKL_ILP64 -Wall -m64
+OPT = -O3
 # Linker flags.
 LDFLAGS = 
 # MKL.
@@ -39,26 +40,48 @@ help:
 	@echo "      compiler={gnu|intel}"
 	@echo "         Specifies whether to use GNU's gcc or Intel's icc C compiler."
 	@echo "         Default = gnu."
+	@echo "      debug={true|false}"
+	@echo "         Specifies whether to compile using gdb's symbols. Otherwise optimizes to level O3.
+	@echo "         Default = false.
 	@echo ""
 
 # --------------------------------------------------------- 
 # Check compiler options and then for errors.
 # --------------------------------------------------------- 
-MSG = 
+MSG1 = 
 ifneq ($(compiler),gnu)
  ifneq ($(compiler),intel)
-  MSG += compiler = $(compiler)
+  MSG1 += compiler = $(compiler)
  endif
 endif
 
-ifneq ("$(MSG)","")
- WRONG_OPTION = \n\n*** COMMAND LINE ERROR: Wrong value of option(s): $(MSG)\n\n
+ifneq ("$(MSG1)","")
+ WRONG_OPTION = \n\n*** COMMAND LINE ERROR: Wrong value of option(s): $(MSG1)\n\n
+ TARGET = help
+endif
+
+MSG2 = 
+ifneq ($(debug),true)
+ ifneq ($(debug),false)
+  MSG2 += debug = $(debug)
+ endif
+endif
+
+ifneq ("$(MSG2)","")
+ WRONG_OPTION = \n\n*** COMMAND LINE ERROR: Wrong value of option(s): $(MSG2)\n\n
  TARGET = help
 endif
 
 # -----------------------------------------------------------------------------
 # SETUP VARIABLES.
 # -----------------------------------------------------------------------------
+ifeq ($(debug),true)
+ override compiler=gcc
+ override OPT = -ggdb
+else
+ override OPT = -O3
+endif
+
 ifeq ($(compiler),intel)
  override CC = icc
  # Intel OpenMP.
@@ -89,7 +112,7 @@ $(shell mkdir -p $(OBJ_DIR))
 $(shell mkdir -p $(OUT_DIR))
 
 #SRCS = $(wildcard $(SRC_DIR)/*.c)
-SRCS = src/bicubic_interpolation.c src/cart_to_pol.c src/low_rank.c src/csr_exp_decay.c src/csr_omega_constraint.c src/csr_robin.c src/csr_symmetry.c src/csr_vars.c src/derivatives.c src/initial.c src/io.c src/main.c src/nleq_err.c src/nleq_res.c src/omega_calc.c src/pardiso_solve.c src/pardiso_start.c src/pardiso_stop.c src/parser.c src/qnerr.c src/rhs_vars.c src/rhs.c src/tools.c src/vector_algebra.c src/csr.c src/csr_grid_fill.c
+SRCS = src/analysis.c src/simpson.c src/bicubic_interpolation.c src/cart_to_pol.c src/low_rank.c src/csr_exp_decay.c src/csr_omega_constraint.c src/csr_robin.c src/csr_symmetry.c src/csr_vars.c src/derivatives.c src/initial.c src/io.c src/main.c src/nleq_err.c src/nleq_res.c src/omega_calc.c src/pardiso_solve.c src/pardiso_start.c src/pardiso_stop.c src/parser.c src/qnerr.c src/rhs_vars.c src/rhs.c src/tools.c src/vector_algebra.c src/csr.c src/csr_grid_fill.c
 OBJS = $(subst src/,obj/,$(subst .c,.o,$(SRCS)))
 
 MAIN = ROTBOSON
@@ -120,11 +143,11 @@ all: $(MAIN)
 	@echo Executable has been compiled.
 
 obj/%.o: src/%.c
-	$(CC) $(CFLAGS) $(MKL_INCLUDE) $(LIBCONFIG_INCLUDE) -c $< -o $@
+	$(CC) $(CFLAGS) $(OPT) $(MKL_INCLUDE) $(LIBCONFIG_INCLUDE) -c $< -o $@
 
 $(MAIN): $(OBJS)
 	@echo "Compiling object files..."
-	$(CC) $(CFLAGS) $(MKL_INCLUDE) $(LIBCONFIG_INCLUDE) -o $(MAIN) $(OBJS) $(LDFLAGS) $(MKL_LD_PATH) $(LIBCONFIG_LD_PATH) $(MKL_LIBS) $(LIBCONFIG_LIB) $(OMP_LIB) $(OTHER_LIBS)
+	$(CC) $(CFLAGS) $(OPT) $(MKL_INCLUDE) $(LIBCONFIG_INCLUDE) -o $(MAIN) $(OBJS) $(LDFLAGS) $(MKL_LD_PATH) $(LIBCONFIG_LD_PATH) $(MKL_LIBS) $(LIBCONFIG_LIB) $(OMP_LIB) $(OTHER_LIBS)
 #	$(shell cp $(MAIN) $(OUT_DIR))
 
 clean:
