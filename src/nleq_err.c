@@ -91,9 +91,9 @@ MKL_INT nleq_err(
 		/* Print table header every 50 iterations. */
 		if (k % 50 == 0)
 		{
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
-		"***** | NLEQ ITER  | ||du[k]||    | lambda[k]   | Theta[k]     | lambda'[k]  | STATUS      |\n"
-		"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
+		"***** | NLEQ ITER  | ||du[k]||    | lambda[k]    | Theta[k]     | lambda'[k]   | STATUS      |\n"
+		"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
 		}
 
 		// Convergence test: If ||du^k|| < epsilon: stop. Solution found u* = u^k + du^k.
@@ -103,8 +103,8 @@ MKL_INT nleq_err(
 			ARRAY_SUM(u[k + 1], 1.0, u[k], 1.0, du[k]);
 
 			/* Print message. */
-	printf(	"***** | %-10lld | %-12.5E |             |              |             | %-11s |\n", k, norm_du[k], "CONVERGED A");
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
+	printf(	"***** | %-10lld | %-12.5E |              |              |             | %-11s  |\n", k, norm_du[k], "CONVERGED A");
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
 		"***** \n"
 		"***** NLEQ-ERR Algorithm converged successfully after %lld iterations. Converged on ||du||.\n"
 		"***** \n"
@@ -139,8 +139,8 @@ MKL_INT nleq_err(
 REGULARITY_TEST:if (lambda[k] < lambda_min)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E |              |             | %-11s |\n", k, norm_du[k], lambda[k], "ERROR -1");
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  |              |              | %-11s |\n", k, norm_du[k], lambda[k], "ERROR -1");
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
 		"***** \n"
 		"***** NLEQ-ERR Algorithm failed after %lld iterations.\n"
 		"***** Reason for failure is that damping factor %11.5E is smaller that minimum specified %11.5E.\n"
@@ -186,7 +186,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 			lambda_prime[k] = MIN(0.5 * lambda[k], mu_prime[k]);
 
 			/* Print message: iterate is rejected because Theta[k] > 1.0 - 0.25 * lambda[k]. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "REJECT A");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "REJECT A");
 
 			lambda[k] = lambda_prime[k];
 
@@ -209,8 +209,8 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				ARRAY_SUM(u[k + 1], 1.0, u[k + 1], 1.0, du_bar[k + 1]);
 
 				/* Print message for convergence. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "CONVERGED B");
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "CONVERGED B");
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
 		"***** \n"
 		"***** NLEQ-ERR Algorithm converged successfully after %lld iterations. Converged on ||du_bar||.\n"
 		"***** \n"
@@ -232,7 +232,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 			{
 				if (qnerr)
 				{
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "ENTER QNERR");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "ENTER QNERR");
 
 					qnerr_stop = nleq_err_qnerr(&qnerr_code, u + k + 1, f + k + 1, 
 							du + k + 1, du_bar + k + 1,
@@ -262,8 +262,8 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 					/* Check if we exited by increase in Theta and still have iterations to go. */
 					else if (qnerr_code == -2)
 					{
-	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]   | Theta[k]     | lambda'[k]  | STATUS      |\n"
-		"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
+	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]    | Theta[k]     | lambda'[k]   | STATUS      |\n"
+		 	"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
 
 						/* Prepare to restart NLEQ-ERR. */
 						lambda[k - qnerr_stop + 1] = 1.0;
@@ -300,7 +300,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				else
 				{
 					/* Print message. Iterate accepted. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
 
 					/* Goto 1. */
 					continue;
@@ -311,7 +311,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		else if (lambda_prime[k] > 4.0 * lambda[k])
 		{
 			/* Print message. Iterate rejected because lambda_prime is bigger than lambda by at leaste a factor of 4. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "REJECT B");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "REJECT B");
 
 			lambda[k] = lambda_prime[k];
 
@@ -322,7 +322,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		else
 		{
 			/* Print message. Iterate accepted because Theta is not too big; we have not reached safe region; and lambda_prime is not too big. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
 
 			/* This continue is really unnecessary and does the goto 1 instruction. */
 			continue;
@@ -330,7 +330,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 	}
 
 	/* If we reach this point we did not converge after the maximum iterations. */
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
 		"***** \n"
 		"***** NLEQ-ERR Algorithm failed to converge after %lld maximum number of iterations.\n"
 		"***** \n"
