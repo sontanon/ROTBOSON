@@ -173,9 +173,6 @@ void rhs(double *f, const double *u)
 	j = NzTotal - 1;
 	rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
 
-	// Omega constraint.
-	f[w_idx] = 0.0;
-
 	// All done. 
 	return;
 }

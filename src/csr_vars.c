@@ -133,7 +133,6 @@ void jacobian_2nd_order_variable_omega_cc
 
 	aa[offset1 + 16] = 8.0*M_PI*dr2*dzodr*a2*(m2 - 2.0*wplOmega2/alpha2)*rl*phi;
 
-	aa[offset1 + 17] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*wplOmega*phi2/alpha2);
 
 	// Set column indices.
 	ja[offset1     ] = BASE +           IDX(i - 1, j    );
@@ -158,7 +157,6 @@ void jacobian_2nd_order_variable_omega_cc
 
 	ja[offset1 + 16] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset1 + 17] = BASE + 5 * dim;
 
 
 	// Row start at offset. This is grid 2.
@@ -186,7 +184,6 @@ void jacobian_2nd_order_variable_omega_cc
 
 	aa[offset2 + 15] = -32.0*M_PI*dr2*dzodr*a2*l*wplOmega*phior*rlm1/h2;
 
-	aa[offset2 + 16] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*l*phi2or2/h2);
 
 	// Set column indices.
 	ja[offset2     ] = BASE +           IDX(i - 1, j    );
@@ -210,7 +207,6 @@ void jacobian_2nd_order_variable_omega_cc
 
 	ja[offset2 + 15] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset2 + 16] = BASE + 5 * dim;
 
 
 	// Row start at offset. This is grid 3.
@@ -295,7 +291,6 @@ void jacobian_2nd_order_variable_omega_cc
 	aa[offset4 + 23] = -aa[offset4 + 21];
 	aa[offset4 + 24] = -aa[offset4 + 20];
 
-	aa[offset4 + 25] = dw_du(xi, m) * (8.0*M_PI*dr2*dzodr*a2*wplOmega*phi2/alpha2);
 
 	// Set column indices.
 	ja[offset4     ] = BASE +           IDX(i - 1, j    );
@@ -328,7 +323,6 @@ void jacobian_2nd_order_variable_omega_cc
 	ja[offset4 + 23] = BASE + 4 * dim + IDX(i    , j + 1);
 	ja[offset4 + 24] = BASE + 4 * dim + IDX(i + 1, j    );
 
-	ja[offset4 + 25] = BASE + 5 * dim;
 
 
 	// Row start at offset. This is grid 5.
@@ -357,7 +351,6 @@ void jacobian_2nd_order_variable_omega_cc
 	aa[offset5 + 15] = drodz*2.0*(D_2_22) -aa[offset5 + 13];
 	aa[offset5 + 16] = dzodr*2.0*(D_2_22) -aa[offset5 + 12];
 
-	aa[offset5 + 17] = dw_du(xi, m) * (2.0*dr2*dzodr*a2*wplOmega*psi/alpha2);
 
 	// Set column indices.
 	ja[offset5     ] = BASE +           IDX(i - 1, j    );
@@ -382,7 +375,6 @@ void jacobian_2nd_order_variable_omega_cc
 	ja[offset5 + 15] = BASE + 4 * dim + IDX(i    , j + 1);
 	ja[offset5 + 16] = BASE + 4 * dim + IDX(i + 1, j    );
 	
-	ja[offset5 + 17] = BASE + 5 * dim;
 
 	return;
 }
@@ -548,7 +540,6 @@ void jacobian_4th_order_variable_omega_cc
 
 	aa[offset1 + 28] = 8.0*M_PI*dr2*dzodr*a2*(m2 - 2.0*wplOmega2/alpha2)*(phi*rl);
 
-	aa[offset1 + 29] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*wplOmega*phi2/alpha2);
 
 	// Columns.
 	ja[offset1 +  0] = BASE +           IDX(i - 2, j    );
@@ -585,7 +576,6 @@ void jacobian_4th_order_variable_omega_cc
 
 	ja[offset1 + 28] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset1 + 29] = BASE + 5 * dim;
 
 
 	// Beta: grid number 1.
@@ -625,7 +615,6 @@ void jacobian_4th_order_variable_omega_cc
 
 	aa[offset2 + 27] = -32.0*M_PI*dr2*dzodr*a2*l*wplOmega*(phior*rlm1)/h2;
 
-	aa[offset2 + 28] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*l*phi2or2/h2);
 
 	// Columns.
 	ja[offset2 +  0] = BASE +           IDX(i - 2, j    );
@@ -661,7 +650,6 @@ void jacobian_4th_order_variable_omega_cc
 
 	ja[offset2 + 27] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset2 + 28] = BASE + 5 * dim;
 
 
 	// H: grid number 2.
@@ -790,7 +778,6 @@ void jacobian_4th_order_variable_omega_cc
 	aa[offset4 + 43] = dzodr*((D13)*(8.0*M_PI*rl*rl*(dRu5 + l*psi/ri)));
 	aa[offset4 + 44] = dzodr*((D14)*(8.0*M_PI*rl*rl*(dRu5 + l*psi/ri)));
 
-	aa[offset4 + 45] = dw_du(xi, m) * (8.0*M_PI*phi2*dr2*dzodr*a2*wplOmega/alpha2);
 	
 	// Columns.
 	ja[offset4 +  0] = BASE +           IDX(i - 2, j    );
@@ -843,7 +830,6 @@ void jacobian_4th_order_variable_omega_cc
 	ja[offset4 + 43] = BASE + 4 * dim + IDX(i + 1, j    );
 	ja[offset4 + 44] = BASE + 4 * dim + IDX(i + 2, j    );
 
-	ja[offset4 + 45] = BASE + 5 * dim;
 
 
 	// Psi: grid number 4.
@@ -884,7 +870,6 @@ void jacobian_4th_order_variable_omega_cc
 	aa[offset5 + 27] = (D23)*dzodr + dzodr*((D13)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 	aa[offset5 + 28] = (D24)*dzodr + dzodr*((D14)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 
-	aa[offset5 + 29] = dw_du(xi, m) * (dr2*dzodr*(2.0*a2*wplOmega*psi/alpha2));
 
 	// Columns.
 	ja[offset5 +  0] = BASE +           IDX(i - 2, j    );
@@ -921,7 +906,6 @@ void jacobian_4th_order_variable_omega_cc
 	ja[offset5 + 27] = BASE + 4 * dim + IDX(i + 1, j    );
 	ja[offset5 + 28] = BASE + 4 * dim + IDX(i + 2, j    );
 
-	ja[offset5 + 29] = BASE + 5 * dim;
 
 
 	// All done.
@@ -1063,7 +1047,6 @@ void jacobian_4th_order_variable_omega_cs
 
 	aa[offset1 + 29] = 8.0*M_PI*dr2*dzodr*a2*(m2 - 2.0*wplOmega2/alpha2)*(phi*rl);
 
-	aa[offset1 + 30] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*wplOmega*phi2/alpha2);
 
 	// Columns.
 	ja[offset1 +  0] = BASE +           IDX(i - 2, j    );
@@ -1101,7 +1084,6 @@ void jacobian_4th_order_variable_omega_cs
 
 	ja[offset1 + 29] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset1 + 30] = BASE + 5 * dim;
 
 
 	// Beta: grid number 1.
@@ -1143,7 +1125,6 @@ void jacobian_4th_order_variable_omega_cs
 
 	aa[offset2 + 29] = -32.0*M_PI*dr2*dzodr*a2*l*wplOmega*(phior*rlm1)/h2;
 
-	aa[offset2 + 30] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*l*phi2or2/h2);
 
 	// Columns.
 	ja[offset2 +  0] = BASE +           IDX(i - 2, j    );
@@ -1181,7 +1162,6 @@ void jacobian_4th_order_variable_omega_cs
 
 	ja[offset2 + 29] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset2 + 30] = BASE + 5 * dim;
 
 
 	// H: grid number 2.
@@ -1315,7 +1295,6 @@ void jacobian_4th_order_variable_omega_cs
 	aa[offset4 + 44] = dzodr*((D13)*(8.0*M_PI*rl*rl*(dRu5 + l*psi/ri)));
 	aa[offset4 + 45] = dzodr*((D14)*(8.0*M_PI*rl*rl*(dRu5 + l*psi/ri)));
 
-	aa[offset4 + 46] = dw_du(xi, m) * (8.0*M_PI*phi2*dr2*dzodr*a2*wplOmega/alpha2);
 
 	// Columns.
 	ja[offset4 +  0] = BASE +           IDX(i - 2, j    );
@@ -1369,7 +1348,6 @@ void jacobian_4th_order_variable_omega_cs
 	ja[offset4 + 44] = BASE + 4 * dim + IDX(i + 1, j    );
 	ja[offset4 + 45] = BASE + 4 * dim + IDX(i + 2, j    );
 
-	ja[offset4 + 46] = BASE + 5 * dim;
 
 	// Psi: grid number 4.
 	ia[4 * dim + IDX(i, j)] = BASE + offset5;
@@ -1410,7 +1388,6 @@ void jacobian_4th_order_variable_omega_cs
 	aa[offset5 + 28] = (D23)*dzodr + dzodr*((D13)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 	aa[offset5 + 29] = (D24)*dzodr + dzodr*((D14)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 
-	aa[offset5 + 30] = dw_du(xi, m) * (dr2*dzodr*(2.0*a2*wplOmega*psi/alpha2));
 
 	// Columns.
 	ja[offset5 +  0] = BASE +           IDX(i - 2, j    );
@@ -1448,7 +1425,6 @@ void jacobian_4th_order_variable_omega_cs
 	ja[offset5 + 28] = BASE + 4 * dim + IDX(i + 1, j    );
 	ja[offset5 + 29] = BASE + 4 * dim + IDX(i + 2, j    );
 
-	ja[offset5 + 30] = BASE + 5 * dim;
 
 
 	// All done.
@@ -1590,7 +1566,6 @@ void jacobian_4th_order_variable_omega_sc
 
 	aa[offset1 + 29] = 8.0*M_PI*dr2*dzodr*a2*(m2 - 2.0*wplOmega2/alpha2)*(phi*rl);
 
-	aa[offset1 + 30] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*wplOmega*phi2/alpha2);
 
 	// Columns.
 	ja[offset1 +  0] = BASE +           IDX(i - 4, j    );
@@ -1628,7 +1603,6 @@ void jacobian_4th_order_variable_omega_sc
 
 	ja[offset1 + 29] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset1 + 30] = BASE + 5 * dim;
 
 
 	// Beta: grid number 1.
@@ -1670,7 +1644,6 @@ void jacobian_4th_order_variable_omega_sc
 
 	aa[offset2 + 29] = -32.0*M_PI*dr2*dzodr*a2*l*wplOmega*(phior*rlm1)/h2;
 
-	aa[offset2 + 30] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*l*phi2or2/h2);
 
 	// Columns.
 	ja[offset2 +  0] = BASE +           IDX(i - 3, j    );
@@ -1708,7 +1681,6 @@ void jacobian_4th_order_variable_omega_sc
 
 	ja[offset2 + 29] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset2 + 30] = BASE + 5 * dim;
 
 
 	// H: grid number 2.
@@ -1842,7 +1814,6 @@ void jacobian_4th_order_variable_omega_sc
 	aa[offset4 + 44] = drodz*((D14)*(8.0*M_PI*rl*rl*(dZu5)));
 	aa[offset4 + 45] = dzodr*((S15)*(8.0*M_PI*rl*rl*(dRu5 + l*psi/ri)));
 
-	aa[offset4 + 46] = dw_du(xi, m) * (8.0*M_PI*phi2*dr2*dzodr*a2*wplOmega/alpha2);
 
 	// Columns.
 	ja[offset4 +  0] = BASE +           IDX(i - 3, j    );
@@ -1896,7 +1867,6 @@ void jacobian_4th_order_variable_omega_sc
 	ja[offset4 + 44] = BASE + 4 * dim + IDX(i    , j + 2);
 	ja[offset4 + 45] = BASE + 4 * dim + IDX(i + 1, j    );
 
-	ja[offset4 + 46] = BASE + 5 * dim;
 
 	// Psi: grid number 4.
 	ia[4 * dim + IDX(i, j)] = BASE + offset5;
@@ -1937,7 +1907,6 @@ void jacobian_4th_order_variable_omega_sc
 	aa[offset5 + 28] = (D24)*drodz + drodz*((D14)*(dZu1 + dZu3));
 	aa[offset5 + 29] = (S25)*dzodr + dzodr*((S15)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 
-	aa[offset5 + 30] = dw_du(xi, m)*(dr2*dzodr*(2.0*a2*wplOmega*psi/alpha2));
 
 	// Columns.
 	ja[offset5 +  0] = BASE +           IDX(i - 3, j    );
@@ -1975,7 +1944,6 @@ void jacobian_4th_order_variable_omega_sc
 	ja[offset5 + 28] = BASE + 4 * dim + IDX(i    , j + 2);
 	ja[offset5 + 29] = BASE + 4 * dim + IDX(i + 1, j    );
 
-	ja[offset5 + 30] = BASE + 5 * dim;
 
 
 	// All done.
@@ -2118,7 +2086,6 @@ void jacobian_4th_order_variable_omega_ss
 
 	aa[offset1 + 30] = 8.0*M_PI*dr2*dzodr*a2*(m2 - 2.0*wplOmega2/alpha2)*(phi*rl);
 
-	aa[offset1 + 31] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*wplOmega*phi2/alpha2);
 
 	// Columns.
 	ja[offset1 +  0] = BASE +           IDX(i - 4, j    );
@@ -2157,7 +2124,6 @@ void jacobian_4th_order_variable_omega_ss
 
 	ja[offset1 + 30] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset1 + 31] = BASE + 5 * dim;
 
 
 	// Beta: grid number 1.
@@ -2200,7 +2166,6 @@ void jacobian_4th_order_variable_omega_ss
 
 	aa[offset2 + 30] = -32.0*M_PI*dr2*dzodr*a2*l*wplOmega*(phior*rlm1)/h2;
 
-	aa[offset2 + 31] = dw_du(xi, m) * (-16.0*M_PI*dr2*dzodr*a2*l*phi2or2/h2);
 
 	// Columns.
 	ja[offset2 +  0] = BASE +           IDX(i - 3, j    );
@@ -2239,7 +2204,6 @@ void jacobian_4th_order_variable_omega_ss
 
 	ja[offset2 + 30] = BASE + 4 * dim + IDX(i    , j    );
 
-	ja[offset2 + 31] = BASE + 5 * dim;
 
 
 	// H: grid number 2.
@@ -2376,7 +2340,6 @@ void jacobian_4th_order_variable_omega_ss
  	aa[offset4 + 45] = drodz*((S15)*(8.0*M_PI*rl*rl*(dZu5)));
  	aa[offset4 + 46] = dzodr*((S15)*(8.0*M_PI*rl*rl*(dRu5 + l*psi/ri)));
 	
- 	aa[offset4 + 47] = dw_du(xi, m) * (8.0*M_PI*phi2*dr2*dzodr*a2*wplOmega/alpha2);
 
 	// Columns.
 	ja[offset4 +  0] = BASE +           IDX(i - 3, j    );
@@ -2431,7 +2394,6 @@ void jacobian_4th_order_variable_omega_ss
 	ja[offset4 + 45] = BASE + 4 * dim + IDX(i    , j + 1);
 	ja[offset4 + 46] = BASE + 4 * dim + IDX(i + 1, j    );
 
-	ja[offset4 + 47] = BASE + 5 * dim;
 
 	// Psi: grid number 4.
 	ia[4 * dim + IDX(i, j)] = BASE + offset5;
@@ -2473,7 +2435,6 @@ void jacobian_4th_order_variable_omega_ss
  	aa[offset5 + 29] = (S25)*drodz + drodz*((S15)*(dZu1 + dZu3));
  	aa[offset5 + 30] = (S25)*dzodr + dzodr*((S15)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
  
- 	aa[offset5 + 31] = dw_du(xi, m) * (dr2*dzodr*(2.0*a2*wplOmega*psi/alpha2));
 
 	// Columns.
 	ja[offset5 +  0] = BASE +           IDX(i - 3, j    );
@@ -2512,7 +2473,6 @@ void jacobian_4th_order_variable_omega_ss
 	ja[offset5 + 29] = BASE + 4 * dim + IDX(i    , j + 1);
 	ja[offset5 + 30] = BASE + 4 * dim + IDX(i + 1, j    );
 
-	ja[offset5 + 31] = BASE + 5 * dim;
 
 
 	// All done.

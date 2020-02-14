@@ -87,19 +87,12 @@ void z_decay_2nd_order
 	double m2 = m * m;
 	double chi = sqrt(m2 - w2);
 
-	// RHS.
-	double psi = u[k + IDX(i, j)];
-	double f = r * (D10 * u[k + IDX(i - 1, j)] + D12 * u[k + IDX(i + 1, j)]) 
-		+ z * (S10 * u[k + IDX(i, j - 2)] + S11 * u[k + IDX(i, j - 1)] + S12 * psi) 
-		+ (rr * chi + l + 1.0) * psi;
-
 	// Set values.
 	aa[offset + 0] = ((D10) * r) * scale;
 	aa[offset + 1] = ((S10) * z) * scale;
 	aa[offset + 2] = ((S11) * z) * scale;
 	aa[offset + 3] = ((S12) * z + (rr * chi + l + 1.0)) * scale;
 	aa[offset + 4] = ((D12) * r) * scale;
-	aa[offset + 5] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
 	ja[offset + 0] = BASE + k + IDX(i - 1, j);
@@ -107,7 +100,6 @@ void z_decay_2nd_order
 	ja[offset + 2] = BASE + k + IDX(i, j - 1);
 	ja[offset + 3] = BASE + k + IDX(i, j    );
 	ja[offset + 4] = BASE + k + IDX(i + 1, j);
-	ja[offset + 5] = BASE + w_idx;
 
 	// All done.
 	return;
@@ -161,19 +153,12 @@ void r_decay_2nd_order
 	double m2 = m * m;
 	double chi = sqrt(m2 - w2);
 
-	// RHS.
-	double psi = u[k + IDX(i, j)];
-	double f = r * (S10 * u[k + IDX(i - 2, j)] + S11 * u[k + IDX(i - 1, j)] + S12 * psi) 
-		+ z * (D10 * u[k + IDX(i, j - 1)] + D12 * u[k + IDX(i, j + 1)]) 
-		+ (rr * chi + l + 1.0) * psi;
-
 	// Set values.
 	aa[offset + 0] = ((S10) * r) * scale;
 	aa[offset + 1] = ((S11) * r) * scale;
 	aa[offset + 2] = ((D10) * z) * scale;
 	aa[offset + 3] = ((S12) * r + (rr * chi + l + 1.0)) * scale;
 	aa[offset + 4] = ((D12) * z) * scale;
-	aa[offset + 5] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
 	ja[offset + 0] = BASE + k + IDX(i - 2, j);
@@ -181,7 +166,6 @@ void r_decay_2nd_order
 	ja[offset + 2] = BASE + k + IDX(i, j - 1);
 	ja[offset + 3] = BASE + k + IDX(i, j    );
 	ja[offset + 4] = BASE + k + IDX(i, j + 1);
-	ja[offset + 5] = BASE + w_idx;
 
 	// All done.
 	return;
@@ -235,19 +219,12 @@ void corner_decay_2nd_order
 	double m2 = m * m;
 	double chi = sqrt(m2 - w2);
 
-	// RHS.
-	double psi = u[k + IDX(i, j)];
-	double f = r * (S10 * u[k + IDX(i - 2, j)] + S11 * u[k + IDX(i - 1, j)] + S12 * psi) 
-		+ z * (S10 * u[k + IDX(i, j - 2)] + S11 * u[k + IDX(i, j - 1)] + S12 * psi) 
-		+ (rr * chi + l + 1.0) * psi;
-
 	// Set values.
 	aa[offset + 0] = ((S10) * r) * scale;
 	aa[offset + 1] = ((S11) * r) * scale;
 	aa[offset + 2] = ((S10) * z) * scale;
 	aa[offset + 3] = ((S11) * z) * scale;
 	aa[offset + 4] = ((S12) * (r + z) + (rr * chi + l + 1.0)) * scale;
-	aa[offset + 5] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
 	ja[offset + 0] = BASE + k + IDX(i - 2, j);
@@ -255,7 +232,6 @@ void corner_decay_2nd_order
 	ja[offset + 2] = BASE + k + IDX(i, j - 2);
 	ja[offset + 3] = BASE + k + IDX(i, j - 1);
 	ja[offset + 4] = BASE + k + IDX(i, j);
-	ja[offset + 5] = BASE + w_idx;
 
 	// All done.
 	return;
@@ -330,12 +306,6 @@ void z_decay_4th_order
 	double m2 = m * m;
 	double chi = sqrt(m2 - w2);
 
-	// RHS.
-	double psi = u[k + IDX(i, j)];
-	double Dr_psi = D1_4_0 * u[k + IDX(i - 2, j)] + D1_4_1 * u[k + IDX(i - 1, j)] + D1_4_3 * u[k + IDX(i + 1, j)] + D1_4_4 * u[k + IDX(i + 2, j)];
-	double Dz_psi = S1_4_0 * u[k + IDX(i, j - 4)] + S1_4_1 * u[k + IDX(i, j - 3)] + S1_4_2 * u[k + IDX(i, j - 2)] + S1_4_3 * u[k + IDX(i, j - 1)] + S1_4_4 * psi;
-	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
-
 	// Set values.
 	aa[offset + 0] = ((D1_4_0) * ri) * scale;
 	aa[offset + 1] = ((D1_4_1) * ri) * scale;
@@ -346,7 +316,6 @@ void z_decay_4th_order
 	aa[offset + 6] = ((S1_4_4) * zi + (rr * chi + l + 1.0)) * scale;
 	aa[offset + 7] = ((D1_4_3) * ri) * scale;
 	aa[offset + 8] = ((D1_4_4) * ri) * scale;
-	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
 	ja[offset + 0] = BASE + k + IDX(i - 2, j);
@@ -358,7 +327,6 @@ void z_decay_4th_order
 	ja[offset + 6] = BASE + k + IDX(i, j    );
 	ja[offset + 7] = BASE + k + IDX(i + 1, j);
 	ja[offset + 8] = BASE + k + IDX(i + 2, j);
-	ja[offset + 9] = BASE + w_idx;
 
 	// All done.
 	return;
@@ -412,12 +380,6 @@ void r_decay_4th_order
 	double m2 = m * m;
 	double chi = sqrt(m2 - w2);
 
-	// RHS.
-	double psi = u[k + IDX(i, j)];
-	double Dr_psi = S1_4_0 * u[k + IDX(i - 4, j)] + S1_4_1 * u[k + IDX(i - 3, j)] + S1_4_2 * u[k + IDX(i - 2, j)] + S1_4_3 * u[k + IDX(i - 1, j)] + S1_4_4 * psi;
-	double Dz_psi = D1_4_0 * u[k + IDX(i, j - 2)] + D1_4_1 * u[k + IDX(i, j - 1)] + D1_4_3 * u[k + IDX(i, j + 1)] + D1_4_4 * u[k + IDX(i, j + 2)];
-	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
-
 	// Set values.
 	aa[offset + 0] = ((S1_4_0) * ri) * scale;
 	aa[offset + 1] = ((S1_4_1) * ri) * scale;
@@ -428,7 +390,6 @@ void r_decay_4th_order
 	aa[offset + 6] = ((S1_4_4) * ri + (rr * chi + l + 1.0)) * scale;
 	aa[offset + 7] = ((D1_4_3) * zi) * scale;
 	aa[offset + 8] = ((D1_4_4) * zi) * scale;
-	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
 	ja[offset + 0] = BASE + k + IDX(i - 4, j);
@@ -440,7 +401,6 @@ void r_decay_4th_order
 	ja[offset + 6] = BASE + k + IDX(i, j);
 	ja[offset + 7] = BASE + k + IDX(i, j + 1);
 	ja[offset + 8] = BASE + k + IDX(i, j + 2);
-	ja[offset + 9] = BASE + w_idx;
 
 	// All done.
 	return;
@@ -494,12 +454,6 @@ void corner_decay_4th_order
 	double m2 = m * m;
 	double chi = sqrt(m2 - w2);
 
-	// RHS.
-	double psi = u[k + IDX(i, j)];
-	double Dr_psi = S1_4_0 * u[k + IDX(i - 4, j)] + S1_4_1 * u[k + IDX(i - 3, j)] + S1_4_2 * u[k + IDX(i - 2, j)] + S1_4_3 * u[k + IDX(i - 1, j)] + S1_4_4 * psi;
-	double Dz_psi = S1_4_0 * u[k + IDX(i, j - 4)] + S1_4_1 * u[k + IDX(i, j - 3)] + S1_4_2 * u[k + IDX(i, j - 2)] + S1_4_3 * u[k + IDX(i, j - 1)] + S1_4_4 * psi;
-	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
-
 	// Set values.
 	aa[offset + 0] = ((S1_4_0) * ri) * scale;
 	aa[offset + 1] = ((S1_4_1) * ri) * scale;
@@ -510,7 +464,6 @@ void corner_decay_4th_order
 	aa[offset + 6] = ((S1_4_2) * zi) * scale;
 	aa[offset + 7] = ((S1_4_3) * zi) * scale;
 	aa[offset + 8] = ((S1_4_4) * (ri + zi) + (chi * rr + l + 1.0)) * scale;
-	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
 	ja[offset + 0] = BASE + k + IDX(i - 4, j);
@@ -522,7 +475,6 @@ void corner_decay_4th_order
 	ja[offset + 6] = BASE + k + IDX(i, j - 2);
 	ja[offset + 7] = BASE + k + IDX(i, j - 1);
 	ja[offset + 8] = BASE + k + IDX(i, j);
-	ja[offset + 9] = BASE + w_idx;
 
 	// All done.
 	return;
@@ -576,12 +528,6 @@ void z_so_decay_4th_order
 	double m2 = m * m;
 	double chi = sqrt(m2 - w2);
 
-	// RHS.
-	double psi = u[k + IDX(i, j)];
-	double Dr_psi = SO1_4_0 * u[k + IDX(i - 3, j)] + SO1_4_1 * u[k + IDX(i - 2, j)] + SO1_4_2 * u[k + IDX(i - 1, j)] + SO1_4_3 * psi + SO1_4_4 * u[k + IDX(i + 1, j)];
-	double Dz_psi = S1_4_0 * u[k + IDX(i, j - 4)] + S1_4_1 * u[k + IDX(i, j - 3)] + S1_4_2 * u[k + IDX(i, j - 2)] + S1_4_3 * u[k + IDX(i, j - 1)] + S1_4_4 * psi;
-	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
-
 	// Set values.
 	aa[offset + 0] = ((SO1_4_0) * ri) * scale;
 	aa[offset + 1] = ((SO1_4_1) * ri) * scale;
@@ -592,7 +538,6 @@ void z_so_decay_4th_order
 	aa[offset + 6] = ((S1_4_3) * zi) * scale;
 	aa[offset + 7] = ((S1_4_4) * zi + (SO1_4_3) * ri + (rr * chi + l + 1.0)) * scale;
 	aa[offset + 8] = ((SO1_4_4) * ri) * scale;
-	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
 	ja[offset + 0] = BASE + k + IDX(i - 3, j);
@@ -604,7 +549,6 @@ void z_so_decay_4th_order
 	ja[offset + 6] = BASE + k + IDX(i, j - 1);
 	ja[offset + 7] = BASE + k + IDX(i, j    );
 	ja[offset + 8] = BASE + k + IDX(i + 1, j);
-	ja[offset + 9] = BASE + w_idx;
 
 	// All done.
 	return;
@@ -658,12 +602,6 @@ void r_so_decay_4th_order
 	double m2 = m * m;
 	double chi = sqrt(m2 - w2);
 
-	// RHS.
-	double psi = u[k + IDX(i, j)];
-	double Dr_psi = S1_4_0 * u[k + IDX(i - 4, j)] + S1_4_1 * u[k + IDX(i - 3, j)] + S1_4_2 * u[k + IDX(i - 2, j)] + S1_4_3 * u[k + IDX(i - 1, j)] + S1_4_4 * psi;
-	double Dz_psi = SO1_4_0 * u[k + IDX(i, j - 3)] + SO1_4_1 * u[k + IDX(i, j - 2)] + SO1_4_2 * u[k + IDX(i, j - 1)] + SO1_4_3 * psi + SO1_4_4 * u[k + IDX(i, j + 1)];
-	double f = ri * Dr_psi + zi * Dz_psi + (rr * chi + l + 1.0) * psi;
-
 	// Set values.
 	aa[offset + 0] = ((S1_4_0) * ri) * scale;
 	aa[offset + 1] = ((S1_4_1) * ri) * scale;
@@ -674,7 +612,6 @@ void r_so_decay_4th_order
 	aa[offset + 6] = ((SO1_4_2) * zi) * scale;
 	aa[offset + 7] = ((S1_4_4) * ri + (SO1_4_3) * zi + (rr * chi + l + 1.0)) * scale;
 	aa[offset + 8] = ((SO1_4_4) * zi) * scale;
-	aa[offset + 9] = dw_du(v, m) * (rr * f + rr * psi) * (-w / chi) * scale;
 
 	// Column indices.
 	ja[offset + 0] = BASE + k + IDX(i - 4, j);
@@ -686,7 +623,6 @@ void r_so_decay_4th_order
 	ja[offset + 6] = BASE + k + IDX(i, j - 1);
 	ja[offset + 7] = BASE + k + IDX(i, j);			
 	ja[offset + 8] = BASE + k + IDX(i, j + 1);
-	ja[offset + 9] = BASE + w_idx;
 
 	// All done.
 	return;

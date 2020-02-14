@@ -176,9 +176,12 @@ int main(int argc, char *argv[])
 	for (i = 0; i < maxNewtonIter + 1; i++)
 	{
 		u[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		f[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		du[i]     = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		du_bar[i] = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+		f[i]      = (double *)SAFE_MALLOC((5 * dim) * sizeof(double));
+		du[i]     = (double *)SAFE_MALLOC((5 * dim) * sizeof(double));
+		du_bar[i] = (double *)SAFE_MALLOC((5 * dim) * sizeof(double));
+
+		// Set omega at all grids.
+		u[i][5 * dim] = inverse_omega_calc(w0, m);
 	}
 
 	// Also include grids.
@@ -186,11 +189,11 @@ int main(int argc, char *argv[])
 	double *z = (double *)SAFE_MALLOC(dim * sizeof(double));
 
 	// Auxiliary global derivative pointers.
-	Dr_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Dz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Drr_u = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Dzz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Drz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+	Dr_u  = (double *)SAFE_MALLOC((5 * dim) * sizeof(double));
+	Dz_u  = (double *)SAFE_MALLOC((5 * dim) * sizeof(double));
+	Drr_u = (double *)SAFE_MALLOC((5 * dim) * sizeof(double));
+	Dzz_u  = (double *)SAFE_MALLOC((5 * dim) * sizeof(double));
+	Drz_u  = (double *)SAFE_MALLOC((5 * dim) * sizeof(double));
 
 	// Newton output parameters.
 	double *norm_f		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
@@ -236,13 +239,13 @@ int main(int argc, char *argv[])
 	printf("***                                                \n");
 
 	// Initialize PARDISO memory and paramters.
-	// Square matrix dimension is (5 * dim + 1).
-	pardiso_start(5 * dim + 1);
+	// Square matrix dimension is 5 * dim.
+	pardiso_start(5 * dim);
 
 	// Allocate CSR matrix.
 	csr_matrix J;
 	MKL_INT nnz = nnz_jacobian();
-	csr_allocate(&J, 5 * dim + 1, 5 * dim + 1, nnz);
+	csr_allocate(&J, 5 * dim, 5 * dim, nnz);
 
 	printf("***                                                \n");
 	printf("***            Allocated CSR matrix with:          \n");
