@@ -258,7 +258,7 @@ void csr_gen_jacobian(csr_matrix A, const double *u, const int print)
 	//printf("ROTBOSON-JACOBIAN: Done omega.\n");
 
 	// FILL LAST ELEMENT.
-	A.ia[A.nrows + 1] = BASE + A.nnz;
+	A.ia[A.nrows] = BASE + A.nnz;
 
 	// PRINT MATRIX.
 	if (print)
