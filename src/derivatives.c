@@ -461,6 +461,94 @@ void diff2rz(double *dvar, const double *var, const MKL_INT symr, const MKL_INT 
 	return;
 }
 
+// Angular differentiation.
+void diff1th(double *dvar, const double *var, const MKL_INT symr, const MKL_INT symz)
+{
+	// Auxiliary integers.
+	MKL_INT i, j;
+
+	// Inverse angular step.
+	double idth = 1.0 / dth;
+
+	// Constants.
+	const double half = 0.5;
+	const double twelfth = 1.0 / 12.0;
+
+	// Second-order derivatives.
+	if (order == 2)
+	{
+		// Axial symmetry.
+		#pragma omp parallel shared(dvar) private(i)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = 0; i < NrrTotal; ++i)
+			{
+				dvar[P_IDX(i, 0)] = half * idth * var[P_IDX(i, 1)] * (1.0 - (double)symr);
+			}
+		}
+		// Main interior points.
+		#pragma omp parallel shared(dvar) private(i, j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (j = 1; j < NthTotal; ++j)
+			{
+				for (i = 0; i < NrrTotal; ++i)
+				{
+					dvar[P_IDX(i, j)] = half * idth * (var[P_IDX(i, j + 1)] - var[P_IDX(i, j - 1)]);
+				}
+			}
+		}
+		// Equatorial symmetry.
+		#pragma omp parallel shared(dvar) private(i)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = 0; i < NrrTotal; ++i)
+			{
+				dvar[P_IDX(i, NthTotal - 1)] = -half * idth * var[P_IDX(i, NthTotal - 2)] * (1.0 - (double)symz);
+			}
+		}
+	}
+	// Fourth-order derivatives.
+	else if (order == 4)
+	{
+		// Axial symmetry.
+		#pragma omp parallel shared(dvar) private(i)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = 0; i < NrrTotal; ++i)
+			{
+				dvar[P_IDX(i, 0)] = twelfth * idth * (-var[P_IDX(i, 2)] + 8.0 * var[P_IDX(i, 1)]) * (1.0 - (double)symr);
+				dvar[P_IDX(i, 1)] = twelfth * idth * (-8.0 * var[P_IDX(i, 0)] + (double)symr * var[P_IDX(i, 1)] + 8.0 * var[P_IDX(i, 2)] - var[P_IDX(i, 3)]);
+			}
+		}
+		// Main interior points.
+		#pragma omp parallel shared(dvar) private(i, j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (j = 2; j < NthTotal - 2; ++j)
+			{
+				for (i = 0; i < NrrTotal; ++i)
+				{
+					dvar[P_IDX(i, j)] = twelfth * idth * (-(var[P_IDX(i, j + 2)] - var[P_IDX(i, j - 2)]) + 8.0 * (var[P_IDX(i, j + 1)] - var[P_IDX(i, j - 1)]));
+				}
+			}
+		}
+		// Equatorial symmetry.
+		#pragma omp parallel shared(dvar) private(i)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = 0; i < NrrTotal; ++i)
+			{
+				dvar[P_IDX(i, NthTotal - 2)] = -twelfth * idth * (-8.0 * var[P_IDX(i, NthTotal - 1)] + (double)symr * var[P_IDX(i, NthTotal - 2)] + 8.0 * var[P_IDX(i, NthTotal - 3)] - var[P_IDX(i, NthTotal - 4)]);
+				dvar[P_IDX(i, NthTotal - 1)] = -twelfth * idth * (-var[P_IDX(i, NthTotal - 3)] + 8.0 * var[P_IDX(i, NthTotal - 2)]) * (1.0 - (double)symz);
+			}
+		}
+	}
+
+	// All done.
+	return;
+}
+
 // Radial differentiation.
 void diff1rr(double *dvar, const double *var, const MKL_INT symrr)
 {
