@@ -539,7 +539,7 @@ void diff1th(double *dvar, const double *var, const MKL_INT symr, const MKL_INT 
 			#pragma omp for schedule(dynamic, 1)
 			for (i = 0; i < NrrTotal; ++i)
 			{
-				dvar[P_IDX(i, NthTotal - 2)] = -twelfth * idth * (-8.0 * var[P_IDX(i, NthTotal - 1)] + (double)symr * var[P_IDX(i, NthTotal - 2)] + 8.0 * var[P_IDX(i, NthTotal - 3)] - var[P_IDX(i, NthTotal - 4)]);
+				dvar[P_IDX(i, NthTotal - 2)] = -twelfth * idth * (-8.0 * var[P_IDX(i, NthTotal - 1)] + (double)symz * var[P_IDX(i, NthTotal - 2)] + 8.0 * var[P_IDX(i, NthTotal - 3)] - var[P_IDX(i, NthTotal - 4)]);
 				dvar[P_IDX(i, NthTotal - 1)] = -twelfth * idth * (-var[P_IDX(i, NthTotal - 3)] + 8.0 * var[P_IDX(i, NthTotal - 2)]) * (1.0 - (double)symz);
 			}
 		}
