@@ -177,7 +177,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		}
 
 		// If lambda_prime_k = lambda_k = 1:
-		if (lambda_prime[k] == lambda[k] && lambda[k] == 1.0 && Theta[k] < 0.5)
+		if (lambda_prime[k] == lambda[k] && lambda[k] == 1.0 && Theta[k] < 0.25)
 		{
 			if (qnres)
 			{
