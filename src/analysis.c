@@ -292,7 +292,7 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 	printf("***  -------------------------- ----------------------- ----------------- \n");
 	printf("*** | Baryon Number            | Baryon Mass           | Binding Energy  |\n");
 	printf("***  -------------------------- ----------------------- ----------------- \n");	
-	printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e   |\n", baryon_number, baryon_mass, binding_energy);
+	printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e  |\n", baryon_number, baryon_mass, binding_energy);
 	printf("***  -------------------------- ----------------------- ----------------- \n");
 	printf("*** \n");
 	printf("***  -------------------------- ------------------------ \n");
