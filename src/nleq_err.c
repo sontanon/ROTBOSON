@@ -1,13 +1,23 @@
+// Include headers.
 #include "tools.h"
 #include "qnerr.h"
 
+// Debug print Jacobian CSR matrix.
 #define DEBUG_PRINT 0
+
+// Error codes.
+#define ERROR_CODE_SUCCESS 				  0
+#define ERROR_CODE_FAILED_REGULARITY_TEST 		- 1
+#define ERROR_CODE_QNERR_THETA_INCREASE_EXIT 		- 2
+#define ERROR_CODE_EXCEEDED_MAX_ITERATIONS 		- 3
+#define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_A 	-11
+#define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_B 	-13
 
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0).
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
 MKL_INT nleq_err(	      
-			MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
+		      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		      double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 		      					//            First entry contains initial guess.
 		      double 	**f,			// IN-OUTPUT: Pointer to array of RHS's.
@@ -25,16 +35,19 @@ MKL_INT nleq_err(
 		csr_matrix 	*J,			// INPUT: Pointer to jacobian matrix type.
 		const double 	epsilon,		// INPUT: Exit tolerance.
 		const MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.	
+		const MKL_INT	max_trial_A_iterations,	// INPUT: Maximum number of trial A iterations.
+		const MKL_INT	max_trial_B_iterations,	// INPUT: Maximum number of trial B iterations.
 		const double 	lambda_min,		// INPUT: Minimum damping factor.
 		const MKL_INT	qnerr,			// INPUT: Boolean to indicate whether to use QNERR.
-		      void	(*RHS_CALC)(double *, const double *),		// INPUT: RHS calculation subroutine.
+		      void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
 		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *)	,			// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *)	,	// INPUT: Dot product calculation subroutine.
-		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),	// INPUT: Linear solver subroutine.
-		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)	// INPUT: Linear solver subroutine.
+		      double	(*NORM)(const double *),					// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(const double *, const double *),				// INPUT: Dot product calculation subroutine.
+		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
+		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 	)
 {
+	// Print initial message.
 	printf(	"***** \n"
 		"***** WELCOME TO GLOBAL ERROR-BASED NEWTON SOLVER NLEQ-ERR.\n"
 		"***** \n"
@@ -45,10 +58,12 @@ MKL_INT nleq_err(
 	/* Iteration counter. */
 	MKL_INT k = 0;
 
+	/* Trial iteration counters. */
+	MKL_INT l_A = 0;
+	MKL_INT l_B = 0;
+
 	/* Get matrix dimension. */
 	MKL_INT dim = J->nrows;
-	//MKL_INT subdim = (dim - 1) / 5;
-	//MKL_INT g_num = 0;
 
 	/* Auxiliary memory block the size of solution vector. */
 	double *aux = (double *)SAFE_MALLOC(sizeof(double) * dim);
@@ -58,7 +73,8 @@ MKL_INT nleq_err(
 	double norm_du_bar_minus_one_minus_lambda_du;
 
 	/* QNERR parameters. */
-	MKL_INT qnerr_code; MKL_INT qnerr_stop;
+	MKL_INT qnerr_code; 
+	MKL_INT qnerr_stop;
 
 	/* Prediction start. */
 	MKL_INT prediction_start = 0;
@@ -85,7 +101,6 @@ MKL_INT nleq_err(
 		LINEAR_SOLVE_1(du[k], J, f[k]);
 
 		/* Calculate ||du^k||. */
-		//norm_du[k] = NORM(du[k] + g_num * subdim, subdim);
 		norm_du[k] = NORM(du[k]);
 
 		/* Print table header every 50 iterations. */
@@ -115,7 +130,7 @@ MKL_INT nleq_err(
 			SAFE_FREE(aux);
 
 			/* No error code. */
-			*err_code = 0;
+			*err_code = ERROR_CODE_SUCCESS;
 
 			/* Return positive index where solution is stored. */
 			return k + 1;
@@ -126,7 +141,6 @@ MKL_INT nleq_err(
 		{
 			/* Auxiliary memory block calculation */
 			ARRAY_SUM(aux, 1.0, du_bar[k], -1.0, du[k]);
-			//norm_du_bar_minus_du = NORM(aux + g_num * subdim, subdim);
 			norm_du_bar_minus_du = NORM(aux);
 
 			mu[k] = (norm_du[k - 1] * norm_du_bar[k] * lambda[k - 1]) / (norm_du_bar_minus_du * norm_du[k]);
@@ -152,7 +166,7 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 			SAFE_FREE(aux);
 
 			/* Error code -1: failed regularity test. */
-			*err_code = -1;
+			*err_code = ERROR_CODE_FAILED_REGULARITY_TEST;
 
 			/* Return negative index: last update at u[k]. */
 			return -k;
@@ -164,7 +178,6 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		RHS_CALC(f[k + 1], u[k + 1]);
 		LINEAR_SOLVE_2(du_bar[k + 1], J, f[k + 1]);
-		//norm_du_bar[k + 1] = NORM(du_bar[k + 1] + g_num * subdim, subdim);
 		norm_du_bar[k + 1] = NORM(du_bar[k + 1]);
 
 		// 3. Compute the monitoring quantities
@@ -173,7 +186,6 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		/* Auxiliary memory block. */
 		ARRAY_SUM(aux, 1.0, du_bar[k + 1], (lambda[k] - 1.0), du[k]);
-		//norm_du_bar_minus_one_minus_lambda_du = NORM(aux + g_num * subdim, subdim);
 		norm_du_bar_minus_one_minus_lambda_du = NORM(aux);
 
 		Theta[k]    = norm_du_bar[k + 1] / norm_du[k];
@@ -188,17 +200,53 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 			/* Print message: iterate is rejected because Theta[k] > 1.0 - 0.25 * lambda[k]. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "REJECT A");
 
+			/* Replace lambda_k by lambda_prime_k. */
 			lambda[k] = lambda_prime[k];
 
-			/* Check new lambda against regularity test. */
-			goto REGULARITY_TEST;
+			/* Increase trial A counter. */
+			l_A++;
+
+			/* Check if we can still do iterations. */
+			if (l_A < max_trial_A_iterations)
+			{
+				/* Check new lambda against regularity test. */
+				goto REGULARITY_TEST;
+			}
+			/* Else we have exceeded max_trail_A_iterations, which might indicate that we are stuck in a loop. */
+			/* Therefore, exit to be safe. */
+			else
+			{
+				/* Print message */
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
+		"***** \n"
+		"***** NLEQ-ERR Algorithm failed after %lld iterations.\n"
+		"***** Reason for failure is that A type lambda_k replacement by lambda_prime_k has undergone a maximum of %lld iterations.\n"
+		"***** \n"
+		"***** Will exit after cleanup... \n"
+		"***** \n", k + 1, max_trial_A_iterations);
+
+				/* Clear auxiliary memory block. */
+				SAFE_FREE(aux);
+
+				/* Error code -11: exceeded maximum trial iterations A. */
+				*err_code = ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_A;
+
+				/* Return negative index: last update at u[k + 1]. */
+				return -(k + 1);
+				
+			}
 		}
 		// Else: let lambda_prime_k = min(1, mu_prime_k).
 		else
 		{
+			/* Make replacement. */
 			lambda_prime[k] = MIN(1.0, mu_prime[k]);
+
+			/* Reset l_A trial counter since we have found a proper lambda factor that makes Theta[k] < 1 - lambda[k] / 4. */
+			l_A = 0;
 		}
 
+		// Test if we are inside "local" region.
 		// If lambda_prime_k = lambda_k = 1:
 		if (lambda_prime[k] == lambda[k] && lambda[k] == 1.0)
 		{
@@ -221,7 +269,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				SAFE_FREE(aux);
 
 				/* No error code. */
-				*err_code = 0;
+				*err_code = ERROR_CODE_SUCCESS;
 
 				/* Return positive index where solution is stored. */
 				return k + 1;
@@ -234,6 +282,10 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				{
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "ENTER QNERR");
 
+					/* Call QNERR with initial iterates u[k+1], f[k+1]. J(u[k+1]) will be calculated inside QNERR. */
+					/* Theta will remain the monitoring quantity, whereas mu is the alpha parameter inside QNERR. */
+					/* At this point, we have done k + 1 iterations, so QNERR is called with that number less iterations. */
+					/* qnerr_stop is the returned integer: it will be positive if QNERR succeeded, but negative otherwise. */
 					qnerr_stop = nleq_err_qnerr(&qnerr_code, u + k + 1, f + k + 1, 
 							du + k + 1, du_bar + k + 1,
 							norm_du + k + 1, norm_du_bar + k + 1, Theta + k + 1, mu + k + 1,
@@ -241,7 +293,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 							RHS_CALC, JACOBIAN_CALC, NORM, DOT, LINEAR_SOLVE_1, LINEAR_SOLVE_2);
 
 					/* Check for convergence. */
-					if (qnerr_code == 0)
+					if (qnerr_code == ERROR_CODE_SUCCESS)
 					{
 
 	printf(	"***** \n"
@@ -254,47 +306,56 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 						SAFE_FREE(aux);
 
 						/* No error code. */
-						*err_code = 0;
+						*err_code = ERROR_CODE_SUCCESS;
 
 						/* Return positive index where solution is stored. */
 						return k + 1 + qnerr_stop;
 					}
 					/* Check if we exited by increase in Theta and still have iterations to go. */
-					else if (qnerr_code == -2)
+					else if (qnerr_code == ERROR_CODE_QNERR_THETA_INCREASE_EXIT)
 					{
 	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]    | Theta[k]     | lambda'[k]   | STATUS      |\n"
-		 	"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
+	 	"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
 
 						/* Prepare to restart NLEQ-ERR. */
-						lambda[k - qnerr_stop + 1] = 1.0;
+		 				/* In this case, the last update is stored in u[k + 1 - qnerr_stop] since qnerr_stop is negative. */
+						/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
+						/* lambda damping factor which will be set to 1.0. */
+						lambda[k + (-qnerr_stop) + 1] = 1.0;
 
-						/* Set k to last update. */
-						k -= qnerr_stop;
+						/* Set k to one place before last update. */
+						/* This k is not where the last solution is stored, but, rather, one place before. */
+						/* This is due to the fact that the "continue" statement below will increase k via */
+						/* the ++k statement at the for loop above. */
+						k += (-qnerr_stop);
 
 						/* Increase prediction start. */
+						/* This is because we do not have a lambda[k - 1] and have to start a prediction again. */
 						prediction_start = k + 1;
 
 						/* Goto 1. */
+						/* Notice that if we have reached max_newton_iterations, we will immediately go to the */
+						/* appropriate error code. */
 						continue;
 					}
-					/* Otherwise, we might have spent all iterations. */
-					else if (qnerr_code == -3)
+					/* Check if QNERR spent all remaining iterations. */
+					else if (qnerr_code == ERROR_CODE_EXCEEDED_MAX_ITERATIONS)
 					{
 	printf(	"***** \n"
 		"***** NLEQ-ERR Algorithm failed to converge after %lld maximum number of iterations. Failure on QNERR.\n"
 		"***** \n"
 		"***** Will exit after cleanup... \n"
 		"***** \n", max_newton_iterations);
+
+						/* Clear auxiliary memory block. */
+						SAFE_FREE(aux);
+
+						/* No error code. */
+						*err_code = qnerr_code;
+
+						/* Return negative index where solution is stored. */
+						return -(k + 1 + (-qnerr_stop));
 					}
-
-					/* Clear auxiliary memory block. */
-					SAFE_FREE(aux);
-
-					/* No error code. */
-					*err_code = qnerr_code;
-
-					/* Return negative index where solution is stored. */
-					return -(k + 1 - qnerr_stop);
 				}
 				/* Global algorithm for no QNERR. */
 				else
@@ -315,14 +376,46 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 			lambda[k] = lambda_prime[k];
 
-			/* No need for regularity test. Go directly to try new iterate. */
-			goto TRIAL_ITERATE;
+			/* Increase trial B counter. */
+			l_B++;
+
+			/* Check if we can still do iterations. */
+			if (l_B < max_trial_B_iterations)
+			{
+				/* No need for regularity test. Go directly to try new iterate. */
+				goto TRIAL_ITERATE;
+			}
+			/* Else we have exceeded max_trail_B_iterations, which might indicate that we are stuck in a loop. */
+			/* Therefore, exit to be safe. */
+			else
+			{
+				/* Print message */
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
+		"***** \n"
+		"***** NLEQ-ERR Algorithm failed after %lld iterations.\n"
+		"***** Reason for failure is that B type lambda_k replacement by lambda_prime_k has undergone a maximum of %lld iterations.\n"
+		"***** \n"
+		"***** Will exit after cleanup... \n"
+		"***** \n", k + 1, max_trial_B_iterations);
+
+				/* Clear auxiliary memory block. */
+				SAFE_FREE(aux);
+
+				/* Error code -11: exceeded maximum trial iterations B. */
+				*err_code = ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_B;
+
+				/* Return negative index: last update at u[k + 1]. */
+				return -(k + 1);
+			}
 		}
 		// Else: accept u^{k+1} as new iterate and goto 1. with k -> k + 1.
 		else
 		{
 			/* Print message. Iterate accepted because Theta is not too big; we have not reached safe region; and lambda_prime is not too big. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
+
+			/* Reset l_B counter. */
+			l_B = 0;
 
 			/* This continue is really unnecessary and does the goto 1 instruction. */
 			continue;
@@ -341,7 +434,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 	SAFE_FREE(aux);
 
 	/* Error code -3: Reached maximum number of iterations. */
-	*err_code = -3;
+	*err_code = ERROR_CODE_EXCEEDED_MAX_ITERATIONS;
 
 	/* Return negative index to last filled entry. */
 	return -max_newton_iterations;

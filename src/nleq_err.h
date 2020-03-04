@@ -1,4 +1,5 @@
-MKL_INT nleq_err(	      MKL_INT	*err_code,		// OUTPUT: Pointer to integer containing error code.
+MKL_INT nleq_err(	      
+		      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		      double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 		      					//            First entry contains initial guess.
 		      double 	**f,			// IN-OUTPUT: Pointer to array of RHS's.
@@ -16,13 +17,14 @@ MKL_INT nleq_err(	      MKL_INT	*err_code,		// OUTPUT: Pointer to integer contai
 		csr_matrix 	*J,			// INPUT: Pointer to jacobian matrix type.
 		const double 	epsilon,		// INPUT: Exit tolerance.
 		const MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.	
+		const MKL_INT	max_trial_A_iterations,	// INPUT: Maximum number of trial A iterations.
+		const MKL_INT	max_trial_B_iterations,	// INPUT: Maximum number of trial B iterations.
 		const double 	lambda_min,		// INPUT: Minimum damping factor.
 		const MKL_INT	qnerr,			// INPUT: Boolean to indicate whether to use QNERR.
-		      void	(*RHS_CALC)(double *, const double *),		// INPUT: RHS calculation subroutine.
+		      void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
 		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *)	,			// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *)	,	// INPUT: Dot product calculation subroutine.
-		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),	// INPUT: Linear solver subroutine.
-		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)	// INPUT: Linear solver subroutine.
+		      double	(*NORM)(const double *),					// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(const double *, const double *),				// INPUT: Dot product calculation subroutine.
+		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
+		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 	);
-

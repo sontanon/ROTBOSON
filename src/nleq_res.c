@@ -1,9 +1,27 @@
+// Include headers.
 #include "tools.h"
+#include "qnres.h"
+
+// Debug print Jacobian CSR matrix.
+#define DEBUG_PRINT 0
+
+// Error codes.
+#define ERROR_CODE_SUCCESS 				  0
+#define ERROR_CODE_FAILED_REGULARITY_TEST 		- 1
+#define ERROR_CODE_QNRES_THETA_INCREASE_EXIT 		- 2
+#define ERROR_CODE_EXCEEDED_MAX_ITERATIONS 		- 3
+#define ERROR_CODE_QNRES_ILL_CONDITIONED		- 4
+#define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_A 	-11
+#define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_B 	-13
+
+// Maximum expansion.
+#define THETA_MAX 0.25
 
 // Set a required error accuracy epsilon sufficiently above the machine precision.
-// Guess an initial iterate u^0. Evaluate F(u^0).
+// Guess an initial iterate u^0. Evaluate F(u^0) and ||F(u^0)||.
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
-MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
+MKL_INT nleq_res(	      
+		      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		      double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 		      					//            First entry contains initial guess.
 		      double 	**f,			// IN-OUTPUT: Pointer to array of RHS's.
@@ -11,7 +29,8 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		      double	*lambda,		// IN-OUTPUT: Pointer to array of damping factors.
 		      					//            First entry contains initial damping factor.
 		      double	**du,			// OUTPUT: Pointer to array of updates.
-		      double	*norm_f,		// OUTPUT: Pointer to array of RHS norms.
+		      double	*norm_f,		// IN-OUTPUT: Pointer to array of RHS norms.
+		      					//            First entry contains initial RHS norm.
 		      double	*Theta,			// OUTPUT: Pointer to array of monitoring quantity.
 		      double	*mu,			// OUTPUT: Pointer to array of mu's.
 		      double	*lambda_prime,		// OUTPUT: Pointer to array of lambda_prime's.
@@ -19,15 +38,19 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		csr_matrix 	*J,			// INPUT: Pointer to jacobian matrix type.
 		const double 	epsilon,		// INPUT: Exit tolerance.
 		const MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.	
+		const MKL_INT	max_trial_A_iterations,	// INPUT: Maximum number of trial A iterations.
+		const MKL_INT	max_trial_B_iterations,	// INPUT: Maximum number of trial A iterations.
 		const double 	lambda_min,		// INPUT: Minimum damping factor.
 		const MKL_INT	qnres,			// INPUT: Boolean to indicate whether to use QNERR.
-		      void	(*RHS_CALC)(double *, const double *),		// INPUT: RHS calculation subroutine.
+		      void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
 		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *)	,			// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *)	,	// INPUT: Dot product calculation subroutine.
-		      void 	(*LINEAR_SOLVE)(double *, csr_matrix *, double *)	// INPUT: Linear solver subroutine.
+		      double	(*NORM)(const double *),					// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(const double *, const double *),				// INPUT: Dot product calculation subroutine.
+		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
+		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 	)
 {
+	// Print initial message.
 	printf(	"***** \n"
 		"***** WELCOME TO GLOBAL RESIDUAL-BASED NEWTON SOLVER NLEQ-RES.\n"
 		"***** \n"
@@ -38,6 +61,10 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 	/* Iteration counter. */
 	MKL_INT k = 0;
 
+	// Trial iteration counters.
+	MKL_INT l_A = 0;
+	MKL_INT l_B = 0;
+
 	/* Get matrix dimension. */
 	MKL_INT dim = J->nrows;
 
@@ -47,8 +74,9 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 	/* Auxiliary doubles. */
 	double norm_f_minus_one_minus_lambda_f;
 
-	/* QNERR parameters. */
-	//MKL_INT qnres_code; MKL_INT qnres_stop;
+	/* QNRES parameters. */
+	MKL_INT qnres_code; 
+	MKL_INT qnres_stop;
 
 	/* Prediction start. */
 	MKL_INT prediction_start = 0;
@@ -61,9 +89,6 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		"***** | %-11.5E | %-13lld | %-11.5E | %-11.5E | %-7lld | %-9lld |\n"
 		"*****  ------------- --------------- ------------- ------------- --------- ----------- \n"
 		"***** \n", epsilon, max_newton_iterations, lambda[0], lambda_min, dim, J->nnz);
-
-	/* Calculate initial RHS norm. */
-	norm_f[0] = NORM(f[0]);
 
 	// For iteration index k = 0, 1, ... , max_newton_iterations - 1 do:
 	for (k = 0; k < max_newton_iterations;++k)
@@ -93,7 +118,7 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 			SAFE_FREE(aux);
 
 			/* No error code. */
-			*err_code = 0;
+			*err_code = ERROR_CODE_SUCCESS;
 
 			/* Return positive index where solution is stored. */
 			return k;
@@ -105,7 +130,7 @@ MKL_INT nleq_res(	      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 		JACOBIAN_CALC(*J, u[k], 0);
 
 		/* Solve linear system. */
-		LINEAR_SOLVE(du[k], J, f[k]);
+		LINEAR_SOLVE_1(du[k], J, f[k]);
 
 		// For k > 0: compute a prediction value for the damping factor.
 		if (k > prediction_start)
@@ -133,7 +158,7 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 			SAFE_FREE(aux);
 
 			/* Error code -1: failed regularity test. */
-			*err_code = -1;
+			*err_code = ERROR_CODE_FAILED_REGULARITY_TEST;
 
 			/* Return negative index: last update at u[k]. */
 			return -k;
@@ -165,23 +190,132 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 			/* Print message: iterate is rejected because Theta[k] > 1.0 - 0.25 * lambda[k]. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_f[k], lambda[k], Theta[k], lambda_prime[k], "REJECT A");
 
+			// Replace lambda_k by lambda_prime_k.
 			lambda[k] = lambda_prime[k];
 
-			/* Check new lambda against regularity test. */
-			goto REGULARITY_TEST;
+			/* Increase trial A counter. */
+			l_A++;
+
+			/* Check if we can still do iterations. */
+			if (l_A < max_trial_A_iterations)
+			{
+				/* Check new lambda against regularity test. */
+				goto REGULARITY_TEST;
+			}
+			/* Else we have exceeded max_trail_A_iterations, which might indicate that we are stuck in a loop. */
+			/* Therefore, exit to be safe. */
+			else
+			{
+				/* Print message */
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
+		"***** \n"
+		"***** NLEQ-RES Algorithm failed after %lld iterations.\n"
+		"***** Reason for failure is that A type lambda_k replacement by lambda_prime_k has undergone a maximum of %lld iterations.\n"
+		"***** \n"
+		"***** Will exit after cleanup... \n"
+		"***** \n", k + 1, max_trial_A_iterations);
+
+				/* Clear auxiliary memory block. */
+				SAFE_FREE(aux);
+
+				/* Error code -11: exceeded maximum trial iterations A. */
+				*err_code = ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_A;
+
+				/* Return negative index: last update at u[k + 1]. */
+				return -(k + 1);
+			}
 		}
 		// Else: let lambda_prime_k = min(1, mu_prime_k).
 		else
 		{
+			// Make replacement.
 			lambda_prime[k] = MIN(1.0, mu_prime[k]);
+
+			// Reset l_A trial counter since we have found a proper lambda factor that makes Theta[k] < 1 - lambda[k] / 4.
+			l_A = 0;
 		}
 
+		// Test if we are inside "local" region.
 		// If lambda_prime_k = lambda_k = 1:
-		if (lambda_prime[k] == lambda[k] && lambda[k] == 1.0 && Theta[k] < 0.25)
+		if (lambda_prime[k] == lambda[k] && lambda[k] == 1.0 && Theta[k] < THETA_MAX)
 		{
 			if (qnres)
 			{
-				/* NOT IMPLEMENTED FOR NOW! */
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_f[k], lambda[k], Theta[k], lambda_prime[k], "ENTER QNRES");
+
+				// Call QNRES with initial iterates u[k+1], f[k+1], ||f[k+1]||. J(u[k+1]) will be calculated inside QNRES.
+				// Theta will remain the monitoring quantity, whereas mu is the gamma parameter inside QNERR.
+				// At this point we have done k + 1 iterations, so QNRES is called with that number less iterations.
+				// qnres_stop is the returned integer: it will be positive if QNRES succeeded, but negative otherwise.
+				qnres_stop = nleq_res_qnres(&qnres_code, u + k + 1, f + k + 1,
+					du + k + 1, norm_f + k + 1, Theta + k + 1, mu + k + 1,
+					J, epsilon, max_newton_iterations - (k + 1),
+					RHS_CALC, JACOBIAN_CALC, NORM, DOT, LINEAR_SOLVE_1, LINEAR_SOLVE_2);
+
+				// Check for convergence.
+				if (qnres_code == ERROR_CODE_SUCCESS)
+				{
+	printf(	"***** \n"
+		"***** NLEQ-RES Algorithm converged successfully after %lld iterations. Converged on QNRES.\n"
+		"***** \n"
+		"***** Will exit after cleanup... \n"
+		"***** \n", k + 1 + qnres_stop);
+
+					/* Clear auxiliary memory block. */
+					SAFE_FREE(aux);
+
+					/* No error code. */
+					*err_code = ERROR_CODE_SUCCESS;
+
+					/* Return positive index where solution is stored. */
+					return k + 1 + qnres_stop;
+				}
+				/* Check if we exited by increase in Theta and still have iterations to go. */
+				/* Also include the case where the matrix was ill-conditioned. */
+				else if (qnres_code == ERROR_CODE_QNRES_THETA_INCREASE_EXIT || qnres_code == ERROR_CODE_QNRES_ILL_CONDITIONED)
+				{
+	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]    | Theta[k]     | lambda'[k]   | STATUS      |\n"
+	 	"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
+
+					/* Prepare to restart NLEQ-RES. */
+					/* In this case, the last update is stored in u[k + 1 - qnres_stop] since qnres_stop is negative. */
+					/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
+					/* lambda damping factor which will be set to 1.0. */
+					lambda[k + (-qnres_stop) + 1] = 1.0;
+
+					/* Set k to one place before last update. */
+					/* This k is not where the last solution is stored, but, rather, one place before. */
+					/* This is due to the fact that the "continue" statement below will increase k via */
+					/* the ++k statement at the for loop above. */
+					k += (-qnres_stop);
+
+					/* Increase prediction start. */
+					/* This is because we do not have a lambda[k - 1] and have to start a prediction again. */
+					prediction_start = k + 1;
+
+					/* Goto 1. */
+					/* Notice that if we have reached max_newton_iterations, we will immediately go to the */
+					/* appropriate error code. */
+					continue;
+				}
+				/* Check if QNRES spent all remaining iterations. */
+				else if (qnres_code == ERROR_CODE_EXCEEDED_MAX_ITERATIONS)
+				{
+	printf(	"***** \n"
+		"***** NLEQ-ERR Algorithm failed to converge after %lld maximum number of iterations. Failure on QNERR.\n"
+		"***** \n"
+		"***** Will exit after cleanup... \n"
+		"***** \n", max_newton_iterations);
+
+					/* Clear auxiliary memory block. */
+					SAFE_FREE(aux);
+
+					/* No error code. */
+					*err_code = qnres_code;
+
+					/* Return negative index where solution is stored. */
+					return -(k + 1 + (-qnres_stop));
+				}
 			}
 			else
 			{
@@ -200,14 +334,46 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 			lambda[k] = lambda_prime[k];
 
-			/* No need for regularity test. Go directly to try new iterate. */
-			goto TRIAL_ITERATE;
+			/* Increase trial B counter. */
+			l_B++;
+
+			/* Check if we can still do iterations. */
+			if (l_B < max_trial_B_iterations)
+			{
+				/* No need for regularity test. Go directly to try new iterate. */
+				goto TRIAL_ITERATE;
+			}
+			/* Else we have exceeded max_trail_B_iterations, which might indicate that we are stuck in a loop. */
+			/* Therefore, exit to be safe. */
+			else
+			{
+				/* Print message */
+	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
+		"***** \n"
+		"***** NLEQ-RES Algorithm failed after %lld iterations.\n"
+		"***** Reason for failure is that B type lambda_k replacement by lambda_prime_k has undergone a maximum of %lld iterations.\n"
+		"***** \n"
+		"***** Will exit after cleanup... \n"
+		"***** \n", k + 1, max_trial_B_iterations);
+
+				/* Clear auxiliary memory block. */
+				SAFE_FREE(aux);
+
+				/* Error code -11: exceeded maximum trial iterations B. */
+				*err_code = ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_B;
+
+				/* Return negative index: last update at u[k + 1]. */
+				return -(k + 1);
+			}
 		}
 		// Else: accept u^{k+1} as new iterate and goto 1. with k -> k + 1.
 		else
 		{
 			/* Print message. Iterate accepted because Theta is not too big; we have not reached safe region; and lambda_prime is not too big. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_f[k], lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
+
+			/* Reset l_B counter. */
+			l_B = 0;
 
 			/* This continue is really unnecessary and does the goto 1 instruction. */
 			continue;
@@ -226,7 +392,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 	SAFE_FREE(aux);
 
 	/* Error code -3: Reached maximum number of iterations. */
-	*err_code = -3;
+	*err_code = -ERROR_CODE_EXCEEDED_MAX_ITERATIONS;
 
 	/* Return negative index to last filled entry. */
 	return -max_newton_iterations;

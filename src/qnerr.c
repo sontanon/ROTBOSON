@@ -1,6 +1,12 @@
 #include "tools.h"
 
-MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
+// Error codes.
+#define ERROR_CODE_SUCCESS 				  0
+#define ERROR_CODE_QNERR_THETA_INCREASE_EXIT 		- 2
+#define ERROR_CODE_EXCEEDED_MAX_ITERATIONS 		- 3
+
+MKL_INT nleq_err_qnerr(	
+	        MKL_INT	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 						//            First entry contains initial guess.
 		double 	**f,			// IN-OUTPUT: Pointer to array of RHS's.
@@ -14,12 +20,12 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 	csr_matrix	*J,			// INPUT: Pointer to Jacobian matrix type.
 	const 	double	epsilon,		// INPUT: Exit tolerance.
 	const	MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.
-		void	(*RHS_CALC)(double *, const double *),		// INPUT: RHS calculation subroutine.
-	   	void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		double	(*NORM)(const double *)	,			// INPUT: Norm calculation subroutine.
-		double	(*DOT)(const double *, const double *)	,	// INPUT: Dot product calculation subroutine.
-		void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),	
-		void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)	
+	      	void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
+	      	void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
+	      	double	(*NORM)(const double *)	,					// INPUT: Norm calculation subroutine.
+	      	double	(*DOT)(const double *, const double *)	,			// INPUT: Dot product calculation subroutine.
+	      	void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
+	      	void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 	 )
 {
 	/* Iteration counters. */
@@ -88,7 +94,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.5. */
-			*err_code = -2;
+			*err_code = ERROR_CODE_QNERR_THETA_INCREASE_EXIT;
 
 			/* Return negative index: last update at u[l + 1]. */
 			return -(l + 1);
@@ -110,7 +116,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
 
 			/* No error code. */
-			*err_code = 0;
+			*err_code = ERROR_CODE_SUCCESS;
 	
 			/* Return positive index where solution is stored. */
 			return l + 1;
@@ -123,7 +129,7 @@ MKL_INT nleq_err_qnerr(	MKL_INT 	*err_code,		// OUTPUT: Pointer to integer conta
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
 
 	/* Error code -3: Reached maximum number of iterations. */
-	*err_code = -3;
+	*err_code = ERROR_CODE_EXCEEDED_MAX_ITERATIONS;
 
 	/* Return negative index to last filled entry. */
 	return -max_newton_iterations;

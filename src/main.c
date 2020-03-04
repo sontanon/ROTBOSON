@@ -331,7 +331,8 @@ int main(int argc, char *argv[])
 				k = nleq_err(&errCode, u, f, lambda,
 						du, du_bar, norm_du, norm_du_bar,
 						Theta, mu, lambda_prime, mu_prime,
-						&J, epsilon, maxNewtonIter, lambdaMin, localSolver,
+						&J, epsilon, maxNewtonIter, maxNewtonIter, maxNewtonIter,
+						lambdaMin, localSolver,
 						rhs, csr_gen_jacobian, norm2_interior, dot_interior, 
 						linear_solve_1, linear_solve_2);
 				break;
@@ -339,9 +340,10 @@ int main(int argc, char *argv[])
 			case 2:
 				k = nleq_res(&errCode, u, f, lambda,
 						du, norm_f, Theta, mu, lambda_prime, mu_prime,
-						&J, epsilon, maxNewtonIter, lambdaMin, 0, 
+						&J, epsilon, maxNewtonIter, maxNewtonIter, maxNewtonIter,
+						lambdaMin, 0, 
 						rhs, csr_gen_jacobian, norm2_interior, dot_interior,
-						linear_solve_1);
+						linear_solve_1, linear_solve_2);
 				break;
 		}
 
