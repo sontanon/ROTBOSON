@@ -328,6 +328,7 @@ int main(int argc, char *argv[])
 		{
 			// Error-based algorithm.
 			case 1:
+				// Call algorithm.
 				k = nleq_err(&errCode, u, f, lambda,
 						du, du_bar, norm_du, norm_du_bar,
 						Theta, mu, lambda_prime, mu_prime,
@@ -339,7 +340,9 @@ int main(int argc, char *argv[])
 				break;
 			// Residual-based algorithm.
 			case 2:
-				norm_f[0] = norm2_interior_all_variables(u);
+				// ||f[0]|| is also an input parameter.
+				norm_f[0] = norm2_interior_all_variables(u[0]);
+				// Calle algorithm.
 				k = nleq_res(&errCode, u, f, lambda,
 						du, norm_f, Theta, mu, lambda_prime, mu_prime,
 						&J, epsilon, maxNewtonIter, maxNewtonIter, maxNewtonIter,
