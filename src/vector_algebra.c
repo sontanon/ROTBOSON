@@ -40,3 +40,25 @@ double dot_interior(const double *x, const double *y)
 
 	return sum / (NrInterior * NzInterior);
 }
+
+double dot_interior_all_variables(const double *x, const double *y)
+{
+	double sum = 0.0;
+	MKL_INT k = 0;
+
+	// Add five dot products.
+	for (k = 0; k < 5; ++k)
+	{
+		sum += dot_interior(x + k * dim, y + k * dim);
+	}
+
+	// Rescale.
+	return sum / 5.0;
+}
+
+double norm2_interior_all_variables(const double *x)
+{
+	double sum = dot_interior_all_variables(x, x);
+
+	return sqrt(sum);
+}

@@ -333,17 +333,19 @@ int main(int argc, char *argv[])
 						Theta, mu, lambda_prime, mu_prime,
 						&J, epsilon, maxNewtonIter, maxNewtonIter, maxNewtonIter,
 						lambdaMin, localSolver,
-						rhs, csr_gen_jacobian, norm2_interior, dot_interior, 
+						rhs, csr_gen_jacobian, 
+						norm2_interior_all_variables, dot_interior_all_variables,
 						linear_solve_1, linear_solve_2);
 				break;
 			// Residual-based algorithm.
 			case 2:
-				norm_f[0] = MAX(f_norms[0], MAX(f_norms[1], MAX(f_norms[2], MAX(f_norms[3], f_norms[4]))));
+				norm_f[0] = norm2_interior_all_variables(u);
 				k = nleq_res(&errCode, u, f, lambda,
 						du, norm_f, Theta, mu, lambda_prime, mu_prime,
 						&J, epsilon, maxNewtonIter, maxNewtonIter, maxNewtonIter,
 						lambdaMin, localSolver, 
-						rhs, csr_gen_jacobian, norm2_interior, dot_interior,
+						rhs, csr_gen_jacobian, 
+						norm2_interior_all_variables, dot_interior_all_variables,
 						linear_solve_1, linear_solve_2);
 				break;
 		}
