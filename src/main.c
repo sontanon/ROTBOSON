@@ -332,7 +332,7 @@ int main(int argc, char *argv[])
 				k = nleq_err(&errCode, u, f, lambda,
 						du, du_bar, norm_du, norm_du_bar,
 						Theta, mu, lambda_prime, mu_prime,
-						&J, epsilon, maxNewtonIter, maxNewtonIter, maxNewtonIter,
+						&J, epsilon, maxNewtonIter, 5, 5,
 						lambdaMin, localSolver,
 						rhs, csr_gen_jacobian, 
 						norm2_interior_all_variables, dot_interior_all_variables,
@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
 				// Calle algorithm.
 				k = nleq_res(&errCode, u, f, lambda,
 						du, norm_f, Theta, mu, lambda_prime, mu_prime,
-						&J, epsilon, maxNewtonIter, maxNewtonIter, maxNewtonIter,
+						&J, epsilon, maxNewtonIter, 5, 5,
 						lambdaMin, localSolver, 
 						rhs, csr_gen_jacobian, 
 						norm2_interior_all_variables, dot_interior_all_variables,
