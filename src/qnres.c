@@ -50,8 +50,9 @@ MKL_INT nleq_res_qnres(
 	double *v = (double *)SAFE_MALLOC(sizeof(double) * dim);
 	double *w = (double *)SAFE_MALLOC(sizeof(double) * dim);
 
-	// Auxiliary double.
+	// Auxiliary doubles.
 	double beta = 0.0;
+	double z = 0.0;
 
 	// Preconditioner monitor.
 	double kappa = 1.0;
@@ -70,9 +71,9 @@ MKL_INT nleq_res_qnres(
 		/* Print table header every 50 iterations. */
 		if (l % 50 == 0)
 		{
-	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
-		"***** | QNRES ITER | ||df[l+1]||  | gamma[l]     | Theta[l]     | kappa        | STATUS      |\n"
-		"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
+	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
+		"***** | QNRES ITER | ||df[l+1]||  | gamma[l]    | Theta[l]     | kappa       | STATUS      |\n"
+		"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
 		}
 
 		// New iterate u^{l+1} = u^l + du^l.
@@ -100,8 +101,8 @@ MKL_INT nleq_res_qnres(
 		if (norm_f[l + 1] < epsilon)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "CONVERGED C");
-	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
+	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "CONVERGED C");
+	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* No error code. */
 			*err_code = ERROR_CODE_SUCCESS;
@@ -120,8 +121,8 @@ MKL_INT nleq_res_qnres(
 		if (Theta[l] > THETA_MAX)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
-	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
+	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
+	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.25. */
 			*err_code = ERROR_CODE_QNRES_THETA_INCREASE_EXIT;
@@ -138,8 +139,8 @@ MKL_INT nleq_res_qnres(
 		if (kappa > KAPPA_MAX)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
-	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
+	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
+	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.25. */
 			*err_code = ERROR_CODE_QNRES_ILL_CONDITIONED;
@@ -154,15 +155,16 @@ MKL_INT nleq_res_qnres(
 
 		// If sanity tests are passed, we can calculate RHS.
 		// v = (1 - <w,F[l+1]>/gamma[l]) * F[l+1].
-		ARRAY_SUM(v, (1.0 - DOT(w, f[l+1]) / gamma[l]), f[l + 1], 0.0, v);
+		z = DOT(w, f[l + 1]);
+		ARRAY_SUM(v, (1.0 - z / gamma[l]), f[l + 1], 0.0, v);
 
 		// Recursive update.
-		for (i = l - 1; i > -1; --i)
+		for (i = l - 1; i >= 0; --i)
 		{
 			// beta = <dF[i+1], v> / gammma[i].
-			beta = (DOT(f[i+1], v) - DOT(f[i], v)) / gamma[i];
+			beta = (DOT(f[i + 1], v) - DOT(f[i], v)) / gamma[i];
 			// v = v - beta * F[i+1].
-			ARRAY_SUM(v, 1.0, v, -beta, f[i+1]);
+			ARRAY_SUM(v, 1.0, v, -beta, f[i + 1]);
 		}
 
 		// Linear solve.
@@ -171,11 +173,12 @@ MKL_INT nleq_res_qnres(
 		LINEAR_SOLVE_2(du[l + 1], J, v);
 
 		// Print message before continuing.
-	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");
+	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");
+		continue;
 	}
 
 	/* If we reach this point we did not converge after the maximum iterations. */
-	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
+	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 	/* Error code -3: Reached maximum number of iterations. */
 	*err_code = ERROR_CODE_EXCEEDED_MAX_ITERATIONS;

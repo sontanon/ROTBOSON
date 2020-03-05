@@ -338,10 +338,11 @@ int main(int argc, char *argv[])
 				break;
 			// Residual-based algorithm.
 			case 2:
+				norm_f[0] = MAX(f_norms[0], MAX(f_norms[1], MAX(f_norms[2], MAX(f_norms[3], f_norms[4]))));
 				k = nleq_res(&errCode, u, f, lambda,
 						du, norm_f, Theta, mu, lambda_prime, mu_prime,
 						&J, epsilon, maxNewtonIter, maxNewtonIter, maxNewtonIter,
-						lambdaMin, 0, 
+						lambdaMin, localSolver, 
 						rhs, csr_gen_jacobian, norm2_interior, dot_interior,
 						linear_solve_1, linear_solve_2);
 				break;
