@@ -227,7 +227,7 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 	// Loop over r and read values.
 	for (i = 0; i < NrTotalInitial; ++i)
 	{
-		for (j = 0; j < NzTotalInitial; ++j)
+		for (j = 0; j < NzTotalInitial - 1; ++j)
 		{
 			err = fscanf(fp, "%lE", u + IDX(i, j));
 
@@ -237,6 +237,9 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 				fprintf(stderr, "CRITICAL ERROR READING FILE \"%s\"! at %s.%lld.\n", fname, source_file, source_line);
 			}
 		}
+		// Last element with line-jump.
+		j = NzTotalInitial - 1;
+		err = fscanf(fp, "%lE%*[^\n]\n", u + IDX(i, j));
 	}
 
 	// Fill other values.
