@@ -7,7 +7,7 @@
 
 void pardiso_simple_solve(
 		double *u,			// Solution array.
-		csr_matrix *A, 		// Matrix system to solve: Au = f.
+		csr_matrix *A, 			// Matrix system to solve: Au = f.
 		double *f			// RHS array.
 		)
 {
@@ -44,22 +44,31 @@ void pardiso_simple_solve(
 #endif
 
 	// Reordering and symbolic factorization.
-	phase = 11;
-	pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
-		&n, A->a, A->ia, A->ja, perm, &nrhs,
-		iparm, &msglvl, &ddum, &ddum, &error);
-
-	if (error != 0)
+	if (!(A->analysis_phase))
 	{
-		printf("ERROR during symbolic factorization: %lld.\n", error);
-		exit(1);
-	}
+		phase = 11;
+		pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
+			&n, A->a, A->ia, A->ja, perm, &nrhs,
+			iparm, &msglvl, &ddum, &ddum, &error);
+
+		if (error != 0)
+		{
+			printf("ERROR during symbolic factorization: %lld.\n", error);
+			exit(1);
+		}
 
 #ifdef VERBOSE
 	printf("PARDISO: Reordering completed.\n");
 	printf("PARDISO: Number of nonzeros in factors = %lld.\n", iparm[18 - 1]);
 	printf("PARDISO: Number of factorization MFLOPS = %lld.\n", iparm[19 - 1]);
 #endif
+
+		// Analysis phase has been completed.
+		A->analysis_phase = 1;
+
+		// Enable CG preconditioning.
+		iparm[3] = 61;
+	}
 
 	// Numerical factorization.
 	phase = 22;
@@ -97,32 +106,10 @@ void pardiso_simple_solve(
 
 void pardiso_solve_low_rank(
 		double *u,			// Solution array.
-		csr_matrix *A, 		// Matrix system to solve: Au = f.
+		csr_matrix *A, 			// Matrix system to solve: Au = f.
 		double *f			// RHS array.
 		)
 {
-	// Modify parameters according to Low-Rank update.
-	if (A->analysis_phase)
-	{
-		// Set low rank parameters.
-		iparm[39 - 1] = 1;
-		iparm[24 - 1] = 10;
-		// No permutation.
-		iparm[5 - 1] = 0;
-		// No CGS.
-		iparm[4 - 1] = 0;
-		// Additional values.
-		iparm[ 6 - 1] = 0;
-		iparm[12 - 1] = 0;
-		iparm[28 - 1] = 0;
-		iparm[31 - 1] = 0;
-		iparm[36 - 1] = 0;
-		iparm[37 - 1] = 0;
-		iparm[56 - 1] = 0;
-		iparm[60 - 1] = 0;
-	}
-
-
 	// Debugging and recheck procedures.
 #ifdef DEBUG
 	// Check matrix for errors.
@@ -170,6 +157,22 @@ void pardiso_solve_low_rank(
 	// Complete phases if not using low-rank.
 	else
 	{
+		// Modify parameters according to Low-Rank update.
+		iparm[24 - 1] = 10;
+		// No permutation.
+		iparm[5 - 1] = 0;
+		// No CGS.
+		iparm[4 - 1] = 0;
+		// Additional values.
+		iparm[ 6 - 1] = 0;
+		iparm[12 - 1] = 0;
+		iparm[28 - 1] = 0;
+		iparm[31 - 1] = 0;
+		iparm[36 - 1] = 0;
+		iparm[37 - 1] = 0;
+		iparm[56 - 1] = 0;
+		// Ensure we are using IC.
+		iparm[60 - 1] = 0;
 
 		// Reordering and symbolic factorization.
 		phase = 11;
@@ -219,6 +222,9 @@ void pardiso_solve_low_rank(
 			printf("ERROR during solution: %lld,\n", error);
 			exit(3);
 		}
+
+		// Turn Low-Rank for future updates.
+		iparm[39 - 1] = 1;
 	}
 
 	// Return.
@@ -238,6 +244,7 @@ void pardiso_repeated_solve(
 	iparm[27 - 1] = 1;
 #endif
 
+	/*
 	// Numerical factorization.
 	phase = 22;
 	pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
@@ -253,6 +260,7 @@ void pardiso_repeated_solve(
 #ifdef VERBOSE
 	printf("PARDISO: Factorization completed.\n");
 #endif
+	*/
 
 	// Back substitution and iterative refinement.
 	phase = 33;
@@ -265,7 +273,6 @@ void pardiso_repeated_solve(
 		printf("ERROR during solution: %lld,\n", error);
 		exit(3);
 	}
-
 
 	// Return.
 	return;
