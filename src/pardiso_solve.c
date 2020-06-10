@@ -2,47 +2,10 @@
 #include "pardiso_param.h"
 #include "pardiso.h"
 
-// Define for matrix, vector checks.
-#undef DEBUG
-
-void pardiso_simple_solve(
-		double *u,			// Solution array.
-		csr_matrix *A, 			// Matrix system to solve: Au = f.
-		double *f			// RHS array.
-		)
+void pardiso_simple_solve(	double *u	,	// Solution array.
+				csr_matrix *A	, 	// Matrix system to solve: Au = f.
+				double *f	)	// RHS array.
 {
-	// Debugging and recheck procedures.
-#ifdef DEBUG
-	// Check matrix for errors.
-	printf("PARDISO: Will check matrix for errors...\n");
-	iparm[27 - 1] = 1;
-
-	sparse_struct handle;
-
-	handle.n = n;
-	handle.csr_ia = A->ia;
-	handle.csr_ja = A->ja;
-	handle.indexing = MKL_ONE_BASED;
-	handle.matrix_format = MKL_CSR;
-	handle.message_level = MKL_PRINT;
-	handle.print_style = MKL_C_STYLE;
-
-	sparse_matrix_checker_init(&handle);
-
-	int mcheck_err;
-	printf("Running MKL Matrix Check...\n");
-	mcheck_err = sparse_matrix_checker(&handle);
-	printf("MKL Matrix Check %d.\n", mcheck_err);
-	if (mcheck_err == MKL_SPARSE_CHECKER_SUCCESS)
-	{
-		printf("MKL Matrix Check Successfull.\n");
-	}
-	else
-	{
-		printf("MKL Matrix Critical Error!\n");
-	}
-#endif
-
 	// Reordering and symbolic factorization.
 	if (!(A->analysis_phase))
 	{
@@ -57,11 +20,19 @@ void pardiso_simple_solve(
 			exit(1);
 		}
 
-#ifdef VERBOSE
-	printf("PARDISO: Reordering completed.\n");
-	printf("PARDISO: Number of nonzeros in factors = %lld.\n", iparm[18 - 1]);
-	printf("PARDISO: Number of factorization MFLOPS = %lld.\n", iparm[19 - 1]);
-#endif
+		printf("PARDISO MEMORY DIAGNOSTICS\n");
+		printf("iparm[14] : % 9lld kB : Peak memory on symbolic factorization.\n", iparm[14]);
+		printf("iparm[15] : % 9lld kB : Permament memory on symbolic factorization.\n", iparm[15]);
+		printf("iparm[16] : % 9lld kB : Peak memory on numerical factorization and solution.\n", iparm[16]);
+		printf("iparm[62] : % 9lld kB : Minimum OOC memory for numerical factorization and solution.\n", iparm[62]);
+		printf("Total peak memory consumption for IC  : %09lld kB : MAX(iparm[14], iparm[15] + iparm[16]).\n", MAX(iparm[14], iparm[15] + iparm[16]));
+		printf("Total peak memory consumption for OOC : %09lld kB : MAX(iparm[14], iparm[15] + iparm[62]).\n", MAX(iparm[14], iparm[15] + iparm[62]));
+		printf("\n");
+
+		printf("PARDISO FACTOR DIAGNOSTICS\n");
+		printf("iparm[17] : % 9lld : Number of nonzeros in factors.\n", iparm[18 - 1]);
+		printf("iparm[18] : % 9lld : Number of factorization MFLOPS.\n", iparm[19 - 1]);
+		printf("\n");
 
 		// Analysis phase has been completed.
 		A->analysis_phase = 1;
@@ -99,63 +70,17 @@ void pardiso_simple_solve(
 		exit(3);
 	}
 
-
 	// Return.
 	return;
 }
 
-void pardiso_solve_low_rank(
-		double *u,			// Solution array.
-		csr_matrix *A, 			// Matrix system to solve: Au = f.
-		double *f			// RHS array.
-		)
+void pardiso_solve_low_rank(	double *u	,	// Solution array.
+				csr_matrix *A	, 	// Matrix system to solve: Au = f.
+				double *f	)	// RHS array.
 {
-	// Debugging and recheck procedures.
-#ifdef DEBUG
-	// Check matrix for errors.
-	printf("PARDISO: Will check matrix for errors...\n");
-	iparm[27 - 1] = 1;
-#endif
-
 	// If using low-rank, calls are different.
 	// Notice in particular that diff is used instead of perm array.
-	if (A->analysis_phase)
-	{
-#ifdef VERBOSE
-		printf("PARDISO: Using Low Rank update to skip analysis phase.\n");
-		printf("PARDISO: ndiff = %lld.\n", diff[0]);
-#endif
-		// Numerical factorization.
-		phase = 22;
-		pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
-			&n, A->a, A->ia, A->ja, diff, &nrhs,
-			iparm, &msglvl, &ddum, &ddum, &error);
-
-		if (error != 0)
-		{
-			printf("ERROR during numerical factorization: %lld.\n", error);
-			exit(2);
-		}
-
-#ifdef VERBOSE
-		printf("PARDISO: Factorization completed.\n");
-#endif
-
-		// Back substitution and iterative refinement.
-		phase = 33;
-		pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
-			&n, A->a, A->ia, A->ja, diff, &nrhs,
-			iparm, &msglvl, f, u, &error);
-
-		if (error != 0)
-		{
-			printf("ERROR during solution: %lld,\n", error);
-			exit(3);
-		}
-
-	}
-	// Complete phases if not using low-rank.
-	else
+	if (!(A->analysis_phase))
 	{
 		// Modify parameters according to Low-Rank update.
 		iparm[24 - 1] = 10;
@@ -186,64 +111,63 @@ void pardiso_solve_low_rank(
 			exit(1);
 		}
 
-#ifdef VERBOSE
-		printf("PARDISO: Reordering completed.\n");
-		printf("PARDISO: Number of nonzeros in factors = %lld.\n", iparm[18 - 1]);
-		printf("PARDISO: Number of factorization MFLOPS = %lld.\n", iparm[19 - 1]);
-#endif
+		printf("PARDISO MEMORY DIAGNOSTICS\n");
+		printf("iparm[14] : % 9lld kB : Peak memory on symbolic factorization.\n", iparm[14]);
+		printf("iparm[15] : % 9lld kB : Permament memory on symbolic factorization.\n", iparm[15]);
+		printf("iparm[16] : % 9lld kB : Peak memory on numerical factorization and solution.\n", iparm[16]);
+		printf("iparm[62] : % 9lld kB : Minimum OOC memory for numerical factorization and solution.\n", iparm[62]);
+		printf("Total peak memory consumption for IC  : %09lld kB : MAX(iparm[14], iparm[15] + iparm[16]).\n", MAX(iparm[14], iparm[15] + iparm[16]));
+		printf("Total peak memory consumption for OOC : %09lld kB : MAX(iparm[14], iparm[15] + iparm[62]).\n", MAX(iparm[14], iparm[15] + iparm[62]));
+		printf("\n");
+
+		printf("PARDISO FACTOR DIAGNOSTICS\n");
+		printf("iparm[17] : % 9lld : Number of nonzeros in factors.\n", iparm[18 - 1]);
+		printf("iparm[18] : % 9lld : Number of factorization MFLOPS.\n", iparm[19 - 1]);
+		printf("\n");
 
 		// Now that we have done the analysis phase, set the matrix handle.
 		A->analysis_phase = 1;
+	}
 
-		// Numerical factorization.
-		phase = 22;
-		pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
-			&n, A->a, A->ia, A->ja, perm, &nrhs,
-			iparm, &msglvl, &ddum, &ddum, &error);
+	// Numerical factorization.
+	phase = 22;
+	pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
+		&n, A->a, A->ia, A->ja, diff, &nrhs,
+		iparm, &msglvl, &ddum, &ddum, &error);
 
-		if (error != 0)
-		{
-			printf("ERROR during numerical factorization: %lld.\n", error);
-			exit(2);
-		}
+	if (error != 0)
+	{
+		printf("ERROR during numerical factorization: %lld.\n", error);
+		exit(2);
+	}
 
 #ifdef VERBOSE
-		printf("PARDISO: Factorization completed.\n");
+	printf("PARDISO: Factorization completed.\n");
 #endif
 
-		// Back substitution and iterative refinement.
-		phase = 33;
-		pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
-			&n, A->a, A->ia, A->ja, perm, &nrhs,
-			iparm, &msglvl, f, u, &error);
+	// Back substitution and iterative refinement.
+	phase = 33;
+	pardiso_64(pt, &maxfct, &mnum, &mtype, &phase,
+		&n, A->a, A->ia, A->ja, diff, &nrhs,
+		iparm, &msglvl, f, u, &error);
 
-		if (error != 0)
-		{
-			printf("ERROR during solution: %lld,\n", error);
-			exit(3);
-		}
-
-		// Turn Low-Rank for future updates.
-		iparm[39 - 1] = 1;
+	if (error != 0)
+	{
+		printf("ERROR during solution: %lld,\n", error);
+		exit(3);
 	}
+
+	// Turn Low-Rank for future updates.
+	iparm[39 - 1] = 1;
 
 	// Return.
 	return;
 }
 
-void pardiso_repeated_solve(
-		double *u,			// Solution array.
-		csr_matrix *A, 		// Matrix system to solve: Au = f.
-		double *f			// RHS array.
-		)
+void pardiso_repeated_solve(	double *u	,	// Solution array.
+				csr_matrix *A	, 	// Matrix system to solve: Au = f.
+				double *f	)	// RHS array.
 {
-	// Debugging and recheck procedures.
-#ifdef DEBUG
-	// Check matrix for errors.
-	printf("PARDISO: Will check matrix for errors...\n");
-	iparm[27 - 1] = 1;
-#endif
-
 	/*
 	// Numerical factorization.
 	phase = 22;
