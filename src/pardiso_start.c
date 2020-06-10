@@ -41,7 +41,7 @@ void pardiso_start(const MKL_INT matrix_dim)
 	iparm[5 - 1] = 0;	// No user fill-in reducing permutation.
 	iparm[6 - 1] = 0;	// Do not write solution into RHS.
 	iparm[7 - 1] = 0;	// Not in use.
-	iparm[8 - 1] = 5;	// Max numbers of iterative refinement steps.
+	iparm[8 - 1] = 0;	// Max numbers of iterative refinement steps.
 	iparm[9 - 1] = 0;	// Not in use.
 	iparm[10 - 1] = 13;	// Perturb the pivot elements with 1E-13.
 	iparm[11 - 1] = 1;	// Use nonsymmetric permutation and scaling MPS.
@@ -54,9 +54,9 @@ void pardiso_start(const MKL_INT matrix_dim)
 	iparm[18 - 1] = 0;	// No Output: Number of nonzeros in the factor LU.
 	iparm[19 - 1] = 0;	// No Output: Mflops for LU factorization.
 	iparm[20 - 1] = 0;      // Output: Numbers of CG Iterations.
-	iparm[24 - 1] = 10;	// Parallel Numerical Factorization.
-	iparm[25 - 1] = 1;	// Parallel Forward/Backward Solve.
-	//iparm[60 - 1] = 2;	// OOC.
+	iparm[24 - 1] = 1;	// Parallel Numerical Factorization.
+	iparm[25 - 1] = 0;	// Parallel Forward/Backward Solve.
+	iparm[60 - 1] = 1;	// OOC.
 	maxfct = 1;		// Maximum number of numerical factorizations.
 	mnum = 1;		// Which factorization to use.
 	msglvl = MESSAGE_LEVEL;	// Print statistical information in file.
