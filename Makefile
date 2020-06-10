@@ -30,10 +30,11 @@ help:
 	@echo "Usage: make Target [Options...]"
 	@echo "" 
 	@echo "   Target:"
-	@echo "      v_omega	- Compile for variable omega."
-	@echo "      f_omega	- Compile for fixed omega."
+	@echo "      all        - Compile components."
+#	@echo "      v_omega	- Compile for variable omega."
+#	@echo "      f_omega	- Compile for fixed omega."
 	@echo "      clean	- Remove binaries and executable."
-	@echo "      check_env	- Check if environment variables are set."
+#	@echo "      check_env	- Check if environment variables are set."
 	@echo "      help	- Print this help."
 	@echo "" 
 	@echo "   Options:"
@@ -41,8 +42,8 @@ help:
 	@echo "         Specifies whether to use GNU's gcc or Intel's icc C compiler."
 	@echo "         Default = gnu."
 	@echo "      debug={true|false}"
-	@echo "         Specifies whether to compile using gdb's symbols. Otherwise optimizes to level O3.
-	@echo "         Default = false.
+	@echo "         Specifies whether to compile using gdb's symbols. Otherwise optimizes to level O3."
+	@echo "         Default = false."
 	@echo ""
 
 # --------------------------------------------------------- 
