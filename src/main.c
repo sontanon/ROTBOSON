@@ -167,18 +167,68 @@ int main(int argc, char *argv[])
 
 
 	// Allocate pointer to double pointers.
-	double **u      = (double **)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double *));
-	double **f      = (double **)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double *));
-	double **du     = (double **)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double *));
-	double **du_bar = (double **)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double *));
+	// Then allocate memory.
+	double **u;      
+	double **f;
+	double **du;
+	double **du_bar;
 
-	// Allocate memory.
-	for (i = 0; i < maxNewtonIter + 1; i++)
+	if (localSolver)
 	{
-		u[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		f[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		du[i]     = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		du_bar[i] = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+		if (solverType == 1)
+		{
+			// du and du_bar needs all levels of memory.
+			u      = (double **)SAFE_MALLOC(2 * sizeof(double *));
+			f      = (double **)SAFE_MALLOC(2 * sizeof(double *));
+			du     = (double **)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double *));
+			du_bar = (double **)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double *));
+
+			for (i = 0; i < 2; i++)
+			{
+				u[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+				f[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+			}
+			for (i = 0; i < maxNewtonIter + 1; i++)
+			{
+				du[i]     = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+				du_bar[i] = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+			}
+		}
+		else if (solverType == 2)
+		{
+			// f needs all levels of memory.
+			u      = (double **)SAFE_MALLOC(2 * sizeof(double *));
+			f      = (double **)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double *));
+			du     = (double **)SAFE_MALLOC(2 * sizeof(double *));
+			du_bar = (double **)SAFE_MALLOC(2 * sizeof(double *));
+
+			for (i = 0; i < 2; i++)
+			{
+				u[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+				du[i]     = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+				du_bar[i] = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+			}
+			for (i = 0; i < maxNewtonIter + 1; i++)
+			{
+				f[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+			}
+		}
+	}
+	else 
+	{
+		// Only two levels necessary for all types.
+		u      = (double **)SAFE_MALLOC(2 * sizeof(double *));
+		f      = (double **)SAFE_MALLOC(2 * sizeof(double *));
+		du     = (double **)SAFE_MALLOC(2 * sizeof(double *));
+		du_bar = (double **)SAFE_MALLOC(2 * sizeof(double *));
+
+		for (i = 0; i < 2; i++)
+		{
+			u[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+			f[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+			du[i]     = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+			du_bar[i] = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+		}
 	}
 
 	// Also include grids.
@@ -186,9 +236,9 @@ int main(int argc, char *argv[])
 	double *z = (double *)SAFE_MALLOC(dim * sizeof(double));
 
 	// Auxiliary global derivative pointers.
-	Dr_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Dz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Drr_u = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+	Dr_u   = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+	Dz_u   = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+	Drr_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
 	Dzz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
 	Drz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
 
@@ -196,9 +246,9 @@ int main(int argc, char *argv[])
 	double *norm_f		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
 	double *norm_du		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
 	double *norm_du_bar	= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
-	double *lambda	= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
-	double *Theta	= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
-	double *mu	= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
+	double *lambda		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
+	double *Theta		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
+	double *mu		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
 	double *lambda_prime	= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
 	double *mu_prime	= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
 
@@ -262,11 +312,11 @@ int main(int argc, char *argv[])
 	initial_guess(u[0]);
 
 	// Print initial guess.
-	write_single_file_2d(u[0]          , "log_alpha_i.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[0] +     dim, "beta_i.asc",		NrTotal, NzTotal);
-	write_single_file_2d(u[0] + 2 * dim, "log_h_i.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[0] + 3 * dim, "log_a_i.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[0]          , "log_alpha_i.asc"	, NrTotal, NzTotal);
+	write_single_file_2d(u[0] +     dim, "beta_i.asc"	, NrTotal, NzTotal);
+	write_single_file_2d(u[0] + 2 * dim, "log_h_i.asc"	, NrTotal, NzTotal);
+	write_single_file_2d(u[0] + 3 * dim, "log_a_i.asc"	, NrTotal, NzTotal);
+	write_single_file_2d(u[0] + 4 * dim, "psi_i.asc"	, NrTotal, NzTotal);
 	write_single_file_1d(&w0, "w_i.asc", 1);
 
 	// Calculate initial RHS.
@@ -375,37 +425,40 @@ int main(int argc, char *argv[])
 		k = 0;
 	}
 
+	// Reduce k to modulus 2.
+	MKL_INT access_k0 = k % 2;
+	MKL_INT access_k1 = (k - 1) % 2;
+
 	// Get omega.
-	double w = omega_calc(u[k][w_idx], m);
+	double w = omega_calc(u[access_k0][w_idx], m);
 
 	// Print entire history of solutions and updates.
 	// TODO
 
 	// Print final solutions
-	write_single_file_2d(u[k]          , "log_alpha_f.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[k] +     dim, "beta_f.asc",		NrTotal, NzTotal);
-	write_single_file_2d(u[k] + 2 * dim, "log_h_f.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[k] + 3 * dim, "log_a_f.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[k] + 4 * dim, "psi_f.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[access_k0]          , "log_alpha_f.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[access_k0] +     dim, "beta_f.asc",		NrTotal, NzTotal);
+	write_single_file_2d(u[access_k0] + 2 * dim, "log_h_f.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[access_k0] + 3 * dim, "log_a_f.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[access_k0] + 4 * dim, "psi_f.asc", 	NrTotal, NzTotal);
 	write_single_file_1d(&w, "w_f.asc", 1);
 
 	// Print final update.
 	if (k > 0)
 	{
-		write_single_file_2d(du[k - 1]          , "du1_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] +     dim, "du2_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 2 * dim, "du3_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 3 * dim, "du4_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 4 * dim, "du5_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[access_k1]          , "du1_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[access_k1] +     dim, "du2_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[access_k1] + 2 * dim, "du3_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[access_k1] + 3 * dim, "du4_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[access_k1] + 4 * dim, "du5_f.asc", NrTotal, NzTotal);
 	}
 
 	// Print final RHS.
-	write_single_file_2d(f[k]          , "f1_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] +     dim, "f2_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 2 * dim, "f3_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 3 * dim, "f4_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 4 * dim, "f5_f.asc", NrTotal, NzTotal);
-
+	write_single_file_2d(f[access_k0]          , "f1_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[access_k0] +     dim, "f2_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[access_k0] + 2 * dim, "f3_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[access_k0] + 3 * dim, "f4_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[access_k0] + 4 * dim, "f5_f.asc", NrTotal, NzTotal);
 	
 	// Also print Newton parameters.
 	switch (solverType)
@@ -426,11 +479,11 @@ int main(int argc, char *argv[])
 	write_single_file_1d(mu_prime,	"mu_prime.asc",		 k);
 
 	// Print final iteration's RHS's norms.
-	f_norms[0] = norm2_interior(f[k]          );
-	f_norms[1] = norm2_interior(f[k] +     dim);
-	f_norms[2] = norm2_interior(f[k] + 2 * dim);
-	f_norms[3] = norm2_interior(f[k] + 3 * dim);
-	f_norms[4] = norm2_interior(f[k] + 4 * dim);
+	f_norms[0] = norm2_interior(f[access_k0]          );
+	f_norms[1] = norm2_interior(f[access_k0] +     dim);
+	f_norms[2] = norm2_interior(f[access_k0] + 2 * dim);
+	f_norms[3] = norm2_interior(f[access_k0] + 3 * dim);
+	f_norms[4] = norm2_interior(f[access_k0] + 4 * dim);
 	printf("***                                                \n");
 	printf("***        FINAL ITERATION:                        \n");
 	printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
@@ -459,7 +512,7 @@ int main(int argc, char *argv[])
 	double *i_th = NULL;
 	double *i_u = NULL;
 	// Interpolate. Memory will be allocated in this subroutine.
-	cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, 5);
+	cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[access_k0], Dr_u, Dz_u, Drz_u, 5);
 	// Write to file.
 	write_single_file_2d_polar(i_rr           , "sph_rr.asc", 		NrrTotal, NthTotal);
 	write_single_file_2d_polar(i_th           , "sph_th.asc", 		NrrTotal, NthTotal);
@@ -482,12 +535,44 @@ int main(int argc, char *argv[])
 	csr_deallocate(&J);
 
 	// Free main variables with full maxNewtonIter size by looping inside them.
-	for (i = 0; i < maxNewtonIter + 1; i++)
+	if (localSolver)
 	{
-		SAFE_FREE(u[i]);
-		SAFE_FREE(f[i]);
-		SAFE_FREE(du[i]);
-		SAFE_FREE(du_bar[i]);
+		if (solverType == 1)
+		{
+			for (i = 0; i < 2; i++)
+			{
+				SAFE_FREE(u[i]);
+				SAFE_FREE(f[i]);
+			}
+			for (i = 0; i < maxNewtonIter + 1; i++)
+			{
+				SAFE_FREE(du[i]);
+				SAFE_FREE(du_bar[i]);
+			}
+		}
+		else if (solverType == 2)
+		{
+			for (i = 0; i < 2; i++)
+			{
+				SAFE_FREE(u[i]);
+				SAFE_FREE(du[i]);
+				SAFE_FREE(du_bar[i]);
+			}
+			for (i = 0; i < maxNewtonIter + 1; i++)
+			{
+				SAFE_FREE(f[i]);
+			}
+		}
+	}
+	else 
+	{
+		for (i = 0; i < 2; i++)
+		{
+			SAFE_FREE(u[i]);
+			SAFE_FREE(f[i]);
+			SAFE_FREE(du[i]);
+			SAFE_FREE(du_bar[i]);
+		}
 	}
 	// Once all clear, free top pointer.
 	SAFE_FREE(u);
