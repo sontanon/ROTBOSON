@@ -95,13 +95,13 @@ MKL_INT nleq_err(
 		//            J(u^k) du^k = -f(u^k).
 
 		/* Now calculate Jacobian matrix J(u^k) into matrix. */
-		JACOBIAN_CALC(*J, u[k], DEBUG_PRINT);
+		JACOBIAN_CALC(*J, u[k % 2], DEBUG_PRINT);
 
 		/* Solve linear system. */
-		LINEAR_SOLVE_1(du[k], J, f[k]);
+		LINEAR_SOLVE_1(du[k % 2], J, f[k % 2]);
 
 		/* Calculate ||du^k||. */
-		norm_du[k] = NORM(du[k]);
+		norm_du[k] = NORM(du[k % 2]);
 
 		/* Print table header every 50 iterations. */
 		if (k % 50 == 0)
@@ -115,7 +115,7 @@ MKL_INT nleq_err(
 		if (norm_du[k] < epsilon)
 		{
 			/* Update solution and store into u[k + 1] */
-			ARRAY_SUM(u[k + 1], 1.0, u[k], 1.0, du[k]);
+			ARRAY_SUM(u[(k + 1) % 2], 1.0, u[k % 2], 1.0, du[k % 2]);
 
 			/* Print message. */
 	printf(	"***** | %-10lld | %-12.5E |              |              |              | %-11s  |\n", k, norm_du[k], "CONVERGED A");
@@ -140,7 +140,7 @@ MKL_INT nleq_err(
 		if (k > prediction_start)
 		{
 			/* Auxiliary memory block calculation */
-			ARRAY_SUM(aux, 1.0, du_bar[k], -1.0, du[k]);
+			ARRAY_SUM(aux, 1.0, du_bar[k % 2], -1.0, du[k % 2]);
 			norm_du_bar_minus_du = NORM(aux);
 
 			mu[k] = (norm_du[k - 1] * norm_du_bar[k] * lambda[k - 1]) / (norm_du_bar_minus_du * norm_du[k]);
@@ -175,17 +175,17 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 		// 2. Else: compute the trial iterate u^{k + 1} = u^k + lambda_k du^k and evaluate
 		//          f(u^{k + 1}). Solve the linear system ('old' Jacobian, 'new' RHS):
 		//          J(u^k) du_bar^{k + 1} = -f(u^{k + 1}).
-TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
-		RHS_CALC(f[k + 1], u[k + 1]);
-		LINEAR_SOLVE_2(du_bar[k + 1], J, f[k + 1]);
-		norm_du_bar[k + 1] = NORM(du_bar[k + 1]);
+TRIAL_ITERATE:	ARRAY_SUM(u[(k + 1) % 2], 1.0, u[k % 2], lambda[k], du[k % 2]);
+		RHS_CALC(f[(k + 1) % 2], u[(k + 1) % 2]);
+		LINEAR_SOLVE_2(du_bar[(k + 1) % 2], J, f[(k + 1) % 2]);
+		norm_du_bar[k + 1] = NORM(du_bar[(k + 1) % 2]);
 
 		// 3. Compute the monitoring quantities
 		//    Theta_k    = ||du_bar^{k + 1}|| / ||du^k||
 		//    mu_prime_k = (1/2) * ||du^k|| lambda_k^2 / ||du_bar^{k + 1} - (1 - lambda_k) du^k||.
 
 		/* Auxiliary memory block. */
-		ARRAY_SUM(aux, 1.0, du_bar[k + 1], (lambda[k] - 1.0), du[k]);
+		ARRAY_SUM(aux, 1.0, du_bar[(k + 1) % 2], (lambda[k] - 1.0), du[k % 2]);
 		norm_du_bar_minus_one_minus_lambda_du = NORM(aux);
 
 		Theta[k]    = norm_du_bar[k + 1] / norm_du[k];
@@ -254,7 +254,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 			if (norm_du_bar[k + 1] < epsilon)
 			{
 				/* Update solution */
-				ARRAY_SUM(u[k + 1], 1.0, u[k + 1], 1.0, du_bar[k + 1]);
+				ARRAY_SUM(u[(k + 1) % 2], 1.0, u[(k + 1) % 2], 1.0, du_bar[(k + 1) % 2]);
 
 				/* Print message for convergence. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "CONVERGED B");
@@ -282,12 +282,12 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				{
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "ENTER QNERR");
 
-					/* Call QNERR with initial iterates u[k+1], f[k+1]. J(u[k+1]) will be calculated inside QNERR. */
+					/* Call QNERR with initial iterates u[(k+1) % 2], f[(k+1) % 2]. J(u[(k+1) % 2]) will be calculated inside QNERR. */
 					/* Theta will remain the monitoring quantity, whereas mu is the alpha parameter inside QNERR. */
 					/* At this point, we have done k + 1 iterations, so QNERR is called with that number less iterations. */
 					/* qnerr_stop is the returned integer: it will be positive if QNERR succeeded, but negative otherwise. */
-					qnerr_stop = nleq_err_qnerr(&qnerr_code, u + k + 1, f + k + 1, 
-							du + k + 1, du_bar + k + 1,
+					qnerr_stop = nleq_err_qnerr(&qnerr_code, u + (k + 1) % 2, f + (k + 1) % 2, 
+							du + (k + 1) % 2, du_bar + (k + 1) % 2,
 							norm_du + k + 1, norm_du_bar + k + 1, Theta + k + 1, mu + k + 1,
 							J, epsilon, max_newton_iterations - (k + 1), 
 							RHS_CALC, JACOBIAN_CALC, NORM, DOT, LINEAR_SOLVE_1, LINEAR_SOLVE_2);
@@ -318,10 +318,10 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 	 	"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
 
 						/* Prepare to restart NLEQ-ERR. */
-		 				/* In this case, the last update is stored in u[k + 1 - qnerr_stop] since qnerr_stop is negative. */
+		 				/* In this case, the last update is stored in u[(k + 1 - qnerr_stop) % 2] since qnerr_stop is negative. */
 						/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
-						/* lambda damping factor which will be set to 1.0. */
-						lambda[k + (-qnerr_stop) + 1] = 1.0;
+						/* lambda damping factor which will be set to 0.1. */
+						lambda[k + (-qnerr_stop) + 1] = 0.1;
 
 						/* Set k to one place before last update. */
 						/* This k is not where the last solution is stored, but, rather, one place before. */

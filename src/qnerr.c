@@ -58,13 +58,13 @@ MKL_INT nleq_err_qnerr(
 		}
 
 		// New iterate u^{l+1} = u^l + du^l.
-		ARRAY_SUM(u[l + 1], 1.0, u[l], 1.0, du[l]);
+		ARRAY_SUM(u[(l + 1) % 2], 1.0, u[l % 2], 1.0, du[l]);
 
 		// Evaluation f(u^{l+1}).
-		RHS_CALC(f[l + 1], u[l + 1]);
+		RHS_CALC(f[(l + 1) % 2], u[(l + 1) % 2]);
 
 		// Linear system solve J(u^0) du_bar^{l+1} = -f(u^{l+1}).
-		LINEAR_SOLVE_2(du_bar[l + 1], J, f[l + 1]);
+		LINEAR_SOLVE_2(du_bar[l + 1], J, f[(l + 1) % 2]);
 
 		// 2. If l > 0. For i = 1, ... , l:
 		if (l > 0)
@@ -109,7 +109,7 @@ MKL_INT nleq_err_qnerr(
 		if (norm_du[l + 1] < epsilon)
 		{
 			/* Update solution */
-			ARRAY_SUM(u[l + 1], 1.0, u[l + 1], 1.0, du[l + 1]);
+			ARRAY_SUM(u[(l + 1) % 2], 1.0, u[(l + 1) % 2], 1.0, du[l + 1]);
 			
 			/* Print message */
 	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l + 1], alpha_bar, Theta[l], alpha[l + 1], "CONVERGED C");
