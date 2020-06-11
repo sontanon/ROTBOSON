@@ -3,10 +3,9 @@ obj/*.o
 #.vscode/settings.json
 VSC_Workspace
 ROTBOSON
-ROTBOSON_WS
-src/.vscode/c_cpp_properties.json
-src/.vscode/settings.json
 out*/*
-parfile.par
+*.json
+*.cfg
+*.par
 *.ipynb
 .ipynb_checkpoints/*
