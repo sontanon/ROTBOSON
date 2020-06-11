@@ -77,10 +77,10 @@ MKL_INT nleq_res_qnres(
 		}
 
 		// New iterate u^{l+1} = u^l + du^l.
-		ARRAY_SUM(u[l + 1], 1.0, u[l], 1.0, du[l]);
+		ARRAY_SUM(u[(l + 1) % 2], 1.0, u[l % 2], 1.0, du[l % 2]);
 
 		// Evaluation f(u^{l+1}).
-		RHS_CALC(f[l + 1], u[l + 1]);
+		RHS_CALC(f[l + 1], u[(l + 1) % 2]);
 
 		// RHS norm.
 		norm_f[l + 1] = NORM(f[l + 1]);
@@ -170,7 +170,7 @@ MKL_INT nleq_res_qnres(
 		// Linear solve.
 		// Notice that we are actually solving J(u^0) du^{l+1} = -v.
 		// The minus signs work out in the end and there is no need to change v.
-		LINEAR_SOLVE_2(du[l + 1], J, v);
+		LINEAR_SOLVE_2(du[(l + 1) % 2], J, v);
 
 		// Print message before continuing.
 	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");

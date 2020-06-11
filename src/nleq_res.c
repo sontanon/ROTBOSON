@@ -127,10 +127,10 @@ MKL_INT nleq_res(
 		// Else: Evaluate Jacobian matrix J(u^k). Solve linear system J(u^k) du^k = -f(u^k).
 
 		/* Now calculate Jacobian matrix J(u^k) into matrix. */
-		JACOBIAN_CALC(*J, u[k], 0);
+		JACOBIAN_CALC(*J, u[k % 2], 0);
 
 		/* Solve linear system. */
-		LINEAR_SOLVE_1(du[k], J, f[k]);
+		LINEAR_SOLVE_1(du[k % 2], J, f[k % 2]);
 
 		// For k > 0: compute a prediction value for the damping factor.
 		if (k > prediction_start)
@@ -166,8 +166,8 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 
 		// 2. Else: compute the trial iterate u^{k+1} = u^k + lambda_k du^k and evaluate
 		//          f(u^{k+1}) and its norm.
-TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
-		RHS_CALC(f[k + 1], u[k + 1]);
+TRIAL_ITERATE:	ARRAY_SUM(u[(k + 1) % 2], 1.0, u[k % 2], lambda[k % 2], du[k % 2]);
+		RHS_CALC(f[(k + 1) % 2], u[(k + 1) % 2]);
 		norm_f[k + 1] = NORM(f[k + 1]);
 
 		// 3. Compute the monitoring quantities.
@@ -175,7 +175,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		//    mu_prime_k = (1/2) * ||f(u^k)|| * lambda_k^2 / ||f(u^{k+1}) - (1 - lambda_k)f(u^k)||.
 
 		/* Auxiliary memory block. */
-		ARRAY_SUM(aux, 1.0, f[k + 1], (lambda[k] - 1.0), f[k]);
+		ARRAY_SUM(aux, 1.0, f[(k + 1) % 2], (lambda[k] - 1.0), f[k % 2]);
 		norm_f_minus_one_minus_lambda_f = NORM(aux);
 
 		Theta[k]    = norm_f[k + 1] / norm_f[k];
@@ -247,8 +247,8 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				// Theta will remain the monitoring quantity, whereas mu is the gamma parameter inside QNERR.
 				// At this point we have done k + 1 iterations, so QNRES is called with that number less iterations.
 				// qnres_stop is the returned integer: it will be positive if QNRES succeeded, but negative otherwise.
-				qnres_stop = nleq_res_qnres(&qnres_code, u + k + 1, f + k + 1,
-					du + k + 1, norm_f + k + 1, Theta + k + 1, mu + k + 1,
+				qnres_stop = nleq_res_qnres(&qnres_code, u + (k + 1) % 2, f + (k + 1) % 2,
+					du + (k + 1) % 2, norm_f + k + 1, Theta + k + 1, mu + k + 1,
 					J, epsilon, max_newton_iterations - (k + 1),
 					RHS_CALC, JACOBIAN_CALC, NORM, DOT, LINEAR_SOLVE_1, LINEAR_SOLVE_2);
 
@@ -274,14 +274,14 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				/* Also include the case where the matrix was ill-conditioned. */
 				else if (qnres_code == ERROR_CODE_QNRES_THETA_INCREASE_EXIT || qnres_code == ERROR_CODE_QNRES_ILL_CONDITIONED)
 				{
-	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]    | Theta[k]     | lambda'[k]   | STATUS      |\n"
-	 	"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
+	printf(	"***** | NLEQ ITER  | ||f[k]||     | lambda[k]   | Theta[k]     | lambda'[k]  | STATUS      |\n"
+	 	"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
 
 					/* Prepare to restart NLEQ-RES. */
 					/* In this case, the last update is stored in u[k + 1 - qnres_stop] since qnres_stop is negative. */
 					/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
-					/* lambda damping factor which will be set to 1.0. */
-					lambda[k + (-qnres_stop) + 1] = 1.0;
+					/* lambda damping factor which will be set to 0.1. */
+					lambda[k + (-qnres_stop) + 1] = 0.1;
 
 					/* Set k to one place before last update. */
 					/* This k is not where the last solution is stored, but, rather, one place before. */
