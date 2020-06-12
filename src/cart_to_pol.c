@@ -1,5 +1,4 @@
 #include "tools.h"
-#include "param.h"
 #include "bicubic_interpolation.h"
 
 // Interpolate grid variables from cartesian to polar.
@@ -8,7 +7,7 @@
 //
 // Since we will later integrate using Simpson's rule, we want
 // a grid that is uneven in both extensions.
-void cart_to_pol(
+void ex_cart_to_pol(
 	double **i_u,
 	double **i_rr,
 	double **i_th,
@@ -18,9 +17,24 @@ void cart_to_pol(
 	const double *Dr_u,
 	const double *Dz_u,
 	const double *Drz_u,
-	const MKL_INT g_num
+	const MKL_INT g_num,
+	const double dr,
+	const double dz,
+	const MKL_INT NrInterior, 
+	const MKL_INT NzInterior,
+	const MKL_INT ghost,
+	MKL_INT *p_NrrTotal,
+	MKL_INT *p_NthTotal,
+	MKL_INT *p_p_dim,
+	double *p_drr,
+	double *p_dth,
+	double *p_rr_inf
 )
 {
+	MKL_INT NrTotal = NrInterior + 2 * ghost;
+	MKL_INT NzTotal = NzInterior + 2 * ghost;
+	MKL_INT dim = NrTotal * NzTotal;
+
 	// Auxiliary variables.
 	// Loop counters.
 	MKL_INT i, j, k;
@@ -31,24 +45,28 @@ void cart_to_pol(
 	// Interpolation anchors.
 	MKL_INT i0, j0;
 
+	// Spherical parameters.
+	MKL_INT NrrTotal, NthTotal, p_dim;
+	double drr, dth, rr_inf;
+
 	// Establish polar grid sizes and dimensions.
 	// Maximum rr extension.
-	rr_inf = MAX(dr * (NrInterior + ghost), dz * (NzInterior + ghost));
+	*p_rr_inf = rr_inf = MAX(dr * (NrInterior + ghost), dz * (NzInterior + ghost));
 	// Radial step size.
-	drr = MIN(dr, dz);
+	*p_drr = drr = MIN(dr, dz);
 	// Number of rr points.
 	NrrTotal = (MKL_INT)floor(rr_inf / drr);
 	// Assert that NrrTotal is uneven.
-	NrrTotal = (NrrTotal % 2) ? NrrTotal : NrrTotal - 1;
+	*p_NrrTotal = NrrTotal = (NrrTotal % 2) ? NrrTotal : NrrTotal - 1;
 	// Number of th points.
 	NthTotal = MAX(NrInterior, NzInterior);
 	// Assert that NthTotal is uneven.
-	NthTotal = (NthTotal % 2) ? NthTotal : NthTotal - 1;
+	*p_NthTotal = NthTotal = (NthTotal % 2) ? NthTotal : NthTotal - 1;
 	// Angular step size.
-	dth = 0.5 * M_PI / ((double)NthTotal - 1);
+	*p_dth = dth = 0.5 * M_PI / ((double)NthTotal - 1);
 
 	// Polar grid dimension.
-	p_dim = NrrTotal * NthTotal;
+	*p_p_dim = p_dim = NrrTotal * NthTotal;
 
 	// Allocate memory for polar grids. Notice that we add extra point accounting for the origin.
 	*i_rr = (double *)SAFE_MALLOC(p_dim * sizeof(double));

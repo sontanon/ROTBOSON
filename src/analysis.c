@@ -1,11 +1,11 @@
 #include "tools.h"
-#include "param.h"
 #include "derivatives.h"
 #include "simpson.h"
 
 #define EVEN 1
 
-void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const double w)
+void ex_analysis(double *sph_u, const double *sph_rr, const double *sph_th, const double w,
+	MKL_INT NrrTotal, 
 {
 	// Loop counter.
 	MKL_INT k = 0;
