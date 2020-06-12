@@ -2,6 +2,7 @@
 #include "derivatives.h"
 #include "cart_to_pol.h"
 #include "bicubic_interpolation.h"
+#include "analysis.h"
 
 // We are reading from an initial file, u.asc with grid steps dr_0, dz_0, and dimensions
 // NrInterior_0, NzInterior_0, and ghost_0.
@@ -20,7 +21,10 @@ void initial_interpolator(double *u_1,
 	const MKL_INT ghost_1,
 	const MKL_INT order_1,
 	const double dr_1, 
-	const double dz_1)
+	const double dz_1,
+	const double w,
+	const double m,
+	const MKL_INT l)
 {
 	// Grid 0.
 	MKL_INT NrTotal_0 = NrInterior_0 + 2 * ghost_0;
@@ -111,9 +115,13 @@ void initial_interpolator(double *u_1,
 	double *i_rr_0 = NULL;
 	double *i_th_0 = NULL;
 	double *i_u_0  = NULL;
+	double M_0, J_0, GRV2_0, GRV3_0;
 
 	// Interpolate to polar coordinates.
 	ex_cart_to_pol(&i_u_0, &i_rr_0, &i_th_0, r_0, z_0, u_0, Dr_u_0, Dz_u_0, Drz_u_0, 5, dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0, &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
+
+	// Extract global quantities.
+	ex_analysis(0, &M_0, &J_0, &GRV2_0, &GRV3_0, i_u_0, i_rr_0, i_th_0, w, m, l, ghost_0, order_0, NrrTotal_0, NthTotal_0, p_dim_0, drr_0, dth_0, rr_inf_0);
 
 	// Free memory.
 	SAFE_FREE(Dr_u_0);

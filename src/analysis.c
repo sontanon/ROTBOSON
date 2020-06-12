@@ -4,8 +4,11 @@
 
 #define EVEN 1
 
-void ex_analysis(double *sph_u, const double *sph_rr, const double *sph_th, const double w,
-	MKL_INT NrrTotal, 
+void ex_analysis(
+	const MKL_INT print, double *M, double *J, double *GRV2, double *GRV3,
+	double *sph_u, const double *sph_rr, const double *sph_th, 
+	const double w, const double m, const MKL_INT l,
+	const MKL_INT ghost, const MKL_INT order, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT p_dim, const double drr, const double dth, const double rr_inf)
 {
 	// Loop counter.
 	MKL_INT k = 0;
@@ -155,7 +158,7 @@ void ex_analysis(double *sph_u, const double *sph_rr, const double *sph_th, cons
 	double aux_phi2;
 	double aux_phi2_o_r2;
 	// GRV2.
-	double GRV2 = 0.0;
+	*GRV2 = 0.0;
 	// First compute auxiliary integrands.
 	// At the origin, the integrand is simply zero.
 	for (k = 0; k < NthTotal; ++k)
@@ -204,10 +207,10 @@ void ex_analysis(double *sph_u, const double *sph_rr, const double *sph_th, cons
 		I3[k] = 2.0 * simps(&i3[P_IDX(k, 0)], dth, NthTotal);
 	}
 	// Integrate radius.
-	GRV2 = simps(I3, drr, NrrTotal);
+	*GRV2 = simps(I3, drr, NrrTotal);
 
 	// GRV3
-	double GRV3 = 0.0;
+	*GRV3 = 0.0;
 	// At the origin, the integrand is simply zero.
 	for (k = 0; k < NthTotal; ++k)
 	{
@@ -258,49 +261,56 @@ void ex_analysis(double *sph_u, const double *sph_rr, const double *sph_th, cons
 		I3[k] = 4.0 * M_PI * simps(&i3[P_IDX(k, 0)], dth, NthTotal);
 	}
 	// Integrate radius.
-	GRV3 = simps(I3, drr, NrrTotal);
+	*GRV3 = simps(I3, drr, NrrTotal);
 
-	// Write files.
-	write_single_file_1d(M_Schwarz, "M_Schwarz.asc", NrrTotal);
-	write_single_file_1d(M_Komar1, "M_Komar1.asc", NrrTotal);
-	write_single_file_1d(M_Komar2, "M_Komar2.asc", NrrTotal);
-	write_single_file_1d(M_ADM, "M_ADM.asc", NrrTotal);
-	write_single_file_1d(J_Komar1, "J_Komar1.asc", NrrTotal);
-	write_single_file_1d(J_Komar2, "J_Komar2.asc", NrrTotal);
-	write_single_file_1d(&GRV2, "GRV2.asc", 1);
-	write_single_file_1d(&GRV3, "GRV3.asc", 1);
+	if (print)
+	{
+		// Write files.
+		write_single_file_1d(M_Schwarz, "M_Schwarz.asc", NrrTotal);
+		write_single_file_1d(M_Komar1, "M_Komar1.asc", NrrTotal);
+		write_single_file_1d(M_Komar2, "M_Komar2.asc", NrrTotal);
+		write_single_file_1d(M_ADM, "M_ADM.asc", NrrTotal);
+		write_single_file_1d(J_Komar1, "J_Komar1.asc", NrrTotal);
+		write_single_file_1d(J_Komar2, "J_Komar2.asc", NrrTotal);
+		write_single_file_1d(&GRV2, "GRV2.asc", 1);
+		write_single_file_1d(&GRV3, "GRV3.asc", 1);
 
-	// Print information to screen.
-	printf("*** \n");
-	printf("*** GLOBAL QUANTITIES ANALYSIS\n");
-	printf("*** \n");
-	printf("*** Final radius is rr_inf = %6.5e.\n", rr_inf);
-	printf("*** \n");
-	printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");
-	printf("*** | Komar M Geometry Surface | Komar M Matter Volume |      ADM M      | Schwarzschild M |\n");
-	printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");	
-	//printf("*** |      1234567890123       |     1234567890123     |  1234567890123  |  1234567890123  |      1234567890123       |     1234567890123      |\n");
-	printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e   |   %-6.5e   |\n", M_Komar1[NrrTotal - 1], M_Komar2[NrrTotal - 1], M_ADM[NrrTotal - 1], M_Schwarz[NrrTotal - 1]);
-	printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");
-	printf("*** \n");
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** | Komar J Geometry Surface | Komar J Matter Surface |\n");
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** |       %-6.5e        |      %-6.5e       |\n", J_Komar1[NrrTotal - 1], J_Komar2[NrrTotal - 1]);
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** \n");
-	printf("***  -------------------------- ----------------------- ----------------- \n");
-	printf("*** | Baryon Number            | Baryon Mass           | Binding Energy  |\n");
-	printf("***  -------------------------- ----------------------- ----------------- \n");	
-	printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e  |\n", baryon_number, baryon_mass, binding_energy);
-	printf("***  -------------------------- ----------------------- ----------------- \n");
-	printf("*** \n");
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** | GRV2 Virital Identity    | GRV3 Virial Identity   |\n");
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** |       %-6.5e        |      %-6.5e       |\n", GRV2, GRV3);
-	printf("***  -------------------------- ------------------------ \n");
-	printf("**** \n");
+		// Print information to screen.
+		printf("*** \n");
+		printf("*** GLOBAL QUANTITIES ANALYSIS\n");
+		printf("*** \n");
+		printf("*** Final radius is rr_inf = %6.5e.\n", rr_inf);
+		printf("*** \n");
+		printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");
+		printf("*** | Komar M Geometry Surface | Komar M Matter Volume |      ADM M      | Schwarzschild M |\n");
+		printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");	
+		//printf("*** |      1234567890123       |     1234567890123     |  1234567890123  |  1234567890123  |      1234567890123       |     1234567890123      |\n");
+		printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e   |   %-6.5e   |\n", M_Komar1[NrrTotal - 1], M_Komar2[NrrTotal - 1], M_ADM[NrrTotal - 1], M_Schwarz[NrrTotal - 1]);
+		printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");
+		printf("*** \n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | Komar J Geometry Surface | Komar J Matter Surface |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %-6.5e        |      %-6.5e       |\n", J_Komar1[NrrTotal - 1], J_Komar2[NrrTotal - 1]);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** \n");
+		printf("***  -------------------------- ----------------------- ----------------- \n");
+		printf("*** | Baryon Number            | Baryon Mass           | Binding Energy  |\n");
+		printf("***  -------------------------- ----------------------- ----------------- \n");	
+		printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e  |\n", baryon_number, baryon_mass, binding_energy);
+		printf("***  -------------------------- ----------------------- ----------------- \n");
+		printf("*** \n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | GRV2 Virital Identity    | GRV3 Virial Identity   |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %-6.5e        |      %-6.5e       |\n", *GRV2, *GRV3);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("**** \n");
+	}
+
+	// Set pointer values.
+	*M = 0.5 * (M_Komar1[NrrTotal - 1] + M_Komar2[NrrTotal - 1]);
+	*J = 0.5 * (J_Komar1[NrrTotal - 1] + J_Komar2[NrrTotal - 1]);
 
 	// Free memory.
 	SAFE_FREE(sph_Drr_log_alpha);

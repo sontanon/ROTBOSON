@@ -469,6 +469,7 @@ int main(int argc, char *argv[])
 	write_single_file_2d_polar(i_u + 3 * p_dim, "sph_log_a_f.asc", 		NrrTotal, NthTotal);
 	write_single_file_2d_polar(i_u + 4 * p_dim, "sph_psi_f.asc", 		NrrTotal, NthTotal);
 	// Do analysis.
+	double M, J, GRV2, GRV3;
 	analysis(i_u, i_rr, i_th, w);
 
 
