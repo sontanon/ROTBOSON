@@ -272,8 +272,8 @@ void ex_analysis(
 		write_single_file_1d(M_ADM, "M_ADM.asc", NrrTotal);
 		write_single_file_1d(J_Komar1, "J_Komar1.asc", NrrTotal);
 		write_single_file_1d(J_Komar2, "J_Komar2.asc", NrrTotal);
-		write_single_file_1d(&GRV2, "GRV2.asc", 1);
-		write_single_file_1d(&GRV3, "GRV3.asc", 1);
+		write_single_file_1d(GRV2, "GRV2.asc", 1);
+		write_single_file_1d(GRV3, "GRV3.asc", 1);
 
 		// Print information to screen.
 		printf("*** \n");
