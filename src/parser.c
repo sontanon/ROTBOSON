@@ -251,42 +251,163 @@ void parser(const char *fname)
 	}
 
 	// Read initial data parameters.
-	if (readInitialData)
+	switch (readInitialData)
 	{
-		config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i);
-		config_lookup_string(&cfg, "beta_i", &beta_i);
-		config_lookup_string(&cfg, "log_h_i", &log_h_i);
-		config_lookup_string(&cfg, "log_a_i", &log_a_i);
-		config_lookup_string(&cfg, "psi_i", &psi_i);
-		config_lookup_string(&cfg, "w_i", &w_i);
-		
-		// Initial Data extensions.
-		if (readInitialData == 2)
-		{
-			// NrTotalInitial.
-			config_lookup_int64(&cfg, "NrTotalInitial", &NrTotalInitial);
-			// NzTotalInitial.
-			config_lookup_int64(&cfg, "NzTotalInitial", &NzTotalInitial);
-		}
-		else
-		{
-			NrTotalInitial = NrTotal;
-			NzTotalInitial = NzTotal;
-		}
-
-		// psi0.
-		if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
-		{
-			if (MAX_PSI0 < psi0 || psi0 < MIN_PSI0)
+		// Interpolation from different size and/or resolution grid.
+		case 3:
+			// Read filenames.
+			if (config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i) == CONFIG_FALSE)
 			{
-				fprintf(stderr, "PARSER: ERROR! psi0 = %3.5E is not in range [%3.5E, %3.5E]\n", psi0, MIN_PSI0, MAX_PSI0);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_alpha_i\".\n");
 				exit(-1);
 			}
-		}
+			if (config_lookup_string(&cfg, "beta_i", &beta_i) == CONFIG_FALSE)
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"beta_i\".\n");
+				exit(-1);
+			}
+			if (config_lookup_string(&cfg, "log_h_i", &log_h_i) == CONFIG_FALSE)
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_h_i\".\n");
+				exit(-1);
+			}
+			if (config_lookup_string(&cfg, "log_a_i", &log_a_i) == CONFIG_FALSE)
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_a_i\".\n");
+				exit(-1);
+			}
+			if (config_lookup_string(&cfg, "psi_i", &psi_i) == CONFIG_FALSE)
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"psi_i\".\n");
+				exit(-1);
+			}
+
+
+			// Grid parameters.
+			if (config_lookup_int64(&cfg, "NrTotalInitial", &NrTotalInitial) == CONFIG_TRUE)
+			{
+				if (MAX_NRINTERIOR < NrTotalInitial || NrTotalInitial < MIN_NRINTERIOR)
+				{
+					fprintf(stderr, "PARSER: ERROR! NrTotalInitial = %lld is not in range [%lld, %lld]\n", NrTotalInitial, MIN_NRINTERIOR, MAX_NRINTERIOR);
+					fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+					exit(-1);
+				}
+			}
+			else
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for NrTotalInitial.\n");
+				exit(-1);
+			}
+			if (config_lookup_int64(&cfg, "NzTotalInitial", &NzTotalInitial) == CONFIG_TRUE)
+			{
+				if (MAX_NRINTERIOR < NzTotalInitial || NzTotalInitial < MIN_NRINTERIOR)
+				{
+					fprintf(stderr, "PARSER: ERROR! NzTotalInitial = %lld is not in range [%lld, %lld]\n", NzTotalInitial, MIN_NRINTERIOR, MAX_NRINTERIOR);
+					fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+					exit(-1);
+				}
+			}
+			else
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for NzTotalInitial.\n");
+				exit(-1);
+			}
+			if (config_lookup_int64(&cfg, "order_i", &order_i) == CONFIG_TRUE)
+			{
+				if (order_i != 2 && order_i != 4)
+				{
+					fprintf(stderr, "PARSER: ERROR! order_i = %lld is not supported. Only 2 or 4 are supported finite difference orders.\n", order);
+					fprintf(stderr, "        Please input proper value in parameter file.\n");
+					exit(-1);
+				}
+			}
+			else
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for order_i.\n");
+				exit(-1);
+			}
+			if (config_lookup_int64(&cfg, "ghost_i", &ghost_i) == CONFIG_TRUE)
+			{
+				if (ghost_i != 1 && ghost_i != 2)
+				{
+					fprintf(stderr, "PARSER: ERROR! ghost_i = %lld is not supported. Only 1 or 2 are supported.\n", order);
+					fprintf(stderr, "        Please input proper value in parameter file.\n");
+					exit(-1);
+				}
+			}
+			else
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for ghost_i.\n");
+				exit(-1);
+			}			
+			if (config_lookup_float(&cfg, "dr_i", &dr_i) == CONFIG_TRUE)
+			{
+				if (MAX_DR < dr_i || dr_i < MIN_DR)
+				{
+					fprintf(stderr, "PARSER: ERROR! dr_i = %3.5E is not in range [%3.5E, %3.5E]\n", dr_i, MIN_DR, MAX_DR);
+					fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+					exit(-1);
+				}
+			}
+			else
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for dr_i.\n");
+				exit(-1);
+			}
+			if (config_lookup_float(&cfg, "dz_i", &dz_i) == CONFIG_TRUE)
+			{
+				if (MAX_DR < dz_i || dz_i < MIN_DR)
+				{
+					fprintf(stderr, "PARSER: ERROR! dz_i = %3.5E is not in range [%3.5E, %3.5E]\n", dz_i, MIN_DR, MAX_DR);
+					fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+					exit(-1);
+				}
+			}
+			else
+			{
+				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for dz_i.\n");
+				exit(-1);
+			}
+
+			break;
+	
+		// Default case for 1 or 2.
+		default:
+			config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i);
+			config_lookup_string(&cfg, "beta_i", &beta_i);
+			config_lookup_string(&cfg, "log_h_i", &log_h_i);
+			config_lookup_string(&cfg, "log_a_i", &log_a_i);
+			config_lookup_string(&cfg, "psi_i", &psi_i);
+			config_lookup_string(&cfg, "w_i", &w_i);
+			
+			// Initial Data extensions.
+			if (readInitialData == 2)
+			{
+				// NrTotalInitial.
+				config_lookup_int64(&cfg, "NrTotalInitial", &NrTotalInitial);
+				// NzTotalInitial.
+				config_lookup_int64(&cfg, "NzTotalInitial", &NzTotalInitial);
+			}
+			else
+			{
+				NrTotalInitial = NrTotal;
+				NzTotalInitial = NzTotal;
+			}
+
+			// psi0.
+			if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
+			{
+				if (MAX_PSI0 < psi0 || psi0 < MIN_PSI0)
+				{
+					fprintf(stderr, "PARSER: ERROR! psi0 = %3.5E is not in range [%3.5E, %3.5E]\n", psi0, MIN_PSI0, MAX_PSI0);
+					fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+					exit(-1);
+				}
+			}
+			break;
 	}
-	// Otherwise generate initial data analytically.
-	else
+	// Generate via analytic guess.
+	if (!readInitialData)
 	{
 		// psi0.
 		if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)

@@ -2,6 +2,7 @@
 #include "param.h"
 
 #include "omega_calc.h"
+#include "initial_interpolation.h"
 
 #undef BDRY_DEBUG
 
@@ -42,7 +43,23 @@ void initial_guess(double *u)
 
 	if (readInitialData == 3)
 	{
+		// Allocate memory for initial data.
+		double *u_0 = (double *)SAFE_MALLOC((5 * NrTotalInitial * NzTotalInitial + 1) * sizeof(double));
 
+		// Read initial data.
+		read_single_file_2d(u_0 + 0 * NrTotalInitial * NzTotalInitial, log_alpha_i	, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+		read_single_file_2d(u_0 + 1 * NrTotalInitial * NzTotalInitial, beta_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+		read_single_file_2d(u_0 + 2 * NrTotalInitial * NzTotalInitial, log_h_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+		read_single_file_2d(u_0 + 3 * NrTotalInitial * NzTotalInitial, log_a_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+		read_single_file_2d(u_0 + 4 * NrTotalInitial * NzTotalInitial, psi_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+		u_0[5 * NrTotalInitial * NzTotalInitial] = u[w_idx];
+
+		// Interpolate.
+		initial_interpolator(u, u_0, NrTotalInitial - 2 * ghost_i, NzTotalInitial - 2 * ghost_i, ghost_i, order_i, dr_i, dz_i,
+			NrInterior, NzInterior, ghost, order, dr, dz, u[w_idx], m, l);
+
+		// Free initial data.
+		SAFE_FREE(u_0);
 	}
 	else
 	{
