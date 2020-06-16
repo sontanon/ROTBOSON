@@ -5,56 +5,60 @@
 config_t cfg;
 
 /* GRID */
-double dr      	= 0.0625;
-double dz      	= 0.0625;
+double dr      		= 0.0625;
+double dz      		= 0.0625;
 MKL_INT NrInterior 	= 128;
 MKL_INT NzInterior 	= 128;
-MKL_INT NrTotal	= 130;
-MKL_INT NzTotal	= 130;
+MKL_INT NrTotal		= 130;
+MKL_INT NzTotal		= 130;
 MKL_INT dim       	= 16900;
 MKL_INT ghost     	= 1;
-MKL_INT order 	= 2;
+MKL_INT order 		= 2;
 
 /* SCALAR FIELD PARAMETERS */
 MKL_INT l		= 1;	
-double m 	= 1.0;
-double psi0 	= 0.2;
-double sigmaR	= 4.0;
-double sigmaZ	= 4.0;
-double rExt	= 16.0;
-double w0 	= 0.7;
-MKL_INT w_idx = 84500;
-MKL_INT fixedPhi    = 1;
+double m 		= 1.0;
+double psi0 		= 0.2;
+double sigmaR		= 4.0;
+double sigmaZ		= 4.0;
+double rExt		= 16.0;
+double w0 		= 0.7;
+MKL_INT w_idx 		= 84500;
+MKL_INT fixedPhi    	= 1;
 MKL_INT fixedPhiR 	= 1;
 MKL_INT fixedPhiZ 	= 1;
-MKL_INT fixedOmega  = 0;
+MKL_INT fixedOmega  	= 0;
 
 /* INITIAL DATA */
 MKL_INT readInitialData = 0;
 const char *log_alpha_i = NULL;
-const char *beta_i = NULL;
-const char *log_h_i = NULL;
-const char *log_a_i = NULL;
-const char *psi_i = NULL;
-const char *w_i = NULL;
-MKL_INT NrTotalInitial = 0;
-MKL_INT NzTotalInitial = 0;
+const char *beta_i 	= NULL;
+const char *log_h_i 	= NULL;
+const char *log_a_i 	= NULL;
+const char *psi_i 	= NULL;
+const char *w_i 	= NULL;
+MKL_INT NrTotalInitial 	= 0;
+MKL_INT NzTotalInitial 	= 0;
+MKL_INT ghost_i		= 1;
+MKL_INT order_i		= 2;
+double dr_i		= 1.0;
+double dz_i		= 1.0;
 
 /* SOLVER PARAMETERS */
-MKL_INT solverType		= 1;
-MKL_INT localSolver		= 1;
+MKL_INT solverType	= 1;
+MKL_INT localSolver	= 1;
 double epsilon		= 1E-5;
-MKL_INT maxNewtonIter 	= 100;
+MKL_INT maxNewtonIter 	= 10;
 double lambda0 		= 1.0E-3;
-double lambdaMin 	= 1.0E-10;
-MKL_INT useLowRank		= 0;
+double lambdaMin 	= 1.0E-8;
+MKL_INT useLowRank	= 0;
 
 /* BOUNDARY TYPES */
-MKL_INT alphaBoundOrder	= 2;
-MKL_INT betaBoundOrder	= 2;
-MKL_INT hBoundOrder		= 2;
-MKL_INT aBoundOrder		= 2;
-MKL_INT phiBoundOrder	= 2;
+MKL_INT alphaBoundOrder	= 1;
+MKL_INT betaBoundOrder	= 1;
+MKL_INT hBoundOrder	= 1;
+MKL_INT aBoundOrder	= 1;
+MKL_INT phiBoundOrder	= 1;
 
 /* AUXILIARY ARRAYS FOR DERIVATIVES. */
 double *Dr_u;
@@ -112,6 +116,10 @@ extern const char *psi_i;
 extern const char *w_i;
 extern MKL_INT NrTotalInitial;
 extern MKL_INT NzTotalInitial;
+extern MKL_INT ghost_i;
+extern MKL_INT order_i;
+extern double dr_i;
+extern double dz_i;
 
 /* SOLVER PARAMETERS */
 extern MKL_INT solverType;
