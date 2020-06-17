@@ -5,6 +5,7 @@
 #include "initial_interpolation.h"
 
 #undef BDRY_DEBUG
+#define I_DEBUG
 
 void initial_guess(double *u)
 {
@@ -29,9 +30,6 @@ void initial_guess(double *u)
 
 	// Auxiliary variables.
 	double r, z, rr;
-	double m2 = m * m;
-	double w2 = w0 * w0;
-	double chi = sqrt(m2 - w2);
 
 	// Set omega variable.
 	if (w_i)
@@ -40,6 +38,10 @@ void initial_guess(double *u)
 		printf("***          Read omega initial data.       \n");
 	}
 	u[w_idx] = inverse_omega_calc(w0, m);
+
+	double m2 = m * m;
+	double w2 = w0 * w0;
+	double chi = sqrt(m2 - w2);
 
 	if (readInitialData == 3)
 	{
@@ -53,6 +55,15 @@ void initial_guess(double *u)
 		read_single_file_2d(u_0 + 3 * NrTotalInitial * NzTotalInitial, log_a_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
 		read_single_file_2d(u_0 + 4 * NrTotalInitial * NzTotalInitial, psi_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
 		u_0[5 * NrTotalInitial * NzTotalInitial] = u[w_idx];
+
+#ifdef I_DEBUG
+		fprintf(stderr, "NrTotalInital = %lld, NzTotalInitial = %lld, ghost_i = %lld, order_i = %lld, dr_i = %E, dz_i = %E.\n", NrTotalInitial, NzTotalInitial, ghost_i, order_i, dr_i, dz_i);
+		write_single_file_2d(u_0 + 0 * NrTotalInitial * NzTotalInitial, "log_alpha_0.asc"	, NrTotalInitial, NzTotalInitial);
+		write_single_file_2d(u_0 + 1 * NrTotalInitial * NzTotalInitial, "beta_0.asc"		, NrTotalInitial, NzTotalInitial);
+		write_single_file_2d(u_0 + 2 * NrTotalInitial * NzTotalInitial, "log_h_0.asc"		, NrTotalInitial, NzTotalInitial);
+		write_single_file_2d(u_0 + 3 * NrTotalInitial * NzTotalInitial, "log_a_0.asc"		, NrTotalInitial, NzTotalInitial);
+		write_single_file_2d(u_0 + 4 * NrTotalInitial * NzTotalInitial, "psi_0.asc"		, NrTotalInitial, NzTotalInitial);
+#endif
 
 		// Interpolate.
 		initial_interpolator(u, u_0, NrTotalInitial - 2 * ghost_i, NzTotalInitial - 2 * ghost_i, ghost_i, order_i, dr_i, dz_i,

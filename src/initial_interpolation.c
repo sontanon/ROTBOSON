@@ -26,6 +26,10 @@ void initial_interpolator(double *u_1,
 	const double m,
 	const MKL_INT l)
 {
+	// Loop counters.
+	MKL_INT i_1, i_0;
+	MKL_INT j_1, j_0;
+
 	// Grid 0.
 	MKL_INT NrTotal_0 = NrInterior_0 + 2 * ghost_0;
 	MKL_INT NzTotal_0 = NzInterior_0 + 2 * ghost_0;
@@ -37,9 +41,31 @@ void initial_interpolator(double *u_1,
 	MKL_INT dim_1 = NrTotal_1 * NzTotal_1;
 
 	// Allocate memory for read buffer.
-	double *Dr_u_0  = (double *)SAFE_MALLOC(dim_0 * sizeof(double));
-	double *Dz_u_0  = (double *)SAFE_MALLOC(dim_0 * sizeof(double));
-	double *Drz_u_0 = (double *)SAFE_MALLOC(dim_0 * sizeof(double));
+	double *Dr_u_0  = (double *)SAFE_MALLOC(5 * dim_0 * sizeof(double));
+	double *Dz_u_0  = (double *)SAFE_MALLOC(5 * dim_0 * sizeof(double));
+	double *Drz_u_0 = (double *)SAFE_MALLOC(5 * dim_0 * sizeof(double));
+
+	// Coordinate grids 0.
+	double *r_0 = (double *)SAFE_MALLOC(dim_0 * sizeof(double));
+	double *z_0 = (double *)SAFE_MALLOC(dim_0 * sizeof(double));
+
+	// Fill coordinate grids.
+	double aux_r;
+	#pragma omp parallel shared(r_0, z_0) private(i_0, j_0, aux_r)
+	{
+		#pragma omp for schedule(dynamic, 1)
+		for (i_0 = 0; i_0 < NrTotal_0; ++i_0)
+		{
+			// Calculate rho value.
+			aux_r = ((double)(i_0 - ghost_0) + 0.5) * dr_0;
+			// Loop over z points.
+			for (j_0 = 0; j_0 < NzTotal_0; ++j_0)
+			{
+				r_0[i_0 * NzTotal_0 + j_0] = aux_r;
+				z_0[i_0 * NzTotal_0 + j_0] = ((double)(j_0 - ghost_0) + 0.5) * dz_0;
+			}
+		}
+	}
 
 	// Differentiate at the 0 level.
 	ex_diff1r (Dr_u_0             , u_0            , 1   , dr_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
@@ -58,6 +84,20 @@ void initial_interpolator(double *u_1,
 	ex_diff1z (Dz_u_0  + 4 * dim_0, u_0 + 4 * dim_0, 1   , dz_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
 	ex_diff2rz(Drz_u_0 + 4 * dim_0, u_0 + 4 * dim_0, 1, 1, dr_0, dz_0, NrTotal_0, NzTotal_0, ghost_0, order_0);	
 
+	// Spherical analysis at level 0.
+	MKL_INT NrrTotal_0, NthTotal_0, p_dim_0;
+	double drr_0, dth_0, rr_inf_0;
+	double *i_rr_0 = NULL;
+	double *i_th_0 = NULL;
+	double *i_u_0  = NULL;
+	double M_0, J_0, GRV2_0, GRV3_0;
+
+	// Interpolate to polar coordinates.
+	ex_cart_to_pol(&i_u_0, &i_rr_0, &i_th_0, r_0, z_0, u_0, Dr_u_0, Dz_u_0, Drz_u_0, 5, dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0, &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
+
+	// Extract global quantities.
+	ex_analysis(1, &M_0, &J_0, &GRV2_0, &GRV3_0, i_u_0, i_rr_0, i_th_0, w, m, l, ghost_0, order_0, NrrTotal_0, NthTotal_0, p_dim_0, drr_0, dth_0, rr_inf_0);
+
 	// The 0 grid extends up to dr_0 * (NrInterior_0 + ghost_0 - 0.5).
 	// We first want to know if the 0 grid covers in its entirety the 1 grid or not.
 	double r_inf_0 = dr_0 * (NrInterior_0 + ghost_0 - 0.5);
@@ -73,14 +113,12 @@ void initial_interpolator(double *u_1,
 	MKL_INT i_inf_1 = MIN(NrTotal_1 - 2, (MKL_INT)floor(r_inf_0 / dr_1 + ghost_1 - 0.5));
 	MKL_INT j_inf_1 = MIN(NzTotal_1 - 2, (MKL_INT)floor(z_inf_0 / dz_1 + ghost_1 - 0.5));
 
+	fprintf(stderr, "INTERPOLATOR: dr_0 = %E, dr_1 = %E, NrTotal_0 = %lld, NrTotal_1 = %lld, r_inf_0 = %E, i_inf_1 = %lld.\n",
+		dr_0, dr_1, NrTotal_0, NrTotal_1, r_inf_0, i_inf_1);
+
 	// Other variables.
 	double f_i_0, di;
 	double f_j_0, dj;
-
-	// Loop counters.
-	MKL_INT i_1, i_0;
-	MKL_INT j_1, j_0;
-
 	// Now loop over grid elements.
 	#pragma omp parallel for schedule(dynamic, 1) private(i_1, j_1, f_i_0, i_0, di, f_j_0, j_0, dj) shared(u_1)
 	for (i_1 = ghost_1; i_1 < i_inf_1 + 1; ++i_1)
@@ -106,41 +144,6 @@ void initial_interpolator(double *u_1,
 		}
 	}
 
-	// Coordinate grids 0.
-	double *r_0 = (double *)SAFE_MALLOC(dim_0 * sizeof(double));
-	double *z_0 = (double *)SAFE_MALLOC(dim_0 * sizeof(double));
-
-	// Fill coordinate grids.
-	double aux_r;
-	#pragma omp parallel shared(r_0, z_0) private(i_0, j_0, aux_r)
-	{
-		#pragma omp for schedule(dynamic, 1)
-		for (i_0 = 0; i_0 < NrTotal_0; ++i_0)
-		{
-			// Calculate rho value.
-			aux_r = ((double)(i_0 - ghost_0) + 0.5) * dr_0;
-			// Loop over z points.
-			for (j_0 = 0; j_0 < NzTotal_0; ++j_0)
-			{
-				r_0[i_0 * NzTotal_0 + j_0] = aux_r;
-				z_0[i_0 * NzTotal_0 + j_0] = ((double)(j_0 - ghost_0) + 0.5) * dz_0;
-			}
-		}
-	}
-	
-	// Spherical analysis at level 0.
-	MKL_INT NrrTotal_0, NthTotal_0, p_dim_0;
-	double drr_0, dth_0, rr_inf_0;
-	double *i_rr_0 = NULL;
-	double *i_th_0 = NULL;
-	double *i_u_0  = NULL;
-	double M_0, J_0, GRV2_0, GRV3_0;
-
-	// Interpolate to polar coordinates.
-	ex_cart_to_pol(&i_u_0, &i_rr_0, &i_th_0, r_0, z_0, u_0, Dr_u_0, Dz_u_0, Drz_u_0, 5, dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0, &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
-
-	// Extract global quantities.
-	ex_analysis(1, &M_0, &J_0, &GRV2_0, &GRV3_0, i_u_0, i_rr_0, i_th_0, w, m, l, ghost_0, order_0, NrrTotal_0, NthTotal_0, p_dim_0, drr_0, dth_0, rr_inf_0);
 
 	// Now extrapolate beyond interpolation limits.
 	double rr_1;

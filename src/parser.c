@@ -238,9 +238,9 @@ void parser(const char *fname)
 	// readInitialData.
 	if (config_lookup_int64(&cfg, "readInitialData", &readInitialData) == CONFIG_TRUE)
 	{
-		if (readInitialData != 0 && readInitialData != 1 && readInitialData != 2)
+		if (readInitialData != 0 && readInitialData != 1 && readInitialData != 2 && readInitialData != 3)
 		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = %lld is not supported. Only 0, 1, or 2 as boolean values for indication of whether to read initial data specified by user.\n", readInitialData);
+			fprintf(stderr, "PARSER: ERROR! readInitialData = %lld is not supported. Only 0, 1, 2, or 3 as boolean values for indication of whether to read initial data specified by user.\n", readInitialData);
 			fprintf(stderr, "        Please input proper value in parameter file.\n");
 			exit(-1);
 		}
