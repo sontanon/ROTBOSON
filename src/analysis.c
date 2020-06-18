@@ -14,8 +14,8 @@ void ex_analysis(
 	MKL_INT k = 0;
 
 	// Rename or extract main variables.
-	double *sph_log_alpha 	= sph_u;
-	double *sph_beta 	= sph_u + p_dim;
+	double *sph_log_alpha 	= sph_u + 0 * p_dim;
+	double *sph_beta 	= sph_u + 1 * p_dim;
 	double *sph_log_h 	= sph_u + 2 * p_dim;
 	double *sph_log_a 	= sph_u + 3 * p_dim;
 	double *sph_psi 	= sph_u + 4 * p_dim;

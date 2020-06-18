@@ -4,6 +4,8 @@
 #include "bicubic_interpolation.h"
 #include "analysis.h"
 
+#define DEBUG
+
 // We are reading from an initial file, u.asc with grid steps dr_0, dz_0, and dimensions
 // NrInterior_0, NzInterior_0, and ghost_0.
 // The grid from which we are reading will be denoted by the "0" subscript.
@@ -66,6 +68,10 @@ void initial_interpolator(double *u_1,
 			}
 		}
 	}
+#ifdef DEBUG
+	write_single_file_2d(r_0, "r_0.asc", NrTotal_0, NzTotal_0);
+	write_single_file_2d(z_0, "z_0.asc", NrTotal_0, NzTotal_0);
+#endif
 
 	// Differentiate at the 0 level.
 	ex_diff1r (Dr_u_0             , u_0            , 1   , dr_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
@@ -92,43 +98,42 @@ void initial_interpolator(double *u_1,
 	double *i_u_0  = NULL;
 	double M_0, J_0, GRV2_0, GRV3_0;
 
-	// Interpolate to polar coordinates.
-	ex_cart_to_pol(&i_u_0, &i_rr_0, &i_th_0, r_0, z_0, u_0, Dr_u_0, Dz_u_0, Drz_u_0, 5, dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0, &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
-
-	// Extract global quantities.
-	ex_analysis(1, &M_0, &J_0, &GRV2_0, &GRV3_0, i_u_0, i_rr_0, i_th_0, w, m, l, ghost_0, order_0, NrrTotal_0, NthTotal_0, p_dim_0, drr_0, dth_0, rr_inf_0);
-
 	// The 0 grid extends up to dr_0 * (NrInterior_0 + ghost_0 - 0.5).
 	// We first want to know if the 0 grid covers in its entirety the 1 grid or not.
 	double r_inf_0 = dr_0 * (NrInterior_0 + ghost_0 - 0.5);
 	double z_inf_0 = dz_0 * (NzInterior_0 + ghost_0 - 0.5);
 
-	//double r_inf_1 = dr_1 * (NrInterior_1 + ghost_1 - 0.5);
-	//double z_inf_1 = dz_1 * (NzInterior_1 + ghost_1 - 0.5);
+	double r_inf_1 = dr_1 * (NrInterior_1 + ghost_1 - 0.5);
+	double z_inf_1 = dz_1 * (NzInterior_1 + ghost_1 - 0.5);
 	
 	// If r_inf_0 > r_inf_1 we can interpolate all along the r direction.
 	// If r_inf_0 = r_inf_1 we can interpolate up to the previous point and calculate the last one via BC.
 	// If r_inf_0 < r_inf_1 we can interpolate up to a set point and extrapolate the remaining via BC.
 	// In summary, we must obtain the grid 1 point up to where we can interpolate.
-	MKL_INT i_inf_1 = MIN(NrTotal_1 - 2, (MKL_INT)floor(r_inf_0 / dr_1 + ghost_1 - 0.5));
-	MKL_INT j_inf_1 = MIN(NzTotal_1 - 2, (MKL_INT)floor(z_inf_0 / dz_1 + ghost_1 - 0.5));
+	MKL_INT i_inf_1 = MIN(NrTotal_1, (MKL_INT)floor(r_inf_0 / dr_1 + ghost_1 - 0.5));
+	MKL_INT j_inf_1 = MIN(NzTotal_1, (MKL_INT)floor(z_inf_0 / dz_1 + ghost_1 - 0.5));
 
-	fprintf(stderr, "INTERPOLATOR: dr_0 = %E, dr_1 = %E, NrTotal_0 = %lld, NrTotal_1 = %lld, r_inf_0 = %E, i_inf_1 = %lld.\n",
-		dr_0, dr_1, NrTotal_0, NrTotal_1, r_inf_0, i_inf_1);
+#ifdef DEBUG
+	fprintf(stderr, "\nINITIAL DATA INTERPOLATOR\n\n");
+	fprintf(stderr, "Initial grid parameters are: \tdr_0 = %3.5E \t NrTotal_0 = %lld \t r_inf_0 = %3.5E \n", dr_0, NrTotal_0, r_inf_0);
+	fprintf(stderr, "                             \tdz_0 = %3.5E \t NzTotal_0 = %lld \t z_inf_0 = %3.5E \n", dz_0, NzTotal_0, z_inf_0);
+	fprintf(stderr, "Final   grid parameters are: \tdr_1 = %3.5E \t NrTotal_1 = %lld \t r_inf_1 = %3.5E \t i_inf_1 = %lld  \n",   dr_1, NrTotal_1, r_inf_1, i_inf_1);
+	fprintf(stderr, "                             \tdz_1 = %3.5E \t NzTotal_1 = %lld \t z_inf_1 = %3.5E \t j_inf_1 = %lld  \n\n", dz_1, NzTotal_1, z_inf_1, j_inf_1);
+#endif
 
 	// Other variables.
 	double f_i_0, di;
 	double f_j_0, dj;
 	// Now loop over grid elements.
 	#pragma omp parallel for schedule(dynamic, 1) private(i_1, j_1, f_i_0, i_0, di, f_j_0, j_0, dj) shared(u_1)
-	for (i_1 = ghost_1; i_1 < i_inf_1 + 1; ++i_1)
+	for (i_1 = ghost_1; i_1 < i_inf_1; ++i_1)
 	{
 		// 0 grid coordinates.
 		f_i_0 = (dr_1 / dr_0) * (i_1 - ghost_1 + 0.5) + ghost_0 - 0.5;
 		i_0   = (MKL_INT)floor(f_i_0);
 		di    = f_i_0 - (double)i_0;
 
-		for (j_1 = ghost_1; j_1 < j_inf_1 + 1; ++j_1)
+		for (j_1 = ghost_1; j_1 < j_inf_1; ++j_1)
 		{
 			// 0 grid coordinates.
 			f_j_0 = (dz_1 / dz_0) * (j_1 - ghost_1 + 0.5) + ghost_0 - 0.5;
@@ -137,30 +142,56 @@ void initial_interpolator(double *u_1,
 
 			// Use bicubic interpolation.
 			u_1[            i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0            , Dr_u_0            , Dz_u_0            , Drz_u_0            , dr_0, dz_0, NrTotal_0, NzTotal_0);
-			u_1[    dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 +     dim_1, Dr_u_0 +     dim_1, Dz_u_0 +     dim_1, Drz_u_0 +     dim_1, dr_0, dz_0, NrTotal_0, NzTotal_0);
-			u_1[2 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 2 * dim_1, Dr_u_0 + 2 * dim_1, Dz_u_0 + 2 * dim_1, Drz_u_0 + 2 * dim_1, dr_0, dz_0, NrTotal_0, NzTotal_0);
-			u_1[3 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 3 * dim_1, Dr_u_0 + 3 * dim_1, Dz_u_0 + 3 * dim_1, Drz_u_0 + 3 * dim_1, dr_0, dz_0, NrTotal_0, NzTotal_0);
-			u_1[4 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 4 * dim_1, Dr_u_0 + 4 * dim_1, Dz_u_0 + 4 * dim_1, Drz_u_0 + 4 * dim_1, dr_0, dz_0, NrTotal_0, NzTotal_0);
+			u_1[    dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 +     dim_0, Dr_u_0 +     dim_0, Dz_u_0 +     dim_0, Drz_u_0 +     dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
+			u_1[2 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 2 * dim_0, Dr_u_0 + 2 * dim_0, Dz_u_0 + 2 * dim_0, Drz_u_0 + 2 * dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
+			u_1[3 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 3 * dim_0, Dr_u_0 + 3 * dim_0, Dz_u_0 + 3 * dim_0, Drz_u_0 + 3 * dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
+			u_1[4 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 4 * dim_0, Dr_u_0 + 4 * dim_0, Dz_u_0 + 4 * dim_0, Drz_u_0 + 4 * dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
 		}
 	}
 
-
 	// Now extrapolate beyond interpolation limits.
 	double rr_1;
+	double psi_bdry_max = MAX(u_1[4 * dim_1 + ghost_1 * NzTotal_1 + j_inf_1], MAX(u_1[4 * dim_1 + i_inf_1 * NzTotal_1 + ghost_1], u_1[4 * dim_1 + i_inf_1 * NzTotal_1 + j_inf_1]));
 
-	#pragma omp parallel for schedule(dynamic, 1) private(i_1, j_1, rr_1) shared(u_1)
-	for (i_1 = i_inf_1 + 1; i_1 < NrTotal_1; ++i_1)
+	// Determine if extrapolation is necessary.
+	if (i_inf_1 < NrTotal_1 || j_inf_1 < NzTotal_1)
 	{
-		for (j_1 = j_inf_1 + 1; j_1 < NzTotal_1; ++j_1)
+		// Interpolate to polar coordinates.
+		ex_cart_to_pol(&i_u_0, &i_rr_0, &i_th_0, r_0, z_0, u_0, Dr_u_0, Dz_u_0, Drz_u_0, 5, dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0, &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
+
+	#ifdef DEBUG
+		write_single_file_2d_polar(i_rr_0             , "sph_rr_0.asc", 		NrrTotal_0, NthTotal_0);
+		write_single_file_2d_polar(i_th_0             , "sph_th_0.asc", 		NrrTotal_0, NthTotal_0);
+		write_single_file_2d_polar(i_u_0              , "sph_log_alpha_0.asc", 		NrrTotal_0, NthTotal_0);
+		write_single_file_2d_polar(i_u_0 +     p_dim_0, "sph_beta_0.asc",		NrrTotal_0, NthTotal_0);
+		write_single_file_2d_polar(i_u_0 + 2 * p_dim_0, "sph_log_h_0.asc", 		NrrTotal_0, NthTotal_0);
+		write_single_file_2d_polar(i_u_0 + 3 * p_dim_0, "sph_log_a_0.asc", 		NrrTotal_0, NthTotal_0);
+		write_single_file_2d_polar(i_u_0 + 4 * p_dim_0, "sph_psi_0.asc", 		NrrTotal_0, NthTotal_0);
+	#endif
+
+		// Extract global quantities.
+		ex_analysis(0, &M_0, &J_0, &GRV2_0, &GRV3_0, i_u_0, i_rr_0, i_th_0, w, m, l, ghost_0, order_0, NrrTotal_0, NthTotal_0, p_dim_0, drr_0, dth_0, rr_inf_0);
+
+		// Print output message.
+		fprintf(stderr, "Extrapolating    : i_inf_1 = %lld < %lld = NrTotal_1 or j_inf_1 = %lld < %lld = NzTotal_1.\n", i_inf_1, NrTotal_1, j_inf_1, NzTotal_1);
+		fprintf(stderr, "Global quantities: M = %3.5E \t J = %3.5E \t GRV2 = %3.5E \t GRV3 = %3.5E .\n\n", M_0, J_0, GRV2_0, GRV3_0);
+
+		#pragma omp parallel for schedule(dynamic, 1) private(i_1, j_1, rr_1) shared(u_1)
+		for (i_1 = i_inf_1; i_1 < NrTotal_1; ++i_1)
 		{
-			rr_1 = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
-			u_1[0 * dim_1 + i_1 * NzTotal_1 + j_1] = log(1.0 - M_0 / rr_1);
-			u_1[1 * dim_1 + i_1 * NzTotal_1 + j_1] = - 2.0 * J_0 / (rr_1 * rr_1 * rr_1); 
-			u_1[2 * dim_1 + i_1 * NzTotal_1 + j_1] = log(1.0 + M_0 / rr_1);
-			u_1[3 * dim_1 + i_1 * NzTotal_1 + j_1] = log(1.0 + M_0 / rr_1);
-			u_1[4 * dim_1 + i_1 * NzTotal_1 + j_1] = 0.0;
-		}
-	}	
+			for (j_1 = j_inf_1; j_1 < NzTotal_1; ++j_1)
+			{
+				// Radial coordinate.
+				rr_1 = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
+				// Extrapolate values.
+				u_1[0 * dim_1 + i_1 * NzTotal_1 + j_1] = log(1.0 - M_0 / rr_1);
+				u_1[1 * dim_1 + i_1 * NzTotal_1 + j_1] = - 2.0 * J_0 / (rr_1 * rr_1 * rr_1); 
+				u_1[2 * dim_1 + i_1 * NzTotal_1 + j_1] = log(1.0 + M_0 / rr_1);
+				u_1[3 * dim_1 + i_1 * NzTotal_1 + j_1] = log(1.0 + M_0 / rr_1);
+				u_1[4 * dim_1 + i_1 * NzTotal_1 + j_1] = psi_bdry_max;
+			}
+		}	
+	}
 
 	// Free memory.
 	SAFE_FREE(Dr_u_0);
@@ -175,5 +206,5 @@ void initial_interpolator(double *u_1,
 	SAFE_FREE(i_u_0);
 
 	// All done!
-	return ;
+	return;
 }

@@ -57,7 +57,7 @@ void initial_guess(double *u)
 		u_0[5 * NrTotalInitial * NzTotalInitial] = u[w_idx];
 
 #ifdef I_DEBUG
-		fprintf(stderr, "NrTotalInital = %lld, NzTotalInitial = %lld, ghost_i = %lld, order_i = %lld, dr_i = %E, dz_i = %E.\n", NrTotalInitial, NzTotalInitial, ghost_i, order_i, dr_i, dz_i);
+		//fprintf(stderr, "NrTotalInital = %lld, NzTotalInitial = %lld, ghost_i = %lld, order_i = %lld, dr_i = %E, dz_i = %E.\n", NrTotalInitial, NzTotalInitial, ghost_i, order_i, dr_i, dz_i);
 		write_single_file_2d(u_0 + 0 * NrTotalInitial * NzTotalInitial, "log_alpha_0.asc"	, NrTotalInitial, NzTotalInitial);
 		write_single_file_2d(u_0 + 1 * NrTotalInitial * NzTotalInitial, "beta_0.asc"		, NrTotalInitial, NzTotalInitial);
 		write_single_file_2d(u_0 + 2 * NrTotalInitial * NzTotalInitial, "log_h_0.asc"		, NrTotalInitial, NzTotalInitial);
@@ -67,7 +67,7 @@ void initial_guess(double *u)
 
 		// Interpolate.
 		initial_interpolator(u, u_0, NrTotalInitial - 2 * ghost_i, NzTotalInitial - 2 * ghost_i, ghost_i, order_i, dr_i, dz_i,
-			NrInterior, NzInterior, ghost, order, dr, dz, u[w_idx], m, l);
+			NrInterior, NzInterior, ghost, order, dr, dz, w0, m, l);
 
 		// Free initial data.
 		SAFE_FREE(u_0);
