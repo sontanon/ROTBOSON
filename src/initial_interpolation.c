@@ -6,27 +6,49 @@
 
 #define DEBUG
 
+double extrapolate_robin(double *u, double u_inf, MKL_INT n, double K, MKL_INT NrTotal, MKL_INT NzTotal, MKL_INT ghost, MKL_INT order, MKL_INT i0, MKL_INT j0, MKL_INT i, MKL_INT j, double dr, double dz)
+{
+	double u0 = u[IDX(i0, j0)];
+
+	double r0 = i0 - ghost + 0.5;
+	double z0 = j0 - ghost + 0.5;
+	double rr0 = sqrt(r0 * r0 * dr * dr + z0 * z0 * dz * dz);
+
+	double r = i - ghost + 0.5;
+	double z = j - ghost + 0.5;
+	double rr = sqrt(r * r * dr * dr + z * z * dz * dz);
+
+	double rr0_Drr_u0;
+
+	if (order == 4)
+		rr0_Drr_u0 = (r0 * (u[IDX(i0 - 2, j0)] - 8.0 * u[IDX(i0 - 1, j0)] + 8.0 * u[IDX(i0 + 1, j0)] - u[IDX(i0 + 2, j0)]) + z0 * (u[IDX(i0, j0 - 2)] - 8.0 * u[IDX(i0, j0 - 1)] + 8.0 * u[IDX(i0, j0 + 1)] - u[IDX(i0, j0 + 2)])) / 12.0;
+	else 
+		rr0_Drr_u0 = 0.5 * (r0 * (u[IDX(i0 + 1, j0)] - u[IDX(i0 - 1, j0)]) + z0 * (u[IDX(i0, j0 + 1)] - u[IDX(i0, j0 - 1)]));
+
+	return u_inf + K / pow(rr, n) + pow(rr0 / rr, n + 1) * (((n + 2) * (u0 - u_inf) - 2.0 * K / pow(rr0, n) + rr0_Drr_u0) + (rr0 / rr) * (-(n + 1) * (u0 - u_inf) + K / pow(rr0, n) - rr0_Drr_u0));
+}
+
 // We are reading from an initial file, u.asc with grid steps dr_0, dz_0, and dimensions
 // NrInterior_0, NzInterior_0, and ghost_0.
 // The grid from which we are reading will be denoted by the "0" subscript.
 // Final grid is denoted by "1" subscript.
-void initial_interpolator(double *u_1,
-	const double *u_0,
-	const MKL_INT NrInterior_0,
-	const MKL_INT NzInterior_0,
-	const MKL_INT ghost_0,
-	const MKL_INT order_0,
-	const double dr_0, 
-	const double dz_0,
-	const MKL_INT NrInterior_1,
-	const MKL_INT NzInterior_1,
-	const MKL_INT ghost_1,
-	const MKL_INT order_1,
-	const double dr_1, 
-	const double dz_1,
-	const double w,
-	const double m,
-	const MKL_INT l)
+void initial_interpolator(	double *u_1,
+				const double *u_0,
+				const MKL_INT NrInterior_0,
+				const MKL_INT NzInterior_0,
+				const MKL_INT ghost_0,
+				const MKL_INT order_0,
+				const double dr_0, 
+				const double dz_0,
+				const MKL_INT NrInterior_1,
+				const MKL_INT NzInterior_1,
+				const MKL_INT ghost_1,
+				const MKL_INT order_1,
+				const double dr_1, 
+				const double dz_1,
+				const double w,
+				const double m,
+				const MKL_INT l			)
 {
 	// Loop counters.
 	MKL_INT i_1, i_0;
@@ -155,13 +177,18 @@ void initial_interpolator(double *u_1,
 
 	MKL_INT k_1, l_1;
 
+	// Consider the lapse, alpha. We are asking that it goes as alpha = 1 - M / r + ...
+	// This implies that the logarithm goes as log(alpha) = - M / r + ...
+	// Consider then a function u(1/r,theta) = 0 - M * (1/r) + Q_1(theta) * (1/r)**2 + Q_2(theta) * (1/r)**3.
+	// We want to match u(1/r_0,theta_0) = u_0 and also -(1/r_0) * u'(1/r_0,theta_0) =  r * du / dr (r_0, theta_0).
+
 	// Determine if extrapolation is necessary.
 	if (i_inf_1 < NrTotal_1 || j_inf_1 < NzTotal_1)
 	{
 		// Interpolate to polar coordinates.
 		ex_cart_to_pol(&i_u_0, &i_rr_0, &i_th_0, r_0, z_0, u_0, Dr_u_0, Dz_u_0, Drz_u_0, 5, dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0, &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
 
-	#ifdef DEBUG
+		#ifdef DEBUG
 		write_single_file_2d_polar(i_rr_0             , "sph_rr_0.asc", 		NrrTotal_0, NthTotal_0);
 		write_single_file_2d_polar(i_th_0             , "sph_th_0.asc", 		NrrTotal_0, NthTotal_0);
 		write_single_file_2d_polar(i_u_0              , "sph_log_alpha_0.asc", 		NrrTotal_0, NthTotal_0);
@@ -169,7 +196,7 @@ void initial_interpolator(double *u_1,
 		write_single_file_2d_polar(i_u_0 + 2 * p_dim_0, "sph_log_h_0.asc", 		NrrTotal_0, NthTotal_0);
 		write_single_file_2d_polar(i_u_0 + 3 * p_dim_0, "sph_log_a_0.asc", 		NrrTotal_0, NthTotal_0);
 		write_single_file_2d_polar(i_u_0 + 4 * p_dim_0, "sph_psi_0.asc", 		NrrTotal_0, NthTotal_0);
-	#endif
+		#endif
 
 		// Extract global quantities.
 		ex_analysis(0, &M_0, &J_0, &GRV2_0, &GRV3_0, i_u_0, i_rr_0, i_th_0, w, m, l, ghost_0, order_0, NrrTotal_0, NthTotal_0, p_dim_0, drr_0, dth_0, rr_inf_0);
@@ -178,25 +205,49 @@ void initial_interpolator(double *u_1,
 		fprintf(stderr, "Extrapolating    : i_inf_1 = %lld < %lld = NrTotal_1 or j_inf_1 = %lld < %lld = NzTotal_1.\n\n", i_inf_1, NrTotal_1, j_inf_1, NzTotal_1);
 		fprintf(stderr, "Global quantities: M = %3.5E \t J = %3.5E \t GRV2 = %3.5E \t GRV3 = %3.5E .\n\n", M_0, J_0, GRV2_0, GRV3_0);
 
+		// Sync symmetries.
+		for (i_1 = 0; i_1 < ghost_1; ++i_1)
+		{
+			u_1[0 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[0 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
+			u_1[1 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[1 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
+			u_1[2 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[2 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
+			u_1[3 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[3 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
+			u_1[4 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[4 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
+		}
+		for (j_1 = 0; j_1 < ghost_1; ++j_1)
+		{
+			u_1[0 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[0 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
+			u_1[1 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[1 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
+			u_1[2 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[2 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
+			u_1[3 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[3 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
+			u_1[4 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[4 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
+		}
 
-		for (i_1 = ghost_1; i_1 < i_inf_1; ++i_1)
+		for (i_1 = ghost_1; i_1 < i_inf_1 - ghost_1; ++i_1)
 		{
       			// Reference coordinates.
-			rr_s = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_inf_1 - ghost_1 - 0.5), 2));
-			l_1 = i_1 * NzTotal_1 + j_inf_1 - 1;
+			//rr_s = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_inf_1 - ghost_1 - 0.5), 2));
+			//l_1 = i_1 * NzTotal_1 + j_inf_1 - 1;
 
-		  	for (j_1 = j_inf_1; j_1 < NzTotal_1; ++j_1)
+		  	for (j_1 = j_inf_1 - ghost_1; j_1 < NzTotal_1; ++j_1)
 			{
 				// Radial coordinate.
-				rr_1 = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
+				//rr_1 = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
 				// Index.
 				k_1 = i_1 * NzTotal_1 + j_1;
 				// Extrapolate values.
+				u_1[0 * dim_1 + k_1] = extrapolate_robin(&u_1[0 * dim_1], 0.0, 1, -    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
+				u_1[1 * dim_1 + k_1] = extrapolate_robin(&u_1[1 * dim_1], 0.0, 3, -2 * J_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
+				u_1[2 * dim_1 + k_1] = extrapolate_robin(&u_1[2 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
+				u_1[3 * dim_1 + k_1] = extrapolate_robin(&u_1[3 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
+				u_1[4 * dim_1 + k_1] = psi_bdry_max;
+				/*
 				u_1[0 * dim_1 + k_1] = u_1[0 * dim_1 + l_1] - M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[1 * dim_1 + k_1] = u_1[1 * dim_1 + l_1] - 6.0 * J_0 * (1.0 / rr_s) * (1.0 / rr_s) * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[2 * dim_1 + k_1] = u_1[2 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[3 * dim_1 + k_1] = u_1[3 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[4 * dim_1 + k_1] = psi_bdry_max;
+				*/
 				/*
 				u_1[0 * dim_1 + k_1] = log(1.0 - M_0 / rr_1);
 				u_1[1 * dim_1 + k_1] = - 2.0 * J_0 / (rr_1 * rr_1 * rr_1); 
@@ -207,24 +258,31 @@ void initial_interpolator(double *u_1,
 			}
 		}	
 
-		for (j_1 = ghost_1; j_1 < j_inf_1; ++j_1)
+		for (j_1 = ghost_1; j_1 < j_inf_1 - ghost_1; ++j_1)
 		{
       			// Reference coordinates.
-			rr_s = sqrt(pow(dr_1 * (i_inf_1 - ghost_1 - 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
-			l_1 = (i_inf_1 - 1) * NzTotal_1 + j_1;
+			//rr_s = sqrt(pow(dr_1 * (i_inf_1 - ghost_1 - 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
+			//l_1 = (i_inf_1 - 1) * NzTotal_1 + j_1;
 
-		  	for (i_1 = i_inf_1; i_1 < NrTotal_1; ++i_1)
+		  	for (i_1 = i_inf_1 - ghost_1; i_1 < NrTotal_1; ++i_1)
 			{
 				// Radial coordinate.
-				rr_1 = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
+				//rr_1 = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
 				// Index.
 				k_1 = i_1 * NzTotal_1 + j_1;
 				// Extrapolate values.
+				u_1[0 * dim_1 + k_1] = extrapolate_robin(&u_1[0 * dim_1], 0.0, 1, -    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_1, i_1, j_1, dr_1, dz_1);
+				u_1[1 * dim_1 + k_1] = extrapolate_robin(&u_1[1 * dim_1], 0.0, 3, -2 * J_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_1, i_1, j_1, dr_1, dz_1);
+				u_1[2 * dim_1 + k_1] = extrapolate_robin(&u_1[2 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_1, i_1, j_1, dr_1, dz_1);
+				u_1[3 * dim_1 + k_1] = extrapolate_robin(&u_1[3 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_1, i_1, j_1, dr_1, dz_1);
+				u_1[4 * dim_1 + k_1] = psi_bdry_max;
+				/*
 				u_1[0 * dim_1 + k_1] = u_1[0 * dim_1 + l_1] - M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[1 * dim_1 + k_1] = u_1[1 * dim_1 + l_1] - 6.0 * J_0 * (1.0 / rr_s) * (1.0 / rr_s) * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[2 * dim_1 + k_1] = u_1[2 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[3 * dim_1 + k_1] = u_1[3 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[4 * dim_1 + k_1] = psi_bdry_max;
+				*/
 				/*
 				u_1[0 * dim_1 + k_1] = log(1.0 - M_0 / rr_1);
 				u_1[1 * dim_1 + k_1] = - 2.0 * J_0 / (rr_1 * rr_1 * rr_1); 
@@ -235,24 +293,31 @@ void initial_interpolator(double *u_1,
 			}
 		}
 
-		for (i_1 = i_inf_1; i_1 < NrTotal_1; ++i_1)
+		for (i_1 = i_inf_1 - ghost_1; i_1 < NrTotal_1; ++i_1)
 		{
       			// Reference coordinates.
-			rr_s = sqrt(pow(dr_1 * (i_inf_1 - ghost_1 - 0.5), 2) + pow(dz_1 * (j_inf_1 - ghost_1 - 0.5), 2));
-			l_1 = (i_inf_1 - 1) * NzTotal_1 + (j_inf_1 - 1);
+			//rr_s = sqrt(pow(dr_1 * (i_inf_1 - ghost_1 - 0.5), 2) + pow(dz_1 * (j_inf_1 - ghost_1 - 0.5), 2));
+			//l_1 = (i_inf_1 - 1) * NzTotal_1 + (j_inf_1 - 1);
 
-		  	for (j_1 = j_inf_1; j_1 < NzTotal_1; ++j_1)
+		  	for (j_1 = j_inf_1 - ghost_1; j_1 < NzTotal_1; ++j_1)
 			{
 				// Radial coordinate.
-				rr_1 = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
+				//rr_1 = sqrt(pow(dr_1 * (i_1 - ghost_1 + 0.5), 2) + pow(dz_1 * (j_1 - ghost_1 + 0.5), 2));
 				// Index.
 				k_1 = i_1 * NzTotal_1 + j_1;
 				// Extrapolate values.
+				u_1[0 * dim_1 + k_1] = extrapolate_robin(&u_1[0 * dim_1], 0.0, 1, -    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
+				u_1[1 * dim_1 + k_1] = extrapolate_robin(&u_1[1 * dim_1], 0.0, 3, -2 * J_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
+				u_1[2 * dim_1 + k_1] = extrapolate_robin(&u_1[2 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
+				u_1[3 * dim_1 + k_1] = extrapolate_robin(&u_1[3 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
+				u_1[4 * dim_1 + k_1] = psi_bdry_max;
+				/*
 				u_1[0 * dim_1 + k_1] = u_1[0 * dim_1 + l_1] - M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[1 * dim_1 + k_1] = u_1[1 * dim_1 + l_1] - 6.0 * J_0 * (1.0 / rr_s) * (1.0 / rr_s) * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[2 * dim_1 + k_1] = u_1[2 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[3 * dim_1 + k_1] = u_1[3 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
 				u_1[4 * dim_1 + k_1] = psi_bdry_max;
+				*/
 				/*
 				u_1[0 * dim_1 + k_1] = log(1.0 - M_0 / rr_1);
 				u_1[1 * dim_1 + k_1] = - 2.0 * J_0 / (rr_1 * rr_1 * rr_1); 
