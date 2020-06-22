@@ -28,6 +28,13 @@
 // CSR matrix index base.
 #define BASE 1
 
+// MIN/MAX macros.
+#define MIN(X, Y) ((X) < (Y)) ? (X) : (Y)
+#define MAX(X, Y) ((X) > (Y)) ? (X) : (Y)
+
+// ABS macro.
+#define ABS(X) ((X) < 0) ? -(X) : (X)
+
 /* Macro for array sum z = alpha * x + beta * y: for alpha, beta scalars; z, x, y arrays. */
 #define ARRAY_SUM(Z, ALPHA, X, BETA, Y) array_sum((Z), (ALPHA), (X), (BETA), (Y), dim)
 void array_sum(double *z, const double alpha, const double *x, const double beta, const double *y, const MKL_INT dim)
@@ -224,10 +231,13 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 	// Open file.
 	FILE *fp = fopen(fname, "r");
 
+	MKL_INT small_dim_r = MIN(NrTotalInitial, NrTotal);
+	MKL_INT small_dim_z = MIN(NzTotalInitial, NzTotal);
+
 	// Loop over r and read values.
-	for (i = 0; i < NrTotalInitial; ++i)
+	for (i = 0; i < small_dim_r; ++i)
 	{
-		for (j = 0; j < NzTotalInitial - 1; ++j)
+		for (j = 0; j < small_dim_z - 1; ++j)
 		{
 			err = fscanf(fp, "%lE", u + IDX(i, j));
 
@@ -238,32 +248,35 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 			}
 		}
 		// Last element with line-jump.
-		j = NzTotalInitial - 1;
+		j = small_dim_z - 1;
 		err = fscanf(fp, "%lE%*[^\n]\n", u + IDX(i, j));
 	}
 
 	// Fill other values.
-	for (i = 0; i < NrTotalInitial; ++i)
+	if (NzTotalInitial < NzTotal || NrTotalInitial < NrTotal)
 	{
-		for (j = NzTotalInitial; j < NzTotal; ++j)
+		for (i = 0; i < NrTotalInitial; ++i)
 		{
-			u[IDX(i, j)] = u[IDX(i, NzTotalInitial - 1)];
+			for (j = NzTotalInitial; j < NzTotal; ++j)
+			{
+				u[IDX(i, j)] = u[IDX(i, NzTotalInitial - 1)];
+			}
 		}
-	}
 
-	for (j = 0; j < NzTotalInitial; ++j)
-	{
+		for (j = 0; j < NzTotalInitial; ++j)
+		{
+			for (i = NrTotalInitial; i < NrTotal; ++i)
+			{
+				u[IDX(i, j)] = u[IDX(NrTotalInitial - 1, j)];
+			}
+		}
+
 		for (i = NrTotalInitial; i < NrTotal; ++i)
 		{
-			u[IDX(i, j)] = u[IDX(NrTotalInitial - 1, j)];
-		}
-	}
-
-	for (i = NrTotalInitial; i < NrTotal; ++i)
-	{
-		for (j = NzTotalInitial; j < NzTotal; ++j)
-		{
-			u[IDX(i, j)] = 0.5 * (u[IDX(i, NzTotalInitial - 1)] + u[IDX(NrTotalInitial - 1, j)]);
+			for (j = NzTotalInitial; j < NzTotal; ++j)
+			{
+				u[IDX(i, j)] = 0.5 * (u[IDX(i, NzTotalInitial - 1)] + u[IDX(NrTotalInitial - 1, j)]);
+			}
 		}
 	}
 
