@@ -173,7 +173,7 @@ void initial_interpolator(	double *u_1,
 
 	// Now extrapolate beyond interpolation limits.
 	double rr_1, rr_s;
-	double psi_bdry_max = MAX(u_1[4 * dim_1 + ghost_1 * NzTotal_1 + j_inf_1], MAX(u_1[4 * dim_1 + i_inf_1 * NzTotal_1 + ghost_1], u_1[4 * dim_1 + i_inf_1 * NzTotal_1 + j_inf_1]));
+	double psi_bdry_max = MAX(u_1[4 * dim_1 + ghost_1 * NzTotal_1 + j_inf_1 - 1], MAX(u_1[4 * dim_1 + (i_inf_1 - 1) * NzTotal_1 + ghost_1], u_1[4 * dim_1 + (i_inf_1 - 1) * NzTotal_1 + (j_inf_1 - 1)]));
 
 	MKL_INT k_1, l_1;
 
@@ -327,6 +327,10 @@ void initial_interpolator(	double *u_1,
         			*/
 			}
 		}
+
+		SAFE_FREE(i_rr_0);
+		SAFE_FREE(i_th_0);
+		SAFE_FREE(i_u_0);
 	}
 
 	// Free memory.
@@ -336,10 +340,6 @@ void initial_interpolator(	double *u_1,
 
 	SAFE_FREE(r_0);
 	SAFE_FREE(z_0);
-
-	SAFE_FREE(i_rr_0);
-	SAFE_FREE(i_th_0);
-	SAFE_FREE(i_u_0);
 
 	// All done!
 	return;
