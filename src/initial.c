@@ -270,9 +270,8 @@ void initial_guess(double *u)
 		else
 		{
 			// Rescale scalar field by constant psi0.
-			cblas_dscal(dim, psi0, u + 4 * dim, 1);
-
 			read_single_file_2d(u + 4 * dim, psi_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			cblas_dscal(dim, psi0, u + 4 * dim, 1);
 			printf("***           Read psi initial data.        \n");
 		}
 	}

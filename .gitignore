@@ -9,3 +9,4 @@ out*/*
 *.par
 *.ipynb
 .ipynb_checkpoints/*
+*.swp
