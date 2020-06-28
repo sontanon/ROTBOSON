@@ -335,7 +335,8 @@ int main(int argc, char *argv[])
 						&J, epsilon, maxNewtonIter, 5, 5,
 						lambdaMin, localSolver,
 						rhs, csr_gen_jacobian, 
-						norm2_interior_all_variables, dot_interior_all_variables,
+						norm2_interior, dot_interior,
+						//norm2_interior_all_variables, dot_interior_all_variables,
 						linear_solve_1, linear_solve_2);
 				break;
 			// Residual-based algorithm.
@@ -348,7 +349,8 @@ int main(int argc, char *argv[])
 						&J, epsilon, maxNewtonIter, 5, 5,
 						lambdaMin, localSolver, 
 						rhs, csr_gen_jacobian, 
-						norm2_interior_all_variables, dot_interior_all_variables,
+						norm2_interior, dot_interior,
+						//norm2_interior_all_variables, dot_interior_all_variables,
 						linear_solve_1, linear_solve_2);
 				break;
 		}
