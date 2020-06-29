@@ -368,6 +368,7 @@ void parser(const char *fname)
 				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for dz_i.\n");
 				exit(-1);
 			}
+			config_lookup_string(&cfg, "w_i", &w_i);
 
 			break;
 	
