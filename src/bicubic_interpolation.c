@@ -154,7 +154,7 @@ double bicubic_csr_interpolator(const double f00,
 }
 
 // Bicubic wrapper.
-double bicubic(const MKL_INT i1, const MKL_INT j1, const double di, const double dj, const double *u, const double *Dr_u, const double *Dz_u, const double *Drz_u, const double dr, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal)
+double bicubic(const MKL_INT i1, const MKL_INT j1, const double di, const double dj, double *u, double *Dr_u, double *Dz_u, double *Drz_u, const double dr, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal)
 {
 	return bicubic_csr_interpolator(u[IDX(i1, j1)], u[IDX(i1, j1 + 1)], u[IDX(i1 + 1, j1)], u[IDX(i1 + 1, j1 + 1)],
 		dr * Dr_u[IDX(i1, j1)], dr * Dr_u[IDX(i1, j1 + 1)], dr * Dr_u[IDX(i1 + 1, j1)], dr * Dr_u[IDX(i1 + 1, j1 + 1)],

@@ -4,7 +4,7 @@
 
 #undef PARALLEL
 
-double simps(const double *y, const double dx, const MKL_INT dim)
+double simps(double *y, const double dx, const MKL_INT dim)
 {
 	// Step size over 3.0
 	double dx_o_3 = dx / 3.0;

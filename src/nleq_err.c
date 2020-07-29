@@ -39,10 +39,10 @@ MKL_INT nleq_err(
 		const MKL_INT	max_trial_B_iterations,	// INPUT: Maximum number of trial B iterations.
 		const double 	lambda_min,		// INPUT: Minimum damping factor.
 		const MKL_INT	qnerr,			// INPUT: Boolean to indicate whether to use QNERR.
-		      void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
-		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *),					// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *),				// INPUT: Dot product calculation subroutine.
+		      void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
+		      void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
+		      double	(*NORM)(double *),					// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(double *, double *),				// INPUT: Dot product calculation subroutine.
 		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
 		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 	)

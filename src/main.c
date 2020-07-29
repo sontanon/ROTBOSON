@@ -192,6 +192,10 @@ int main(int argc, char *argv[])
 	Dzz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
 	Drz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
 
+	// Regularization.
+	lambda = (double *)SAFE_MALLOC(dim * sizeof(double));
+	regularization_i_stop = (MKL_INT)floor(regularization_axis_stop / dr + ghost - 0.5);
+
 	// Newton output parameters.
 	double *norm_f		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
 	double *norm_du		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
@@ -508,6 +512,9 @@ int main(int argc, char *argv[])
 	SAFE_FREE(Drr_u);
 	SAFE_FREE(Dzz_u);
 	SAFE_FREE(Drz_u);
+
+	// Regularization.
+	SAFE_FREE(lambda);
 
 	// Newton variables.
 	SAFE_FREE(norm_f);

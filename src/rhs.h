@@ -1,1 +1,1 @@
-void rhs(double *f, const double *u);
+void rhs(double *f, double *u);

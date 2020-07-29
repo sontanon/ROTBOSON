@@ -1,17 +1,17 @@
 #include "tools.h"
 #include "param.h"
 
-double norm2(const double *x)
+double norm2(double *x)
 {
 	return cblas_dnrm2(dim, x, 1) / sqrt(dim);
 }
 
-double dot(const double *x, const double *y)
+double dot(double *x, double *y)
 {
 	return cblas_ddot(dim, x, 1, y, 1)  / dim;
 }
 
-double norm2_interior(const double *x)
+double norm2_interior(double *x)
 {
 	double sum = cblas_ddot(NzTotal * NrInterior, x + ghost * NzTotal, 1, x + ghost * NzTotal, 1);
 
@@ -26,7 +26,7 @@ double norm2_interior(const double *x)
 	return sqrt(sum) / sqrt(NrInterior * NzInterior);
 }
 
-double dot_interior(const double *x, const double *y)
+double dot_interior(double *x, double *y)
 {
 	double sum = cblas_ddot(NzTotal * NrInterior, x + ghost * NzTotal, 1, y + ghost * NzTotal, 1);
 
@@ -41,7 +41,7 @@ double dot_interior(const double *x, const double *y)
 	return sum / (NrInterior * NzInterior);
 }
 
-double dot_interior_all_variables(const double *x, const double *y)
+double dot_interior_all_variables(double *x, double *y)
 {
 	double sum = 0.0;
 	MKL_INT k = 0;
@@ -56,7 +56,7 @@ double dot_interior_all_variables(const double *x, const double *y)
 	return sum / 5.0;
 }
 
-double norm2_interior_all_variables(const double *x)
+double norm2_interior_all_variables(double *x)
 {
 	double sum = dot_interior_all_variables(x, x);
 

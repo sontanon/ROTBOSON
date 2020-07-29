@@ -77,6 +77,12 @@ double rr_inf;
 
 /* OUTPUT */
 const char *dirname = "test";
+
+/* REGULARIZATION */
+MKL_INT regularization = 1;
+double	regularization_axis_stop = 0.25;
+double	regularization_i_stop;
+double *lambda;
 #else
 /* CONFIG FILE */
 extern config_t cfg;
@@ -154,4 +160,10 @@ extern double rr_inf;
 
 /* OUTPUT */
 extern const char *dirname;
+
+/* REGULARIZATION */
+extern MKL_INT regularization;
+extern double regularization_axis_stop;
+extern double regularization_i_stop;
+extern double *lambda;
 #endif

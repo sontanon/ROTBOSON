@@ -6,11 +6,13 @@
 
 #include "rhs_vars.h"
 
+#include "regularization.h"
+
 #define EVEN 1
 
 #undef DERIVATIVE_DEBUG
 
-void rhs(double *f, const double *u)
+void rhs(double *f, double *u)
 {
 	// Omega.
 	double w = omega_calc(u[w_idx], m);
@@ -50,6 +52,31 @@ void rhs(double *f, const double *u)
 	diff2rz(Drz_u + 2 * dim , u + 2 * dim, EVEN, EVEN);
 	diff2rz(Drz_u + 3 * dim , u + 3 * dim, EVEN, EVEN);
 	diff2rz(Drz_u + 4 * dim , u + 4 * dim, EVEN, EVEN);
+
+	// Calculate regularization lambda.
+	if (regularization)
+	{
+		regularization_calc(lambda, regularization_i_stop,
+			u, Dr_u, Dz_u, Drr_u, Dzz_u,
+			dr, dz, NrTotal, NzTotal, dim, ghost, order,
+			w, m, l);
+	}
+	// Do dumb calculation with no respect for regularization.
+	else
+	{
+		#pragma omp parallel shared(lambda) private(i, j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = 0; i < NrTotal; ++i)
+			{
+				for (j = 0; j < NzTotal; ++j)
+				{
+					// lambda = (A - H) / r**2.
+					lambda[IDX(i, j)] = (exp(2.0 * u[3 * dim + IDX(i, j)]) - exp(2.0 * u[2 * dim + IDX(i, j)])) / pow(dr * (i + 0.5 - ghost), 2);
+				}
+			}
+		}
+	}
 
 #ifdef DERIVATIVE_DEBUG
 	write_single_file_2d(Dr_u, "Dr_log_alpha.asc", NrTotal, NzTotal);
@@ -130,7 +157,7 @@ void rhs(double *f, const double *u)
 		{
 			for (j = ghost; j < NzTotal - 1; ++j)
 			{
-				rhs_vars(f, u, Dr_u, Dz_u, Drr_u, Dzz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
+				rhs_vars(f, u, Dr_u, Dz_u, Drr_u, Dzz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0, lambda);
 			}
 		}
 	}

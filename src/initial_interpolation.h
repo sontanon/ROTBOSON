@@ -1,5 +1,5 @@
 void initial_interpolator(double *u_1,
-	const double *u_0,
+	double *u_0,
 	const MKL_INT NrInterior_0,
 	const MKL_INT NzInterior_0,
 	const MKL_INT ghost_0,

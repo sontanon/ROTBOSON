@@ -3,11 +3,11 @@
 
 void rhs_vars(
 	double *f, 
-	const double *u, 
-	const double *Dr_u,
-	const double *Dz_u,
-	const double *Drr_u, 
-	const double *Dzz_u,
+	double *u, 
+	double *Dr_u,
+	double *Dz_u,
+	double *Drr_u, 
+	double *Dzz_u,
 	const MKL_INT NrTotal,
 	const MKL_INT NzTotal,
 	const MKL_INT dim,
@@ -19,7 +19,8 @@ void rhs_vars(
 	const MKL_INT l,
 	const double m,
 	const double w,
-	const double rescale
+	const double rescale,
+	double *lambda
 )
 {
 	// Omega.
@@ -150,7 +151,7 @@ void rhs_vars(
 		+ D_l_alpha_D_psi + D_l_h_D_psi
 		+ l * ((Dr_l_alpha / r) + (Dr_l_h / r)) * psi
 		+ a2 * (w_plus_l_beta2 / alpha2 - m2) * psi)
-		- dzodr * l * l * ((a2 - h2) / (r2 / (dr * dr))) * psi / h2);
+		- dr * dr * dzodr * l * l * lambda[IDX(i, j)] * psi / h2);
 
 	/*
 	// u4 = log(a).
@@ -176,9 +177,9 @@ void rhs_vars(
 
 void rhs_bdry(
 	double *f, 
-	const double *u, 
-	const double *Dr_u,
-	const double *Dz_u,
+	double *u, 
+	double *Dr_u,
+	double *Dz_u,
 	const MKL_INT NrTotal,
 	const MKL_INT NzTotal,
 	const MKL_INT dim,

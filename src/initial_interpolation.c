@@ -33,7 +33,7 @@ double extrapolate_robin(double *u, double u_inf, MKL_INT n, double K, MKL_INT N
 // The grid from which we are reading will be denoted by the "0" subscript.
 // Final grid is denoted by "1" subscript.
 void initial_interpolator(	double *u_1,
-				const double *u_0,
+				double *u_0,
 				const MKL_INT NrInterior_0,
 				const MKL_INT NzInterior_0,
 				const MKL_INT ghost_0,

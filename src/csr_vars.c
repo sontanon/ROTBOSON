@@ -38,7 +38,8 @@ void jacobian_2nd_order_variable_omega_cc
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5 	// Number of elements filled before filling function 5.
+	const MKL_INT offset5,	// Number of elements filled before filling function 5.
+	const double lambda
 )
 {
 	// Physical variables.
@@ -353,7 +354,7 @@ void jacobian_2nd_order_variable_omega_cc
 
 	aa[offset5 + 12] = dzodr*((D_2_20) + (D_2_10)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 	aa[offset5 + 13] = drodz*((D_2_20) + (D_2_10)*(dZu1 + dZu3));
-	aa[offset5 + 14] = (D_2_21)*(drodz + dzodr) + dzodr * (l * (dRu1 / ri + dRu3 / ri) + (dr2 * a2 * (wplOmega2 / alpha2 - m2) - l * l * ((a2 - h2) / (ri * ri)) / h2));
+	aa[offset5 + 14] = (D_2_21)*(drodz + dzodr) + dzodr * (l * (dRu1 / ri + dRu3 / ri) + (dr2 * a2 * (wplOmega2 / alpha2 - m2) - l * l * (dr2*lambda) / h2));
 	aa[offset5 + 15] = drodz*2.0*(D_2_22) -aa[offset5 + 13];
 	aa[offset5 + 16] = dzodr*2.0*(D_2_22) -aa[offset5 + 12];
 
@@ -441,7 +442,8 @@ void jacobian_4th_order_variable_omega_cc
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5 	// Number of elements filled before filling function 5.
+	const MKL_INT offset5,	// Number of elements filled before filling function 5.
+	const double lambda
 )
 {
 	// Physical variables.
@@ -878,7 +880,7 @@ void jacobian_4th_order_variable_omega_cc
 	aa[offset5 + 21] = (D21)*dzodr + dzodr*((D11)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 	aa[offset5 + 22] = (D20)*drodz + drodz*((D10)*(dZu1 + dZu3));
 	aa[offset5 + 23] = (D21)*drodz + drodz*((D11)*(dZu1 + dZu3));
-	aa[offset5 + 24] = (D22)*(drodz + dzodr) + dzodr*(l*(dRu1/ri + dRu3/ri) + (dr2*a2*(wplOmega2/alpha2 - m2) - l*l*((a2 - h2)/(ri*ri))/h2));
+	aa[offset5 + 24] = (D22)*(drodz + dzodr) + dzodr*(l*(dRu1/ri + dRu3/ri) + (dr2*a2*(wplOmega2/alpha2 - m2) - l*l*(dr2*lambda)/h2));
 	aa[offset5 + 25] = (D23)*drodz + drodz*((D13)*(dZu1 + dZu3));
 	aa[offset5 + 26] = (D24)*drodz + drodz*((D14)*(dZu1 + dZu3));
 	aa[offset5 + 27] = (D23)*dzodr + dzodr*((D13)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
@@ -955,7 +957,8 @@ void jacobian_4th_order_variable_omega_cs
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5 	// Number of elements filled before filling function 5
+	const MKL_INT offset5,	// Number of elements filled before filling function 5
+	const double lambda
 )
 {
 	// Physical variables.
@@ -1405,7 +1408,7 @@ void jacobian_4th_order_variable_omega_cs
 	aa[offset5 + 23] = (S21)*drodz + drodz*((S11)*(dZu1 + dZu3));
 	aa[offset5 + 24] = (S22)*drodz + drodz*((S12)*(dZu1 + dZu3));
 	aa[offset5 + 25] = (S23)*drodz + drodz*((S13)*(dZu1 + dZu3));
-	aa[offset5 + 26] = (S24)*drodz + drodz*((S14)*(dZu1 + dZu3)) + (D22)*dzodr + dzodr*(l*(dRu1/ri + dRu3/ri) + (dr2*a2*(wplOmega2/alpha2 - m2) - l*l*((a2 - h2)/(ri*ri))/h2));
+	aa[offset5 + 26] = (S24)*drodz + drodz*((S14)*(dZu1 + dZu3)) + (D22)*dzodr + dzodr*(l*(dRu1/ri + dRu3/ri) + (dr2*a2*(wplOmega2/alpha2 - m2) - l*l*(dr2*lambda)/h2));
 	aa[offset5 + 27] = (S25)*drodz + drodz*((S15)*(dZu1 + dZu3));
 	aa[offset5 + 28] = (D23)*dzodr + dzodr*((D13)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 	aa[offset5 + 29] = (D24)*dzodr + dzodr*((D14)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
@@ -1482,7 +1485,8 @@ void jacobian_4th_order_variable_omega_sc
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5 	// Number of elements filled before filling function 5
+	const MKL_INT offset5, 	// Number of elements filled before filling function 5
+	const double lambda
 )
 {
 	// Physical variables.
@@ -1932,7 +1936,7 @@ void jacobian_4th_order_variable_omega_sc
 	aa[offset5 + 23] = (S23)*dzodr + dzodr*((S13)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
 	aa[offset5 + 24] = (D20)*drodz + drodz*((D10)*(dZu1 + dZu3));
 	aa[offset5 + 25] = (D21)*drodz + drodz*((D11)*(dZu1 + dZu3));
-	aa[offset5 + 26] = (S24)*dzodr + dzodr*((S14)*((2.0*l + 1.0)/ri + dRu1 + dRu3)) + (D22)*drodz + dzodr*(l*(dRu1/ri + dRu3/ri) + (dr2*a2*(wplOmega2/alpha2 - m2) - l*l*((a2 - h2)/(ri*ri))/h2));
+	aa[offset5 + 26] = (S24)*dzodr + dzodr*((S14)*((2.0*l + 1.0)/ri + dRu1 + dRu3)) + (D22)*drodz + dzodr*(l*(dRu1/ri + dRu3/ri) + (dr2*a2*(wplOmega2/alpha2 - m2) - l*l*(dr2*lambda)/h2));
 	aa[offset5 + 27] = (D23)*drodz + drodz*((D13)*(dZu1 + dZu3));
 	aa[offset5 + 28] = (D24)*drodz + drodz*((D14)*(dZu1 + dZu3));
 	aa[offset5 + 29] = (S25)*dzodr + dzodr*((S15)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
@@ -2009,7 +2013,8 @@ void jacobian_4th_order_variable_omega_ss
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5 	// Number of elements filled before filling function 5
+	const MKL_INT offset5, 	// Number of elements filled before filling function 5
+	const double lambda
 )
 {
 	// Physical variables.
@@ -2469,7 +2474,7 @@ void jacobian_4th_order_variable_omega_ss
  	aa[offset5 + 25] = (S21)*drodz + drodz*((S11)*(dZu1 + dZu3));
  	aa[offset5 + 26] = (S22)*drodz + drodz*((S12)*(dZu1 + dZu3));
  	aa[offset5 + 27] = (S23)*drodz + drodz*((S13)*(dZu1 + dZu3));
- 	aa[offset5 + 28] = (S24)*drodz + drodz*((S14)*(dZu1 + dZu3)) +(S24)*dzodr + dzodr*((S14)*((2.0*l + 1.0)/ri + dRu1 + dRu3)) + dzodr*(l*(dRu1/ri + dRu3/ri) + (dr2*a2*(wplOmega2/alpha2 - m2) - l*l*((a2 - h2)/(ri*ri))/h2));
+ 	aa[offset5 + 28] = (S24)*drodz + drodz*((S14)*(dZu1 + dZu3)) +(S24)*dzodr + dzodr*((S14)*((2.0*l + 1.0)/ri + dRu1 + dRu3)) + dzodr*(l*(dRu1/ri + dRu3/ri) + (dr2*a2*(wplOmega2/alpha2 - m2) - l*l*(dr2*lambda)/h2));
  	aa[offset5 + 29] = (S25)*drodz + drodz*((S15)*(dZu1 + dZu3));
  	aa[offset5 + 30] = (S25)*dzodr + dzodr*((S15)*((2.0*l + 1.0)/ri + dRu1 + dRu3));
  

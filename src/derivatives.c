@@ -1,6 +1,6 @@
 #include "tools.h"
 
-void ex_diff1r(double *dvar, const double *var, const MKL_INT symr, const double dr, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
+void ex_diff1r(double *dvar, double *var, const MKL_INT symr, const double dr, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
 {
 	// Auxiliary integers.
 	MKL_INT i, j;
@@ -86,7 +86,7 @@ void ex_diff1r(double *dvar, const double *var, const MKL_INT symr, const double
 	return;
 }
 
-void ex_diff1z(double *dvar, const double *var, const MKL_INT symz, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
+void ex_diff1z(double *dvar, double *var, const MKL_INT symz, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
 {
 	// Auxiliary integers.
 	MKL_INT i, j;
@@ -172,7 +172,7 @@ void ex_diff1z(double *dvar, const double *var, const MKL_INT symz, const double
 	return;
 }
 
-void ex_diff2r(double *dvar, const double *var, const MKL_INT symr, const double dr, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
+void ex_diff2r(double *dvar, double *var, const MKL_INT symr, const double dr, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
 {
 	// Auxiliary integers.
 	MKL_INT i, j;
@@ -257,7 +257,7 @@ void ex_diff2r(double *dvar, const double *var, const MKL_INT symr, const double
 	return;
 }
 
-void ex_diff2z(double *dvar, const double *var, const MKL_INT symz, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
+void ex_diff2z(double *dvar, double *var, const MKL_INT symz, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
 {
 	// Auxiliary integers.
 	MKL_INT i, j;
@@ -342,7 +342,7 @@ void ex_diff2z(double *dvar, const double *var, const MKL_INT symz, const double
 	return;
 }
 
-void ex_diff2rz(double *dvar, const double *var, const MKL_INT symr, const MKL_INT symz, const double dr, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
+void ex_diff2rz(double *dvar, double *var, const MKL_INT symr, const MKL_INT symz, const double dr, const double dz, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const MKL_INT order)
 {
 	MKL_INT i, j;
 
@@ -461,7 +461,7 @@ void ex_diff2rz(double *dvar, const double *var, const MKL_INT symr, const MKL_I
 }
 
 // Angular differentiation.
-void ex_diff1th(double *dvar, const double *var, const MKL_INT symr, const MKL_INT symz, const double dth, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT ghost, const MKL_INT order)
+void ex_diff1th(double *dvar, double *var, const MKL_INT symr, const MKL_INT symz, const double dth, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT ghost, const MKL_INT order)
 {
 	// Auxiliary integers.
 	MKL_INT i, j;
@@ -549,7 +549,7 @@ void ex_diff1th(double *dvar, const double *var, const MKL_INT symr, const MKL_I
 }
 
 // Radial differentiation.
-void ex_diff1rr(double *dvar, const double *var, const MKL_INT symrr, const double drr, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT ghost, const MKL_INT order)
+void ex_diff1rr(double *dvar, double *var, const MKL_INT symrr, const double drr, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT ghost, const MKL_INT order)
 {
 	// Auxiliary integers.
 	MKL_INT i, j;
@@ -617,5 +617,102 @@ void ex_diff1rr(double *dvar, const double *var, const MKL_INT symrr, const doub
 	}
 
 	// All done.
+	return;
+}
+
+void ex_diff1(double *du, double *u, const MKL_INT sym, const double h, const MKL_INT dim, const MKL_INT ghost, const MKL_INT order)
+{
+	// Auxiliary integers.
+	MKL_INT k;
+
+	// Constants.
+	const double twelfth = 1.0 / 12.0;
+
+	if (order == 4)
+	{
+		#pragma omp parallel shared(du) private(k)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (k = ghost; k < dim - 2; ++k)
+			{
+				du[k] = twelfth * (-u[k + 2] + 8.0 * u[k + 1] - 8.0 * u[k - 1] + u[k - 2]) / h;
+			}
+		}
+		
+		for (k = 0; k < ghost; ++k)
+		{
+			du[k] = -sym * du[2 * ghost - k - 1];
+		}
+        	du[dim - 2] = twelfth * ( 3.0 * u[dim-1] + 10.0 * u[dim-2] - 18.0 * u[dim-3] +  6.0 * u[dim-4] -       u[dim-5]) / h;
+        	du[dim - 1] = twelfth * (25.0 * u[dim-1] - 48.0 * u[dim-2] + 36.0 * u[dim-3] - 16.0 * u[dim-4] + 3.0 * u[dim-5]) / h;
+	}
+
+	return;
+}
+
+void ex_diff2(double *du, double *u, const MKL_INT sym, const double h, const MKL_INT dim, const MKL_INT ghost, const MKL_INT order)
+{
+	// Auxiliary integers.
+	MKL_INT k;
+
+	// Constants.
+	const double twelfth = 1.0 / 12.0;
+
+	double h2 = h * h;
+
+	if (order == 4)
+	{
+		#pragma omp parallel shared(du) private(k)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (k = ghost; k < dim - 2; ++k)
+			{
+				du[k] = -twelfth * (30.0 * u[k] - 16.0 * (u[k + 1] + u[k - 1]) + (u[k + 2] + u[k - 2])) / h2;
+			}
+		}
+		
+		for (k = 0; k < ghost; ++k)
+		{
+			du[k] = sym * du[2 * ghost - k - 1];
+		}
+		du[dim-2] = twelfth * (10.0 * u[dim-1] -  15.0 * u[dim-2] -   4.0 * u[dim-3] +  14.0 * u[dim-4] -  6.0 * u[dim-5] +        u[dim-6]) / h2;
+        	du[dim-1] = twelfth * (45.0 * u[dim-1] - 154.0 * u[dim-2] + 214.0 * u[dim-3] - 156.0 * u[dim-4] + 61.0 * u[dim-5] - 10.0 * u[dim-6]) / h2;
+	}
+
+	return;
+}
+
+void ex_diff3(double *du, double *u, const MKL_INT sym, const double h, const MKL_INT dim, const MKL_INT ghost, const MKL_INT order)
+{
+	// Auxiliary integers.
+	MKL_INT k;
+
+	// Constants.
+	const double eighth = 0.125;
+
+	double h3 = h * h * h;
+
+	if (order == 4)
+	{
+		#pragma omp parallel shared(du) private(k)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (k = 3; k < dim - 3; ++k)
+			{
+				du[k] = eighth * (-13.0 * (u[k + 1] - u[k - 1]) + 8.0 * (u[k + 2] - u[k - 2]) - (u[k + 3] - u[k - 3])) / h3;
+			}
+		}
+
+		du[2] = eighth * (-13.0 * (u[3] - u[1]) + 8.0 * (u[4] - u[0]) - (u[5] - sym * u[4])) / h3;
+
+		for (k = 0; k < 2; ++k)
+		{
+			du[k] = -sym * du[2 * ghost - k - 1];
+		}
+		du[dim-3] = eighth * (       u[dim-1] +   8.0 * u[dim-2] -  35.0 * u[dim-3] +  48.0 * u[dim-4] -  29.0 * u[dim-5] +   8.0 * u[dim-6] -        u[dim-7]) / h3;
+ 		du[dim-2] = eighth * (15.0 * u[dim-1] -  56.0 * u[dim-2] +  83.0 * u[dim-3] -  64.0 * u[dim-4] +  29.0 * u[dim-5] -   8.0 * u[dim-6] +        u[dim-7]) / h3;
+  		du[dim-1] = eighth * (49.0 * u[dim-1] - 232.0 * u[dim-2] + 461.0 * u[dim-3] - 496.0 * u[dim-4] + 307.0 * u[dim-5] - 104.0 * u[dim-6] + 15.0 * u[dim-7]) / h3;
+	}
+
 	return;
 }

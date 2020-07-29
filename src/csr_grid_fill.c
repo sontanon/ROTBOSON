@@ -17,7 +17,7 @@ void csr_grid_fill_4th(
 	const MKL_INT NzInterior,
 	const double dr, 
 	const double dz,
-	const double *u,
+	double *u,
 	const MKL_INT l,
 	const double m,
 	const MKL_INT r_sym[5],
@@ -38,7 +38,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const double),
 	void (*j_cs)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -48,7 +48,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const double),
 	void (*j_sc)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -58,7 +58,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const double),
 	void (*j_ss)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -68,7 +68,8 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT)
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const double),
+	double *lambda
 )
 {
 	// Auxiliary integer.
@@ -185,7 +186,8 @@ void csr_grid_fill_4th(
 					u[2 * dim + IDX(i-2,j)], u[2 * dim + IDX(i-1,j)], u[2 * dim + IDX(i,j-2)], u[2 * dim + IDX(i,j-1)], u[2 * dim + IDX(i,j)], u[2 * dim + IDX(i,j+1)], u[2 * dim + IDX(i,j+2)], u[2 * dim + IDX(i+1,j)], u[2 * dim + IDX(i+2,j)], 
 					u[3 * dim + IDX(i-2,j)], u[3 * dim + IDX(i-1,j)], u[3 * dim + IDX(i,j-2)], u[3 * dim + IDX(i,j-1)], u[3 * dim + IDX(i,j)], u[3 * dim + IDX(i,j+1)], u[3 * dim + IDX(i,j+2)], u[3 * dim + IDX(i+1,j)], u[3 * dim + IDX(i+2,j)], 
 					u[4 * dim + IDX(i-2,j)], u[4 * dim + IDX(i-1,j)], u[4 * dim + IDX(i,j-2)], u[4 * dim + IDX(i,j-1)], u[4 * dim + IDX(i,j)], u[4 * dim + IDX(i,j+1)], u[4 * dim + IDX(i,j+2)], u[4 * dim + IDX(i+1,j)], u[4 * dim + IDX(i+2,j)], 
-					offset[0], offset[1], offset[2], offset[3], offset[4]);
+					offset[0], offset[1], offset[2], offset[3], offset[4],
+					lambda[IDX(i,j)]);
 				// Increase offsets.
 				for (k = 0; k < 5; ++k)
 					offset[k] += p_cc[k];
@@ -202,7 +204,8 @@ void csr_grid_fill_4th(
 				u[2 * dim + IDX(i-2,j)], u[2 * dim + IDX(i-1,j)], u[2 * dim + IDX(i,j-4)], u[2 * dim + IDX(i,j-3)], u[2 * dim + IDX(i,j-2)], u[2 * dim + IDX(i,j-1)], u[2 * dim + IDX(i,j)], u[2 * dim + IDX(i,j+1)], u[2 * dim + IDX(i+1,j)], u[2 * dim + IDX(i+2,j)],
 				u[3 * dim + IDX(i-2,j)], u[3 * dim + IDX(i-1,j)], u[3 * dim + IDX(i,j-4)], u[3 * dim + IDX(i,j-3)], u[3 * dim + IDX(i,j-2)], u[3 * dim + IDX(i,j-1)], u[3 * dim + IDX(i,j)], u[3 * dim + IDX(i,j+1)], u[3 * dim + IDX(i+1,j)], u[3 * dim + IDX(i+2,j)],
 				u[4 * dim + IDX(i-2,j)], u[4 * dim + IDX(i-1,j)], u[4 * dim + IDX(i,j-4)], u[4 * dim + IDX(i,j-3)], u[4 * dim + IDX(i,j-2)], u[4 * dim + IDX(i,j-1)], u[4 * dim + IDX(i,j)], u[4 * dim + IDX(i,j+1)], u[4 * dim + IDX(i+1,j)], u[4 * dim + IDX(i+2,j)],
-				offset[0], offset[1], offset[2], offset[3], offset[4]);
+				offset[0], offset[1], offset[2], offset[3], offset[4],
+				lambda[IDX(i,j)]);
 			// Increase offsets.
 			for (k = 0; k < 5; ++k)
 				offset[k] += p_cs[k];
@@ -258,7 +261,8 @@ void csr_grid_fill_4th(
 				u[2 * dim + IDX(i-4,j)], u[2 * dim + IDX(i-3,j)], u[2 * dim + IDX(i-2,j)], u[2 * dim + IDX(i-1,j)], u[2 * dim + IDX(i,j-2)], u[2 * dim + IDX(i,j-1)], u[2 * dim + IDX(i,j)], u[2 * dim + IDX(i,j+1)], u[2 * dim + IDX(i,j+2)],  u[2 * dim + IDX(i+1,j)],
 				u[3 * dim + IDX(i-4,j)], u[3 * dim + IDX(i-3,j)], u[3 * dim + IDX(i-2,j)], u[3 * dim + IDX(i-1,j)], u[3 * dim + IDX(i,j-2)], u[3 * dim + IDX(i,j-1)], u[3 * dim + IDX(i,j)], u[3 * dim + IDX(i,j+1)], u[3 * dim + IDX(i,j+2)],  u[3 * dim + IDX(i+1,j)],
 				u[4 * dim + IDX(i-4,j)], u[4 * dim + IDX(i-3,j)], u[4 * dim + IDX(i-2,j)], u[4 * dim + IDX(i-1,j)], u[4 * dim + IDX(i,j-2)], u[4 * dim + IDX(i,j-1)], u[4 * dim + IDX(i,j)], u[4 * dim + IDX(i,j+1)], u[4 * dim + IDX(i,j+2)],  u[4 * dim + IDX(i+1,j)],
-				offset[0], offset[1], offset[2], offset[3], offset[4]);
+				offset[0], offset[1], offset[2], offset[3], offset[4],
+				lambda[IDX(i,j)]);
 			// Increase offsets.
 			for (k = 0; k < 5; ++k)
 				offset[k] += p_sc[k];
@@ -281,7 +285,8 @@ void csr_grid_fill_4th(
 		u[2 * dim + IDX(i-4,j)], u[2 * dim + IDX(i-3,j)], u[2 * dim + IDX(i-2,j)], u[2 * dim + IDX(i-1,j)], u[2 * dim + IDX(i,j-4)], u[2 * dim + IDX(i,j-3)], u[2 * dim + IDX(i,j-2)], u[2 * dim + IDX(i,j-1)], u[2 * dim + IDX(i,j)], u[2 * dim + IDX(i,j+1)], u[2 * dim + IDX(i+1,j)],
 		u[3 * dim + IDX(i-4,j)], u[3 * dim + IDX(i-3,j)], u[3 * dim + IDX(i-2,j)], u[3 * dim + IDX(i-1,j)], u[3 * dim + IDX(i,j-4)], u[3 * dim + IDX(i,j-3)], u[3 * dim + IDX(i,j-2)], u[3 * dim + IDX(i,j-1)], u[3 * dim + IDX(i,j)], u[3 * dim + IDX(i,j+1)], u[3 * dim + IDX(i+1,j)],
 		u[4 * dim + IDX(i-4,j)], u[4 * dim + IDX(i-3,j)], u[4 * dim + IDX(i-2,j)], u[4 * dim + IDX(i-1,j)], u[4 * dim + IDX(i,j-4)], u[4 * dim + IDX(i,j-3)], u[4 * dim + IDX(i,j-2)], u[4 * dim + IDX(i,j-1)], u[4 * dim + IDX(i,j)], u[4 * dim + IDX(i,j+1)], u[4 * dim + IDX(i+1,j)],
-		offset[0], offset[1], offset[2], offset[3], offset[4]);
+		offset[0], offset[1], offset[2], offset[3], offset[4],
+		lambda[IDX(i,j)]);
 	// Increase offsets.
 	for (k = 0; k < 5; ++k)
 		offset[k] += p_ss[k];
@@ -371,7 +376,7 @@ void csr_grid_fill_2nd(
 	const MKL_INT NzInterior, 
 	const double dr, 
 	const double dz,
-	const double *u,
+	double *u,
 	const MKL_INT l,
 	const double m,
 	const MKL_INT r_sym[5],
@@ -388,7 +393,8 @@ void csr_grid_fill_2nd(
 		const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT)
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const double),
+	double *lambda
 )
 {
 	// Auxiliary integers.
@@ -497,7 +503,8 @@ void csr_grid_fill_2nd(
 					u[2*dim+IDX(i-1,j  )], u[2*dim+IDX(i  ,j-1)], u[2*dim+IDX(i  ,j  )], u[2*dim+IDX(i  ,j+1)], u[2*dim+IDX(i+1,j  )],
 					u[3*dim+IDX(i-1,j  )], u[3*dim+IDX(i  ,j-1)], u[3*dim+IDX(i  ,j  )], u[3*dim+IDX(i  ,j+1)], u[3*dim+IDX(i+1,j  )],
 					u[4*dim+IDX(i-1,j  )], u[4*dim+IDX(i  ,j-1)], u[4*dim+IDX(i  ,j  )], u[4*dim+IDX(i  ,j+1)], u[4*dim+IDX(i+1,j  )],
-					offset[0], offset[1], offset[2], offset[3], offset[4]);
+					offset[0], offset[1], offset[2], offset[3], offset[4],
+					lambda[IDX(i,j)]);
 				// Increase offsets.
 				for (k = 0; k < 5; ++k)
 					offset[k] += p_center[k];

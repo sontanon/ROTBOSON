@@ -23,7 +23,8 @@ void jacobian_2nd_order_variable_omega_cc(
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5);	// Number of elements filled before filling function 5.
+	const MKL_INT offset5, 	// Number of elements filled before filling function 5.
+	const double lambda);
 
 void jacobian_4th_order_variable_omega_cc(
 	double *aa,		// CSR array for values.
@@ -50,7 +51,8 @@ void jacobian_4th_order_variable_omega_cc(
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5);	// Number of elements filled before filling function 5.
+	const MKL_INT offset5, 	// Number of elements filled before filling function 5.
+	const double lambda);
 
 void jacobian_4th_order_variable_omega_cs(
 	double *aa,		// CSR array for values.
@@ -77,7 +79,8 @@ void jacobian_4th_order_variable_omega_cs(
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5);	// Number of elements filled before filling function 5
+	const MKL_INT offset5, 	// Number of elements filled before filling function 5
+	const double lambda);
 
 void jacobian_4th_order_variable_omega_sc(
 	double *aa,		// CSR array for values.
@@ -104,7 +107,8 @@ void jacobian_4th_order_variable_omega_sc(
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5);	// Number of elements filled before filling function 5
+	const MKL_INT offset5, 	// Number of elements filled before filling function 5
+	const double lambda);
 
 void jacobian_4th_order_variable_omega_ss(
 	double *aa,		// CSR array for values.
@@ -131,4 +135,5 @@ void jacobian_4th_order_variable_omega_ss(
 	const MKL_INT offset2, 	// Number of elements filled before filling function 2.
 	const MKL_INT offset3, 	// Number of elements filled before filling function 3.
 	const MKL_INT offset4, 	// Number of elements filled before filling function 4.
-	const MKL_INT offset5);	// Number of elements filled before filling function 5
+	const MKL_INT offset5, 	// Number of elements filled before filling function 5
+	const double lambda);
