@@ -82,7 +82,7 @@ const char *dirname = "test";
 MKL_INT regularization = 1;
 double	regularization_axis_stop = 0.25;
 double	regularization_i_stop;
-double *lambda;
+double *reg_lambda;
 #else
 /* CONFIG FILE */
 extern config_t cfg;
@@ -165,5 +165,5 @@ extern const char *dirname;
 extern MKL_INT regularization;
 extern double regularization_axis_stop;
 extern double regularization_i_stop;
-extern double *lambda;
+extern double *reg_lambda;
 #endif

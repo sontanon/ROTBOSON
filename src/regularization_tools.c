@@ -9,7 +9,7 @@ double axis_i(const double u, const double Dr_u, const double Drr_u, const doubl
 // Differentiate with respect to r on axis.
 double axis_Drr_u(const double axis_u, double *u, const double dr, const MKL_INT j, const MKL_INT ghost, const MKL_INT NrTotal, const MKL_INT NzTotal)
 {
-	return (-u[IDX(ghost + 1, j)] + 81.0 * u[IDX(ghost, j)] - 160.0 * axis_u) / (9.0 * dr * dr);
+	return (-u[IDX(ghost + 1, j)] + 81.0 * u[IDX(ghost, j)] - 80.0 * axis_u) / (9.0 * dr * dr);
 }
 
 double axis_Drrrr_u(const double axis_u, double *u, const double dr, const MKL_INT j, const MKL_INT ghost, const MKL_INT NrTotal, const MKL_INT NzTotal)

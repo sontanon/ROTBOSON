@@ -2,6 +2,8 @@
 #include "derivatives.h"
 #include "regularization_tools.h"
 
+#undef DEBUG
+
 void regularization_calc(double *lambda,
 	const MKL_INT i_max,
 	double *u, 
@@ -29,6 +31,7 @@ void regularization_calc(double *lambda,
 	double *alpha21 = (double *)SAFE_MALLOC(NzTotal * sizeof(double));
 	double *alpha22 = (double *)SAFE_MALLOC(NzTotal * sizeof(double));
 	double *alpha40 = (double *)SAFE_MALLOC(NzTotal * sizeof(double));
+
 	double *beta = u + dim;
 	double *Dr_beta = Dr_u + dim;
 	double *Drr_beta = Drr_u + dim;
@@ -67,18 +70,14 @@ void regularization_calc(double *lambda,
 	MKL_INT i = 0, j = 0, k = 0;
 
 	// Calculate physical variables alpha, H.
-	#pragma omp parallel shared(alpha, H, A) private(i, j, k)
+	#pragma omp parallel shared(alpha, H, A) private(k)
 	{
 		#pragma omp for schedule(dynamic, 1)
-		for (i = 0; i < NrTotal; ++i)
+		for (k = 0; k < dim; ++k)
 		{
-			for (j = 0; j < NzTotal; ++j)
-			{
-				k = IDX(i, j);
-				alpha[k] = exp(log_alpha[k]);
-				H[k] = exp(2.0 * log_h[k]);
-				A[k] = exp(2.0 * log_a[k]);
-			}
+			alpha[k] = exp(log_alpha[k]);
+			H[k] = exp(2.0 * log_h[k]);
+			A[k] = exp(2.0 * log_a[k]);
 		}
 	}
 
@@ -105,6 +104,13 @@ void regularization_calc(double *lambda,
 		}
 	}
 
+#ifdef DEBUG
+	write_single_file_1d(alpha00, "alpha00.asc", NzTotal);
+	write_single_file_1d(beta00, "beta00.asc", NzTotal);
+	write_single_file_1d(H00, "H00.asc", NzTotal);
+	write_single_file_1d(psi00, "psi00.asc", NzTotal);
+#endif
+
 	// Calculate z derivatives along axis.
 	ex_diff1(alpha01, alpha00, 1, dz, NzTotal, ghost, order);
 	ex_diff2(alpha02, alpha00, 1, dz, NzTotal, ghost, order);
@@ -115,6 +121,18 @@ void regularization_calc(double *lambda,
 	ex_diff1(beta01, beta00, 1, dz, NzTotal, ghost, order);
 	ex_diff1(psi01, psi00, 1, dz, NzTotal, ghost, order);
 	ex_diff2(psi02, psi00, 1, dz, NzTotal, ghost, order);
+
+#ifdef DEBUG
+	write_single_file_1d(alpha01, "alpha01.asc", NzTotal);
+	write_single_file_1d(alpha02, "alpha02.asc", NzTotal);
+	write_single_file_1d(alpha03, "alpha03.asc", NzTotal);
+	write_single_file_1d(beta01, "beta01.asc", NzTotal);
+	write_single_file_1d(H01, "H01.asc", NzTotal);
+	write_single_file_1d(H02, "H02.asc", NzTotal);
+	write_single_file_1d(H03, "H03.asc", NzTotal);
+	write_single_file_1d(psi01, "psi01.asc", NzTotal);
+	write_single_file_1d(psi02, "psi02.asc", NzTotal);
+#endif
 
 	// Calculate r derivatives along axis.
 	#pragma omp parallel shared(alpha20, alpha21, alpha22, alpha40, H20, H21, H22, H40) private(j)
@@ -133,6 +151,16 @@ void regularization_calc(double *lambda,
 		}
 	}
 
+#ifdef DEBUG
+	write_single_file_1d(alpha20, "alpha20.asc", NzTotal);
+	write_single_file_1d(alpha21, "alpha21.asc", NzTotal);
+	write_single_file_1d(alpha22, "alpha22.asc", NzTotal);
+	write_single_file_1d(alpha40, "alpha40.asc", NzTotal);
+	write_single_file_1d(H20, "H20.asc", NzTotal);
+	write_single_file_1d(H21, "H21.asc", NzTotal);
+	write_single_file_1d(H22, "H22.asc", NzTotal);
+	write_single_file_1d(H40, "H40.asc", NzTotal);
+#endif
 	// Now we can actually calculate lambda and Drr_lambda on the r axis.
 	#pragma omp parallel shared(lambda00, lambda20) private(j)
 	{

@@ -56,7 +56,7 @@ void rhs(double *f, double *u)
 	// Calculate regularization lambda.
 	if (regularization)
 	{
-		regularization_calc(lambda, regularization_i_stop,
+		regularization_calc(reg_lambda, regularization_i_stop,
 			u, Dr_u, Dz_u, Drr_u, Dzz_u,
 			dr, dz, NrTotal, NzTotal, dim, ghost, order,
 			w, m, l);
@@ -64,7 +64,7 @@ void rhs(double *f, double *u)
 	// Do dumb calculation with no respect for regularization.
 	else
 	{
-		#pragma omp parallel shared(lambda) private(i, j)
+		#pragma omp parallel shared(reg_lambda) private(i, j)
 		{
 			#pragma omp for schedule(dynamic, 1)
 			for (i = 0; i < NrTotal; ++i)
@@ -72,7 +72,7 @@ void rhs(double *f, double *u)
 				for (j = 0; j < NzTotal; ++j)
 				{
 					// lambda = (A - H) / r**2.
-					lambda[IDX(i, j)] = (exp(2.0 * u[3 * dim + IDX(i, j)]) - exp(2.0 * u[2 * dim + IDX(i, j)])) / pow(dr * (i + 0.5 - ghost), 2);
+					reg_lambda[IDX(i, j)] = (exp(2.0 * u[3 * dim + IDX(i, j)]) - exp(2.0 * u[2 * dim + IDX(i, j)])) / pow(dr * (i + 0.5 - ghost), 2);
 				}
 			}
 		}
@@ -157,7 +157,7 @@ void rhs(double *f, double *u)
 		{
 			for (j = ghost; j < NzTotal - 1; ++j)
 			{
-				rhs_vars(f, u, Dr_u, Dz_u, Drr_u, Dzz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0, lambda);
+				rhs_vars(f, u, Dr_u, Dz_u, Drr_u, Dzz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0, reg_lambda);
 			}
 		}
 	}

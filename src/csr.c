@@ -249,7 +249,7 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 			jacobian_4th_order_variable_omega_cs,
 			jacobian_4th_order_variable_omega_sc,
 			jacobian_4th_order_variable_omega_ss,
-			lambda);
+			reg_lambda);
 	}
 	// Second order default.
 	else
@@ -258,7 +258,7 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 			NrInterior, NzInterior, dr, dz, u, l, m, 
 			r_sym, z_sym, bound_order, nnzs, p_cc, p_bound,
 			jacobian_2nd_order_variable_omega_cc, 
-			lambda);
+			reg_lambda);
 	}
 
 	// FINALLY FILL OMEGA EQUATION OR u5(1,1) CONSTRAINT.

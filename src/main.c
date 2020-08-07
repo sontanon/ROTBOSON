@@ -193,8 +193,9 @@ int main(int argc, char *argv[])
 	Drz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
 
 	// Regularization.
-	lambda = (double *)SAFE_MALLOC(dim * sizeof(double));
-	regularization_i_stop = (MKL_INT)floor(regularization_axis_stop / dr + ghost - 0.5);
+	reg_lambda = (double *)SAFE_MALLOC(dim * sizeof(double));
+	//regularization_i_stop = (MKL_INT)floor(regularization_axis_stop / dr + ghost - 0.5);
+	regularization_i_stop = 2 * ghost;
 
 	// Newton output parameters.
 	double *norm_f		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
@@ -282,6 +283,9 @@ int main(int argc, char *argv[])
 	write_single_file_2d(f[0] + 2 * dim, "f3_i.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[0] + 3 * dim, "f4_i.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[0] + 4 * dim, "f5_i.asc", NrTotal, NzTotal);
+
+	// Print lambda regularization.
+	write_single_file_2d(reg_lambda, "reg_lambda_i.asc", NrTotal, NzTotal);
 
 	// Initial guess norms.
 	double f_norms[5];
@@ -412,6 +416,8 @@ int main(int argc, char *argv[])
 	write_single_file_2d(f[k] + 3 * dim, "f4_f.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[k] + 4 * dim, "f5_f.asc", NrTotal, NzTotal);
 
+	// Print lambda regularization.
+	write_single_file_2d(reg_lambda, "reg_lambda_f.asc", NrTotal, NzTotal);
 	
 	// Also print Newton parameters.
 	switch (solverType)
@@ -514,7 +520,7 @@ int main(int argc, char *argv[])
 	SAFE_FREE(Drz_u);
 
 	// Regularization.
-	SAFE_FREE(lambda);
+	SAFE_FREE(reg_lambda);
 
 	// Newton variables.
 	SAFE_FREE(norm_f);
