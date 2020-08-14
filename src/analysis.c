@@ -148,14 +148,14 @@ void ex_analysis(
 	double aux_th;
 	double aux_r;
 	double aux_rlm1;
-	double aux_rl;
+	//double aux_rl;
 	double aux_alpha2;
 	double aux_beta;
 	double aux_a2;
 	double aux_h2;
-	double aux_phi;
+	//double aux_phi;
 	double aux_phi_o_r;
-	double aux_phi2;
+	//double aux_phi2;
 	double aux_phi2_o_r2;
 	// GRV2.
 	*GRV2 = 0.0;
@@ -167,7 +167,8 @@ void ex_analysis(
 	}
 	// Beyond the origin, the integrand must be calculated carefully.
 	#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1, i2, i3) private(k,\
-	aux_rr, aux_th, aux_r, aux_rlm1, aux_rl, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi, aux_phi_o_r, aux_phi2, aux_phi2_o_r2)
+	aux_rr, aux_th, aux_r, aux_rlm1, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi_o_r, aux_phi2_o_r2)
+	// aux_rl, axu_phi, aux_phi2)
 	for (k = NthTotal; k < p_dim; ++k)
 	{
 		// Coordinates.
@@ -175,7 +176,7 @@ void ex_analysis(
 		aux_th = sph_th[k];
 		aux_r = aux_rr * sin(aux_th);
 		aux_rlm1 = (l == 1) ? 1.0 : pow(aux_r, l - 1);
-		aux_rl = aux_rlm1 * aux_r;
+		//aux_rl = aux_rlm1 * aux_r;
 		// Metric functions.
 		aux_alpha2 = exp(2.0 * sph_log_alpha[k]);
 		aux_beta = sph_beta[k];
@@ -185,8 +186,8 @@ void ex_analysis(
 		aux_phi_o_r = sph_psi[k] * aux_rlm1;
 		aux_phi2_o_r2 = aux_phi_o_r * aux_phi_o_r;
 		// Scalar field proper.
-		aux_phi = aux_phi_o_r * aux_r;
-		aux_phi2 = aux_phi * aux_phi;
+		//aux_phi = aux_phi_o_r * aux_r;
+		//aux_phi2 = aux_phi * aux_phi;
 
 		// 8 * PI * A**2 * rr * S**phi_phi.
 		i0[k] = 4.0 * M_PI * aux_rr * (aux_a2 * (((w + l * aux_beta) * (w + l * aux_beta) / aux_alpha2 - m * m) * aux_r * aux_r + l * l / aux_h2) * aux_phi2_o_r2
@@ -218,7 +219,8 @@ void ex_analysis(
 	}
 	// Beyond the origin, the integrand must be calculated carefully.
 	#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1, i2, i3) private(k,\
-	aux_rr, aux_th, aux_r, aux_rlm1, aux_rl, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi, aux_phi_o_r, aux_phi2, aux_phi2_o_r2)
+	aux_rr, aux_th, aux_r, aux_rlm1, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi_o_r, aux_phi2_o_r2)
+	// aux_rl, aux_phi, aux_phi2)
 	for (k = NthTotal; k < p_dim; ++k)
 	{
 		// Coordinates.
@@ -226,7 +228,7 @@ void ex_analysis(
 		aux_th = sph_th[k];
 		aux_r = aux_rr * sin(aux_th);
 		aux_rlm1 = (l == 1) ? 1.0 : pow(aux_r, l - 1);
-		aux_rl = aux_rlm1 * aux_r;
+		//aux_rl = aux_rlm1 * aux_r;
 		// Metric functions.
 		aux_alpha2 = exp(2.0 * sph_log_alpha[k]);
 		aux_beta = sph_beta[k];
@@ -236,8 +238,8 @@ void ex_analysis(
 		aux_phi_o_r = sph_psi[k] * aux_rlm1;
 		aux_phi2_o_r2 = aux_phi_o_r * aux_phi_o_r;
 		// Scalar field proper.
-		aux_phi = aux_phi_o_r * aux_r;
-		aux_phi2 = aux_phi * aux_phi;
+		//aux_phi = aux_phi_o_r * aux_r;
+		//aux_phi2 = aux_phi * aux_phi;
 
 		// 4 * PI * S * A**2 * H * rr**2 * sin(th).
 		i0[k] = 4.0 * M_PI * exp(sph_log_h[k]) * aux_rr * aux_rr * sin(aux_th) * 
