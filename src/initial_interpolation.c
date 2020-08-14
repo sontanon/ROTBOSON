@@ -172,10 +172,12 @@ void initial_interpolator(	double *u_1,
 	}
 
 	// Now extrapolate beyond interpolation limits.
-	double rr_1, rr_s;
+	//double rr_1;
+	//double rr_s;
 	double psi_bdry_max = MAX(u_1[4 * dim_1 + ghost_1 * NzTotal_1 + j_inf_1 - 1], MAX(u_1[4 * dim_1 + (i_inf_1 - 1) * NzTotal_1 + ghost_1], u_1[4 * dim_1 + (i_inf_1 - 1) * NzTotal_1 + (j_inf_1 - 1)]));
 
-	MKL_INT k_1, l_1;
+	MKL_INT k_1;
+	//MKL_INT l_1;
 
 	// Consider the lapse, alpha. We are asking that it goes as alpha = 1 - M / r + ...
 	// This implies that the logarithm goes as log(alpha) = - M / r + ...

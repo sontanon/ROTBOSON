@@ -664,6 +664,44 @@ void parser(const char *fname)
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"dirname\" from parameter file. Setting to default value, dirname = %s\n", dirname);
 	}
 
+	// REGULARIZTON.
+	if (config_lookup_int64(&cfg, "regularization", &regularization) != CONFIG_TRUE)
+	{
+		fprintf(stderr, "PARSER: WARNING! Could not read properly read \"regularization\" from parameter file. Setting to default value, regularization = %lld\n", regularization);
+	}
+	else
+	{
+		// Now check if we are doing axis_stop or i_stop.
+		if ((config_lookup_int64(&cfg, "regularization_i_stop", &regularization_i_stop) != CONFIG_TRUE) && (config_lookup_float(&cfg, "regularization_axis_stop", &regularization_axis_stop) != CONFIG_TRUE))
+		{
+			fprintf(stderr, "PARSER: ERROR! Specified regularization but did not give either regularization_i_stop or regularization_axis_stop!\n");
+			fprintf(stderr, "        Please input proper value in parameter file.\n");
+			exit(-1);
+		}
+		// Prioritize i_stop.
+		else if (regularization_i_stop)
+		{
+			// Calculate axis_stop.
+			regularization_axis_stop = dr * (regularization_i_stop - ghost + 0.5);
+			// Ensure we are at less than 1.0.
+			if (regularization_axis_stop > 1.0)
+			{
+				fprintf(stderr, "PARSER: WARNING! regularization_axis_stop = %lE > 1.0\n", regularization_axis_stop);
+			}
+		}
+		else
+		{
+			// Ensure we are at less than 1.0
+			if (regularization_axis_stop > 1.0)
+			{
+				fprintf(stderr, "PARSER: WARNING! regularization_axis_stop = %lE > 1.0\n", regularization_axis_stop);
+			}
+			// Calculate i_stop.
+			regularization_i_stop = (MKL_INT)floor(regularization_axis_stop / dr + ghost - 0.5);
+		}
+	}
+	
+
 	// All done.
 	return;
 }

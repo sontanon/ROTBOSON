@@ -194,8 +194,6 @@ int main(int argc, char *argv[])
 
 	// Regularization.
 	reg_lambda = (double *)SAFE_MALLOC(dim * sizeof(double));
-	//regularization_i_stop = (MKL_INT)floor(regularization_axis_stop / dr + ghost - 0.5);
-	regularization_i_stop = 2 * ghost;
 
 	// Newton output parameters.
 	double *norm_f		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
