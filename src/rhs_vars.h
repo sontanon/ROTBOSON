@@ -15,8 +15,7 @@ void rhs_vars(double *f,
 	const MKL_INT l,
 	const double m,
 	const double w,
-	const double rescale,
-	double *lambda);
+	const double rescale);
 
 void rhs_bdry(double *f, 
 	double *u, 

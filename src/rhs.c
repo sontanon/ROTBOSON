@@ -8,6 +8,7 @@
 
 #include "regularization.h"
 
+// All functions are even about the equator and the axis.
 #define EVEN 1
 
 #undef DERIVATIVE_DEBUG
@@ -20,62 +21,17 @@ void rhs(double *f, double *u)
 	// Loop counters.
 	MKL_INT i = 0;
 	MKL_INT j = 0;
+	MKL_INT k = 0;
 
 	// Calculate derivatives.
-	diff1r(Dr_u          , u          , EVEN);
-	diff1r(Dr_u +     dim, u +     dim, EVEN);
-	diff1r(Dr_u + 2 * dim, u + 2 * dim, EVEN);
-	diff1r(Dr_u + 3 * dim, u + 3 * dim, EVEN);
-	diff1r(Dr_u + 4 * dim, u + 4 * dim, EVEN);
-
-	diff2r(Drr_u          , u          , EVEN);
-	diff2r(Drr_u +     dim, u +     dim, EVEN);
-	diff2r(Drr_u + 2 * dim, u + 2 * dim, EVEN);
-	diff2r(Drr_u + 3 * dim, u + 3 * dim, EVEN);
-	diff2r(Drr_u + 4 * dim, u + 4 * dim, EVEN);
-
-	diff1z(Dz_u          , u          , EVEN);
-	diff1z(Dz_u +     dim, u +     dim, EVEN);
-	diff1z(Dz_u + 2 * dim, u + 2 * dim, EVEN);
-	diff1z(Dz_u + 3 * dim, u + 3 * dim, EVEN);
-	diff1z(Dz_u + 4 * dim, u + 4 * dim, EVEN);
-
-	diff2z(Dzz_u          , u          , EVEN);
-	diff2z(Dzz_u +     dim, u +     dim, EVEN);
-	diff2z(Dzz_u + 2 * dim, u + 2 * dim, EVEN);
-	diff2z(Dzz_u + 3 * dim, u + 3 * dim, EVEN);
-	diff2z(Dzz_u + 4 * dim, u + 4 * dim, EVEN);
-
-	/* Mixed derivatives are only used for interpolation */
-	diff2rz(Drz_u           , u          , EVEN, EVEN);
-	diff2rz(Drz_u +     dim , u +     dim, EVEN, EVEN);
-	diff2rz(Drz_u + 2 * dim , u + 2 * dim, EVEN, EVEN);
-	diff2rz(Drz_u + 3 * dim , u + 3 * dim, EVEN, EVEN);
-	diff2rz(Drz_u + 4 * dim , u + 4 * dim, EVEN, EVEN);
-
-	// Calculate regularization lambda.
-	if (regularization)
+	for (k = 0; k < GNUM; ++k)
 	{
-		regularization_calc(reg_lambda, regularization_i_stop,
-			u, Dr_u, Dz_u, Drr_u, Dzz_u,
-			dr, dz, NrTotal, NzTotal, dim, ghost, order,
-			w, m, l);
-	}
-	// Do dumb calculation with no respect for regularization.
-	else
-	{
-		#pragma omp parallel shared(reg_lambda) private(i, j)
-		{
-			#pragma omp for schedule(dynamic, 1)
-			for (i = 0; i < NrTotal; ++i)
-			{
-				for (j = 0; j < NzTotal; ++j)
-				{
-					// lambda = (A - H) / r**2.
-					reg_lambda[IDX(i, j)] = (exp(2.0 * u[3 * dim + IDX(i, j)]) - exp(2.0 * u[2 * dim + IDX(i, j)])) / pow(dr * (i + 0.5 - ghost), 2);
-				}
-			}
-		}
+		diff1r(Dr_u  + k * dim, u + k * dim, EVEN);
+		diff2r(Drr_u + k * dim, u + k * dim, EVEN);
+		diff1z(Dz_u  + k * dim, u + k * dim, EVEN);
+		diff2z(Dzz_u + k * dim, u + k * dim, EVEN);
+		/* Mixed derivatives are only used for interpolation */
+		diff2rz(Drz_u + k * dim , u + k * dim, EVEN, EVEN);
 	}
 
 #ifdef DERIVATIVE_DEBUG
@@ -109,43 +65,41 @@ void rhs(double *f, double *u)
 	{
 		for (j = 0; j < ghost; ++j)
 		{
-			f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
+			for (k = 0; k < GNUM; ++k)
+			{
+				f[k * dim + IDX(i, j)] = 0.0;
+			}
 		}
 	}
 
 	// Parity on r axis.
 	for (i = 0; i < ghost; ++i)
 	{
-		#pragma omp parallel shared(f) private(j)
+		#pragma omp parallel shared(f) private(j, k)
 		{
 			#pragma omp for schedule(dynamic, 1)
 			for (j = ghost; j < NzTotal; ++j)
 			{
-				f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
+				for (k = 0; k < GNUM; ++k)
+				{
+					f[k * dim + IDX(i, j)] = 0.0;
+				}
 			}
 		}
 	}
 
-	/*
-	// Top-left corner with parity.
-	for (i = 0; i < ghost; ++i)
-	{
-		for (j = ghost + NzInterior; j < NzTotal; ++j)
-		{
-			f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
-		}
-	}
-	*/
-
 	// Parity on z axis.
 	for (j = 0; j < ghost; ++j)
 	{
-		#pragma omp parallel shared(f) private(i)
+		#pragma omp parallel shared(f) private(i, k)
 		{
 			#pragma omp for schedule(dynamic, 1)
 			for (i = ghost; i < NrTotal; ++i)
 			{
-				f[IDX(i, j)] = f[dim + IDX(i, j)] = f[2 * dim + IDX(i, j)] = f[3 * dim + IDX(i, j)] = f[4 * dim + IDX(i, j)] = 0.0;
+				for (k = 0; k < GNUM; ++k)
+				{
+					f[k * dim + IDX(i, j)] = 0.0;
+				}
 			}
 		}
 	}
@@ -157,7 +111,7 @@ void rhs(double *f, double *u)
 		{
 			for (j = ghost; j < NzTotal - 1; ++j)
 			{
-				rhs_vars(f, u, Dr_u, Dz_u, Drr_u, Dzz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0, reg_lambda);
+				rhs_vars(f, u, Dr_u, Dz_u, Drr_u, Dzz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
 			}
 		}
 	}

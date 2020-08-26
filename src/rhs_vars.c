@@ -1,6 +1,10 @@
 #include "tools.h"
 #include "omega_calc.h"
 
+// Regularized terms.
+#define Q1 1
+#define Q2 1
+
 void rhs_vars(
 	double *f, 
 	double *u, 
@@ -19,8 +23,7 @@ void rhs_vars(
 	const MKL_INT l,
 	const double m,
 	const double w,
-	const double rescale,
-	double *lambda
+	const double rescale
 )
 {
 	// Omega.
@@ -45,8 +48,10 @@ void rhs_vars(
 	double dzodr = dz / dr;
 
 	// Short-hand variables.
-	double alpha2, h2, a2, w_plus_l_beta, w_plus_l_beta2;
+	double alpha, alpha2, h2, a2, w_plus_l_beta, w_plus_l_beta2;
 	double phi, phi_over_r, phi2, phi2_over_r2;
+	double lambda, Dr_lambda, Dz_lambda, Drr_lambda, Dzz_lambda;
+	double u6, u7, Dr_u6, Dr_u7;
 
 	// Derivative terms.
 	double D_l_alpha_D_l_alpha, D_l_alpha_D_beta, D_l_alpha_D_l_h, D_beta_D_l_h;
@@ -84,6 +89,17 @@ void rhs_vars(
 	Drr_psi = Drr_u[4 * dim + IDX(i, j)];
 	Dzz_psi = Dzz_u[4 * dim + IDX(i, j)];
 
+	lambda = u[5 * dim + IDX(i, j)];
+	Dr_lambda  = Dr_u[5 * dim + IDX(i, j)];
+	Dz_lambda  = Dz_u[5 * dim + IDX(i, j)];
+	Drr_lambda = Drr_u[5 * dim + IDX(i, j)];
+	Dzz_lambda = Dzz_u[5 * dim + IDX(i, j)];
+
+	u6 = u[6 * dim + IDX(i, j)];
+	u7 = u[7 * dim + IDX(i, j)];
+	Dr_u6  = Dr_u[6 * dim + IDX(i, j)];
+	Dr_u7  = Dr_u[7 * dim + IDX(i, j)];
+
 	// Coordinates.
 	r = dr * (i + 0.5 - ghost);
 	r2 = r * r;
@@ -94,7 +110,8 @@ void rhs_vars(
 	rl = rlm1 * r;
 
 	// Auxiliary variables.
-	alpha2 = exp(2.0 * l_alpha);
+	alpha = exp(l_alpha);
+	alpha2 = alpha * alpha;
 	h2 = exp(2.0 * l_h);
 	a2 = exp(2.0 * l_a);
 	w_plus_l_beta = w + (double)l * beta;
@@ -122,54 +139,65 @@ void rhs_vars(
 	//double Dx_l_h 	= (r / rr) * Dr_l_h + (z / rr) * Dz_l_h;
 	//double Dx_psi	= (r / rr) * Dr_psi + (z / rr) * Dz_psi;
 
-	// u1 = log(alpha).
+	// u0 = log(alpha).
 	f[IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_l_alpha + Dzz_l_alpha + (Dr_l_alpha / r)
 		+ D_l_alpha_D_l_alpha + D_l_alpha_D_l_h 
 		- 0.5 * r2_h2_over_alpha2_D_beta_D_beta 
 		+ 4.0 * M_PI * a2 * (m2 - 2.0 * w_plus_l_beta2 / alpha2) * phi2));
 
-	// u2 = beta.
+	// u1 = beta.
 	f[dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_beta + Dzz_beta + 3.0 * (Dr_beta / r)
 		- D_l_alpha_D_beta + 3.0 * D_beta_D_l_h
 		- 16.0 * M_PI * a2 * l * w_plus_l_beta * phi2_over_r2 / h2));
 
-	// u3 = log(h).
+	// u2 = log(h).
 	f[2 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_l_h + Dzz_l_h + 2.0 * (Dr_l_h / r)
 		+ D_l_h_D_l_h + D_l_alpha_D_l_h + 0.5 * r2_h2_over_alpha2_D_beta_D_beta
 		+ (Dr_l_alpha / r) 
 		+ 4.0 * M_PI * a2 * (r2 * m2 + 2.0 * l * l / h2) * phi2_over_r2));
 
-	// u4 = log(a).
+	// u3 = log(a).
 	f[3 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_l_a + Dzz_l_a
 		- D_l_alpha_D_l_h - 0.25 * r2_h2_over_alpha2_D_beta_D_beta 
 		- (Dr_l_alpha / r)
 		+ 4.0 * M_PI * ((l * l * (1.0 - a2 / h2) + a2 * r2 * w_plus_l_beta2 / alpha2) * phi2_over_r2
 			+ (2.0 * l * r * psi * Dr_psi + r2 * D_psi_D_psi) * (rlm1 * rlm1))));
 
-	// u5 = log(phi / r**l)
+	// u4 = log(phi / r**l)
 	f[4 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_psi + Dzz_psi + (2.0 * l + 1.0) * (Dr_psi / r)
 		+ D_l_alpha_D_psi + D_l_h_D_psi
 		+ l * ((Dr_l_alpha / r) + (Dr_l_h / r)) * psi
 		+ a2 * (w_plus_l_beta2 / alpha2 - m2) * psi)
-		- dr * dr * dzodr * l * l * lambda[IDX(i, j)] * psi / h2);
+		- dr * dr * dzodr * l * l * lambda * psi / h2);
 
-	/*
-	// u4 = log(a).
-	f[3 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_l_a + Dzz_l_a
-		- D_l_alpha_D_l_h - 0.25 * r2_h2_over_alpha2_D_beta_D_beta 
-		- (Dr_l_alpha / r)
-		+ 4.0 * M_PI * (a2 * (r2 * w_plus_l_beta2 / alpha2 - l * l / h2)
-			+ r2 * (D_psi_D_psi + chi * (chi - 2.0 * Dx_psi))
-			+ 2.0 * l * r * Dr_psi + l * l) * phi2_over_r2));
+	// u5 = lambda = (A - H) / r**2.
+	f[5 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_lambda + Dzz_lambda + 3.0 * (Dr_lambda / r)
+		+ (Dz_l_h * Dz_lambda - Dr_l_h * Dr_lambda)
+		- 4.0 * (h2 / a2) * (Dr_lambda * Dr_l_h + Dz_lambda * Dz_l_h)
+		- (r2 / a2) * (Dr_lambda * Dr_lambda + Dz_lambda * Dz_lambda)
+		+ (Dz_l_alpha * Dz_lambda - Dr_l_alpha * Dr_lambda)
+		- 4.0 * (lambda * lambda / a2) 
+		- 4.0 * (lambda / a2) * (r * Dr_lambda)
+		- 2.0 * (Dr_l_alpha / r) * lambda
+		+ 2.0 * (Dr_l_h / r) * (-4.0 * (h2 / a2) + 1.0) * lambda
+		- 4.0 * h2 * (Dr_l_h / r) * (Dr_l_h / r) * ((h2 / a2) + 0.5)
+		+ 4.0 * (h2 / a2) * Dz_l_h * Dz_l_h * lambda
+		- 2.0 * Dr_l_h * Dr_l_h * lambda
+		- 4.0 * h2 * (Dr_l_h / r) * (Dr_l_alpha / r)
+		- (h2 / alpha2) * (Dr_beta * Dr_beta + Dz_beta * Dz_beta)
+		- (a2 * h2 / alpha2) * (Dr_beta * Dr_beta)
+		+ 2.0 * lambda * (Drr_l_alpha + Dr_l_alpha * Dr_l_alpha)
+		+ 2.0 * lambda * (Drr_l_h + 2.0 * Dr_l_h * Dr_l_h)
+		+ Q1 * ((2.0 * h2 / alpha2) * (Dr_u6 / r))
+		+ Q2 * (Dr_u7 / r)
+		+ 8.0 * M_PI * a2 * (m2 * (a2 - h2) * phi2_over_r2
+			+ 2.0 * rlm1 * rlm1 * (Dr_psi / r) * (2.0 * l * psi + (r * Dr_psi)))));
 
-	// u5 = log(exp(+chi * rr) * phi / r**l)
-	f[4 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_psi + Dzz_psi + (2.0 * l + 1.0) * (Dr_psi / r)
-		+ D_psi_D_psi + D_l_alpha_D_psi + D_l_h_D_psi
-		+ l * ((Dr_l_alpha / r) + (Dr_l_h / r))
-		+ a2 * (w_plus_l_beta2 / alpha2 - m2)
-		+ chi * (chi - (2.0 * (l + 1.0)) / rr - 2.0 * Dx_psi - Dx_l_alpha - Dx_l_h))
-		- dzodr * l * l * ((a2 - h2) / (r2 / (dr * dr))) / h2);
-	*/
+	// u6 = Dr(alpha) / r.
+	f[6 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (alpha * (Dr_l_alpha / r) - u6));
+
+	// u7 = Dr(H) / r.
+	f[7 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr* (2.0 * h2 * (Dr_l_h / r) - u7));
 
 	// All done.
 	return;
@@ -197,6 +225,7 @@ void rhs_bdry(
 	// Auxiliary doubles.
 	double r = dr * (i + 0.5 - ghost);
 	double z = dz * (j + 0.5 - ghost);
+	double dzodr = dz / dr;
 	double rr2 = r * r + z * z;
 	double rr = sqrt(rr2);
 	double scale = dr * dz / rr2;
@@ -222,6 +251,11 @@ void rhs_bdry(
 	double psi     = u[4 * dim + IDX(i, j)];
 	double Dr_psi  = Dr_u[4 * dim + IDX(i, j)];
 	double Dz_psi  = Dz_u[4 * dim + IDX(i, j)];
+	double lambda    = u[5 * dim + IDX(i, j)];
+	double Dr_lambda = Dr_u[5 * dim + IDX(i, j)];
+	double Dz_lambda = Dz_u[5 * dim + IDX(i, j)];
+	double u6 = u[6 * dim + IDX(i, j)];
+	double u7 = u[7 * dim + IDX(i, j)];
 
 	// Robin and exponential decay boundary conditions.
 	f[IDX(i, j)] = rescale * scale * (r * Dr_l_alpha + z * Dz_l_alpha + l_alpha);
@@ -233,7 +267,12 @@ void rhs_bdry(
 	f[3 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_a + z * Dz_l_a + l_a);
 
 	f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi);
-	//f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (l + 1.0));
+
+	f[5 * dim + IDX(i, j)] = rescale * scale * (r * Dr_lambda + z * Dz_lambda + 4.0 * lambda);
+
+	f[6 * dim + IDX(i, j)] = rescale * scale * (dr * dr * dzodr * (exp(l_alpha) * (Dr_l_alpha / r) - u6));
+
+	f[7 * dim + IDX(i, j)] = rescale * scale * (dr * dr * dzodr * (2.0 * exp(2.0 * l_h) * (Dr_l_h / r) - u7));
 
 	// All done.
 	return;
