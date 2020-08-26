@@ -4,6 +4,8 @@
 #include "omega_calc.h"
 #include "initial_interpolation.h"
 
+#include "derivatives.h"
+
 #undef BDRY_DEBUG
 #define I_DEBUG
 
@@ -46,7 +48,7 @@ void initial_guess(double *u)
 	if (readInitialData == 3)
 	{
 		// Allocate memory for initial data.
-		double *u_0 = (double *)SAFE_MALLOC((5 * NrTotalInitial * NzTotalInitial + 1) * sizeof(double));
+		double *u_0 = (double *)SAFE_MALLOC((GNUM * NrTotalInitial * NzTotalInitial + 1) * sizeof(double));
 
 		// Read initial data.
 		read_single_file_2d(u_0 + 0 * NrTotalInitial * NzTotalInitial, log_alpha_i	, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
@@ -54,7 +56,8 @@ void initial_guess(double *u)
 		read_single_file_2d(u_0 + 2 * NrTotalInitial * NzTotalInitial, log_h_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
 		read_single_file_2d(u_0 + 3 * NrTotalInitial * NzTotalInitial, log_a_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
 		read_single_file_2d(u_0 + 4 * NrTotalInitial * NzTotalInitial, psi_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
-		u_0[5 * NrTotalInitial * NzTotalInitial] = u[w_idx];
+		read_single_file_2d(u_0 + 5 * NrTotalInitial * NzTotalInitial, lambda_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+		u_0[GNUM * NrTotalInitial * NzTotalInitial] = u[w_idx];
 
 #ifdef I_DEBUG
 		//fprintf(stderr, "NrTotalInital = %lld, NzTotalInitial = %lld, ghost_i = %lld, order_i = %lld, dr_i = %E, dz_i = %E.\n", NrTotalInitial, NzTotalInitial, ghost_i, order_i, dr_i, dz_i);
@@ -63,11 +66,13 @@ void initial_guess(double *u)
 		write_single_file_2d(u_0 + 2 * NrTotalInitial * NzTotalInitial, "log_h_0.asc"		, NrTotalInitial, NzTotalInitial);
 		write_single_file_2d(u_0 + 3 * NrTotalInitial * NzTotalInitial, "log_a_0.asc"		, NrTotalInitial, NzTotalInitial);
 		write_single_file_2d(u_0 + 4 * NrTotalInitial * NzTotalInitial, "psi_0.asc"		, NrTotalInitial, NzTotalInitial);
+		write_single_file_2d(u_0 + 5 * NrTotalInitial * NzTotalInitial, "lambda_0.asc"		, NrTotalInitial, NzTotalInitial);
 #endif
 
-		// Interpolate.
+		// Interpolate u0 into u.
 		initial_interpolator(u, u_0, NrTotalInitial - 2 * ghost_i, NzTotalInitial - 2 * ghost_i, ghost_i, order_i, dr_i, dz_i,
 			NrInterior, NzInterior, ghost, order, dr, dz, w0, m, l);
+
 
 		// Free initial data.
 		SAFE_FREE(u_0);
@@ -78,6 +83,7 @@ void initial_guess(double *u)
 		// beta 	= 0.0
 		// log(h)	= 0.0
 		// log(a)	= 0.0
+		// lambda	= 0.0
 
 		if (!log_alpha_i)
 		{
@@ -89,25 +95,6 @@ void initial_guess(double *u)
 					u[i] = 0.0;
 				}
 			}
-
-	#ifdef BDRY_DEBUG
-			#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
-			{
-				#pragma omp for schedule(dynamic, 1)
-				for (i = ghost; i < NrTotal; ++i)
-				{
-					r = dr * (i + 0.5 - ghost);
-
-					for (j = ghost; j < NzTotal; ++j)
-					{
-					z = dz * (j + 0.5 - ghost);
-					rr = sqrt(r * r + z * z);
-
-					u[0 * dim + IDX(i, j)] = log(1.0 + 1.0 / rr);
-					}
-				}
-			}
-	#endif
 		}
 		else
 		{
@@ -125,25 +112,6 @@ void initial_guess(double *u)
 					u[i] = 0.0;
 				}
 			}
-
-	#ifdef BDRY_DEBUG
-			#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
-			{
-				#pragma omp for schedule(dynamic, 1)
-				for (i = ghost; i < NrTotal; ++i)
-				{
-					r = dr * (i + 0.5 - ghost);
-
-					for (j = ghost; j < NzTotal; ++j)
-					{
-					z = dz * (j + 0.5 - ghost);
-					rr = sqrt(r * r + z * z);
-
-					u[1 * dim + IDX(i, j)] = 1.0 / pow(rr, 3);
-					}
-				}
-			}
-	#endif
 		}
 		else
 		{
@@ -161,24 +129,6 @@ void initial_guess(double *u)
 					u[i] = 0.0;
 				}
 			}
-	#ifdef BDRY_DEBUG
-			#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
-			{
-				#pragma omp for schedule(dynamic, 1)
-				for (i = ghost; i < NrTotal; ++i)
-				{
-					r = dr * (i + 0.5 - ghost);
-
-					for (j = ghost; j < NzTotal; ++j)
-					{
-					z = dz * (j + 0.5 - ghost);
-					rr = sqrt(r * r + z * z);
-
-					u[2 * dim + IDX(i, j)] = log(1.0 + 1.0 / rr);
-					}
-				}
-			}
-	#endif
 		}
 		else
 		{
@@ -196,24 +146,6 @@ void initial_guess(double *u)
 					u[i] = 0.0;
 				}
 			}
-	#ifdef BDRY_DEBUG
-			#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
-			{
-				#pragma omp for schedule(dynamic, 1)
-				for (i = ghost; i < NrTotal; ++i)
-				{
-					r = dr * (i + 0.5 - ghost);
-
-					for (j = ghost; j < NzTotal; ++j)
-					{
-					z = dz * (j + 0.5 - ghost);
-					rr = sqrt(r * r + z * z);
-
-					u[3 * dim + IDX(i, j)] = log(1.0 + 1.0 / rr);
-					}
-				}
-			}
-	#endif
 		}
 		else
 		{
@@ -239,33 +171,9 @@ void initial_guess(double *u)
 
 					u[4 * dim + IDX(i, j)] = psi0 * exp(-0.5 * r * r / (sigmaR * sigmaR)) * exp(-0.5 * z * z / (sigmaZ * sigmaZ))
 						+ (psi0 * exp(-chi * rr) / pow(rr, l + 1)) * (0.5 + 0.5 * erf(2.0 * (rr - rExt) / M_2_SQRTPI));	
-
-					//u[4 * dim + IDX(i, j)] = log(psi0) - 0.5 * (r * r / (sigmaR * sigmaR) + z * z / (sigmaZ * sigmaZ));
-					/* Previous deprecated inital data: phi = r**l * psi.
-					u[4 * dim + IDX(i, j)] = psi0 * exp(-0.5 * r * r / (sigmaR * sigmaR)) * exp(-0.5 * z * z / (sigmaZ * sigmaZ))
-						+ (psi0 * exp(-chi * rr) / pow(rr, l + 1)) * (0.5 + 0.5 * erf(2.0 * (rr - rExt) / M_2_SQRTPI));	
-					*/
 					}
 				}
 			}
-	#ifdef BDRY_DEBUG
-			#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
-			{
-				#pragma omp for schedule(dynamic, 1)
-				for (i = ghost; i < NrTotal; ++i)
-				{
-					r = dr * (i + 0.5 - ghost);
-
-					for (j = ghost; j < NzTotal; ++j)
-					{
-					z = dz * (j + 0.5 - ghost);
-					rr = sqrt(r * r + z * z);
-
-					u[4 * dim + IDX(i, j)] = -(l + 1.0) * log(rr);
-					}
-				}
-			}
-	#endif
 		}
 		else
 		{
@@ -274,9 +182,25 @@ void initial_guess(double *u)
 			cblas_dscal(dim, psi0, u + 4 * dim, 1);
 			printf("***           Read psi initial data.        \n");
 		}
+
+		if (!lambda_i)
+		{
+			#pragma omp parallel shared(u)
+			{
+				#pragma omp for schedule(guided)
+				for (i = 5 * dim; i <  5 * dim; ++i)
+				{
+					u[i] = 0.0;
+				}
+			}
+		}
+		else
+		{
+			read_single_file_2d(u + 5 * dim, lambda_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			printf("***           Read lambda_i initial data.         \n");
+		}
 	}
 	
-
 	// Assert symmetries since they might not be automatic.
 	// All functions are even with respect to the axis and equator.
 	// Corner.
@@ -289,14 +213,15 @@ void initial_guess(double *u)
 			u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
 			u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
 			u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
+			u[5 * dim + IDX(i, j)] = u[5 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
 		}
 	}
 	// Axis.
 	#pragma omp parallel shared(u) private(i, j)
 	{
-			#pragma omp for schedule(dynamic, 1)
-			for (j = ghost; j < NzTotal; ++j)
-			{
+		#pragma omp for schedule(dynamic, 1)
+		for (j = ghost; j < NzTotal; ++j)
+		{
 			for (i = 0; i < ghost; ++i)
 			{
 				u[0 * dim + IDX(i, j)] = u[0 * dim + IDX(2 * ghost - (i + 1), j)];
@@ -304,8 +229,9 @@ void initial_guess(double *u)
 				u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(2 * ghost - (i + 1), j)];
 				u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(2 * ghost - (i + 1), j)];
 				u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(2 * ghost - (i + 1), j)];
+				u[5 * dim + IDX(i, j)] = u[5 * dim + IDX(2 * ghost - (i + 1), j)];
 			}
-			}
+		}
 	}
 	// Equator.
 	#pragma omp parallel shared(u) private(i, j)
@@ -320,10 +246,33 @@ void initial_guess(double *u)
 				u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(i, 2 * ghost - (j + 1))];
 				u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(i, 2 * ghost - (j + 1))];
 				u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(i, 2 * ghost - (j + 1))];
+				u[5 * dim + IDX(i, j)] = u[5 * dim + IDX(i, 2 * ghost - (j + 1))];
 			}
 		}
 	}
 
+	// Now calculate u6 and u7 variables.
+
+	// First calculate derivatives.
+	diff1r(u + 6 * dim, u + 0 * dim, 1);
+	diff1r(u + 7 * dim, u + 2 * dim, 1);
+
+	// Rescale.
+	#pragma omp parallel shared(u) private(i, j, r)
+	{
+		#pragma omp for schedule(dynamic, 1)
+		for (i = 0; i < NrTotal; ++i)
+		{
+			r = ((double)(i - ghost) + 0.5) * dr;
+			for (j = 0; j < NzTotal; ++j)
+			{
+				// u6 = (Dr(alpha) / r) = alpha * (Dr(log(alpha)) / r)
+				u[6 * dim + IDX(i, j)] *= exp(u[0 * dim + IDX(i, j)]) / r;
+				// u7 = (Dr(H) / r) = 2.0 * H * (Dr(log(h)) / r)
+				u[7 * dim + IDX(i, j)] *= 2.0 * exp(2.0 * u[2 * dim + IDX(i, j)]) / r;
+			}
+		}
+	}
 
 	// All done.
 	return;

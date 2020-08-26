@@ -6,6 +6,8 @@
 
 #define DEBUG
 
+#define GNUMI 6
+
 double extrapolate_robin(double *u, double u_inf, MKL_INT n, double K, MKL_INT NrTotal, MKL_INT NzTotal, MKL_INT ghost, MKL_INT order, MKL_INT i0, MKL_INT j0, MKL_INT i, MKL_INT j, double dr, double dz)
 {
 	double u0 = u[IDX(i0, j0)];
@@ -51,6 +53,7 @@ void initial_interpolator(	double *u_1,
 				const MKL_INT l			)
 {
 	// Loop counters.
+	MKL_INT k;
 	MKL_INT i_1, i_0;
 	MKL_INT j_1, j_0;
 
@@ -65,9 +68,9 @@ void initial_interpolator(	double *u_1,
 	MKL_INT dim_1 = NrTotal_1 * NzTotal_1;
 
 	// Allocate memory for read buffer.
-	double *Dr_u_0  = (double *)SAFE_MALLOC(5 * dim_0 * sizeof(double));
-	double *Dz_u_0  = (double *)SAFE_MALLOC(5 * dim_0 * sizeof(double));
-	double *Drz_u_0 = (double *)SAFE_MALLOC(5 * dim_0 * sizeof(double));
+	double *Dr_u_0  = (double *)SAFE_MALLOC(GNUMI * dim_0 * sizeof(double));
+	double *Dz_u_0  = (double *)SAFE_MALLOC(GNUMI * dim_0 * sizeof(double));
+	double *Drz_u_0 = (double *)SAFE_MALLOC(GNUMI * dim_0 * sizeof(double));
 
 	// Coordinate grids 0.
 	double *r_0 = (double *)SAFE_MALLOC(dim_0 * sizeof(double));
@@ -96,21 +99,12 @@ void initial_interpolator(	double *u_1,
 #endif
 
 	// Differentiate at the 0 level.
-	ex_diff1r (Dr_u_0             , u_0            , 1   , dr_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff1z (Dz_u_0             , u_0            , 1   , dz_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff2rz(Drz_u_0            , u_0            , 1, 1, dr_0, dz_0, NrTotal_0, NzTotal_0, ghost_0, order_0);	
-	ex_diff1r (Dr_u_0  +     dim_0, u_0 +     dim_0, 1   , dr_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff1z (Dz_u_0  +     dim_0, u_0 +     dim_0, 1   , dz_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff2rz(Drz_u_0 +     dim_0, u_0 +     dim_0, 1, 1, dr_0, dz_0, NrTotal_0, NzTotal_0, ghost_0, order_0);	
-	ex_diff1r (Dr_u_0  + 2 * dim_0, u_0 + 2 * dim_0, 1   , dr_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff1z (Dz_u_0  + 2 * dim_0, u_0 + 2 * dim_0, 1   , dz_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff2rz(Drz_u_0 + 2 * dim_0, u_0 + 2 * dim_0, 1, 1, dr_0, dz_0, NrTotal_0, NzTotal_0, ghost_0, order_0);	
-	ex_diff1r (Dr_u_0  + 3 * dim_0, u_0 + 3 * dim_0, 1   , dr_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff1z (Dz_u_0  + 3 * dim_0, u_0 + 3 * dim_0, 1   , dz_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff2rz(Drz_u_0 + 3 * dim_0, u_0 + 3 * dim_0, 1, 1, dr_0, dz_0, NrTotal_0, NzTotal_0, ghost_0, order_0);	
-	ex_diff1r (Dr_u_0  + 4 * dim_0, u_0 + 4 * dim_0, 1   , dr_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff1z (Dz_u_0  + 4 * dim_0, u_0 + 4 * dim_0, 1   , dz_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
-	ex_diff2rz(Drz_u_0 + 4 * dim_0, u_0 + 4 * dim_0, 1, 1, dr_0, dz_0, NrTotal_0, NzTotal_0, ghost_0, order_0);	
+	for (k = 0; k < GNUMI; ++k)
+	{
+		ex_diff1r (Dr_u_0  + k * dim_0, u_0 + k * dim_0, 1   , dr_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
+		ex_diff1z (Dz_u_0  + k * dim_0, u_0 + k * dim_0, 1   , dz_0      , NrTotal_0, NzTotal_0, ghost_0, order_0);
+		ex_diff2rz(Drz_u_0 + k * dim_0, u_0 + k * dim_0, 1, 1, dr_0, dz_0, NrTotal_0, NzTotal_0, ghost_0, order_0);	
+	}
 
 	// Spherical analysis at level 0.
 	MKL_INT NrrTotal_0, NthTotal_0, p_dim_0;
@@ -147,7 +141,7 @@ void initial_interpolator(	double *u_1,
 	double f_i_0, di;
 	double f_j_0, dj;
 	// Now loop over grid elements.
-	#pragma omp parallel for schedule(dynamic, 1) private(i_1, j_1, f_i_0, i_0, di, f_j_0, j_0, dj) shared(u_1)
+	#pragma omp parallel for schedule(dynamic, 1) private(k, i_1, j_1, f_i_0, i_0, di, f_j_0, j_0, dj) shared(u_1)
 	for (i_1 = ghost_1; i_1 < i_inf_1; ++i_1)
 	{
 		// 0 grid coordinates.
@@ -163,11 +157,10 @@ void initial_interpolator(	double *u_1,
 			dj    = f_j_0 - (double)j_0;
 
 			// Use bicubic interpolation.
-			u_1[            i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0            , Dr_u_0            , Dz_u_0            , Drz_u_0            , dr_0, dz_0, NrTotal_0, NzTotal_0);
-			u_1[    dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 +     dim_0, Dr_u_0 +     dim_0, Dz_u_0 +     dim_0, Drz_u_0 +     dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
-			u_1[2 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 2 * dim_0, Dr_u_0 + 2 * dim_0, Dz_u_0 + 2 * dim_0, Drz_u_0 + 2 * dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
-			u_1[3 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 3 * dim_0, Dr_u_0 + 3 * dim_0, Dz_u_0 + 3 * dim_0, Drz_u_0 + 3 * dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
-			u_1[4 * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + 4 * dim_0, Dr_u_0 + 4 * dim_0, Dz_u_0 + 4 * dim_0, Drz_u_0 + 4 * dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
+			for (k = 0; k < GNUMI; ++k)
+			{
+				u_1[k * dim_1 + i_1 * NzTotal_1 + j_1] = bicubic(i_0, j_0, di, dj, u_0 + k * dim_0, Dr_u_0 + k * dim_0, Dz_u_0 + k * dim_0, Drz_u_0 + k * dim_0, dr_0, dz_0, NrTotal_0, NzTotal_0);
+			}
 		}
 	}
 
@@ -188,7 +181,7 @@ void initial_interpolator(	double *u_1,
 	if (i_inf_1 < NrTotal_1 || j_inf_1 < NzTotal_1)
 	{
 		// Interpolate to polar coordinates.
-		ex_cart_to_pol(&i_u_0, &i_rr_0, &i_th_0, r_0, z_0, u_0, Dr_u_0, Dz_u_0, Drz_u_0, 5, dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0, &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
+		ex_cart_to_pol(&i_u_0, &i_rr_0, &i_th_0, r_0, z_0, u_0, Dr_u_0, Dz_u_0, Drz_u_0, GNUMI, dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0, &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
 
 		#ifdef DEBUG
 		write_single_file_2d_polar(i_rr_0             , "sph_rr_0.asc", 		NrrTotal_0, NthTotal_0);
@@ -198,6 +191,7 @@ void initial_interpolator(	double *u_1,
 		write_single_file_2d_polar(i_u_0 + 2 * p_dim_0, "sph_log_h_0.asc", 		NrrTotal_0, NthTotal_0);
 		write_single_file_2d_polar(i_u_0 + 3 * p_dim_0, "sph_log_a_0.asc", 		NrrTotal_0, NthTotal_0);
 		write_single_file_2d_polar(i_u_0 + 4 * p_dim_0, "sph_psi_0.asc", 		NrrTotal_0, NthTotal_0);
+		write_single_file_2d_polar(i_u_0 + 5 * p_dim_0, "sph_lambda_0.asc", 		NrrTotal_0, NthTotal_0);
 		#endif
 
 		// Extract global quantities.
@@ -210,19 +204,17 @@ void initial_interpolator(	double *u_1,
 		// Sync symmetries.
 		for (i_1 = 0; i_1 < ghost_1; ++i_1)
 		{
-			u_1[0 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[0 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
-			u_1[1 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[1 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
-			u_1[2 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[2 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
-			u_1[3 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[3 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
-			u_1[4 * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[4 * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
+			for (k = 0; k < GNUMI; ++k)
+			{
+				u_1[k * dim_1 + i_1 * NzTotal_1 + (j_inf_1 - ghost_1 - 1)] = u_1[k * dim_1 + (2 * ghost_1 - 1 - i_1) * NzTotal_1 + (j_inf_1 - ghost_1 - 1)];
+			}
 		}
 		for (j_1 = 0; j_1 < ghost_1; ++j_1)
 		{
-			u_1[0 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[0 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
-			u_1[1 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[1 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
-			u_1[2 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[2 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
-			u_1[3 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[3 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
-			u_1[4 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[4 * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
+			for (k = 0; k < GNUMI; ++k)
+			{
+				u_1[k * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + j_1] = u_1[k * dim_1 + (i_inf_1 - ghost_1 - 1) * NzTotal_1 + (2 * ghost_1 - 1 - j_1)];
+			}
 		}
 
 		for (i_1 = ghost_1; i_1 < i_inf_1 - ghost_1; ++i_1)
@@ -243,20 +235,7 @@ void initial_interpolator(	double *u_1,
 				u_1[2 * dim_1 + k_1] = extrapolate_robin(&u_1[2 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
 				u_1[3 * dim_1 + k_1] = extrapolate_robin(&u_1[3 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
 				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-				/*
-				u_1[0 * dim_1 + k_1] = u_1[0 * dim_1 + l_1] - M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[1 * dim_1 + k_1] = u_1[1 * dim_1 + l_1] - 6.0 * J_0 * (1.0 / rr_s) * (1.0 / rr_s) * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[2 * dim_1 + k_1] = u_1[2 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[3 * dim_1 + k_1] = u_1[3 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-				*/
-				/*
-				u_1[0 * dim_1 + k_1] = log(1.0 - M_0 / rr_1);
-				u_1[1 * dim_1 + k_1] = - 2.0 * J_0 / (rr_1 * rr_1 * rr_1); 
-				u_1[2 * dim_1 + k_1] = log(1.0 + M_0 / rr_1);
-				u_1[3 * dim_1 + k_1] = log(1.0 + M_0 / rr_1);
-				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-				*/
+				u_1[5 * dim_1 + k_1] = extrapolate_robin(&u_1[5 * dim_1], 0.0, 4, -M_0*M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
 			}
 		}	
 
@@ -278,20 +257,7 @@ void initial_interpolator(	double *u_1,
 				u_1[2 * dim_1 + k_1] = extrapolate_robin(&u_1[2 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_1, i_1, j_1, dr_1, dz_1);
 				u_1[3 * dim_1 + k_1] = extrapolate_robin(&u_1[3 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_1, i_1, j_1, dr_1, dz_1);
 				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-				/*
-				u_1[0 * dim_1 + k_1] = u_1[0 * dim_1 + l_1] - M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[1 * dim_1 + k_1] = u_1[1 * dim_1 + l_1] - 6.0 * J_0 * (1.0 / rr_s) * (1.0 / rr_s) * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[2 * dim_1 + k_1] = u_1[2 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[3 * dim_1 + k_1] = u_1[3 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-				*/
-				/*
-				u_1[0 * dim_1 + k_1] = log(1.0 - M_0 / rr_1);
-				u_1[1 * dim_1 + k_1] = - 2.0 * J_0 / (rr_1 * rr_1 * rr_1); 
-				u_1[2 * dim_1 + k_1] = log(1.0 + M_0 / rr_1);
-				u_1[3 * dim_1 + k_1] = log(1.0 + M_0 / rr_1);
-				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-        			*/
+				u_1[5 * dim_1 + k_1] = extrapolate_robin(&u_1[5 * dim_1], 0.0, 4, -M_0*M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_1, i_1, j_1, dr_1, dz_1);
 			}
 		}
 
@@ -313,20 +279,7 @@ void initial_interpolator(	double *u_1,
 				u_1[2 * dim_1 + k_1] = extrapolate_robin(&u_1[2 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
 				u_1[3 * dim_1 + k_1] = extrapolate_robin(&u_1[3 * dim_1], 0.0, 1, +    M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
 				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-				/*
-				u_1[0 * dim_1 + k_1] = u_1[0 * dim_1 + l_1] - M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[1 * dim_1 + k_1] = u_1[1 * dim_1 + l_1] - 6.0 * J_0 * (1.0 / rr_s) * (1.0 / rr_s) * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[2 * dim_1 + k_1] = u_1[2 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[3 * dim_1 + k_1] = u_1[3 * dim_1 + l_1] + M_0 * (1.0 / rr_s - 1.0 / rr_1);
-				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-				*/
-				/*
-				u_1[0 * dim_1 + k_1] = log(1.0 - M_0 / rr_1);
-				u_1[1 * dim_1 + k_1] = - 2.0 * J_0 / (rr_1 * rr_1 * rr_1); 
-				u_1[2 * dim_1 + k_1] = log(1.0 + M_0 / rr_1);
-				u_1[3 * dim_1 + k_1] = log(1.0 + M_0 / rr_1);
-				u_1[4 * dim_1 + k_1] = psi_bdry_max;
-        			*/
+				u_1[5 * dim_1 + k_1] = extrapolate_robin(&u_1[5 * dim_1], 0.0, 4, -M_0*M_0, NrTotal_1, NzTotal_1, ghost_1, order_1, i_inf_1 - ghost_1 - 1, j_inf_1 - ghost_1 - 1, i_1, j_1, dr_1, dz_1);
 			}
 		}
 

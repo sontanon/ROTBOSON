@@ -112,6 +112,7 @@ int main(int argc, char *argv[])
 		printf("***            log_h_i     = %-18s     \n", log_h_i);
 		printf("***            log_a_i     = %-18s     \n", log_a_i);
 		printf("***            psi_i       = %-18s     \n", psi_i);
+		printf("***            lambda_i    = %-18s     \n", lambda_i);
 		printf("***            w_i         = %-18s     \n", w_i);
 	}
 	else
@@ -175,10 +176,10 @@ int main(int argc, char *argv[])
 	// Allocate memory.
 	for (i = 0; i < maxNewtonIter + 1; i++)
 	{
-		u[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		f[i]      = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		du[i]     = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-		du_bar[i] = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
+		u[i]      = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
+		f[i]      = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
+		du[i]     = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
+		du_bar[i] = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
 	}
 
 	// Also include grids.
@@ -186,14 +187,11 @@ int main(int argc, char *argv[])
 	double *z = (double *)SAFE_MALLOC(dim * sizeof(double));
 
 	// Auxiliary global derivative pointers.
-	Dr_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Dz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Drr_u = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Dzz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-	Drz_u  = (double *)SAFE_MALLOC((5 * dim + 1) * sizeof(double));
-
-	// Regularization.
-	reg_lambda = (double *)SAFE_MALLOC(dim * sizeof(double));
+	Dr_u  = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
+	Dz_u  = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
+	Drr_u = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
+	Dzz_u  = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
+	Drz_u  = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
 
 	// Newton output parameters.
 	double *norm_f		= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
@@ -239,13 +237,13 @@ int main(int argc, char *argv[])
 	printf("***                                                \n");
 
 	// Initialize PARDISO memory and paramters.
-	// Square matrix dimension is (5 * dim + 1).
-	pardiso_start(5 * dim + 1);
+	// Square matrix dimension is (GNUM * dim + 1).
+	pardiso_start(GNUM * dim + 1);
 
 	// Allocate CSR matrix.
 	csr_matrix J;
 	MKL_INT nnz = nnz_jacobian();
-	csr_allocate(&J, 5 * dim + 1, 5 * dim + 1, nnz);
+	csr_allocate(&J, GNUM * dim + 1, GNUM * dim + 1, nnz);
 
 	printf("***                                                \n");
 	printf("***            Allocated CSR matrix with:          \n");
@@ -270,29 +268,29 @@ int main(int argc, char *argv[])
 	write_single_file_2d(u[0] + 2 * dim, "log_h_i.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[0] + 3 * dim, "log_a_i.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[0] + 5 * dim, "lambda_i.asc", 	NrTotal, NzTotal);
 	write_single_file_1d(&w0, "w_i.asc", 1);
 
 	// Calculate initial RHS.
 	rhs(f[0], u[0]);
 
 	// Print initial RHS.
-	write_single_file_2d(f[0]          , "f1_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] +     dim, "f2_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] + 2 * dim, "f3_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] + 3 * dim, "f4_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] + 4 * dim, "f5_i.asc", NrTotal, NzTotal);
-
-	// Print lambda regularization.
-	write_single_file_2d(reg_lambda, "reg_lambda_i.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[0]          , "f0_i.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[0] +     dim, "f1_i.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[0] + 2 * dim, "f2_i.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[0] + 3 * dim, "f3_i.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[0] + 4 * dim, "f4_i.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
 
 	// Initial guess norms.
-	double f_norms[5];
+	double f_norms[6];
 
 	f_norms[0] = norm2_interior(f[0]          );
 	f_norms[1] = norm2_interior(f[0] +     dim);
 	f_norms[2] = norm2_interior(f[0] + 2 * dim);
 	f_norms[3] = norm2_interior(f[0] + 3 * dim);
 	f_norms[4] = norm2_interior(f[0] + 4 * dim);
+	f_norms[5] = norm2_interior(f[0] + 5 * dim);
 	
 	printf("***                                                \n");
 	printf("***        INITIAL GUESS:                          \n");
@@ -301,6 +299,7 @@ int main(int argc, char *argv[])
 	printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
 	printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
 	printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+	printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
 	printf("***                                                \n");
 
 	printf("***                                                \n");
@@ -395,28 +394,28 @@ int main(int argc, char *argv[])
 	write_single_file_2d(u[k] + 2 * dim, "log_h_f.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[k] + 3 * dim, "log_a_f.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[k] + 4 * dim, "psi_f.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[k] + 5 * dim, "lambda_f.asc", 	NrTotal, NzTotal);
 	write_single_file_1d(&w, "w_f.asc", 1);
 
 	// Print final update.
 	if (k > 0)
 	{
-		write_single_file_2d(du[k - 1]          , "du1_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] +     dim, "du2_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 2 * dim, "du3_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 3 * dim, "du4_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 4 * dim, "du5_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[k - 1]          , "du0_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[k - 1] +     dim, "du1_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[k - 1] + 2 * dim, "du2_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[k - 1] + 3 * dim, "du3_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[k - 1] + 4 * dim, "du4_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[k - 1] + 5 * dim, "du5_f.asc", NrTotal, NzTotal);
 	}
 
 	// Print final RHS.
-	write_single_file_2d(f[k]          , "f1_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] +     dim, "f2_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 2 * dim, "f3_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 3 * dim, "f4_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 4 * dim, "f5_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[k]          , "f0_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[k] +     dim, "f1_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[k] + 2 * dim, "f2_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[k] + 3 * dim, "f3_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[k] + 4 * dim, "f4_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[k] + 5 * dim, "f5_f.asc", NrTotal, NzTotal);
 
-	// Print lambda regularization.
-	write_single_file_2d(reg_lambda, "reg_lambda_f.asc", NrTotal, NzTotal);
-	
 	// Also print Newton parameters.
 	switch (solverType)
 	{
@@ -441,6 +440,7 @@ int main(int argc, char *argv[])
 	f_norms[2] = norm2_interior(f[k] + 2 * dim);
 	f_norms[3] = norm2_interior(f[k] + 3 * dim);
 	f_norms[4] = norm2_interior(f[k] + 4 * dim);
+	f_norms[5] = norm2_interior(f[k] + 5 * dim);
 	printf("***                                                \n");
 	printf("***        FINAL ITERATION:                        \n");
 	printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
@@ -448,6 +448,7 @@ int main(int argc, char *argv[])
 	printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
 	printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
 	printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+	printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
 	printf("***                                                \n");
 
 	printf("***                                                \n");
@@ -469,7 +470,7 @@ int main(int argc, char *argv[])
 	double *i_th = NULL;
 	double *i_u = NULL;
 	// Interpolate. Memory will be allocated in this subroutine.
-	cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, 5);
+	cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, GNUM);
 	// Write to file.
 	write_single_file_2d_polar(i_rr           , "sph_rr.asc", 		NrrTotal, NthTotal);
 	write_single_file_2d_polar(i_th           , "sph_th.asc", 		NrrTotal, NthTotal);
@@ -478,6 +479,7 @@ int main(int argc, char *argv[])
 	write_single_file_2d_polar(i_u + 2 * p_dim, "sph_log_h_f.asc", 		NrrTotal, NthTotal);
 	write_single_file_2d_polar(i_u + 3 * p_dim, "sph_log_a_f.asc", 		NrrTotal, NthTotal);
 	write_single_file_2d_polar(i_u + 4 * p_dim, "sph_psi_f.asc", 		NrrTotal, NthTotal);
+	write_single_file_2d_polar(i_u + 5 * p_dim, "sph_lambda_f.asc", 	NrrTotal, NthTotal);
 	// Do analysis.
 	double M_KOMAR, J_KOMAR, GRV2, GRV3;
 	analysis(i_u, i_rr, i_th, w);
@@ -516,9 +518,6 @@ int main(int argc, char *argv[])
 	SAFE_FREE(Drr_u);
 	SAFE_FREE(Dzz_u);
 	SAFE_FREE(Drz_u);
-
-	// Regularization.
-	SAFE_FREE(reg_lambda);
 
 	// Newton variables.
 	SAFE_FREE(norm_f);

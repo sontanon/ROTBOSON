@@ -1,5 +1,8 @@
 #include <libconfig.h>
 
+// Number of grid variables.
+#define GNUM 8
+
 #ifdef MAIN_FILE
 /* CONFIG FILE */
 config_t cfg;
@@ -36,6 +39,7 @@ const char *beta_i 	= NULL;
 const char *log_h_i 	= NULL;
 const char *log_a_i 	= NULL;
 const char *psi_i 	= NULL;
+const char *lambda_i 	= NULL;
 const char *w_i 	= NULL;
 MKL_INT NrTotalInitial 	= 0;
 MKL_INT NzTotalInitial 	= 0;
@@ -77,12 +81,6 @@ double rr_inf;
 
 /* OUTPUT */
 const char *dirname = "test";
-
-/* REGULARIZATION */
-MKL_INT regularization = 0;
-double	regularization_axis_stop = 0.0;
-MKL_INT	regularization_i_stop = 0;
-double *reg_lambda;
 #else
 /* CONFIG FILE */
 extern config_t cfg;
@@ -119,6 +117,7 @@ extern const char *beta_i;
 extern const char *log_h_i;
 extern const char *log_a_i;
 extern const char *psi_i;
+extern const char *lambda_i;
 extern const char *w_i;
 extern MKL_INT NrTotalInitial;
 extern MKL_INT NzTotalInitial;
@@ -160,10 +159,4 @@ extern double rr_inf;
 
 /* OUTPUT */
 extern const char *dirname;
-
-/* REGULARIZATION */
-extern MKL_INT regularization;
-extern double regularization_axis_stop;
-extern MKL_INT regularization_i_stop;
-extern double *reg_lambda;
 #endif
