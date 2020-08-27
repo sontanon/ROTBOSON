@@ -184,11 +184,11 @@ void rhs_vars(
 		+ 4.0 * (h2 / a2) * Dz_l_h * Dz_l_h * lambda
 		- 2.0 * Dr_l_h * Dr_l_h * lambda
 		- 4.0 * h2 * (Dr_l_h / r) * (Dr_l_alpha / r)
-		- (h2 / alpha2) * (Dr_beta * Dr_beta + Dz_beta * Dz_beta)
+		- (h2 * h2 / alpha2) * (Dr_beta * Dr_beta + Dz_beta * Dz_beta)
 		- (a2 * h2 / alpha2) * (Dr_beta * Dr_beta)
 		+ 2.0 * lambda * (Drr_l_alpha + Dr_l_alpha * Dr_l_alpha)
 		+ 2.0 * lambda * (Drr_l_h + 2.0 * Dr_l_h * Dr_l_h)
-		+ Q1 * ((2.0 * h2 / alpha2) * (Dr_u6 / r))
+		+ Q1 * ((2.0 * h2 / alpha) * (Dr_u6 / r))
 		+ Q2 * (Dr_u7 / r)
 		+ 8.0 * M_PI * a2 * (m2 * (a2 - h2) * phi2_over_r2
 			+ 2.0 * rlm1 * rlm1 * (Dr_psi / r) * (2.0 * l * psi + (r * Dr_psi)))));
