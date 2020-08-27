@@ -59,8 +59,9 @@ void jacobian_2nd_order_variable_omega_cc
 	double a    = exp(u411);
 	double psi  = u511;
 	double lambda = u611;
-	double u6 = u711;
-	double u7 = u811;
+	double u6 = u611;
+	double u7 = u711;
+	double u8 = u811;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -597,8 +598,9 @@ void jacobian_4th_order_variable_omega_cc
 	double a    = exp(u422);
 	double psi  = u522;
 	double lambda = u622;
-	double u6 = u722;
-	double u7 = u822;
+	double u6 = u622;
+	double u7 = u722;
+	double u8 = u822;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -1299,8 +1301,9 @@ void jacobian_4th_order_variable_omega_cs
 	double psi  = u524;
 	double w = omega_calc(xi, m);
 	double lambda = u624;
-	double u6 = u724;
-	double u7 = u824;
+	double u6 = u624;
+	double u7 = u724;
+	double u8 = u824;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -2015,8 +2018,9 @@ void jacobian_4th_order_variable_omega_sc
 	double psi  = u542;
 	double w = omega_calc(xi, m);
 	double lambda = u642;
-	double u6 = u742;
-	double u7 = u842;
+	double u6 = u642;
+	double u7 = u742;
+	double u8 = u842;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -2741,8 +2745,9 @@ void jacobian_4th_order_variable_omega_ss
 	double psi  = u544;
 	double w = omega_calc(xi, m);
 	double lambda = u644;
-	double u6 = u744;
-	double u7 = u844;
+	double u6 = u644;
+	double u7 = u744;
+	double u8 = u844;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
