@@ -12,17 +12,15 @@
 #define EXP_DECAY_TYPE	 0
 #define ROBIN_TYPE_1  	 1
 #define ROBIN_TYPE_3  	 3
+#define REG_VARIABLE     5
 
 // Print nnz cumulative sum.
 #undef DEBUG
 
-//
-// FOR NOW, ONLY SECOND ORDER IS SUPPORTED!
-//
-
-void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MKL_INT *p_nnz4,MKL_INT *p_nnz5)
+void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MKL_INT *p_nnz4, MKL_INT *p_nnz5, MKL_INT *p_nnz6, MKL_INT *p_nnz7, MKL_INT *p_nnz8)
 {
 	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0;
+	MKL_INT nnz6 = 0, nnz7 = 0, nnz8 = 0;
 
 	// Select order.
 	if (order == 4)
@@ -40,56 +38,28 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 		nnz4 = 46 * NrInterior * NzInterior 
 			+ 47 * (NrInterior + NzInterior) + 48
 			+ 4 * (NrInterior + NzInterior) + 24;
-		nnz5 = 30 * NrInterior * NzInterior 
-			+ 31 * (NrInterior + NzInterior) + 32
+		nnz5 = 31 * NrInterior * NzInterior 
+			+ 32 * (NrInterior + NzInterior) + 33
+			+ 4 * (NrInterior + NzInterior) + 24;
+		nnz6 = 52 * NrInterior * NzInterior
+			+ 53 * NrInterior + 55 * NzInterior + 56
+			+ 4 * (NrInterior + NzInterior) + 24;
+		nnz7 = 5 * NrInterior * NzInterior
+			+ 5 * NrInterior + 6 * NzInterior + 6
+			+ 4 * (NrInterior + NzInterior) + 24;
+		nnz8 = 5 * NrInterior * NzInterior
+			+ 5 * NrInterior + 6 * NzInterior + 6 
 			+ 4 * (NrInterior + NzInterior) + 24;
 
 		// Select boundary conditions.
-		switch (alphaBoundOrder)
-		{
-			case 0:
-				nnz1 += 3 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz1 += 9 * (3 + (NrInterior + NzInterior));
-				break;
-		}
-		switch (betaBoundOrder)
-		{
-			case 0:
-				nnz2 += 3 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz2 += 9 * (3 + (NrInterior + NzInterior));
-				break;
-		}
-		switch (hBoundOrder)
-		{
-			case 0:
-				nnz3 += 3 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz3 += 9 * (3 + (NrInterior + NzInterior));
-				break;
-		}
-		switch (aBoundOrder)
-		{
-			case 0:
-				nnz4 += 3 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz4 += 9 * (3 + (NrInterior + NzInterior));
-				break;
-		}
-		switch (phiBoundOrder)
-		{
-			case 0:
-				nnz5 += 3 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz5 += 10 * (3 + (NrInterior + NzInterior));
-				break;
-		}
+		nnz1 += 9 * (3 + (NrInterior + NzInterior));
+		nnz2 += 9 * (3 + (NrInterior + NzInterior));
+		nnz3 += 9 * (3 + (NrInterior + NzInterior));
+		nnz4 += 9 * (3 + (NrInterior + NzInterior));
+		nnz5 += 10 * (3 + (NrInterior + NzInterior));
+		nnz6 += 9 * (3 + (NrInterior + NzInterior));
+		nnz7 += 5 * NrInterior + 6 * NzInterior + 6 * 3;
+		nnz8 += 5 * NrInterior + 6 * NzInterior + 6 * 3;
 	}
 	else
 	{
@@ -98,54 +68,20 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 		nnz2 = 17 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz3 = 16 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz4 = 26 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
-		nnz5 = 18 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
+		nnz5 = 19 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
+		nnz6 = 30 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
+		nnz7 =  3 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
+		nnz8 =  3 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 
 		// Select boundary conditions.
-		switch (alphaBoundOrder)
-		{
-			case 0:
-				nnz1 += 1 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz1 += 5 * (1 + (NrInterior + NzInterior));
-				break;
-		}
-		switch (betaBoundOrder)
-		{
-			case 0:
-				nnz2 += 1 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz2 += 5 * (1 + (NrInterior + NzInterior));
-				break;
-		}
-		switch (hBoundOrder)
-		{
-			case 0:
-				nnz3 += 1 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz3 += 5 * (1 + (NrInterior + NzInterior));
-				break;
-		}
-		switch (aBoundOrder)
-		{
-			case 0:
-				nnz4 += 1 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz4 += 5 * (1 + (NrInterior + NzInterior));
-				break;
-		}
-		switch (phiBoundOrder)
-		{
-			case 0:
-				nnz5 += 1 + (NrInterior + NzInterior);
-				break;
-			case 1:
-				nnz5 += 6 * (1 + (NrInterior + NzInterior));
-				break;
-		}
+		nnz1 += 5 * (1 + (NrInterior + NzInterior));
+		nnz2 += 5 * (1 + (NrInterior + NzInterior));
+		nnz3 += 5 * (1 + (NrInterior + NzInterior));
+		nnz4 += 5 * (1 + (NrInterior + NzInterior));
+		nnz5 += 6 * (1 + (NrInterior + NzInterior));
+		nnz6 += 5 * (1 + (NrInterior + NzInterior));
+		nnz7 += 3 * NrInterior + 4 * NzInterior + 4;
+		nnz8 += 3 * NrInterior + 4 * NzInterior + 4;
 	}
 
 	*p_nnz1 = nnz1;
@@ -153,6 +89,9 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 	*p_nnz3 = nnz3;
 	*p_nnz4 = nnz4;
 	*p_nnz5 = nnz5;
+	*p_nnz6 = nnz6;
+	*p_nnz7 = nnz7;
+	*p_nnz8 = nnz8;
 
 	return;
 }
@@ -160,9 +99,9 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 MKL_INT nnz_jacobian(void)
 {
 	// Number of nonzero elements per grid function.
-	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0;
+	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0, nnz6 = 0, nnz7 = 0, nnz8 = 0;
 
-	nnz_jacobian_get_nnzs(&nnz1, &nnz2, &nnz3, &nnz4, &nnz5);
+	nnz_jacobian_get_nnzs(&nnz1, &nnz2, &nnz3, &nnz4, &nnz5, &nnz6, &nnz7, &nnz8);
 #ifdef DEBUG
 	printf("nnz1 = %lld,\n", nnz1);
 	printf("nnz2 = %lld,\n", nnz2);
@@ -176,7 +115,7 @@ MKL_INT nnz_jacobian(void)
 #endif
 
 	// Total number of nonzeros.
-	return nnz1 + nnz2 + nnz3 + nnz4 + nnz5 + 1;
+	return nnz1 + nnz2 + nnz3 + nnz4 + nnz5 + nnz6 + nnz7 + nnz8 + 1;
 }
 
 void csr_gen_jacobian(csr_matrix A, double *u, const int print)
@@ -185,22 +124,23 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 	MKL_INT offset = 0;
 
 	// Number of nonzero elements per grid function.
-	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0;
+	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0, nnz6 = 0, nnz7 = 0, nnz8 = 0;
 
 	// Calculate nonzeros.
-	nnz_jacobian_get_nnzs(&nnz1, &nnz2, &nnz3, &nnz4, &nnz5);
+	nnz_jacobian_get_nnzs(&nnz1, &nnz2, &nnz3, &nnz4, &nnz5, &nnz6, &nnz7, &nnz8);
 
 	// Integer arrays.
-	MKL_INT r_sym[5] = {EVEN, EVEN, EVEN, EVEN, EVEN};
-	MKL_INT z_sym[5] = {EVEN, EVEN, EVEN, EVEN, EVEN};
-	MKL_INT bound_order[5] = {alphaBoundOrder, betaBoundOrder, hBoundOrder, aBoundOrder, phiBoundOrder};
-	MKL_INT nnzs[5] = {nnz1, nnz2, nnz3, nnz4, nnz5};
+	MKL_INT r_sym[GNUM] = {EVEN, EVEN, EVEN, EVEN, EVEN, EVEN, EVEN, EVEN};
+	MKL_INT z_sym[GNUM] = {EVEN, EVEN, EVEN, EVEN, EVEN, EVEN, EVEN, EVEN};
+	MKL_INT bound_order[GNUM] = {ROBIN_TYPE_1, ROBIN_TYPE_1, ROBIN_TYPE_1, ROBIN_TYPE_1,
+		EXP_DECAY_TYPE, ROBIN_TYPE_1, REG_VARIABLE, REG_VARIABLE};
+	MKL_INT nnzs[GNUM] = {nnz1, nnz2, nnz3, nnz4, nnz5, nnz6, nnz7, nnz8};
 
-	MKL_INT p_cc[5] = {0, 0, 0, 0, 0};
-	MKL_INT p_cs[5] = {0, 0, 0, 0, 0};
-	MKL_INT p_sc[5] = {0, 0, 0, 0, 0};
-	MKL_INT p_ss[5] = {0, 0, 0, 0, 0};
-	MKL_INT p_bound[5] = {0, 0, 0, 0, 0};
+	MKL_INT p_cc[GNUM] = {0, 0, 0, 0, 0, 0, 0, 0};
+	MKL_INT p_cs[GNUM] = {0, 0, 0, 0, 0, 0, 0, 0};
+	MKL_INT p_sc[GNUM] = {0, 0, 0, 0, 0, 0, 0, 0};
+	MKL_INT p_ss[GNUM] = {0, 0, 0, 0, 0, 0, 0, 0};
+	MKL_INT p_bound[GNUM] = {0, 0, 0, 0, 0, 0, 0, 0};
 
 	// Set integer arrays according to order.
 	if (order == 4)
@@ -209,22 +149,35 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 		p_cc[1] = 29;
 		p_cc[2] = 28;
 		p_cc[3] = 46;
-		p_cc[4] = 30;
+		p_cc[4] = 31;
+		p_cc[5] = 52;
+		p_cc[6] = 5;
+		p_cc[7] = 5;
 
 		p_cs[0] = p_sc[0] = 31;
 		p_cs[1] = p_sc[1] = 31;
 		p_cs[2] = p_sc[2] = 30;
 		p_cs[3] = p_sc[3] = 47;
-		p_cs[4] = p_sc[4] = 31;
+		p_cs[4] = p_sc[4] = 32;
+		p_cs[5] = 53;
+		p_sc[5] = 55;
+		p_cs[6] = 5;
+		p_sc[6] = 6;
+		p_cs[7] = 5;
+		p_sc[7] = 6;
 
 		p_ss[0] = 32;
 		p_ss[1] = 32;
 		p_ss[2] = 31;
 		p_ss[3] = 48;
-		p_ss[4] = 32;
+		p_ss[4] = 33;
+		p_ss[5] = 56;
+		p_ss[6] = 6;
+		p_ss[7] = 6;
 
-		p_bound[0] = p_bound[1] = p_bound[2] = p_bound[3] = 9;
+		p_bound[0] = p_bound[1] = p_bound[2] = p_bound[3] = p_bound[5] = 9;
 		p_bound[4] = 10;
+		p_bound[6] = p_bound[7] = 5;
 	}
 	else
 	{
@@ -232,10 +185,14 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 		p_cc[1] = 17;
 		p_cc[2] = 16;
 		p_cc[3] = 26;
-		p_cc[4] = 18;
+		p_cc[4] = 19;
+		p_cc[5] = 30;
+		p_cc[6] = 3;
+		p_cc[7] = 3;
 
-		p_bound[0] = p_bound[1] = p_bound[2] = p_bound[3] = 5;
+		p_bound[0] = p_bound[1] = p_bound[2] = p_bound[3] = p_bound[5] = 5;
 		p_bound[4] = 6;
+		p_bound[6] = p_bound[7] = 3;
 	}
 
 
@@ -248,8 +205,7 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 			jacobian_4th_order_variable_omega_cc,
 			jacobian_4th_order_variable_omega_cs,
 			jacobian_4th_order_variable_omega_sc,
-			jacobian_4th_order_variable_omega_ss,
-			reg_lambda);
+			jacobian_4th_order_variable_omega_ss);
 	}
 	// Second order default.
 	else
@@ -257,14 +213,13 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 		csr_grid_fill_2nd(A, 
 			NrInterior, NzInterior, dr, dz, u, l, m, 
 			r_sym, z_sym, bound_order, nnzs, p_cc, p_bound,
-			jacobian_2nd_order_variable_omega_cc, 
-			reg_lambda);
+			jacobian_2nd_order_variable_omega_cc);
 	}
 
 	// FINALLY FILL OMEGA EQUATION OR u5(1,1) CONSTRAINT.
 	//printf("ROTBOSON-JACOBIAN: Starting omega...\n");
-	offset = nnz1 + nnz2 + nnz3 + nnz4 + nnz5;
-	omega_constraint(A.a, A.ia, A.ja, offset, NrTotal, NzTotal, dim, 5, w_idx, fixedPhi, fixedPhiR, fixedPhiZ);
+	offset = nnz1 + nnz2 + nnz3 + nnz4 + nnz5 + nnz6 + nnz7 + nnz8;
+	omega_constraint(A.a, A.ia, A.ja, offset, NrTotal, NzTotal, dim, GNUM, w_idx, fixedPhi, fixedPhiR, fixedPhiZ);
 	//printf("ROTBOSON-JACOBIAN: Done omega.\n");
 
 	// FILL LAST ELEMENT.
