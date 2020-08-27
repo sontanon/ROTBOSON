@@ -6,8 +6,6 @@
 
 #include "rhs_vars.h"
 
-#include "regularization.h"
-
 // All functions are even about the equator and the axis.
 #define EVEN 1
 

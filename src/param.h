@@ -26,10 +26,10 @@ double sigmaR		= 4.0;
 double sigmaZ		= 4.0;
 double rExt		= 16.0;
 double w0 		= 0.7;
-MKL_INT w_idx 		= 84500;
+MKL_INT w_idx 		= 135200;
 MKL_INT fixedPhi    	= 1;
-MKL_INT fixedPhiR 	= 1;
-MKL_INT fixedPhiZ 	= 1;
+MKL_INT fixedPhiR 	= 4;
+MKL_INT fixedPhiZ 	= 4;
 MKL_INT fixedOmega  	= 0;
 
 /* INITIAL DATA */
@@ -56,13 +56,6 @@ MKL_INT maxNewtonIter 	= 10;
 double lambda0 		= 1.0E-3;
 double lambdaMin 	= 1.0E-8;
 MKL_INT useLowRank	= 0;
-
-/* BOUNDARY TYPES */
-MKL_INT alphaBoundOrder	= 1;
-MKL_INT betaBoundOrder	= 1;
-MKL_INT hBoundOrder	= 1;
-MKL_INT aBoundOrder	= 1;
-MKL_INT phiBoundOrder	= 1;
 
 /* AUXILIARY ARRAYS FOR DERIVATIVES. */
 double *Dr_u;
@@ -141,13 +134,6 @@ extern double *Dz_u;
 extern double *Drr_u;
 extern double *Dzz_u;
 extern double *Drz_u;
-
-/* BOUNDARY TYPES */
-extern MKL_INT alphaBoundOrder;
-extern MKL_INT betaBoundOrder;
-extern MKL_INT hBoundOrder;
-extern MKL_INT aBoundOrder;
-extern MKL_INT phiBoundOrder;
 
 /* SPHERICAL PARAMETERS FOR ANALYSIS */
 extern MKL_INT NrrTotal;

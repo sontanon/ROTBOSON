@@ -127,13 +127,6 @@ int main(int argc, char *argv[])
 		printf("***            w0          = %-12.10E          \n", w0);
 	}
 	printf("***                                                \n");
-	printf("***           BOUNDARY TYPES:                      \n");
-	printf("***            alphaBoundOrder = %lld               \n", alphaBoundOrder);
-	printf("***            betaBoundOrder  = %lld               \n", betaBoundOrder);
-	printf("***            hBoundOrder     = %lld               \n", hBoundOrder);
-	printf("***            aBoundOrder     = %lld               \n", aBoundOrder);
-	printf("***            phiBoundOrder   = %lld               \n", phiBoundOrder);
-	printf("***                                                \n");
 	printf("***           SOLVER:                              \n");
 	printf("***            solverType    = %-18s  \n", (solverType == 1) ? "Error" : "Residual");
 	printf("***            epsilon       = %-12.10E        \n", epsilon);

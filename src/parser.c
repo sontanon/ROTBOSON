@@ -378,13 +378,14 @@ void parser(const char *fname)
 			break;
 	
 		// Default case for 1 or 2.
-		default:
+		case 2:
+		case 1:
 			config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i);
 			config_lookup_string(&cfg, "beta_i", &beta_i);
 			config_lookup_string(&cfg, "log_h_i", &log_h_i);
 			config_lookup_string(&cfg, "log_a_i", &log_a_i);
 			config_lookup_string(&cfg, "psi_i", &psi_i);
-			config_lookup_string(&cfg, "lambda_i", &psi_i);
+			config_lookup_string(&cfg, "lambda_i", &lambda_i);
 			config_lookup_string(&cfg, "w_i", &w_i);
 			
 			// Initial Data extensions.
@@ -592,77 +593,6 @@ void parser(const char *fname)
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"useLowRank\" from parameter file. Setting to default value, useLowRank = %lld\n", useLowRank);
 	}
 
-	// BOUNDARY TYPES.
-	// alphaBoundOrder.
-	if (config_lookup_int64(&cfg, "alphaBoundOrder", &alphaBoundOrder) == CONFIG_TRUE)
-	{
-		if (alphaBoundOrder != 0 && alphaBoundOrder != 1 && alphaBoundOrder != 2)
-		{
-			fprintf(stderr, "PARSER: ERROR! alphaBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"alphaBoundOrder\" from parameter file. Setting to default value, alphaBoundOrder = %lld\n", alphaBoundOrder);
-	}
-	// betaBoundOrder.
-	if (config_lookup_int64(&cfg, "betaBoundOrder", &betaBoundOrder) == CONFIG_TRUE)
-	{
-		if (betaBoundOrder != 0 && betaBoundOrder != 1 && betaBoundOrder != 2)
-		{
-			fprintf(stderr, "PARSER: ERROR! betaBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"betaBoundOrder\" from parameter file. Setting to default value, betaBoundOrder = %lld\n", betaBoundOrder);
-	}
-	// hBoundOrder.
-	if (config_lookup_int64(&cfg, "hBoundOrder", &hBoundOrder) == CONFIG_TRUE)
-	{
-		if (hBoundOrder != 0 && hBoundOrder != 1 && hBoundOrder != 2)
-		{
-			fprintf(stderr, "PARSER: ERROR! hBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"hBoundOrder\" from parameter file. Setting to default value, hBoundOrder = %lld\n", hBoundOrder);
-	}
-	// aBoundOrder.
-	if (config_lookup_int64(&cfg, "aBoundOrder", &aBoundOrder) == CONFIG_TRUE)
-	{
-		if (aBoundOrder != 0 && aBoundOrder != 1 && aBoundOrder != 2)
-		{
-			fprintf(stderr, "PARSER: ERROR! aBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"aBoundOrder\" from parameter file. Setting to default value, aBoundOrder = %lld\n", aBoundOrder);
-	}
-	// phiBoundOrder.
-	if (config_lookup_int64(&cfg, "phiBoundOrder", &phiBoundOrder) == CONFIG_TRUE)
-	{
-		if (phiBoundOrder != 0 && phiBoundOrder != 1 && phiBoundOrder != 2)
-		{
-			fprintf(stderr, "PARSER: ERROR! phiBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"phiBoundOrder\" from parameter file. Setting to default value, phiBoundOrder = %lld\n", phiBoundOrder);
-	}
 	// OUTPUT
 	// dirname.
 	if (config_lookup_string(&cfg, "dirname", &dirname) != CONFIG_TRUE)
