@@ -46,8 +46,8 @@ double dot_interior_all_variables(double *x, double *y)
 	double sum = 0.0;
 	MKL_INT k = 0;
 
-	// Add five dot products.
-	for (k = 0; k < 5; ++k)
+	// Add all dot products.
+	for (k = 0; k < GNUM; ++k)
 	{
 		sum += dot_interior(x + k * dim, y + k * dim);
 	}
