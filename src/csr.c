@@ -69,7 +69,7 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 		nnz3 = 16 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz4 = 26 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz5 = 19 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
-		nnz6 = 30 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
+		nnz6 = 27 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz7 =  3 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 		nnz8 =  3 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
 
@@ -186,7 +186,7 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 		p_cc[2] = 16;
 		p_cc[3] = 26;
 		p_cc[4] = 19;
-		p_cc[5] = 30;
+		p_cc[5] = 27;
 		p_cc[6] = 3;
 		p_cc[7] = 3;
 
