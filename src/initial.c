@@ -29,6 +29,7 @@ void initial_guess(double *u)
 	// Integer counter.
 	MKL_INT i = 0;
 	MKL_INT j = 0;
+	MKL_INT k = 0;
 
 	// Auxiliary variables.
 	double r, z, rr;
@@ -185,12 +186,36 @@ void initial_guess(double *u)
 
 		if (!lambda_i)
 		{
+			/*
 			#pragma omp parallel shared(u)
 			{
 				#pragma omp for schedule(guided)
 				for (i = 5 * dim; i <  5 * dim; ++i)
 				{
 					u[i] = 0.0;
+				}
+			}
+			*/
+			k = (MKL_INT)floor(0.5 / dr + ghost - 0.5);
+			#pragma omp parallel shared(u) private(i, j, k, r) // rr.
+			{
+				#pragma omp for schedule(dynamic, 1)
+				for (i = k; i < NrTotal; ++i)
+				{
+					r = dr * (i + 0.5 - ghost);
+					//rl = pow(r, l);
+
+					for (j = ghost; j < NzTotal; ++j)
+					{
+						u[5 * dim + IDX(i, j)] = (exp(2.0 * u[3 * dim + IDX(i, j)]) - exp(2.0 * u[2 * dim + IDX(i, j)])) / (r * r);
+					}
+				}
+			}
+			for (i = 0; i < k; ++i)
+			{
+				for (j = ghost; j < NzTotal; ++j)
+				{
+					u[5 * dim + IDX(i, j)] = u[5 * dim + IDX(k, j)];
 				}
 			}
 		}
