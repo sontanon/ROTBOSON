@@ -59,9 +59,9 @@ void jacobian_2nd_order_variable_omega_cc
 	double a    = exp(u411);
 	double psi  = u511;
 	double lambda = u611;
-	double u6 = u611;
-	double u7 = u711;
-	double u8 = u811;
+	//double u6 = u611;
+	//double u7 = u711;
+	//double u8 = u811;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -104,7 +104,7 @@ void jacobian_2nd_order_variable_omega_cc
 	double dRu5 = D_2_10 * u501 + D_2_12 * u521;
 	double dRu6 = D_2_10 * u601 + D_2_12 * u621;
 	double dRu7 = D_2_10 * u701 + D_2_12 * u721;
-	double dRu8 = D_2_10 * u801 + D_2_12 * u821;
+	//double dRu8 = D_2_10 * u801 + D_2_12 * u821;
 
 	double dZu1 = D_2_10 * u110 + D_2_12 * u112;
 	double dZu2 = D_2_10 * u210 + D_2_12 * u212;
@@ -415,11 +415,11 @@ void jacobian_2nd_order_variable_omega_cc
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
 
 	// Set values.
-	aa[offset6 +  0] = 2*D_2_20*dzodr*u6 + D_2_10*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  0] = 2*D_2_20*dzodr*lambda + D_2_10*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  1] = (D_2_10*dZu6)/dzodr;
-	aa[offset6 +  2] = (D_2_11*dZu6)/dzodr + (2*(dZu2*dZu2)*(h2*h2))/(alpha2*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha2) + (2*(dRu2*dRu2)*(h2*h2))/(alpha2) - (2*dRu7*h2*Q1)/(alpha*ri)) + 2*D_2_21*dzodr*u6 + D_2_11*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  2] = (D_2_11*dZu6)/dzodr + (2*(dZu2*dZu2)*(h2*h2))/(alpha2*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha2) + (2*(dRu2*dRu2)*(h2*h2))/(alpha2) - (2*dRu7*h2*Q1)/(alpha*ri)) + 2*D_2_21*dzodr*lambda + D_2_11*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  3] = (D_2_12*dZu6)/dzodr;
-	aa[offset6 +  4] = 2*D_2_22*dzodr*u6 + D_2_12*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  4] = 2*D_2_22*dzodr*lambda + D_2_12*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 
 	aa[offset6 +  5] = D_2_10*dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2));
 	aa[offset6 +  6] = (-2*D_2_10*dZu2*(h2*h2))/(alpha2*dzodr);
@@ -427,23 +427,23 @@ void jacobian_2nd_order_variable_omega_cc
 	aa[offset6 +  8] = (-2*D_2_12*dZu2*(h2*h2))/(alpha2*dzodr);
 	aa[offset6 +  9] = D_2_12*dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2));
 
-	aa[offset6 + 10] = 2*D_2_20*dzodr*u6 + D_2_10*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 11] = (D_2_10*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 12] = 2*D_2_21*dzodr*u6 + (D_2_11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha2) + (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha2) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*u6)/(a2*ri)) + D_2_11*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 13] = (D_2_12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 14] = 2*D_2_22*dzodr*u6 + D_2_12*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
+	aa[offset6 + 10] = 2*D_2_20*dzodr*lambda + D_2_10*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 11] = (D_2_10*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 12] = 2*D_2_21*dzodr*lambda + (D_2_11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha2) + (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha2) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*lambda)/(a2*ri)) + D_2_11*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 13] = (D_2_12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 14] = 2*D_2_22*dzodr*lambda + D_2_12*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
 
-	aa[offset6 + 15] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 -  (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) -  (16*a2*h2*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*lambda*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*u6)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*u6)/a2 + (8*(u6*u6))/a2));
+	aa[offset6 + 15] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 -  (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) -  (16*a2*h2*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*psi*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*lambda)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*lambda)/a2 + (8*(lambda*lambda))/a2));
 
-	aa[offset6 + 16] = (8*a2*D_2_10*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 17] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*lambda*(m2) - 2*h2*lambda*(m2))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*D_2_11*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 18] = (8*a2*D_2_12*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 16] = (8*a2*D_2_10*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 17] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*psi*(m2) - 2*h2*psi*(m2))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*D_2_11*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 18] = (8*a2*D_2_12*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
 
-	aa[offset6 + 19] = D_2_20*dzodr + D_2_10*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 19] = D_2_20*dzodr + D_2_10*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 20] = D_2_20/dzodr + (D_2_10*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
-	aa[offset6 + 21] = D_2_21/dzodr + D_2_21*dzodr + (4*(dZu3*dZu3)*h2)/(a2*dzodr) + (D_2_11*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*u6)/a2)) + D_2_11*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 21] = D_2_21/dzodr + D_2_21*dzodr + (4*(dZu3*dZu3)*h2)/(a2*dzodr) + (D_2_11*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*lambda)/a2)) + D_2_11*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 22] = D_2_22/dzodr + (D_2_12*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
-	aa[offset6 + 23] = D_2_22*dzodr + D_2_12*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 23] = D_2_22*dzodr + D_2_12*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 
 	aa[offset6 + 24] = (2*D_2_10*dzodr*h2*Q1)/(alpha*ri);
 	aa[offset6 + 25] = (2*D_2_11*dzodr*h2*Q1)/(alpha*ri);
@@ -598,9 +598,9 @@ void jacobian_4th_order_variable_omega_cc
 	double a    = exp(u422);
 	double psi  = u522;
 	double lambda = u622;
-	double u6 = u622;
-	double u7 = u722;
-	double u8 = u822;
+	//double u6 = u622;
+	//double u7 = u722;
+	//double u8 = u822;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -643,7 +643,7 @@ void jacobian_4th_order_variable_omega_cc
 	double dRu5 = D10 * u502 + D11 * u512 + D13 * u532 + D14 * u542;
 	double dRu6 = D10 * u602 + D11 * u612 + D13 * u632 + D14 * u642;
 	double dRu7 = D10 * u702 + D11 * u712 + D13 * u732 + D14 * u742;
-	double dRu8 = D10 * u802 + D11 * u812 + D13 * u832 + D14 * u842;
+	//double dRu8 = D10 * u802 + D11 * u812 + D13 * u832 + D14 * u842;
 
 	double dZu1 = D10 * u120 + D11 * u121 + D13 * u123 + D14 * u124;
 	double dZu2 = D10 * u220 + D11 * u221 + D13 * u223 + D14 * u224;
@@ -1091,15 +1091,15 @@ void jacobian_4th_order_variable_omega_cc
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
 
 	// Values.
-	aa[offset6     ] = 2*D20*dzodr*u6 + D10*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
-	aa[offset6 +  1] = 2*D21*dzodr*u6 + D11*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6     ] = 2*D20*dzodr*lambda + D10*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
+	aa[offset6 +  1] = 2*D21*dzodr*lambda + D11*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  2] = (D10*dZu6)/dzodr;
 	aa[offset6 +  3] = (D11*dZu6)/dzodr;
-	aa[offset6 +  4] = (D12*dZu6)/dzodr + (2*(dZu2*dZu2)*(h2*h2))/(alpha*alpha*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha*alpha) + (2*(dRu2*dRu2)*(h2*h2))/(alpha*alpha) - (2*dRu7*h2*Q1)/(alpha*ri)) + 2*D22*dzodr*u6 + D12*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  4] = (D12*dZu6)/dzodr + (2*(dZu2*dZu2)*(h2*h2))/(alpha*alpha*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha*alpha) + (2*(dRu2*dRu2)*(h2*h2))/(alpha*alpha) - (2*dRu7*h2*Q1)/(alpha*ri)) + 2*D22*dzodr*lambda + D12*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  5] = (D13*dZu6)/dzodr;
 	aa[offset6 +  6] = (D14*dZu6)/dzodr;
-	aa[offset6 +  7] = 2*D23*dzodr*u6 + D13*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
-	aa[offset6 +  8] = 2*D24*dzodr*u6 + D14*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  7] = 2*D23*dzodr*lambda + D13*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
+	aa[offset6 +  8] = 2*D24*dzodr*lambda + D14*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 
 	aa[offset6 +  9] = D10*dzodr*((-2*a2*dRu2*h2)/(alpha*alpha) - (2*dRu2*(h2*h2))/(alpha*alpha));
 	aa[offset6 + 10] = D11*dzodr*((-2*a2*dRu2*h2)/(alpha*alpha) - (2*dRu2*(h2*h2))/(alpha*alpha));
@@ -1111,33 +1111,33 @@ void jacobian_4th_order_variable_omega_cc
 	aa[offset6 + 16] = D13*dzodr*((-2*a2*dRu2*h2)/(alpha*alpha) - (2*dRu2*(h2*h2))/(alpha*alpha));
 	aa[offset6 + 17] = D14*dzodr*((-2*a2*dRu2*h2)/(alpha*alpha) - (2*dRu2*(h2*h2))/(alpha*alpha));
 
-	aa[offset6 + 18] = 2*D20*dzodr*u6 + D10*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 19] = 2*D21*dzodr*u6 + D11*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 20] = (D10*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 21] = (D11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 22] = 2*D22*dzodr*u6 + (D12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha*alpha) + (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha*alpha) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha*alpha) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(lambda*lambda)*(m*m)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*u6)/(a2*ri)) + D12*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 23] = (D13*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 24] = (D14*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 25] = 2*D23*dzodr*u6 + D13*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 26] = 2*D24*dzodr*u6 + D14*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
+	aa[offset6 + 18] = 2*D20*dzodr*lambda + D10*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 19] = 2*D21*dzodr*lambda + D11*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 20] = (D10*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 21] = (D11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 22] = 2*D22*dzodr*lambda + (D12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha*alpha) + (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha*alpha) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha*alpha) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(psi*psi)*(m*m)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*lambda)/(a2*ri)) + D12*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 23] = (D13*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 24] = (D14*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 25] = 2*D23*dzodr*lambda + D13*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 26] = 2*D24*dzodr*lambda + D14*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
 
-	aa[offset6 + 27] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 - (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha*alpha) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(lambda*lambda)*(m*m)*M_PI*(rl*rl))/(ri*ri) - (16*a2*h2*(lambda*lambda)*(m*m)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*lambda*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*u6)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*u6)/a2 + (8*(u6*u6))/a2));
+	aa[offset6 + 27] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 - (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha*alpha) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(psi*psi)*(m*m)*M_PI*(rl*rl))/(ri*ri) - (16*a2*h2*(psi*psi)*(m*m)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*psi*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*lambda)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*lambda)/a2 + (8*(lambda*lambda))/a2));
 
-	aa[offset6 + 28] = (8*a2*D10*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 29] = (8*a2*D11*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 30] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*lambda*(m*m) - 2*h2*lambda*(m*m))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*D12*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 31] = (8*a2*D13*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 32] = (8*a2*D14*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 28] = (8*a2*D10*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 29] = (8*a2*D11*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 30] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*psi*(m*m) - 2*h2*psi*(m*m))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*D12*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 31] = (8*a2*D13*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 32] = (8*a2*D14*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
 
-	aa[offset6 + 33] = D20*dzodr + D10*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
-	aa[offset6 + 34] = D21*dzodr + D11*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 33] = D20*dzodr + D10*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
+	aa[offset6 + 34] = D21*dzodr + D11*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 35] = D20/dzodr + (D10*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
 	aa[offset6 + 36] = D21/dzodr + (D11*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
-	aa[offset6 + 37] = D22/dzodr + D22*dzodr + (4*(dZu3*dZu3)*h2)/(a2*dzodr) + (D12*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*u6)/a2)) + D12*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 37] = D22/dzodr + D22*dzodr + (4*(dZu3*dZu3)*h2)/(a2*dzodr) + (D12*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*lambda)/a2)) + D12*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 38] = D23/dzodr + (D13*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
 	aa[offset6 + 39] = D24/dzodr + (D14*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
-	aa[offset6 + 40] = D23*dzodr + D13*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
-	aa[offset6 + 41] = D24*dzodr + D14*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 40] = D23*dzodr + D13*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
+	aa[offset6 + 41] = D24*dzodr + D14*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 
 	aa[offset6 + 42] = (2*D10*dzodr*h2*Q1)/(alpha*ri);
 	aa[offset6 + 43] = (2*D11*dzodr*h2*Q1)/(alpha*ri);
@@ -1301,9 +1301,9 @@ void jacobian_4th_order_variable_omega_cs
 	double psi  = u524;
 	double w = omega_calc(xi, m);
 	double lambda = u624;
-	double u6 = u624;
-	double u7 = u724;
-	double u8 = u824;
+	//double u6 = u624;
+	//double u7 = u724;
+	//double u8 = u824;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -1345,7 +1345,7 @@ void jacobian_4th_order_variable_omega_cs
 	double dRu5 = D10 * u504 + D11 * u514 + D13 * u534 + D14 * u544;
 	double dRu6 = D10 * u604 + D11 * u614 + D13 * u634 + D14 * u644;
 	double dRu7 = D10 * u704 + D11 * u714 + D13 * u734 + D14 * u744;
-	double dRu8 = D10 * u804 + D11 * u814 + D13 * u834 + D14 * u844;
+	//double dRu8 = D10 * u804 + D11 * u814 + D13 * u834 + D14 * u844;
 
 	double dZu1 = S11 * u121 + S12 * u122 + S13 * u123 + S14 * u124 + S15 * u125;
 	double dZu2 = S11 * u221 + S12 * u222 + S13 * u223 + S14 * u224 + S15 * u225;
@@ -1806,15 +1806,15 @@ void jacobian_4th_order_variable_omega_cs
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
 
 	// Values
-	aa[offset6 +  0] = 2*D20*dzodr*u6 + D10*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
-	aa[offset6 +  1] = 2*D21*dzodr*u6 + D11*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  0] = 2*D20*dzodr*lambda + D10*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
+	aa[offset6 +  1] = 2*D21*dzodr*lambda + D11*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  2] = (dZu6*S11)/dzodr;
 	aa[offset6 +  3] = (dZu6*S12)/dzodr;
 	aa[offset6 +  4] = (dZu6*S13)/dzodr;
-	aa[offset6 +  5] = (2*(dZu2*dZu2)*(h2*h2))/(alpha2*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha2) + (2*(dRu2*dRu2)*(h2*h2))/(alpha2) - (2*dRu7*h2*Q1)/(alpha*ri)) + (dZu6*S14)/dzodr + 2*D22*dzodr*u6 + D12*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  5] = (2*(dZu2*dZu2)*(h2*h2))/(alpha2*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha2) + (2*(dRu2*dRu2)*(h2*h2))/(alpha2) - (2*dRu7*h2*Q1)/(alpha*ri)) + (dZu6*S14)/dzodr + 2*D22*dzodr*lambda + D12*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  6] = (dZu6*S15)/dzodr;
-	aa[offset6 +  7] = 2*D23*dzodr*u6 + D13*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
-	aa[offset6 +  8] = 2*D24*dzodr*u6 + D14*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  7] = 2*D23*dzodr*lambda + D13*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
+	aa[offset6 +  8] = 2*D24*dzodr*lambda + D14*dzodr*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 
 	aa[offset6 +  9] = D10*dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2));
 	aa[offset6 + 10] = D11*dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2));
@@ -1826,34 +1826,34 @@ void jacobian_4th_order_variable_omega_cs
 	aa[offset6 + 16] = D13*dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2));
 	aa[offset6 + 17] = D14*dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2));
 
-	aa[offset6 + 18] = 2*D20*dzodr*u6 + D10*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 19] = 2*D21*dzodr*u6 + D11*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 20] = (S11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 21] = (S12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 22] = (S13*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 23] = 2*D22*dzodr*u6 + (S14*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha2) + (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha2) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*u6)/(a2*ri)) + D12*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 24] = (S15*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 25] = 2*D23*dzodr*u6 + D13*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 26] = 2*D24*dzodr*u6 + D14*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
+	aa[offset6 + 18] = 2*D20*dzodr*lambda + D10*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 19] = 2*D21*dzodr*lambda + D11*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 20] = (S11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 21] = (S12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 22] = (S13*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 23] = 2*D22*dzodr*lambda + (S14*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha2) + (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha2) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*lambda)/(a2*ri)) + D12*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 24] = (S15*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 25] = 2*D23*dzodr*lambda + D13*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 26] = 2*D24*dzodr*lambda + D14*dzodr*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
 
-	aa[offset6 + 27] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 - (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*a2*h2*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*lambda*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*u6)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*u6)/a2 + (8*(u6*u6))/a2));
+	aa[offset6 + 27] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 - (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*a2*h2*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*psi*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*lambda)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*lambda)/a2 + (8*(lambda*lambda))/a2));
 
-	aa[offset6 + 28] = (8*a2*D10*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 29] = (8*a2*D11*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 30] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*lambda*(m2) - 2*h2*lambda*(m2))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*D12*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 31] = (8*a2*D13*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
-	aa[offset6 + 32] = (8*a2*D14*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 28] = (8*a2*D10*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 29] = (8*a2*D11*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 30] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*psi*(m2) - 2*h2*psi*(m2))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*D12*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 31] = (8*a2*D13*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
+	aa[offset6 + 32] = (8*a2*D14*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri))/(dr*dr*(ri*ri));
 	
-	aa[offset6 + 33] = D20*dzodr + D10*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
-	aa[offset6 + 34] = D21*dzodr + D11*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 33] = D20*dzodr + D10*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
+	aa[offset6 + 34] = D21*dzodr + D11*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 35] = S20/dzodr;
 	aa[offset6 + 36] = ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S11)/dzodr + S21/dzodr;
 	aa[offset6 + 37] = ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S12)/dzodr + S22/dzodr;
 	aa[offset6 + 38] = ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S13)/dzodr + S23/dzodr;
-	aa[offset6 + 39] = D22*dzodr + (4*(dZu3*dZu3)*h2)/(a2*dzodr) + ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S14)/dzodr + S24/dzodr + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*u6)/a2)) + D12*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 39] = D22*dzodr + (4*(dZu3*dZu3)*h2)/(a2*dzodr) + ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S14)/dzodr + S24/dzodr + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*lambda)/a2)) + D12*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 40] = ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S15)/dzodr + S25/dzodr;
-	aa[offset6 + 41] = D23*dzodr + D13*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
-	aa[offset6 + 42] = D24*dzodr + D14*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 41] = D23*dzodr + D13*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
+	aa[offset6 + 42] = D24*dzodr + D14*dzodr*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 
 	aa[offset6 + 43] = (2*D10*dzodr*h2*Q1)/(alpha*ri);
 	aa[offset6 + 44] = (2*D11*dzodr*h2*Q1)/(alpha*ri);
@@ -2018,9 +2018,9 @@ void jacobian_4th_order_variable_omega_sc
 	double psi  = u542;
 	double w = omega_calc(xi, m);
 	double lambda = u642;
-	double u6 = u642;
-	double u7 = u742;
-	double u8 = u842;
+	//double u6 = u642;
+	//double u7 = u742;
+	//double u8 = u842;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -2062,7 +2062,7 @@ void jacobian_4th_order_variable_omega_sc
 	double dRu5 = S11 * u512 + S12 * u522 + S13 * u532 + S14 * u542 + S15 * u552;
 	double dRu6 = S11 * u612 + S12 * u622 + S13 * u632 + S14 * u642 + S15 * u652;
 	double dRu7 = S11 * u712 + S12 * u722 + S13 * u732 + S14 * u742 + S15 * u752;
-	double dRu8 = S11 * u812 + S12 * u822 + S13 * u832 + S14 * u842 + S15 * u852;
+	//double dRu8 = S11 * u812 + S12 * u822 + S13 * u832 + S14 * u842 + S15 * u852;
 
 	double dZu1 = D10 * u140 + D11 * u141 + D13 * u143 + D14 * u144;
 	double dZu2 = D10 * u240 + D11 * u241 + D13 * u243 + D14 * u244;
@@ -2070,8 +2070,8 @@ void jacobian_4th_order_variable_omega_sc
 	//double dZu4 = D10 * u440 + D11 * u441 + D13 * u443 + D14 * u444;
 	double dZu5 = D10 * u540 + D11 * u541 + D13 * u543 + D14 * u544;
 	double dZu6 = D10 * u640 + D11 * u641 + D13 * u643 + D14 * u644;
-	double dZu7 = D10 * u740 + D11 * u741 + D13 * u743 + D14 * u744;
-	double dZu8 = D10 * u840 + D11 * u841 + D13 * u843 + D14 * u844;
+	//double dZu7 = D10 * u740 + D11 * u741 + D13 * u743 + D14 * u744;
+	//double dZu8 = D10 * u840 + D11 * u841 + D13 * u843 + D14 * u844;
 
 	// Second derivatives.
 	double dRRu1 = S20 * u102 + S21 * u112 + S22 * u122 + S23 * u132 + S24 * u142 + S25 * u152;
@@ -2525,16 +2525,16 @@ void jacobian_4th_order_variable_omega_sc
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
 
 	// Values
-	aa[offset6 +  0] = 2*dzodr*S20*u6;
-	aa[offset6 +  1] = 2*dzodr*S21*u6 + dzodr*S11*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
-	aa[offset6 +  2] = 2*dzodr*S22*u6 + dzodr*S12*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
-	aa[offset6 +  3] = 2*dzodr*S23*u6 + dzodr*S13*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  0] = 2*dzodr*S20*lambda;
+	aa[offset6 +  1] = 2*dzodr*S21*lambda + dzodr*S11*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
+	aa[offset6 +  2] = 2*dzodr*S22*lambda + dzodr*S12*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
+	aa[offset6 +  3] = 2*dzodr*S23*lambda + dzodr*S13*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  4] = (D10*dZu6)/dzodr;
 	aa[offset6 +  5] = (D11*dZu6)/dzodr;
-	aa[offset6 +  6] = (D12*dZu6)/dzodr + (2*(dZu2*dZu2)*(h2*h2))/(alpha2*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha2) + (2*(dRu2*dRu2)*(h2*h2))/(alpha2) - (2*dRu7*h2*Q1)/(alpha*ri)) + 2*dzodr*S24*u6 + dzodr*S14*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  6] = (D12*dZu6)/dzodr + (2*(dZu2*dZu2)*(h2*h2))/(alpha2*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha2) + (2*(dRu2*dRu2)*(h2*h2))/(alpha2) - (2*dRu7*h2*Q1)/(alpha*ri)) + 2*dzodr*S24*lambda + dzodr*S14*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  7] = (D13*dZu6)/dzodr;
 	aa[offset6 +  8] = (D14*dZu6)/dzodr;
-	aa[offset6 +  9] = 2*dzodr*S25*u6 + dzodr*S15*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  9] = 2*dzodr*S25*lambda + dzodr*S15*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 
 	aa[offset6 + 10] = dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2))*S11;
 	aa[offset6 + 11] = dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2))*S12;
@@ -2546,35 +2546,35 @@ void jacobian_4th_order_variable_omega_sc
 	aa[offset6 + 17] = (-2*D14*dZu2*(h2*h2))/(alpha2*dzodr);
 	aa[offset6 + 18] = dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2))*S15;
 
-	aa[offset6 + 19] = 2*dzodr*S20*u6;
-	aa[offset6 + 20] = 2*dzodr*S21*u6 + dzodr*S11*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 21] = 2*dzodr*S22*u6 + dzodr*S12*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 22] = 2*dzodr*S23*u6 + dzodr*S13*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 23] = (D10*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 24] = (D11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 25] = 2*dzodr*S24*u6 + (D12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha2) + (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha2) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*u6)/(a2*ri)) + dzodr*S14*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 26] = (D13*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 27] = (D14*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 28] = 2*dzodr*S25*u6 + dzodr*S15*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
+	aa[offset6 + 19] = 2*dzodr*S20*lambda;
+	aa[offset6 + 20] = 2*dzodr*S21*lambda + dzodr*S11*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 21] = 2*dzodr*S22*lambda + dzodr*S12*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 22] = 2*dzodr*S23*lambda + dzodr*S13*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 23] = (D10*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 24] = (D11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 25] = 2*dzodr*S24*lambda + (D12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha2) + (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha2) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*lambda)/(a2*ri)) + dzodr*S14*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 26] = (D13*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 27] = (D14*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 28] = 2*dzodr*S25*lambda + dzodr*S15*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
 
-	aa[offset6 + 29] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 - (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*a2*h2*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*lambda*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*u6)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*u6)/a2 + (8*(u6*u6))/a2));
+	aa[offset6 + 29] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 - (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*a2*h2*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*psi*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*lambda)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*lambda)/a2 + (8*(lambda*lambda))/a2));
 	
-	aa[offset6 + 30] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S11)/(dr*dr*(ri*ri));
-	aa[offset6 + 31] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S12)/(dr*dr*(ri*ri));
-	aa[offset6 + 32] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S13)/(dr*dr*(ri*ri));
-	aa[offset6 + 33] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*lambda*(m2) - 2*h2*lambda*(m2))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S14)/(dr*dr*(ri*ri));
-	aa[offset6 + 34] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S15)/(dr*dr*(ri*ri));
+	aa[offset6 + 30] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S11)/(dr*dr*(ri*ri));
+	aa[offset6 + 31] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S12)/(dr*dr*(ri*ri));
+	aa[offset6 + 32] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S13)/(dr*dr*(ri*ri));
+	aa[offset6 + 33] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*psi*(m2) - 2*h2*psi*(m2))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S14)/(dr*dr*(ri*ri));
+	aa[offset6 + 34] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S15)/(dr*dr*(ri*ri));
 
 	aa[offset6 + 35] = dzodr*S20;
-	aa[offset6 + 36] = dzodr*S21 + dzodr*S11*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
-	aa[offset6 + 37] = dzodr*S22 + dzodr*S12*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
-	aa[offset6 + 38] = dzodr*S23 + dzodr*S13*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 36] = dzodr*S21 + dzodr*S11*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
+	aa[offset6 + 37] = dzodr*S22 + dzodr*S12*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
+	aa[offset6 + 38] = dzodr*S23 + dzodr*S13*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 39] = D20/dzodr + (D10*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
 	aa[offset6 + 40] = D21/dzodr + (D11*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
-	aa[offset6 + 41] = D22/dzodr + (4*(dZu3*dZu3)*h2)/(a2*dzodr) + (D12*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr + dzodr*S24 + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*u6)/a2)) + dzodr*S14*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 41] = D22/dzodr + (4*(dZu3*dZu3)*h2)/(a2*dzodr) + (D12*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr + dzodr*S24 + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*lambda)/a2)) + dzodr*S14*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 42] = D23/dzodr + (D13*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
 	aa[offset6 + 43] = D24/dzodr + (D14*(dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2))/dzodr;
-	aa[offset6 + 44] = dzodr*S25 + dzodr*S15*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 44] = dzodr*S25 + dzodr*S15*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 
 	aa[offset6 + 45] = (2*dzodr*h2*Q1*S11)/(alpha*ri);
 	aa[offset6 + 46] = (2*dzodr*h2*Q1*S12)/(alpha*ri);
@@ -2745,9 +2745,9 @@ void jacobian_4th_order_variable_omega_ss
 	double psi  = u544;
 	double w = omega_calc(xi, m);
 	double lambda = u644;
-	double u6 = u644;
-	double u7 = u744;
-	double u8 = u844;
+	//double u6 = u644;
+	//double u7 = u744;
+	//double u8 = u844;
 
 	// Coordinates.
 	double ri = (double)i + 0.5 - ghost;
@@ -2789,7 +2789,7 @@ void jacobian_4th_order_variable_omega_ss
 	double dRu5 = S11 * u514 + S12 * u524 + S13 * u534 + S14 * u544 + S15 * u554;
 	double dRu6 = S11 * u614 + S12 * u624 + S13 * u634 + S14 * u644 + S15 * u654;
 	double dRu7 = S11 * u714 + S12 * u724 + S13 * u734 + S14 * u744 + S15 * u754;
-	double dRu8 = S11 * u814 + S12 * u824 + S13 * u834 + S14 * u844 + S15 * u854;
+	//double dRu8 = S11 * u814 + S12 * u824 + S13 * u834 + S14 * u844 + S15 * u854;
 
 	double dZu1 = S11 * u141 + S12 * u142 + S13 * u143 + S14 * u144 + S15 * u145;
 	double dZu2 = S11 * u241 + S12 * u242 + S13 * u243 + S14 * u244 + S15 * u245;
@@ -2797,8 +2797,8 @@ void jacobian_4th_order_variable_omega_ss
 	//double dZu4 = S11 * u441 + S12 * u442 + S13 * u443 + S14 * u444 + S15 * u445;
 	double dZu5 = S11 * u541 + S12 * u542 + S13 * u543 + S14 * u544 + S15 * u545;
 	double dZu6 = S11 * u641 + S12 * u642 + S13 * u643 + S14 * u644 + S15 * u645;
-	double dZu7 = S11 * u741 + S12 * u742 + S13 * u743 + S14 * u744 + S15 * u745;
-	double dZu8 = S11 * u841 + S12 * u842 + S13 * u843 + S14 * u844 + S15 * u845;
+	//double dZu7 = S11 * u741 + S12 * u742 + S13 * u743 + S14 * u744 + S15 * u745;
+	//double dZu8 = S11 * u841 + S12 * u842 + S13 * u843 + S14 * u844 + S15 * u845;
 
 	// Second derivatives.
 	double dRRu1 = S20 * u104 + S21 * u114 + S22 * u124 + S23 * u134 + S24 * u144 + S25 * u154;
@@ -3262,16 +3262,16 @@ void jacobian_4th_order_variable_omega_ss
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
 
 	// Values
-	aa[offset6 +  0] = 2*dzodr*S20*u6;
-	aa[offset6 +  1] = 2*dzodr*S21*u6 + dzodr*S11*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
-	aa[offset6 +  2] = 2*dzodr*S22*u6 + dzodr*S12*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
-	aa[offset6 +  3] = 2*dzodr*S23*u6 + dzodr*S13*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  0] = 2*dzodr*S20*lambda;
+	aa[offset6 +  1] = 2*dzodr*S21*lambda + dzodr*S11*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
+	aa[offset6 +  2] = 2*dzodr*S22*lambda + dzodr*S12*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
+	aa[offset6 +  3] = 2*dzodr*S23*lambda + dzodr*S13*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  4] = (dZu6*S11)/dzodr;
 	aa[offset6 +  5] = (dZu6*S12)/dzodr;
 	aa[offset6 +  6] = (dZu6*S13)/dzodr;
-	aa[offset6 +  7] = (2*(dZu2*dZu2)*(h2*h2))/(alpha2*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha2) + (2*(dRu2*dRu2)*(h2*h2))/(alpha2) - (2*dRu7*h2*Q1)/(alpha*ri)) + (dZu6*S14)/dzodr + 2*dzodr*S24*u6 + dzodr*S14*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  7] = (2*(dZu2*dZu2)*(h2*h2))/(alpha2*dzodr) + dzodr*((2*a2*(dRu2*dRu2)*h2)/(alpha2) + (2*(dRu2*dRu2)*(h2*h2))/(alpha2) - (2*dRu7*h2*Q1)/(alpha*ri)) + (dZu6*S14)/dzodr + 2*dzodr*S24*lambda + dzodr*S14*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 	aa[offset6 +  8] = (dZu6*S15)/dzodr;
-	aa[offset6 +  9] = 2*dzodr*S25*u6 + dzodr*S15*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*u6 - (2*u6)/ri);
+	aa[offset6 +  9] = 2*dzodr*S25*lambda + dzodr*S15*(-dRu6 - (4*dRu3*h2)/(dr*dr*(ri*ri)) + 4*dRu1*lambda - (2*lambda)/ri);
 
 	aa[offset6 + 10] = dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2))*S11;
 	aa[offset6 + 11] = dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2))*S12;
@@ -3283,36 +3283,36 @@ void jacobian_4th_order_variable_omega_ss
 	aa[offset6 + 17] = (-2*dZu2*(h2*h2)*S15)/(alpha2*dzodr);
 	aa[offset6 + 18] = dzodr*((-2*a2*dRu2*h2)/(alpha2) - (2*dRu2*(h2*h2))/(alpha2))*S15;
 
-	aa[offset6 + 19] = 2*dzodr*S20*u6;
-	aa[offset6 + 20] = 2*dzodr*S21*u6 + dzodr*S11*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 21] = 2*dzodr*S22*u6 + dzodr*S12*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 22] = 2*dzodr*S23*u6 + dzodr*S13*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 23] = (S11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 24] = (S12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 25] = (S13*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 26] = 2*dzodr*S24*u6 + (S14*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha2) + (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha2) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*u6)/(a2*ri)) + dzodr*S14*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
-	aa[offset6 + 27] = (S15*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*u6)/a2))/dzodr;
-	aa[offset6 + 28] = 2*dzodr*S25*u6 + dzodr*S15*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*u6 + (2*(-4/a2 + (1/h2))*h2*u6)/ri);
+	aa[offset6 + 19] = 2*dzodr*S20*lambda;
+	aa[offset6 + 20] = 2*dzodr*S21*lambda + dzodr*S11*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 21] = 2*dzodr*S22*lambda + dzodr*S12*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 22] = 2*dzodr*S23*lambda + dzodr*S13*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 23] = (S11*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 24] = (S12*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 25] = (S13*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 26] = 2*dzodr*S24*lambda + (S14*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr + ((-8*dZu3*dZu6*h2)/a2 - (4*(dZu2*dZu2)*(h2*h2))/(alpha2) + (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) - (8*dRu3*dRu6*h2)/a2 - (4*(dRu2*dRu2)*(h2*h2))/(alpha2) + ((-8*dRu1*dRu3*h2)/(ri*ri) - (4*(dRu3*dRu3)*h2)/(ri*ri) - (16*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)))/(dr*dr) + (4*dRu7*h2*Q1)/(alpha*ri) - (16*a2*h2*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*dRu3*h2*lambda)/(a2*ri)) + dzodr*S14*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
+	aa[offset6 + 27] = (S15*(dZu6 - (4*dZu6*h2)/a2 + (8*dZu3*h2*lambda)/a2))/dzodr;
+	aa[offset6 + 28] = 2*dzodr*S25*lambda + dzodr*S15*(-dRu6 - (4*dRu6*h2)/a2 + ((-4*dRu1*h2)/(ri*ri) - (8*dRu3*((1/a2) + 1/(2.*h2))*(h2*h2))/(ri*ri))/(dr*dr) + 4*dRu3*lambda + (2*(-4/a2 + (1/h2))*h2*lambda)/ri);
 
-	aa[offset6 + 29] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 - (8*(dZu3*dZu3)*h2*u6)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*a2*h2*(lambda*lambda)*(m2)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*lambda*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*u6)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*u6)/a2 + (8*(u6*u6))/a2));
+	aa[offset6 + 29] = ((8*dZu3*dZu6*h2)/a2 + (2*(dr*dr)*(dZu6*dZu6)*(ri*ri))/a2 - (8*(dZu3*dZu3)*h2*lambda)/a2)/dzodr + dzodr*((-2*a2*(dRu2*dRu2)*h2)/(alpha2) + (8*dRu3*dRu6*h2)/a2 + (32*(a2*a2)*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) - (16*a2*h2*(psi*psi)*(m2)*M_PI*(rl*rl))/(ri*ri) + ((8*(dRu3*dRu3)*(h2*h2))/(a2*(ri*ri)) + (64*a2*dRu5*l*psi*M_PI*(rl*rl))/(ri*ri*ri) + (32*a2*(dRu5*dRu5)*M_PI*(rl*rl))/(ri*ri))/(dr*dr) + (16*dRu3*h2*lambda)/(a2*ri) + dr*dr*((2*(dRu6*dRu6)*(ri*ri))/a2 + (8*dRu6*ri*lambda)/a2 + (8*(lambda*lambda))/a2));
 
-	aa[offset6 + 30] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S11)/(dr*dr*(ri*ri));
-	aa[offset6 + 31] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S12)/(dr*dr*(ri*ri));
-	aa[offset6 + 32] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S13)/(dr*dr*(ri*ri));
-	aa[offset6 + 33] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*lambda*(m2) - 2*h2*lambda*(m2))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S14)/(dr*dr*(ri*ri));
-	aa[offset6 + 34] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*lambda + dRu5*ri))/ri)*S15)/(dr*dr*(ri*ri));
+	aa[offset6 + 30] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S11)/(dr*dr*(ri*ri));
+	aa[offset6 + 31] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S12)/(dr*dr*(ri*ri));
+	aa[offset6 + 32] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S13)/(dr*dr*(ri*ri));
+	aa[offset6 + 33] = dzodr*((32*a2*dRu5*l*M_PI*(rl*rl))/(dr*dr*(ri*ri*ri)) + (8*a2*(2*a2*psi*(m2) - 2*h2*psi*(m2))*M_PI*(rl*rl))/(ri*ri)) + (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S14)/(dr*dr*(ri*ri));
+	aa[offset6 + 34] = (8*a2*dzodr*M_PI*(rl*rl)*(2*dRu5 + (2*(2*l*psi + dRu5*ri))/ri)*S15)/(dr*dr*(ri*ri));
 
 	aa[offset6 + 35] = dzodr*S20;
-	aa[offset6 + 36] = dzodr*S21 + dzodr*S11*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
-	aa[offset6 + 37] = dzodr*S22 + dzodr*S12*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
-	aa[offset6 + 38] = dzodr*S23 + dzodr*S13*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 36] = dzodr*S21 + dzodr*S11*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
+	aa[offset6 + 37] = dzodr*S22 + dzodr*S12*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
+	aa[offset6 + 38] = dzodr*S23 + dzodr*S13*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 39] = S20/dzodr;
 	aa[offset6 + 40] = ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S11)/dzodr + S21/dzodr;
 	aa[offset6 + 41] = ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S12)/dzodr + S22/dzodr;
 	aa[offset6 + 42] = ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S13)/dzodr + S23/dzodr;
-	aa[offset6 + 43] = (4*(dZu3*dZu3)*h2)/(a2*dzodr) + ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S14)/dzodr + S24/dzodr + dzodr*S24 + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*u6)/a2)) + dzodr*S14*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 43] = (4*(dZu3*dZu3)*h2)/(a2*dzodr) + ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S14)/dzodr + S24/dzodr + dzodr*S24 + dzodr*(2*dRRu1 + 2*dRRu3 + 2*(dRu1*dRu1) + 2*(dRu3*dRu3) - (2*dRu1)/ri + (2*dRu3*(-4/a2 + (1/h2))*h2)/ri + dr*dr*((-4*dRu6*ri)/a2 - (8*lambda)/a2)) + dzodr*S14*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 	aa[offset6 + 44] = ((dZu1 + dZu3 - (4*dZu3*h2)/a2 - (2*(dr*dr)*dZu6*(ri*ri))/a2)*S15)/dzodr + S25/dzodr;
-	aa[offset6 + 45] = dzodr*S25 + dzodr*S15*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*u6)/a2));
+	aa[offset6 + 45] = dzodr*S25 + dzodr*S15*(-dRu1 - dRu3 - (4*dRu3*h2)/a2 + 3/ri + dr*dr*((-2*dRu6*(ri*ri))/a2 - (4*ri*lambda)/a2));
 
 	aa[offset6 + 46] = (2*dzodr*h2*Q1*S11)/(alpha*ri);
 	aa[offset6 + 47] = (2*dzodr*h2*Q1*S12)/(alpha*ri);
