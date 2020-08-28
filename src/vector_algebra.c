@@ -1,6 +1,8 @@
 #include "tools.h"
 #include "param.h"
 
+#define GNUM_VECTOR 6
+
 double norm2(double *x)
 {
 	return cblas_dnrm2(dim, x, 1) / sqrt(dim);
@@ -47,13 +49,13 @@ double dot_interior_all_variables(double *x, double *y)
 	MKL_INT k = 0;
 
 	// Add all dot products.
-	for (k = 0; k < GNUM; ++k)
+	for (k = 0; k < GNUM_VECTOR; ++k)
 	{
 		sum += dot_interior(x + k * dim, y + k * dim);
 	}
 
 	// Rescale.
-	return sum / 5.0;
+	return sum / ((double)GNUM_VECTOR);
 }
 
 double norm2_interior_all_variables(double *x)
