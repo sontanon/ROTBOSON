@@ -15,7 +15,7 @@
 #define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_B 	-13
 
 // Maximum expansion.
-#define THETA_MAX 0.25
+#define THETA_MAX 0.5
 
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0) and ||F(u^0)||.
@@ -183,7 +183,8 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		// If Theta_k > 1 - lambda_k / 4: 
 		// then replace lambda_k by lambda_prime_k = min(mu_prime_k, lambda_k / 2). Go to regularity test.
-		if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
+		//if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
+		if (Theta[k] >= 1.0)
 		{
 			lambda_prime[k] = MIN(0.5 * lambda[k], mu_prime[k]);
 
@@ -274,8 +275,8 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				/* Also include the case where the matrix was ill-conditioned. */
 				else if (qnres_code == ERROR_CODE_QNRES_THETA_INCREASE_EXIT || qnres_code == ERROR_CODE_QNRES_ILL_CONDITIONED)
 				{
-	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]    | Theta[k]     | lambda'[k]   | STATUS      |\n"
-	 	"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
+	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]   | Theta[k]     | lambda'[k]  | STATUS      |\n"
+	 	"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
 
 					/* Prepare to restart NLEQ-RES. */
 					/* In this case, the last update is stored in u[k + 1 - qnres_stop] since qnres_stop is negative. */

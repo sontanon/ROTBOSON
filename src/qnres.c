@@ -8,7 +8,7 @@
 #define ERROR_CODE_QNRES_ILL_CONDITIONED		- 4
 
 // Maximum expansion.
-#define THETA_MAX 0.25
+#define THETA_MAX 0.5
 
 // Maximum preconditioner.
 #define KAPPA_MAX 1.0E+6
@@ -101,7 +101,7 @@ MKL_INT nleq_res_qnres(
 		if (norm_f[l + 1] < epsilon)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "CONVERGED C");
+	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "CONVERGED C");
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* No error code. */
@@ -121,7 +121,7 @@ MKL_INT nleq_res_qnres(
 		if (Theta[l] > THETA_MAX)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
+	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.25. */
@@ -139,7 +139,7 @@ MKL_INT nleq_res_qnres(
 		if (kappa > KAPPA_MAX)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
+	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.25. */
@@ -173,7 +173,7 @@ MKL_INT nleq_res_qnres(
 		LINEAR_SOLVE_2(du[l + 1], J, v);
 
 		// Print message before continuing.
-	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");
+	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");
 		continue;
 	}
 
