@@ -262,6 +262,8 @@ int main(int argc, char *argv[])
 	write_single_file_2d(u[0] + 3 * dim, "log_a_i.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[0] + 5 * dim, "lambda_i.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[0] + 6 * dim, "u6_i.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[0] + 7 * dim, "u7_i.asc", 	NrTotal, NzTotal);
 	write_single_file_1d(&w0, "w_i.asc", 1);
 
 	// Calculate initial RHS.
@@ -274,9 +276,11 @@ int main(int argc, char *argv[])
 	write_single_file_2d(f[0] + 3 * dim, "f3_i.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[0] + 4 * dim, "f4_i.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[0] + 6 * dim, "f6_i.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[0] + 7 * dim, "f7_i.asc", NrTotal, NzTotal);
 
 	// Initial guess norms.
-	double f_norms[6];
+	double f_norms[GNUM];
 
 	f_norms[0] = norm2_interior(f[0]          );
 	f_norms[1] = norm2_interior(f[0] +     dim);
@@ -284,6 +288,8 @@ int main(int argc, char *argv[])
 	f_norms[3] = norm2_interior(f[0] + 3 * dim);
 	f_norms[4] = norm2_interior(f[0] + 4 * dim);
 	f_norms[5] = norm2_interior(f[0] + 5 * dim);
+	f_norms[6] = norm2_interior(f[0] + 6 * dim);
+	f_norms[7] = norm2_interior(f[0] + 7 * dim);
 	
 	printf("***                                                \n");
 	printf("***        INITIAL GUESS:                          \n");
@@ -293,6 +299,8 @@ int main(int argc, char *argv[])
 	printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
 	printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
 	printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
+	printf("***           || f6 ||   = %-12.10E           \n", f_norms[6]);
+	printf("***           || f7 ||   = %-12.10E           \n", f_norms[7]);
 	printf("***                                                \n");
 
 	printf("***                                                \n");
@@ -388,6 +396,8 @@ int main(int argc, char *argv[])
 	write_single_file_2d(u[k] + 3 * dim, "log_a_f.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[k] + 4 * dim, "psi_f.asc", 	NrTotal, NzTotal);
 	write_single_file_2d(u[k] + 5 * dim, "lambda_f.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[k] + 6 * dim, "u6_f.asc", 	NrTotal, NzTotal);
+	write_single_file_2d(u[k] + 7 * dim, "u7_f.asc", 	NrTotal, NzTotal);
 	write_single_file_1d(&w, "w_f.asc", 1);
 
 	// Print final update.
@@ -399,6 +409,8 @@ int main(int argc, char *argv[])
 		write_single_file_2d(du[k - 1] + 3 * dim, "du3_f.asc", NrTotal, NzTotal);
 		write_single_file_2d(du[k - 1] + 4 * dim, "du4_f.asc", NrTotal, NzTotal);
 		write_single_file_2d(du[k - 1] + 5 * dim, "du5_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[k - 1] + 6 * dim, "du6_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(du[k - 1] + 7 * dim, "du7_f.asc", NrTotal, NzTotal);
 	}
 
 	// Print final RHS.
@@ -408,6 +420,8 @@ int main(int argc, char *argv[])
 	write_single_file_2d(f[k] + 3 * dim, "f3_f.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[k] + 4 * dim, "f4_f.asc", NrTotal, NzTotal);
 	write_single_file_2d(f[k] + 5 * dim, "f5_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[k] + 6 * dim, "f6_f.asc", NrTotal, NzTotal);
+	write_single_file_2d(f[k] + 7 * dim, "f7_f.asc", NrTotal, NzTotal);
 
 	// Also print Newton parameters.
 	switch (solverType)
@@ -434,6 +448,8 @@ int main(int argc, char *argv[])
 	f_norms[3] = norm2_interior(f[k] + 3 * dim);
 	f_norms[4] = norm2_interior(f[k] + 4 * dim);
 	f_norms[5] = norm2_interior(f[k] + 5 * dim);
+	f_norms[6] = norm2_interior(f[k] + 6 * dim);
+	f_norms[7] = norm2_interior(f[k] + 7 * dim);
 	printf("***                                                \n");
 	printf("***        FINAL ITERATION:                        \n");
 	printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
@@ -442,6 +458,8 @@ int main(int argc, char *argv[])
 	printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
 	printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
 	printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
+	printf("***           || f6 ||   = %-12.10E           \n", f_norms[6]);
+	printf("***           || f7 ||   = %-12.10E           \n", f_norms[7]);
 	printf("***                                                \n");
 
 	printf("***                                                \n");
