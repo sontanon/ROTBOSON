@@ -118,7 +118,7 @@ MKL_INT nleq_err(
 			ARRAY_SUM(u[k + 1], 1.0, u[k], 1.0, du[k]);
 
 			/* Print message. */
-	printf(	"***** | %-10lld | %-12.5E |              |              |              | %-11s  |\n", k, norm_du[k], "CONVERGED A");
+	printf(	"***** | %-10lld | %-12.5E |              |              |              | %-11s |\n", k, norm_du[k], "CONVERGED A");
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
 		"***** \n"
 		"***** NLEQ-ERR Algorithm converged successfully after %lld iterations. Converged on ||du||.\n"
