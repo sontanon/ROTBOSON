@@ -126,8 +126,8 @@ void initial_interpolator(	double *u_1,
 	// If r_inf_0 = r_inf_1 we can interpolate up to the previous point and calculate the last one via BC.
 	// If r_inf_0 < r_inf_1 we can interpolate up to a set point and extrapolate the remaining via BC.
 	// In summary, we must obtain the grid 1 point up to where we can interpolate.
-	MKL_INT i_inf_1 = MIN(NrTotal_1, (MKL_INT)floor(r_inf_0 / dr_1 + ghost_1 - 0.5) + 1);
-	MKL_INT j_inf_1 = MIN(NzTotal_1, (MKL_INT)floor(z_inf_0 / dz_1 + ghost_1 - 0.5) + 1);
+	MKL_INT i_inf_1 = MIN(NrTotal_1 - 1, (MKL_INT)floor(r_inf_0 / dr_1 + ghost_1 - 0.5));
+	MKL_INT j_inf_1 = MIN(NzTotal_1 - 1, (MKL_INT)floor(z_inf_0 / dz_1 + ghost_1 - 0.5));
 
 #ifdef DEBUG
 	fprintf(stderr, "\nINITIAL DATA INTERPOLATOR\n\n");
