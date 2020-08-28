@@ -219,7 +219,7 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 	// FINALLY FILL OMEGA EQUATION OR u5(1,1) CONSTRAINT.
 	//printf("ROTBOSON-JACOBIAN: Starting omega...\n");
 	offset = nnz1 + nnz2 + nnz3 + nnz4 + nnz5 + nnz6 + nnz7 + nnz8;
-	omega_constraint(A.a, A.ia, A.ja, offset, NrTotal, NzTotal, dim, GNUM, w_idx, fixedPhi, fixedPhiR, fixedPhiZ);
+	omega_constraint(A.a, A.ia, A.ja, offset, NrTotal, NzTotal, dim, 5, w_idx, fixedPhi, fixedPhiR, fixedPhiZ);
 	//printf("ROTBOSON-JACOBIAN: Done omega.\n");
 
 	// FILL LAST ELEMENT.
