@@ -197,7 +197,7 @@ void initial_guess(double *u)
 			}
 			*/
 			k = (MKL_INT)floor(0.5 / dr + ghost - 0.5);
-			#pragma omp parallel shared(u) private(i, j, k, r) // rr.
+			#pragma omp parallel shared(u) private(i, j, r) // rr.
 			{
 				#pragma omp for schedule(dynamic, 1)
 				for (i = k; i < NrTotal; ++i)
