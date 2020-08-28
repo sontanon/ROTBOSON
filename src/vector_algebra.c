@@ -1,7 +1,7 @@
 #include "tools.h"
 #include "param.h"
 
-#define GNUM_VECTOR 6
+#define GNUM_VECTOR 8
 
 double norm2(double *x)
 {
