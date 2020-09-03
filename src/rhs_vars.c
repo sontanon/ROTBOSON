@@ -23,7 +23,9 @@ void rhs_vars(
 	const MKL_INT l,
 	const double m,
 	const double w,
-	const double rescale
+	const double rescale,
+	double *u_aux,
+	double *Dr_u_aux
 )
 {
 	// Omega.
@@ -95,11 +97,6 @@ void rhs_vars(
 	Drr_lambda = Drr_u[5 * dim + IDX(i, j)];
 	Dzz_lambda = Dzz_u[5 * dim + IDX(i, j)];
 
-	u6 = u[6 * dim + IDX(i, j)];
-	u7 = u[7 * dim + IDX(i, j)];
-	Dr_u6  = Dr_u[6 * dim + IDX(i, j)];
-	Dr_u7  = Dr_u[7 * dim + IDX(i, j)];
-
 	// Coordinates.
 	r = dr * (i + 0.5 - ghost);
 	r2 = r * r;
@@ -138,6 +135,12 @@ void rhs_vars(
 	//double Dx_l_alpha = (r / rr) * Dr_l_alpha + (z / rr) * Dz_l_alpha;
 	//double Dx_l_h 	= (r / rr) * Dr_l_h + (z / rr) * Dz_l_h;
 	//double Dx_psi	= (r / rr) * Dr_psi + (z / rr) * Dz_psi;
+
+	// Regularization auxiliaries.
+	u6 = u_aux[0 * dim + IDX(i, j)];
+	u7 = u_aux[1 * dim + IDX(i, j)];
+	Dr_u6 = Dr_u_aux[0 * dim + IDX(i, j)];
+	Dr_u7 = Dr_u_aux[1 * dim + IDX(i, j)];
 
 	// u0 = log(alpha).
 	f[IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_l_alpha + Dzz_l_alpha + (Dr_l_alpha / r)
@@ -192,12 +195,6 @@ void rhs_vars(
 		+ Q2 * (Dr_u7 / r)
 		+ 8.0 * M_PI * a2 * (m2 * (a2 - h2) * phi2_over_r2
 			+ 2.0 * rlm1 * rlm1 * (Dr_psi / r) * (2.0 * l * psi + (r * Dr_psi)))));
-
-	// u6 = Dr(alpha) / r.
-	f[6 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (alpha * (Dr_l_alpha / r) - u6));
-
-	// u7 = Dr(H) / r.
-	f[7 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr* (2.0 * h2 * (Dr_l_h / r) - u7));
 
 	// All done.
 	return;
@@ -254,8 +251,6 @@ void rhs_bdry(
 	double lambda    = u[5 * dim + IDX(i, j)];
 	double Dr_lambda = Dr_u[5 * dim + IDX(i, j)];
 	double Dz_lambda = Dz_u[5 * dim + IDX(i, j)];
-	double u6 = u[6 * dim + IDX(i, j)];
-	double u7 = u[7 * dim + IDX(i, j)];
 
 	// Robin and exponential decay boundary conditions.
 	f[IDX(i, j)] = rescale * scale * (r * Dr_l_alpha + z * Dz_l_alpha + l_alpha);
@@ -269,10 +264,6 @@ void rhs_bdry(
 	f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi);
 
 	f[5 * dim + IDX(i, j)] = rescale * scale * (r * Dr_lambda + z * Dz_lambda + 4.0 * lambda);
-
-	f[6 * dim + IDX(i, j)] = rescale * scale * (dr * dr * dzodr * (exp(l_alpha) * (Dr_l_alpha / r) - u6));
-
-	f[7 * dim + IDX(i, j)] = rescale * scale * (dr * dr * dzodr * (2.0 * exp(2.0 * l_h) * (Dr_l_h / r) - u7));
 
 	// All done.
 	return;

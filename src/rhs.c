@@ -21,6 +21,9 @@ void rhs(double *f, double *u)
 	MKL_INT j = 0;
 	MKL_INT k = 0;
 
+	// Axis coordinate.
+	double r = 0.0;
+
 	// Calculate derivatives.
 	for (k = 0; k < GNUM; ++k)
 	{
@@ -31,6 +34,32 @@ void rhs(double *f, double *u)
 		/* Mixed derivatives are only used for interpolation */
 		diff2rz(Drz_u + k * dim , u + k * dim, EVEN, EVEN);
 	}
+
+	// Regularization Auxiliaries.
+	// First calculate derivatives: Dr(log(alpha)) and Dr(log(h)).
+	diff1r(u_aux + 0 * dim, u + 0 * dim, 1);
+	diff1r(u_aux + 1 * dim, u + 2 * dim, 1);
+
+	// Rescale.
+	#pragma omp parallel shared(u_aux) private(i, j, r)
+	{
+		#pragma omp for schedule(dynamic, 1)
+		for (i = 0; i < NrTotal; ++i)
+		{
+			r = ((double)(i - ghost) + 0.5) * dr;
+			for (j = 0; j < NzTotal; ++j)
+			{
+				// u6 = (Dr(alpha) / r) = alpha * (Dr(log(alpha)) / r)
+				u_aux[0 * dim + IDX(i, j)] *= exp(u[0 * dim + IDX(i, j)]) / r;
+				// u7 = (Dr(H) / r) = 2.0 * H * (Dr(log(h)) / r)
+				u_aux[1 * dim + IDX(i, j)] *= 2.0 * exp(2.0 * u[2 * dim + IDX(i, j)]) / r;
+			}
+		}
+	}
+
+	// Now calculate auxiliary derivatives.
+	diff1r(Dr_u_aux + 0 * dim, u_aux + 0 * dim, EVEN);
+	diff1r(Dr_u_aux + 1 * dim, u_aux + 1 * dim, EVEN);
 
 #ifdef DERIVATIVE_DEBUG
 	write_single_file_2d(Dr_u, "Dr_log_alpha.asc", NrTotal, NzTotal);
@@ -109,7 +138,7 @@ void rhs(double *f, double *u)
 		{
 			for (j = ghost; j < NzTotal - 1; ++j)
 			{
-				rhs_vars(f, u, Dr_u, Dz_u, Drr_u, Dzz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
+				rhs_vars(f, u, Dr_u, Dz_u, Drr_u, Dzz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0, u_aux, Dr_u_aux);
 			}
 		}
 	}
