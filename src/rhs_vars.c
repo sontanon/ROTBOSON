@@ -174,6 +174,8 @@ void rhs_vars(
 		- dr * dr * dzodr * l * l * lambda * psi / h2);
 
 	// u5 = lambda = (A - H) / r**2.
+	// Change a2 calculation.
+	a2 = h2 + r2 * lambda;
 	f[5 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_lambda + Dzz_lambda + 3.0 * (Dr_lambda / r)
 		+ (Dz_l_h * Dz_lambda - Dr_l_h * Dr_lambda)
 		- 4.0 * (h2 / a2) * (Dr_lambda * Dr_l_h + Dz_lambda * Dz_l_h)
@@ -193,7 +195,7 @@ void rhs_vars(
 		+ 2.0 * lambda * (Drr_l_h + 2.0 * Dr_l_h * Dr_l_h)
 		+ Q1 * ((2.0 * h2 / alpha) * (Dr_u6 / r))
 		+ Q2 * (Dr_u7 / r)
-		+ 8.0 * M_PI * a2 * (m2 * (a2 - h2) * phi2_over_r2
+		+ 8.0 * M_PI * a2 * (m2 * lambda * phi2
 			+ 2.0 * rlm1 * rlm1 * (Dr_psi / r) * (2.0 * l * psi + (r * Dr_psi)))));
 
 	// All done.
