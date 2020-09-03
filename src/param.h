@@ -1,7 +1,7 @@
 #include <libconfig.h>
 
 // Number of grid variables.
-#define GNUM 8
+#define GNUM 6
 
 #ifdef MAIN_FILE
 /* CONFIG FILE */
@@ -63,6 +63,10 @@ double *Dz_u;
 double *Drr_u;
 double *Dzz_u;
 double *Drz_u;
+
+/* AUXILIARY VARIABLES. */
+double *u_aux;
+double *Dr_u_aux;
 
 /* SPHERICAL PARAMETERS FOR ANALYSIS */
 MKL_INT NrrTotal;
@@ -134,6 +138,10 @@ extern double *Dz_u;
 extern double *Drr_u;
 extern double *Dzz_u;
 extern double *Drz_u;
+
+/* AUXILIARY VARIABLES. */
+extern double *u_aux;
+extern double *Dr_u_aux;
 
 /* SPHERICAL PARAMETERS FOR ANALYSIS */
 extern MKL_INT NrrTotal;

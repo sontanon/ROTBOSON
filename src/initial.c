@@ -276,29 +276,6 @@ void initial_guess(double *u)
 		}
 	}
 
-	// Now calculate u6 and u7 variables.
-
-	// First calculate derivatives.
-	diff1r(u + 6 * dim, u + 0 * dim, 1);
-	diff1r(u + 7 * dim, u + 2 * dim, 1);
-
-	// Rescale.
-	#pragma omp parallel shared(u) private(i, j, r)
-	{
-		#pragma omp for schedule(dynamic, 1)
-		for (i = 0; i < NrTotal; ++i)
-		{
-			r = ((double)(i - ghost) + 0.5) * dr;
-			for (j = 0; j < NzTotal; ++j)
-			{
-				// u6 = (Dr(alpha) / r) = alpha * (Dr(log(alpha)) / r)
-				u[6 * dim + IDX(i, j)] *= exp(u[0 * dim + IDX(i, j)]) / r;
-				// u7 = (Dr(H) / r) = 2.0 * H * (Dr(log(h)) / r)
-				u[7 * dim + IDX(i, j)] *= 2.0 * exp(2.0 * u[2 * dim + IDX(i, j)]) / r;
-			}
-		}
-	}
-
 	// All done.
 	return;
 }
