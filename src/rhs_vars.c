@@ -53,7 +53,7 @@ void rhs_vars(
 	double alpha, alpha2, h2, a2, w_plus_l_beta, w_plus_l_beta2;
 	double phi, phi_over_r, phi2, phi2_over_r2;
 	double lambda, Dr_lambda, Dz_lambda, Drr_lambda, Dzz_lambda;
-	double u6, u7, Dr_u6, Dr_u7;
+	double Dr_u6, Dr_u7;
 
 	// Derivative terms.
 	double D_l_alpha_D_l_alpha, D_l_alpha_D_beta, D_l_alpha_D_l_h, D_beta_D_l_h;
@@ -137,8 +137,8 @@ void rhs_vars(
 	//double Dx_psi	= (r / rr) * Dr_psi + (z / rr) * Dz_psi;
 
 	// Regularization auxiliaries.
-	u6 = u_aux[0 * dim + IDX(i, j)];
-	u7 = u_aux[1 * dim + IDX(i, j)];
+	//u6 = u_aux[0 * dim + IDX(i, j)];
+	//u7 = u_aux[1 * dim + IDX(i, j)];
 	Dr_u6 = Dr_u_aux[0 * dim + IDX(i, j)];
 	Dr_u7 = Dr_u_aux[1 * dim + IDX(i, j)];
 
@@ -224,7 +224,7 @@ void rhs_bdry(
 	// Auxiliary doubles.
 	double r = dr * (i + 0.5 - ghost);
 	double z = dz * (j + 0.5 - ghost);
-	double dzodr = dz / dr;
+	//double dzodr = dz / dr;
 	double rr2 = r * r + z * z;
 	double rr = sqrt(rr2);
 	double scale = dr * dz / rr2;
