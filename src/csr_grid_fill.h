@@ -26,9 +26,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
 	void (*j_cs)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -39,9 +37,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
 	void (*j_sc)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -52,9 +48,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
 	void (*j_ss)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -65,9 +59,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT));
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT));
 
 void csr_grid_fill_2nd(
 	csr_matrix A,
@@ -93,6 +85,4 @@ void csr_grid_fill_2nd(
 		const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT));
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT));

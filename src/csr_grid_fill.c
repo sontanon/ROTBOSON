@@ -2,9 +2,8 @@
 #include "csr_symmetry.h"
 #include "csr_robin.h"
 #include "csr_exp_decay.h"
-#include "csr_reg.h"
 
-#define GNUM 8
+#define GNUM 6
 
 #define EVEN 1
 #define ODD -1
@@ -13,7 +12,6 @@
 #define EXP_DECAY_TYPE	0
 #define ROBIN_TYPE_1	1
 #define ROBIN_TYPE_3	3
-#define REG_VARIABLE    5
 
 void csr_grid_fill_4th(
 	csr_matrix A,
@@ -43,9 +41,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
 	void (*j_cs)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -56,9 +52,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
 	void (*j_sc)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -69,9 +63,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT),
 	void (*j_ss)(double *, MKL_INT *, MKL_INT *,
 		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT,
 		const MKL_INT, const MKL_INT, const double, const double,
@@ -82,9 +74,7 @@ void csr_grid_fill_4th(
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double, const double, const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT))
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT))
 {
 	// Auxiliary integer.
 	MKL_INT i = 0, j = 0, k = 0;
@@ -103,11 +93,9 @@ void csr_grid_fill_4th(
 	MKL_INT w_idx = GNUM * dim;
 
 	// Integer arrays for offsets and start indices.
-	MKL_INT offset[GNUM] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	MKL_INT t_offset[GNUM] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	MKL_INT start_offset[GNUM] = { 0, 0, 0, 0, 0, 0, 0, 0};
-	// p_bound2 adds 1 to p_bound[6] and p_bound[7].
-	MKL_INT p_bound2[GNUM] = {p_bound[0], p_bound[1], p_bound[2], p_bound[3], p_bound[4], p_bound[5], p_bound[6] + 1, p_bound[7] + 1};
+	MKL_INT offset[GNUM] = { 0, 0, 0, 0, 0, 0 };
+	MKL_INT t_offset[GNUM] = { 0, 0, 0, 0, 0, 0 };
+	MKL_INT start_offset[GNUM] = { 0, 0, 0, 0, 0, 0 };
 
 	// Set start/initial offsets.
 	offset[0] = start_offset[0] = 0;
@@ -200,9 +188,7 @@ void csr_grid_fill_4th(
 					u[3 * dim + IDX(i-2,j)], u[3 * dim + IDX(i-1,j)], u[3 * dim + IDX(i,j-2)], u[3 * dim + IDX(i,j-1)], u[3 * dim + IDX(i,j)], u[3 * dim + IDX(i,j+1)], u[3 * dim + IDX(i,j+2)], u[3 * dim + IDX(i+1,j)], u[3 * dim + IDX(i+2,j)], 
 					u[4 * dim + IDX(i-2,j)], u[4 * dim + IDX(i-1,j)], u[4 * dim + IDX(i,j-2)], u[4 * dim + IDX(i,j-1)], u[4 * dim + IDX(i,j)], u[4 * dim + IDX(i,j+1)], u[4 * dim + IDX(i,j+2)], u[4 * dim + IDX(i+1,j)], u[4 * dim + IDX(i+2,j)], 
 					u[5 * dim + IDX(i-2,j)], u[5 * dim + IDX(i-1,j)], u[5 * dim + IDX(i,j-2)], u[5 * dim + IDX(i,j-1)], u[5 * dim + IDX(i,j)], u[5 * dim + IDX(i,j+1)], u[5 * dim + IDX(i,j+2)], u[5 * dim + IDX(i+1,j)], u[5 * dim + IDX(i+2,j)], 
-					u[6 * dim + IDX(i-2,j)], u[6 * dim + IDX(i-1,j)], u[6 * dim + IDX(i,j-2)], u[6 * dim + IDX(i,j-1)], u[6 * dim + IDX(i,j)], u[6 * dim + IDX(i,j+1)], u[6 * dim + IDX(i,j+2)], u[6 * dim + IDX(i+1,j)], u[6 * dim + IDX(i+2,j)], 
-					u[7 * dim + IDX(i-2,j)], u[7 * dim + IDX(i-1,j)], u[7 * dim + IDX(i,j-2)], u[7 * dim + IDX(i,j-1)], u[7 * dim + IDX(i,j)], u[7 * dim + IDX(i,j+1)], u[7 * dim + IDX(i,j+2)], u[7 * dim + IDX(i+1,j)], u[7 * dim + IDX(i+2,j)], 
-					offset[0], offset[1], offset[2], offset[3], offset[4], offset[5], offset[6], offset[7]);
+					offset[0], offset[1], offset[2], offset[3], offset[4], offset[5]);
 				// Increase offsets.
 				for (k = 0; k < GNUM; ++k)
 					offset[k] += p_cc[k];
@@ -220,9 +206,7 @@ void csr_grid_fill_4th(
 				u[3 * dim + IDX(i-2,j)], u[3 * dim + IDX(i-1,j)], u[3 * dim + IDX(i,j-4)], u[3 * dim + IDX(i,j-3)], u[3 * dim + IDX(i,j-2)], u[3 * dim + IDX(i,j-1)], u[3 * dim + IDX(i,j)], u[3 * dim + IDX(i,j+1)], u[3 * dim + IDX(i+1,j)], u[3 * dim + IDX(i+2,j)],
 				u[4 * dim + IDX(i-2,j)], u[4 * dim + IDX(i-1,j)], u[4 * dim + IDX(i,j-4)], u[4 * dim + IDX(i,j-3)], u[4 * dim + IDX(i,j-2)], u[4 * dim + IDX(i,j-1)], u[4 * dim + IDX(i,j)], u[4 * dim + IDX(i,j+1)], u[4 * dim + IDX(i+1,j)], u[4 * dim + IDX(i+2,j)],
 				u[5 * dim + IDX(i-2,j)], u[5 * dim + IDX(i-1,j)], u[5 * dim + IDX(i,j-4)], u[5 * dim + IDX(i,j-3)], u[5 * dim + IDX(i,j-2)], u[5 * dim + IDX(i,j-1)], u[5 * dim + IDX(i,j)], u[5 * dim + IDX(i,j+1)], u[5 * dim + IDX(i+1,j)], u[5 * dim + IDX(i+2,j)],
-				u[6 * dim + IDX(i-2,j)], u[6 * dim + IDX(i-1,j)], u[6 * dim + IDX(i,j-4)], u[6 * dim + IDX(i,j-3)], u[6 * dim + IDX(i,j-2)], u[6 * dim + IDX(i,j-1)], u[6 * dim + IDX(i,j)], u[6 * dim + IDX(i,j+1)], u[6 * dim + IDX(i+1,j)], u[6 * dim + IDX(i+2,j)],
-				u[7 * dim + IDX(i-2,j)], u[7 * dim + IDX(i-1,j)], u[7 * dim + IDX(i,j-4)], u[7 * dim + IDX(i,j-3)], u[7 * dim + IDX(i,j-2)], u[7 * dim + IDX(i,j-1)], u[7 * dim + IDX(i,j)], u[7 * dim + IDX(i,j+1)], u[7 * dim + IDX(i+1,j)], u[7 * dim + IDX(i+2,j)],
-				offset[0], offset[1], offset[2], offset[3], offset[4], offset[5], offset[6], offset[7]);
+				offset[0], offset[1], offset[2], offset[3], offset[4], offset[5]);
 			// Increase offsets.
 			for (k = 0; k < GNUM; ++k)
 				offset[k] += p_cs[k];
@@ -235,8 +219,6 @@ void csr_grid_fill_4th(
 			z_robin_4th_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
 			z_decay_4th_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, ghost, 4, i, j, dr, dz, u, w_idx, m, l);
 			z_robin_4th_order(A.a, A.ia, A.ja, offset[5], NrTotal, NzTotal, dim, 5, i, j, dr, dz, 4, bound_order[5]);
-			c_reg_4th_order(A.a, A.ia, A.ja, offset[6], NrTotal, NzTotal, dim, 6, i, j, dr, dz, exp(u[IDX(i,j)]), 0);
-			c_reg_4th_order(A.a, A.ia, A.ja, offset[7], NrTotal, NzTotal, dim, 7, i, j, dr, dz, 2.0 * exp(2.0 * u[2 * dim + IDX(i,j)]), 2);
 			// Increase offsets.
 			for (k = 0; k < GNUM; ++k)
 				offset[k] += p_bound[k];
@@ -281,9 +263,7 @@ void csr_grid_fill_4th(
 				u[3 * dim + IDX(i-4,j)], u[3 * dim + IDX(i-3,j)], u[3 * dim + IDX(i-2,j)], u[3 * dim + IDX(i-1,j)], u[3 * dim + IDX(i,j-2)], u[3 * dim + IDX(i,j-1)], u[3 * dim + IDX(i,j)], u[3 * dim + IDX(i,j+1)], u[3 * dim + IDX(i,j+2)],  u[3 * dim + IDX(i+1,j)],
 				u[4 * dim + IDX(i-4,j)], u[4 * dim + IDX(i-3,j)], u[4 * dim + IDX(i-2,j)], u[4 * dim + IDX(i-1,j)], u[4 * dim + IDX(i,j-2)], u[4 * dim + IDX(i,j-1)], u[4 * dim + IDX(i,j)], u[4 * dim + IDX(i,j+1)], u[4 * dim + IDX(i,j+2)],  u[4 * dim + IDX(i+1,j)],
 				u[5 * dim + IDX(i-4,j)], u[5 * dim + IDX(i-3,j)], u[5 * dim + IDX(i-2,j)], u[5 * dim + IDX(i-1,j)], u[5 * dim + IDX(i,j-2)], u[5 * dim + IDX(i,j-1)], u[5 * dim + IDX(i,j)], u[5 * dim + IDX(i,j+1)], u[5 * dim + IDX(i,j+2)],  u[5 * dim + IDX(i+1,j)],
-				u[6 * dim + IDX(i-4,j)], u[6 * dim + IDX(i-3,j)], u[6 * dim + IDX(i-2,j)], u[6 * dim + IDX(i-1,j)], u[6 * dim + IDX(i,j-2)], u[6 * dim + IDX(i,j-1)], u[6 * dim + IDX(i,j)], u[6 * dim + IDX(i,j+1)], u[6 * dim + IDX(i,j+2)],  u[6 * dim + IDX(i+1,j)],
-				u[7 * dim + IDX(i-4,j)], u[7 * dim + IDX(i-3,j)], u[7 * dim + IDX(i-2,j)], u[7 * dim + IDX(i-1,j)], u[7 * dim + IDX(i,j-2)], u[7 * dim + IDX(i,j-1)], u[7 * dim + IDX(i,j)], u[7 * dim + IDX(i,j+1)], u[7 * dim + IDX(i,j+2)],  u[7 * dim + IDX(i+1,j)],
-				offset[0], offset[1], offset[2], offset[3], offset[4], offset[5], offset[6], offset[7]);
+				offset[0], offset[1], offset[2], offset[3], offset[4], offset[5]);
 			// Increase offsets.
 			for (k = 0; k < GNUM; ++k)
 				offset[k] += p_sc[k];
@@ -307,9 +287,7 @@ void csr_grid_fill_4th(
 		u[3 * dim + IDX(i-4,j)], u[3 * dim + IDX(i-3,j)], u[3 * dim + IDX(i-2,j)], u[3 * dim + IDX(i-1,j)], u[3 * dim + IDX(i,j-4)], u[3 * dim + IDX(i,j-3)], u[3 * dim + IDX(i,j-2)], u[3 * dim + IDX(i,j-1)], u[3 * dim + IDX(i,j)], u[3 * dim + IDX(i,j+1)], u[3 * dim + IDX(i+1,j)],
 		u[4 * dim + IDX(i-4,j)], u[4 * dim + IDX(i-3,j)], u[4 * dim + IDX(i-2,j)], u[4 * dim + IDX(i-1,j)], u[4 * dim + IDX(i,j-4)], u[4 * dim + IDX(i,j-3)], u[4 * dim + IDX(i,j-2)], u[4 * dim + IDX(i,j-1)], u[4 * dim + IDX(i,j)], u[4 * dim + IDX(i,j+1)], u[4 * dim + IDX(i+1,j)],
 		u[5 * dim + IDX(i-4,j)], u[5 * dim + IDX(i-3,j)], u[5 * dim + IDX(i-2,j)], u[5 * dim + IDX(i-1,j)], u[5 * dim + IDX(i,j-4)], u[5 * dim + IDX(i,j-3)], u[5 * dim + IDX(i,j-2)], u[5 * dim + IDX(i,j-1)], u[5 * dim + IDX(i,j)], u[5 * dim + IDX(i,j+1)], u[5 * dim + IDX(i+1,j)],
-		u[6 * dim + IDX(i-4,j)], u[6 * dim + IDX(i-3,j)], u[6 * dim + IDX(i-2,j)], u[6 * dim + IDX(i-1,j)], u[6 * dim + IDX(i,j-4)], u[6 * dim + IDX(i,j-3)], u[6 * dim + IDX(i,j-2)], u[6 * dim + IDX(i,j-1)], u[6 * dim + IDX(i,j)], u[6 * dim + IDX(i,j+1)], u[6 * dim + IDX(i+1,j)],
-		u[7 * dim + IDX(i-4,j)], u[7 * dim + IDX(i-3,j)], u[7 * dim + IDX(i-2,j)], u[7 * dim + IDX(i-1,j)], u[7 * dim + IDX(i,j-4)], u[7 * dim + IDX(i,j-3)], u[7 * dim + IDX(i,j-2)], u[7 * dim + IDX(i,j-1)], u[7 * dim + IDX(i,j)], u[7 * dim + IDX(i,j+1)], u[7 * dim + IDX(i+1,j)],
-		offset[0], offset[1], offset[2], offset[3], offset[4], offset[5], offset[6], offset[7]);
+		offset[0], offset[1], offset[2], offset[3], offset[4], offset[5]);
 	// Increase offsets.
 	for (k = 0; k < GNUM; ++k)
 		offset[k] += p_ss[k];
@@ -322,12 +300,10 @@ void csr_grid_fill_4th(
 	z_so_robin_4th_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
 	z_so_decay_4th_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, ghost, 4, i, j, dr, dz, u, w_idx, m, l);
 	z_so_robin_4th_order(A.a, A.ia, A.ja, offset[5], NrTotal, NzTotal, dim, 5, i, j, dr, dz, 4, bound_order[5]);
-	s_reg_4th_order(A.a, A.ia, A.ja, offset[6], NrTotal, NzTotal, dim, 6, i, j, dr, dz, exp(u[IDX(i,j)]), 0);
-	s_reg_4th_order(A.a, A.ia, A.ja, offset[7], NrTotal, NzTotal, dim, 7, i, j, dr, dz, 2.0 * exp(2.0 * u[2 * dim + IDX(i,j)]), 2);
 
 	// Increase offsets.
 	for (k = 0; k < GNUM; ++k)
-		offset[k] += p_bound2[k];
+		offset[k] += p_bound[k];
 
 	// Left-most band.
 	i = NrTotal - 1;
@@ -349,9 +325,9 @@ void csr_grid_fill_4th(
 		#pragma omp for schedule(dynamic, 1)
 		for (j = ghost; j < ghost + NzInterior; ++j)
 		{
-			// Each iteration of the j loop fills p_bound2 elements.
+			// Each iteration of the j loop fills p_bound elements.
 			for (k = 0; k < GNUM; ++k)
-				offset[k] = t_offset[k] + p_bound2[k] * (j - ghost);
+				offset[k] = t_offset[k] + p_bound[k] * (j - ghost);
 
 			// Fill matrix coefficients.
 			r_robin_4th_order(A.a, A.ia, A.ja, offset[0], NrTotal, NzTotal, dim, 0, i, j, dr, dz, 1, bound_order[0]);
@@ -360,18 +336,16 @@ void csr_grid_fill_4th(
 			r_robin_4th_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
 			r_decay_4th_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, ghost, 4, i, j, dr, dz, u, w_idx, m, l);
 			r_robin_4th_order(A.a, A.ia, A.ja, offset[5], NrTotal, NzTotal, dim, 5, i, j, dr, dz, 4, bound_order[5]);
-			o_reg_4th_order(A.a, A.ia, A.ja, offset[6], NrTotal, NzTotal, dim, 6, i, j, dr, dz, exp(u[IDX(i,j)]), 0);
-			o_reg_4th_order(A.a, A.ia, A.ja, offset[7], NrTotal, NzTotal, dim, 7, i, j, dr, dz, 2.0 * exp(2.0 * u[2 * dim + IDX(i,j)]), 2);
 
 			// Increase offsets.
 			for (k = 0; k < GNUM; ++k)
-				offset[k] += p_bound2[k];
+				offset[k] += p_bound[k];
 		}
 	}
 
 	// At this point we have filled:
 	for (k = 0; k < GNUM; ++k)
-		offset[k] = start_offset[k] + 24 + 4 * (NrInterior + NzInterior) + p_cc[k] * NrInterior * NrInterior + p_cs[k] * NrInterior + p_sc[k] * NzInterior + p_bound[k] * NrInterior + p_bound2[k] * NzInterior + p_ss[k] + p_bound2[k];
+		offset[k] = start_offset[k] + 24 + 4 * (NrInterior + NzInterior) + p_cc[k] * NrInterior * NrInterior + p_cs[k] * NrInterior + p_sc[k] * NzInterior + p_bound[k] * NrInterior + p_bound[k] * NzInterior + p_ss[k] + p_bound[k];
 
 	// Second to last point.
 	j = ghost + NzInterior;
@@ -382,11 +356,9 @@ void csr_grid_fill_4th(
 	r_so_robin_4th_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
 	r_so_decay_4th_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, ghost, 4, i, j, dr, dz, u, w_idx, m, l);
 	r_so_robin_4th_order(A.a, A.ia, A.ja, offset[5], NrTotal, NzTotal, dim, 5, i, j, dr, dz, 4, bound_order[5]);
-	o_reg_4th_order(A.a, A.ia, A.ja, offset[6], NrTotal, NzTotal, dim, 6, i, j, dr, dz, exp(u[IDX(i,j)]), 0);
-	o_reg_4th_order(A.a, A.ia, A.ja, offset[7], NrTotal, NzTotal, dim, 7, i, j, dr, dz, 2.0 * exp(2.0 * u[2 * dim + IDX(i,j)]), 2);
 	// Increase offsets.
 	for (k = 0; k < GNUM; ++k)
-		offset[k] += p_bound2[k];
+		offset[k] += p_bound[k];
 
 	// Boundary conditions.
 	j = NzTotal - 1;
@@ -396,11 +368,9 @@ void csr_grid_fill_4th(
 	corner_robin_4th_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
 	corner_decay_4th_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, ghost, 4, i, j, dr, dz, u, w_idx, m, l);
 	corner_robin_4th_order(A.a, A.ia, A.ja, offset[5], NrTotal, NzTotal, dim, 5, i, j, dr, dz, 4, bound_order[5]);
-	o_reg_4th_order(A.a, A.ia, A.ja, offset[6], NrTotal, NzTotal, dim, 6, i, j, dr, dz, exp(u[IDX(i,j)]), 0);
-	o_reg_4th_order(A.a, A.ia, A.ja, offset[7], NrTotal, NzTotal, dim, 7, i, j, dr, dz, 2.0 * exp(2.0 * u[2 * dim + IDX(i,j)]), 2);
 	// Increase offsets.
 	for (k = 0; k < GNUM; ++k)
-		offset[k] += p_bound2[k];
+		offset[k] += p_bound[k];
 
 	// All done.
 	return;
@@ -430,9 +400,7 @@ void csr_grid_fill_2nd(
 		const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double,
 		const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double,
-		const double, const double, const double, const double, const double,
-		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT))
+		const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT))
 {
 	// Auxiliary integers.
 	MKL_INT i = 0, j = 0, k = 0;
@@ -451,10 +419,9 @@ void csr_grid_fill_2nd(
 	MKL_INT w_idx = GNUM * dim;
 
 	// Integer arrays for offsets and start indices.
-	MKL_INT offset[GNUM] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	MKL_INT t_offset[GNUM] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	MKL_INT start_offset[GNUM] = { 0, 0, 0, 0, 0, 0, 0, 0 };
-	MKL_INT p_bound2[GNUM] = {p_bound[0], p_bound[1], p_bound[2], p_bound[3], p_bound[4], p_bound[5], p_bound[6] + 1, p_bound[7] + 1};
+	MKL_INT offset[GNUM] = { 0, 0, 0, 0, 0, 0 };
+	MKL_INT t_offset[GNUM] = { 0, 0, 0, 0, 0, 0 };
+	MKL_INT start_offset[GNUM] = { 0, 0, 0, 0, 0, 0 };
 
 	// Set start/initial offsets.
 	offset[0] = start_offset[0] = 0;
@@ -539,9 +506,7 @@ void csr_grid_fill_2nd(
 					u[3*dim+IDX(i-1,j  )], u[3*dim+IDX(i  ,j-1)], u[3*dim+IDX(i  ,j  )], u[3*dim+IDX(i  ,j+1)], u[3*dim+IDX(i+1,j  )],
 					u[4*dim+IDX(i-1,j  )], u[4*dim+IDX(i  ,j-1)], u[4*dim+IDX(i  ,j  )], u[4*dim+IDX(i  ,j+1)], u[4*dim+IDX(i+1,j  )],
 					u[5*dim+IDX(i-1,j  )], u[5*dim+IDX(i  ,j-1)], u[5*dim+IDX(i  ,j  )], u[5*dim+IDX(i  ,j+1)], u[5*dim+IDX(i+1,j  )],
-					u[6*dim+IDX(i-1,j  )], u[6*dim+IDX(i  ,j-1)], u[6*dim+IDX(i  ,j  )], u[6*dim+IDX(i  ,j+1)], u[6*dim+IDX(i+1,j  )],
-					u[7*dim+IDX(i-1,j  )], u[7*dim+IDX(i  ,j-1)], u[7*dim+IDX(i  ,j  )], u[7*dim+IDX(i  ,j+1)], u[7*dim+IDX(i+1,j  )],
-					offset[0], offset[1], offset[2], offset[3], offset[4], offset[5], offset[6], offset[7]);
+					offset[0], offset[1], offset[2], offset[3], offset[4], offset[5]);
 				// Increase offsets.
 				for (k = 0; k < GNUM; ++k)
 					offset[k] += p_center[k];
@@ -555,8 +520,6 @@ void csr_grid_fill_2nd(
 			z_robin_2nd_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
 			z_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, ghost, 4, i, j, dr, dz, u, w_idx, m, l);
 			z_robin_2nd_order(A.a, A.ia, A.ja, offset[5], NrTotal, NzTotal, dim, 5, i, j, dr, dz, 4, bound_order[5]);
-			c_reg_2nd_order(A.a, A.ia, A.ja, offset[6], NrTotal, NzTotal, dim, 6, i, j, dr, dz, exp(u[IDX(i,j)]), 0);
-			c_reg_2nd_order(A.a, A.ia, A.ja, offset[7], NrTotal, NzTotal, dim, 7, i, j, dr, dz, 2.0 * exp(2.0 * u[2 * dim + IDX(i,j)]), 2);
 			// Increase offsets.
 			for (k = 0; k < GNUM; ++k)
 				offset[k] += p_bound[k];
@@ -583,9 +546,9 @@ void csr_grid_fill_2nd(
 		#pragma omp for schedule(dynamic, 1)
 		for (j = ghost; j < NzInterior + 1; ++j)
 		{
-			// Each iteration of the loop fills p_bound2 elements.
+			// Each iteration of the loop fills p_bound elements.
 			for (k = 0; k < GNUM; ++k)
-				offset[k] = t_offset[k] + p_bound2[k] * (j - ghost);
+				offset[k] = t_offset[k] + p_bound[k] * (j - ghost);
 
 			r_robin_2nd_order(A.a, A.ia, A.ja, offset[0], NrTotal, NzTotal, dim, 0, i, j, dr, dz, 1, bound_order[0]);
 			r_robin_2nd_order(A.a, A.ia, A.ja, offset[1], NrTotal, NzTotal, dim, 1, i, j, dr, dz, 3, bound_order[1]);
@@ -593,17 +556,15 @@ void csr_grid_fill_2nd(
 			r_robin_2nd_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
 			r_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, ghost, 4, i, j, dr, dz, u, w_idx, m, l);
 			r_robin_2nd_order(A.a, A.ia, A.ja, offset[5], NrTotal, NzTotal, dim, 5, i, j, dr, dz, 4, bound_order[5]);
-			s_reg_2nd_order(A.a, A.ia, A.ja, offset[6], NrTotal, NzTotal, dim, 6, i, j, dr, dz, exp(u[IDX(i,j)]), 0);
-			s_reg_2nd_order(A.a, A.ia, A.ja, offset[7], NrTotal, NzTotal, dim, 7, i, j, dr, dz, 2.0 * exp(2.0 * u[2 * dim + IDX(i,j)]), 2);
 			// Increase offsets.
 			for (k = 0; k < GNUM; ++k)
-				offset[k] += p_bound2[k];
+				offset[k] += p_bound[k];
 		}
 	}
 
 	// At this point we have filled:
 	for (k = 0; k < GNUM; ++k)
-		offset[k] = start_offset[k] + 6 + (2 + p_bound[k]) * NrInterior + (2 + p_bound2[k]) * NzInterior + p_center[k] * NrInterior * NzInterior;
+		offset[k] = start_offset[k] + 6 + (2 + p_bound[k]) * NrInterior + (2 + p_bound[k]) * NzInterior + p_center[k] * NrInterior * NzInterior;
 
 	// Upper-right corner: fill with Robin.
 	j = NzInterior + ghost;
@@ -613,11 +574,9 @@ void csr_grid_fill_2nd(
 	corner_robin_2nd_order(A.a, A.ia, A.ja, offset[3], NrTotal, NzTotal, dim, 3, i, j, dr, dz, 1, bound_order[3]);
 	corner_decay_2nd_order(A.a, A.ia, A.ja, offset[4], NrTotal, NzTotal, dim, ghost, 4, i, j, dr, dz, u, w_idx, m, l);
 	corner_robin_2nd_order(A.a, A.ia, A.ja, offset[5], NrTotal, NzTotal, dim, 5, i, j, dr, dz, 4, bound_order[5]);
-	s_reg_2nd_order(A.a, A.ia, A.ja, offset[6], NrTotal, NzTotal, dim, 6, i, j, dr, dz, exp(u[IDX(i,j)]), 0);
-	s_reg_2nd_order(A.a, A.ia, A.ja, offset[7], NrTotal, NzTotal, dim, 7, i, j, dr, dz, 2.0 * exp(2.0 * u[2 * dim + IDX(i,j)]), 2);
 	// Increase offsets.
 	for (k = 0; k < GNUM; ++k)
-		offset[k] += p_bound2[k];
+		offset[k] += p_bound[k];
 
 	// All done.
 	return;
