@@ -13,6 +13,8 @@
 #define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_A 	-11
 #define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_B 	-13
 
+#include "regularization_coupling.h"
+
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0).
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
@@ -99,6 +101,10 @@ MKL_INT nleq_err(
 
 		/* Solve linear system. */
 		LINEAR_SOLVE_1(du[k], J, f[k]);
+	
+#ifdef REGULARIZATION_COUPLING
+		coupled_du(du[k], u[k], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
 
 		/* Calculate ||du^k||. */
 		norm_du[k] = NORM(du[k]);
@@ -178,6 +184,11 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		RHS_CALC(f[k + 1], u[k + 1]);
 		LINEAR_SOLVE_2(du_bar[k + 1], J, f[k + 1]);
+
+#ifdef REGULARIZATION_COUPLING
+		coupled_du(du_bar[k + 1], u[k + 1], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
+
 		norm_du_bar[k + 1] = NORM(du_bar[k + 1]);
 
 		// 3. Compute the monitoring quantities

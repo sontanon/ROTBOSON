@@ -1,6 +1,7 @@
 #include "tools.h"
 #define MAIN_FILE
 #include "param.h"
+#include "regularization_coupling.h"
 
 #include "parser.h"
 #include "io.h"

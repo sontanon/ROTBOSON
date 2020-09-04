@@ -1,5 +1,6 @@
 // Include headers.
 #include "tools.h"
+#include "regularization_coupling.h"
 
 // Error codes.
 #define ERROR_CODE_SUCCESS 				  0
@@ -64,6 +65,10 @@ MKL_INT nleq_res_qnres(
 	// First linear solve.
 	// Solve linear system J(u^0) du^0 = -f(u^0).
 	LINEAR_SOLVE_1(du[l], J, f[l]);
+
+#ifdef REGULARIZATION_COUPLING
+	coupled_du(du[l], u[l], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
 
 	// Step l.
 	for (l = 0; l < max_newton_iterations; ++l)
@@ -171,6 +176,10 @@ MKL_INT nleq_res_qnres(
 		// Notice that we are actually solving J(u^0) du^{l+1} = -v.
 		// The minus signs work out in the end and there is no need to change v.
 		LINEAR_SOLVE_2(du[l + 1], J, v);
+
+#ifdef REGULARIZATION_COUPLING
+		coupled_du(du[l + 1], u[l + 1], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
 
 		// Print message before continuing.
 	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");

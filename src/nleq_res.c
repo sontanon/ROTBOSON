@@ -1,6 +1,7 @@
 // Include headers.
 #include "tools.h"
 #include "qnres.h"
+#include "regularization_coupling.h"
 
 // Debug print Jacobian CSR matrix.
 #define DEBUG_PRINT 0
@@ -131,6 +132,10 @@ MKL_INT nleq_res(
 
 		/* Solve linear system. */
 		LINEAR_SOLVE_1(du[k], J, f[k]);
+
+#ifdef REGULARIZATION_COUPLING
+		coupled_du(du[k], u[k], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
 
 		// For k > 0: compute a prediction value for the damping factor.
 		if (k > prediction_start)

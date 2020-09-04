@@ -1,4 +1,5 @@
 #include "tools.h"
+#include "regularization_coupling.h"
 
 // Error codes.
 #define ERROR_CODE_SUCCESS 				  0
@@ -43,6 +44,10 @@ MKL_INT nleq_err_qnerr(
 	// Solve  linear system J(u^0) du^0 = -f(u^0).
 	LINEAR_SOLVE_1(du[l], J, f[l]);
 
+#ifdef REGULARIZATION_COUPLING
+	coupled_du(du[l], u[l], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
+
 	// Calculate ||du^0||.
 	norm_du[l] = NORM(du[l]);
 
@@ -66,6 +71,9 @@ MKL_INT nleq_err_qnerr(
 		// Linear system solve J(u^0) du_bar^{l+1} = -f(u^{l+1}).
 		LINEAR_SOLVE_2(du_bar[l + 1], J, f[l + 1]);
 
+#ifdef REGULARIZATION_COUPLING
+		coupled_du(du_bar[l + 1], u[l + 1], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
 		// 2. If l > 0. For i = 1, ... , l:
 		if (l > 0)
 		{

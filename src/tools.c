@@ -49,6 +49,29 @@ void array_sum(double *z, const double alpha, double *x, const double beta, doub
 	return;
 }
 
+/* Macro for coupled array sum for regularization. */
+void coupled_du(double *du, double *u, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const double dr, const double mu)
+{
+	MKL_INT dim = NrTotal * NzTotal;
+	MKL_INT i, j, k;
+	double r;
+	#pragma omp parallel shared(du) private(r)
+	{
+		#pragma omp for scheudle(dynamic, 1)
+		for (i = 0; i < NrTotal; ++i)
+		{
+			r = dr * (i - ghost + 0.5);
+			for (j = 0; j < NzTotal; ++j)
+			{
+				du[3 * dim + IDX(i, j)] *= (1.0 - mu);
+				// 2 * a**2 * d(log(a)) = r**2 * d(lambda) + 2 * h**2 * d(log(h)).
+				du[3 * dim + IDX(i, j)] += mu * (0.5 * r * r * du[6 * dim + IDX(i, j)] + exp(2.0 * u[2 * dim + IDX(i, j)]) * du[2 * dim + IDX(i, j)]) / exp(2.0 * u[3 * dim + IDX(i, j)]);
+			}
+		}
+	}
+	return;
+}
+
 // Safe allocation macros.
 #define SAFE_MALLOC(n) safe_malloc((n), __FILE__, __LINE__)
 void *safe_malloc(const size_t n, const char *file, const MKL_INT line)
