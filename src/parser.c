@@ -140,10 +140,12 @@ void parser(const char *fname)
 	w_idx = GNUM * dim;
 
 	// REGULARIZATION COUPLING PARAMETERS.
+#ifdef REGULARIZATION_COUPLING
 	solver_NrTotal = NrTotal;
 	solver_NzTotal = NzTotal;
 	solver_dr = dr;
 	solver_ghost = ghost;
+#endif
 
 	// SCALAR FIELD PARAMETERS.
 	// l.
