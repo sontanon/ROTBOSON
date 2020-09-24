@@ -19,6 +19,9 @@
 #include "cart_to_pol.h"
 #include "analysis.h"
 
+#define MAX_INITIAL_GUESS_CHECKS 8
+#define NORM_F0_TARGET 1.0E-05
+
 int main(int argc, char *argv[])
 {
 	// Integer counter.
@@ -269,39 +272,90 @@ int main(int argc, char *argv[])
 	write_single_file_2d(u[0] + 5 * dim, "lambda_i.asc", 	NrTotal, NzTotal);
 	write_single_file_1d(&w0, "w_i.asc", 1);
 
-	// Calculate initial RHS.
-	rhs(f[0], u[0]);
-
-	// Print initial RHS.
-	write_single_file_2d(f[0]          , "f0_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] +     dim, "f1_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] + 2 * dim, "f2_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] + 3 * dim, "f3_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] + 4 * dim, "f4_i.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
-
 	// Initial guess norms.
 	double f_norms[GNUM];
 
-	f_norms[0] = norm2_interior(f[0]          );
-	f_norms[1] = norm2_interior(f[0] +     dim);
-	f_norms[2] = norm2_interior(f[0] + 2 * dim);
-	f_norms[3] = norm2_interior(f[0] + 3 * dim);
-	f_norms[4] = norm2_interior(f[0] + 4 * dim);
-	f_norms[5] = norm2_interior(f[0] + 5 * dim);
-	
-	printf("***                                                \n");
-	printf("***        INITIAL GUESS:                          \n");
-	printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-	printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-	printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-	printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-	printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-	printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
-	printf("***                                                \n");
+	for (k = 0; k < MAX_INITIAL_GUESS_CHECKS; ++k)
+	{
+		// Print initial guess.
+		if (k > 0)
+			write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
 
-	printf("***                                                \n");
-	printf("******************************************************\n");
+		// Calculate initial RHS.
+		rhs(f[0], u[0]);
+
+		// Print initial RHS.
+		write_single_file_2d(f[0]          , "f0_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] +     dim, "f1_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] + 2 * dim, "f2_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] + 3 * dim, "f3_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] + 4 * dim, "f4_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
+
+		// Calculate 2-norms.
+		f_norms[0] = norm2_interior(f[0]          );
+		f_norms[1] = norm2_interior(f[0] +     dim);
+		f_norms[2] = norm2_interior(f[0] + 2 * dim);
+		f_norms[3] = norm2_interior(f[0] + 3 * dim);
+		f_norms[4] = norm2_interior(f[0] + 4 * dim);
+		f_norms[5] = norm2_interior(f[0] + 5 * dim);
+		
+		printf("***                                                \n");
+		printf("***        INITIAL GUESS:                          \n");
+		printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
+		printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
+		printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
+		printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
+		printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+		printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
+		printf("***                                                \n");
+
+		printf("***                                                \n");
+		printf("******************************************************\n");
+
+		// Calculate f_norms average.
+		double f_norms_avg = (f_norms[0] + f_norms[1] + f_norms[2] + f_norms[3] + f_norms[4] + f_norms[5]) / 6.0;
+
+		if (f_norms_avg < NORM_F0_TARGET)
+		{
+			// Exit loop.
+			printf("******************************************************\n");
+			printf("***\n");
+			printf("**** Initial guess has small-enough norm. Will continue...\n");
+			printf("***\n");
+			printf("******************************************************\n");
+			break;
+		}
+		else
+		{
+			if (k < MAX_INITIAL_GUESS_CHECKS - 1)
+			{
+				// Change psi0 and rescale.
+				printf("******************************************************\n");
+				printf("***\n");
+				printf("*** Initial guess norm is not small enough with psi0 = %3.5E.\n", psi0);
+
+				cblas_dscal(dim, 0.5 * (1.0 + 1.0 / psi0), u + 4 * dim, 1);
+				psi0 = 0.5 * (1.0 + psi0);
+
+				printf("*** Trying again with psi0 = 3.5E.\n", psi0);
+				printf("***\n");
+				printf("******************************************************\n");
+				continue;
+			}
+			else
+			{
+				// Change psi0 and rescale.
+				printf("******************************************************\n");
+				printf("***\n");
+				printf("*** WARNING: MAX_INITIAL_GUESS_CHECKS were not enough to lower initial guess norm!\n");
+				printf("***\n");
+				printf("******************************************************\n");
+				continue;
+			}
+		}
+	}
+		
 
 	// LOW RANK UPDATE
 	// Linear Solver Subroutine.
