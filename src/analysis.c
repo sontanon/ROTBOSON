@@ -4,6 +4,51 @@
 
 #define EVEN 1
 
+void ex_phi_analysis(const MKL_INT print, 
+	double *phi_max, double *rr_phi_max, MKL_INT *k_rr_max,
+	double *sph_u, double *sph_rr, double *sph_th, 
+	const MKL_INT l,
+	const MKL_INT ghost, const MKL_INT order, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT p_dim, const double drr, const double dth, const double rr_inf)
+{
+	// Loop counter.
+	MKL_INT k = 0;
+
+	// Extract variables.
+	double *sph_psi 	= sph_u + 4 * p_dim;
+
+	// Add scalar field.
+	double *sph_phi = (double *)SAFE_MALLOC(sizeof(double) * p_dim);
+	#pragma omp parallel for schedule(dynamic, 1) shared(sph_phi)	
+	for (k = 0; k < p_dim; ++k)
+	{
+		sph_phi[k] = pow(sph_rr[k] * sin(sph_th[k]), l) * sph_psi[k];
+	}
+	// Calculate maximum and quantities.
+	*k_rr_max = cblas_idamax(p_dim, sph_phi, 1);
+	*phi_max = sph_phi[*k_rr_max];
+	*rr_phi_max = sph_rr[*k_rr_max];
+
+		
+	if (print)
+	{
+		// Write files.
+		write_single_file_1d(phi_max, "phi_max.asc", 1);
+		write_single_file_1d(rr_phi_max, "rr_phi_max.asc", 1);
+		printf("***  -------------------------- ----------------------- ----------------- \n");
+		printf("*** | max(phi)                 | rr(max(phi))          | k(rr(max(phi))) |\n");
+		printf("***  -------------------------- ----------------------- ----------------- \n");	
+		printf("*** |       %-6.5e        |      %-6.5e      |   %lld    |\n", *phi_max, *rr_phi_max, *k_rr_max);
+		printf("***  -------------------------- ----------------------- ----------------- \n");
+		printf("**** \n");
+	}
+
+	// Free memory.
+	SAFE_FREE(sph_phi);
+
+	// All done.
+	return;
+}
+
 void ex_analysis(
 	const MKL_INT print, double *M, double *J, double *GRV2, double *GRV3,
 	double *sph_u, double *sph_rr, double *sph_th, 
@@ -12,7 +57,7 @@ void ex_analysis(
 {
 	// Loop counter.
 	MKL_INT k = 0;
-
+	
 	// Rename or extract main variables.
 	double *sph_log_alpha 	= sph_u + 0 * p_dim;
 	double *sph_beta 	= sph_u + 1 * p_dim;
