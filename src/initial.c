@@ -7,7 +7,7 @@
 #include "derivatives.h"
 
 #undef BDRY_DEBUG
-#define I_DEBUG
+#undef I_DEBUG
 
 void initial_guess(double *u)
 {

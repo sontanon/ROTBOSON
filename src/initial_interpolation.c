@@ -4,7 +4,7 @@
 #include "bicubic_interpolation.h"
 #include "analysis.h"
 
-#define DEBUG
+#undef DEBUG
 
 #define GNUMI 6
 
