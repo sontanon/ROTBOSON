@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	MKL_INT k = 0;
 
 	// Other counters.
-	MKL_INT counter_i = 0, counter_j = 0;
+	MKL_INT counter_i = 0;
 
 	// Error code.
 	MKL_INT errCode = 1;
@@ -73,6 +73,9 @@ int main(int argc, char *argv[])
 	// Generate directory name via format "l=?,w=X.XXXXXE-??,dr=X.XXXXXE-??,N=XXXX"
 	// w will be unknown for now so set it to X.XXXXXE-01.
 	parser(argv[1]);
+
+	// Initial psi0 damper.
+	double psi0_i = psi0;
 
 	// Print program start and parameters.
 	printf("******************************************************\n");
@@ -436,6 +439,9 @@ int main(int argc, char *argv[])
 					break;
 			}
 
+			// Write errCode to file.
+			write_single_integer_file_1d(&errCode, "error_code.asc", 1);
+
 			// Check for convergence.
 			if (errCode != 0)
 			{
@@ -569,7 +575,7 @@ int main(int argc, char *argv[])
 				// If so, set initial guess to final solution and continue.
 				memcpy(u[0], u[k], GNUM * dim + 1);
 				// Rescale psi.
-				cblas_dscal(dim, psi0, u[0] + 4 * dim, 1);
+				cblas_dscal(dim, psi0_i, u[0] + 4 * dim, 1);
 				// Set initial omega.
 				w0 = w;
 				printf("******************************************************\n");

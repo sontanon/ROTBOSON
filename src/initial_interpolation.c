@@ -119,8 +119,10 @@ void initial_interpolator(	double *u_1,
 	double r_inf_0 = dr_0 * (NrInterior_0 + ghost_0 - 0.5);
 	double z_inf_0 = dz_0 * (NzInterior_0 + ghost_0 - 0.5);
 
+#ifdef DEBUG
 	double r_inf_1 = dr_1 * (NrInterior_1 + ghost_1 - 0.5);
 	double z_inf_1 = dz_1 * (NzInterior_1 + ghost_1 - 0.5);
+#endif
 	
 	// If r_inf_0 > r_inf_1 we can interpolate all along the r direction.
 	// If r_inf_0 = r_inf_1 we can interpolate up to the previous point and calculate the last one via BC.
