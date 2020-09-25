@@ -1,5 +1,8 @@
 #include <libconfig.h>
 
+// String length.
+#define MAX_STR_LEN 256
+
 // Number of grid variables.
 #define GNUM 6
 
@@ -57,6 +60,10 @@ double lambda0 		= 1.0E-3;
 double lambdaMin 	= 1.0E-8;
 MKL_INT useLowRank	= 0;
 
+/* INITIAL GUESS CHECK */
+MKL_INT max_initial_guess_checks = 8;
+double norm_f0_target = 1.0E-05;
+
 /* AUXILIARY ARRAYS FOR DERIVATIVES. */
 double *Dr_u;
 double *Dz_u;
@@ -77,7 +84,12 @@ double dth;
 double rr_inf;
 
 /* OUTPUT */
-const char *dirname = "test";
+char    work_dirname[MAX_STR_LEN] = { 0 };
+char initial_dirname[MAX_STR_LEN] = { 0 };
+char   final_dirname[MAX_STR_LEN] = { 0 };
+
+/* SWEEP CONTROL */
+double rr_phi_max_minimum = 1.0;
 #else
 /* CONFIG FILE */
 extern config_t cfg;
@@ -139,6 +151,10 @@ extern double *Drr_u;
 extern double *Dzz_u;
 extern double *Drz_u;
 
+/* INITIAL GUESS CHECK */
+extern MKL_INT max_initial_guess_checks;
+extern double norm_f0_target;
+
 /* AUXILIARY VARIABLES. */
 extern double *u_aux;
 extern double *Dr_u_aux;
@@ -152,5 +168,10 @@ extern double dth;
 extern double rr_inf;
 
 /* OUTPUT */
-extern const char *dirname;
+extern char    work_dirname[MAX_STR_LEN];
+extern char   final_dirname[MAX_STR_LEN];
+extern char initial_dirname[MAX_STR_LEN];
+
+/* SWEEP CONTROL */
+extern double rr_phi_max_minimum;
 #endif

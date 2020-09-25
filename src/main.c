@@ -30,6 +30,9 @@ int main(int argc, char *argv[])
 	// Stop index.
 	MKL_INT k = 0;
 
+	// Other counters.
+	MKL_INT counter_i = 0, counter_j = 0;
+
 	// Error code.
 	MKL_INT errCode = 1;
 
@@ -48,7 +51,7 @@ int main(int argc, char *argv[])
 	printf("***                                                \n");
 	printf("***             First Revision: 01/08/2019         \n");
 	printf("***                                                \n");
-	printf("***             Last  Revision: 14/01/2020         \n");
+	printf("***             Last  Revision: 24/09/2020         \n");
 	printf("***                                                \n");
 	printf("******************************************************\n");
 
@@ -66,22 +69,16 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	// Parse arguments.
+	// Parse arguments and initial seed.
+	// Generate directory name via format "l=?,w=X.XXXXXE-??,dr=X.XXXXXE-??,N=XXXX"
+	// w will be unknown for now so set it to X.XXXXXE-01.
 	parser(argv[1]);
 
-	// Do I/O: create output directory, 
-	//         copy parameter file,
-	//         change to output directory.
-	io(dirname, argv[1]);
-
-	// Print main arguments.
+	// Print program start and parameters.
 	printf("******************************************************\n");
 	printf("***                                                \n");
 	printf("***           Generating Rotating Boson           \n");
 	printf("***            Star Initial Data For NR.           \n");
-	printf("***                                                \n");
-	printf("***           OUTPUT:                              \n");
-	printf("***            dirname    = %-18s     \n", dirname);
 	printf("***                                                \n");
 	printf("***           GRID:                                \n");
 	printf("***            dr          = %-12.10E          \n", dr);
@@ -157,12 +154,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
-
+	// Allocate memory.
 	printf("******************************************************\n");
 	printf("***                                                \n");
 	printf("***               Allocating memory...             \n");
 	printf("***                                                \n");
-
 
 	// Allocate pointer to double pointers.
 	double **u      = (double **)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double *));
@@ -182,6 +178,25 @@ int main(int argc, char *argv[])
 	// Also include grids.
 	double *r = (double *)SAFE_MALLOC(dim * sizeof(double));
 	double *z = (double *)SAFE_MALLOC(dim * sizeof(double));
+
+	// Since these grids never change, fill them once and for all.
+	// Fill coordinate grids.
+	double aux_r;
+	#pragma omp parallel shared(r, z) private(i, j, aux_r)
+	{
+		#pragma omp for schedule(dynamic, 1)
+		for (i = 0; i < NrTotal; i++)
+		{
+			// Calculate rho value.
+			aux_r = ((double)(i - ghost) + 0.5) * dr;
+			// Loop over z points.
+			for (j = 0; j < NzTotal; j++)
+			{
+				r[IDX(i, j)] = aux_r;
+				z[IDX(i, j)] = ((double)(j - ghost) + 0.5) * dz;
+			}
+		}
+	}
 
 	// Auxiliary global derivative pointers.
 	Dr_u  = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
@@ -204,34 +219,22 @@ int main(int argc, char *argv[])
 	double *lambda_prime	= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
 	double *mu_prime	= (double *)SAFE_MALLOC((maxNewtonIter + 1) * sizeof(double));
 
-	// Set initial damping factor.
-	lambda[0] = lambda0;
+	// Initial guess norms.
+	double f_norms[GNUM];
 
-	// Fill coordinate grids.
-	double aux_r;
-	#pragma omp parallel shared(r, z) private(i, j, aux_r)
-	{
-		#pragma omp for schedule(dynamic, 1)
-		for (i = 0; i < NrTotal; i++)
-		{
-			// Calculate rho value.
-			aux_r = ((double)(i - ghost) + 0.5) * dr;
-			// Loop over z points.
-			for (j = 0; j < NzTotal; j++)
-			{
-				r[IDX(i, j)] = aux_r;
-				z[IDX(i, j)] = ((double)(j - ghost) + 0.5) * dz;
-			}
-		}
-	}
-	// Write coordinate grids.
-	write_single_file_2d(r, "r.asc", NrTotal, NzTotal);
-	write_single_file_2d(z, "z.asc", NrTotal, NzTotal);
+	// Pointers to memory for spherical variables.
+	double *i_rr = NULL;
+	double *i_th = NULL;
+	double *i_u = NULL;
+	double M_KOMAR, J_KOMAR, GRV2, GRV3;
+	double phi_max = 1.0, rr_phi_max = 0.0;
+	MKL_INT k_rr_max = 0;
 
 	printf("***               Finished allocation!             \n");
 	printf("***                                                \n");
 	printf("******************************************************\n");
 
+	// Allocate PARDISO memory.
 	printf("******************************************************\n");
 	printf("***                                                \n");
 	printf("***           Allocating PARDISO memory...         \n");
@@ -256,108 +259,7 @@ int main(int argc, char *argv[])
 	printf("***                                                \n");
 	printf("******************************************************\n");
 
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***          Setting initial guess and RHS.        \n");
-
-	// Set initial guess.
-	initial_guess(u[0]);
-
-	// Print initial guess.
-	write_single_file_2d(u[0]          , "log_alpha_i.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[0] +     dim, "beta_i.asc",		NrTotal, NzTotal);
-	write_single_file_2d(u[0] + 2 * dim, "log_h_i.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[0] + 3 * dim, "log_a_i.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[0] + 5 * dim, "lambda_i.asc", 	NrTotal, NzTotal);
-	write_single_file_1d(&w0, "w_i.asc", 1);
-
-	// Initial guess norms.
-	double f_norms[GNUM];
-
-	for (k = 0; k < MAX_INITIAL_GUESS_CHECKS; ++k)
-	{
-		// Print initial guess.
-		if (k > 0)
-			write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
-
-		// Calculate initial RHS.
-		rhs(f[0], u[0]);
-
-		// Print initial RHS.
-		write_single_file_2d(f[0]          , "f0_i.asc", NrTotal, NzTotal);
-		write_single_file_2d(f[0] +     dim, "f1_i.asc", NrTotal, NzTotal);
-		write_single_file_2d(f[0] + 2 * dim, "f2_i.asc", NrTotal, NzTotal);
-		write_single_file_2d(f[0] + 3 * dim, "f3_i.asc", NrTotal, NzTotal);
-		write_single_file_2d(f[0] + 4 * dim, "f4_i.asc", NrTotal, NzTotal);
-		write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
-
-		// Calculate 2-norms.
-		f_norms[0] = norm2_interior(f[0]          );
-		f_norms[1] = norm2_interior(f[0] +     dim);
-		f_norms[2] = norm2_interior(f[0] + 2 * dim);
-		f_norms[3] = norm2_interior(f[0] + 3 * dim);
-		f_norms[4] = norm2_interior(f[0] + 4 * dim);
-		f_norms[5] = norm2_interior(f[0] + 5 * dim);
-		
-		printf("***                                                \n");
-		printf("***        INITIAL GUESS:                          \n");
-		printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-		printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-		printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-		printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-		printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-		printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
-		printf("***                                                \n");
-
-		printf("***                                                \n");
-		printf("******************************************************\n");
-
-		// Calculate f_norms average.
-		double f_norms_avg = (f_norms[0] + f_norms[1] + f_norms[2] + f_norms[3] + f_norms[4] + f_norms[5]) / 6.0;
-
-		if (f_norms_avg < NORM_F0_TARGET)
-		{
-			// Exit loop.
-			printf("******************************************************\n");
-			printf("***\n");
-			printf("**** Initial guess has small-enough norm. Will continue...\n");
-			printf("***\n");
-			printf("******************************************************\n");
-			break;
-		}
-		else
-		{
-			if (k < MAX_INITIAL_GUESS_CHECKS - 1)
-			{
-				// Change psi0 and rescale.
-				printf("******************************************************\n");
-				printf("***\n");
-				printf("*** Initial guess norm is not small enough with psi0 = %3.5E.\n", psi0);
-
-				cblas_dscal(dim, 0.5 * (1.0 + 1.0 / psi0), u + 4 * dim, 1);
-				psi0 = 0.5 * (1.0 + psi0);
-
-				printf("*** Trying again with psi0 = 3.5E.\n", psi0);
-				printf("***\n");
-				printf("******************************************************\n");
-				continue;
-			}
-			else
-			{
-				// Change psi0 and rescale.
-				printf("******************************************************\n");
-				printf("***\n");
-				printf("*** WARNING: MAX_INITIAL_GUESS_CHECKS were not enough to lower initial guess norm!\n");
-				printf("***\n");
-				printf("******************************************************\n");
-				continue;
-			}
-		}
-	}
-		
-
-	// LOW RANK UPDATE
+	// LOW RANK UPDATE and linear solver subroutines.
 	// Linear Solver Subroutine.
 	void (*linear_solve_1)(double *, csr_matrix *, double *);
 	if (useLowRank)
@@ -376,166 +278,329 @@ int main(int argc, char *argv[])
 	// Repeated solver.
 	void (*linear_solve_2)(double *, csr_matrix *, double *);
 	linear_solve_2 = pardiso_repeated_solve;
+	printf("******************************************************\n");
+	printf("***                                                \n");
+	printf("***          Setting initial guess and RHS.        \n");
 
-	/* MAIN ALGORITHM: NEWTON SOLVER */
-	// Start Newton iterations.
-	if (maxNewtonIter > 0)
+	// Set initial guess
+	initial_guess(u[0]);
+
+	// Loop over sweep.
+	while (1)
 	{
+		// First do initial guess subroutine.
+		for (counter_i = 0; counter_i <= max_initial_guess_checks; ++counter_i)
+		{
+			// Print initial guess.
+			if (counter_i == 0)
+			{
+				// Do I/O: create ouput directory, copy parameter file, change to output directory.
+				io(initial_dirname, argv[1]);
+
+				// Print main variables.
+				write_single_file_2d(u[0]          , "log_alpha_i.asc", 	NrTotal, NzTotal);
+				write_single_file_2d(u[0] +     dim, "beta_i.asc",		NrTotal, NzTotal);
+				write_single_file_2d(u[0] + 2 * dim, "log_h_i.asc", 	NrTotal, NzTotal);
+				write_single_file_2d(u[0] + 3 * dim, "log_a_i.asc", 	NrTotal, NzTotal);
+				write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
+				write_single_file_2d(u[0] + 5 * dim, "lambda_i.asc", 	NrTotal, NzTotal);
+				write_single_file_1d(&w0, "w_i.asc", 1);
+				
+				// Also print r, z grids.
+				write_single_file_2d(r, "r.asc", NrTotal, NzTotal);
+				write_single_file_2d(z, "z.asc", NrTotal, NzTotal);
+			}
+			else
+			{
+				// If going back into checks, reprint psi.
+				write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
+			}
+
+			// Do initial guess check.
+			// First calculate initial RHS.
+			rhs(f[0], u[0]);
+
+			// Print initial RHS.
+			write_single_file_2d(f[0]          , "f0_i.asc", NrTotal, NzTotal);
+			write_single_file_2d(f[0] +     dim, "f1_i.asc", NrTotal, NzTotal);
+			write_single_file_2d(f[0] + 2 * dim, "f2_i.asc", NrTotal, NzTotal);
+			write_single_file_2d(f[0] + 3 * dim, "f3_i.asc", NrTotal, NzTotal);
+			write_single_file_2d(f[0] + 4 * dim, "f4_i.asc", NrTotal, NzTotal);
+			write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
+
+			// Calculate 2-norms.
+			f_norms[0] = norm2_interior(f[0]          );
+			f_norms[1] = norm2_interior(f[0] +     dim);
+			f_norms[2] = norm2_interior(f[0] + 2 * dim);
+			f_norms[3] = norm2_interior(f[0] + 3 * dim);
+			f_norms[4] = norm2_interior(f[0] + 4 * dim);
+			f_norms[5] = norm2_interior(f[0] + 5 * dim);
+			
+			printf("***                                                \n");
+			printf("***        INITIAL GUESS:                          \n");
+			printf("***           counter_i  = %lld\n", counter_i);
+			printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
+			printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
+			printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
+			printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
+			printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+			printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
+			printf("***                                                \n");
+
+			printf("***                                                \n");
+			printf("******************************************************\n");
+
+			// Calculate f_norms average.
+			double f_norms_avg = (f_norms[0] + f_norms[1] + f_norms[2] + f_norms[3] + f_norms[4] + f_norms[5]) / 6.0;
+
+			// Do main check.
+			if (f_norms_avg < norm_f0_target)
+			{
+				// Exit loop.
+				printf("******************************************************\n");
+				printf("***\n");
+				printf("**** Initial guess has small-enough norm. Will continue...\n");
+				printf("***\n");
+				printf("******************************************************\n");
+				break;
+			}
+			else
+			{
+				if (counter_i < MAX_INITIAL_GUESS_CHECKS - 1)
+				{
+					// Change psi0 and rescale.
+					printf("******************************************************\n");
+					printf("***\n");
+					printf("*** Initial guess norm is not small enough with psi0 = %3.5E.\n", psi0);
+
+					cblas_dscal(dim, 0.5 * (1.0 + 1.0 / psi0), u[0] + 4 * dim, 1);
+					psi0 = 0.5 * (1.0 + psi0);
+
+					printf("*** Trying again with psi0 = %.5E.\n", psi0);
+					printf("***\n");
+					printf("******************************************************\n");
+					continue;
+				}
+				else
+				{
+					// Change psi0 and rescale.
+					printf("******************************************************\n");
+					printf("***\n");
+					printf("*** WARNING: MAX_INITIAL_GUESS_CHECKS were not enough to lower initial guess norm!\n");
+					printf("***\n");
+					printf("******************************************************\n");
+					continue;
+				}
+			}
+		}
+		
+
+		// Set initial damping factor lambda[0].
+		lambda[0] = lambda0;
+
+		// Set k = 0.
+		k = 0;
+
+		/* MAIN ALGORITHM: NEWTON SOLVER */
+		// Start Newton iterations.
+		if (maxNewtonIter > 0)
+		{
+			switch (solverType)
+			{
+				// Error-based algorithm.
+				case 1:
+					// Call algorithm.
+					k = nleq_err(&errCode, u, f, lambda,
+							du, du_bar, norm_du, norm_du_bar,
+							Theta, mu, lambda_prime, mu_prime,
+							&J, epsilon, maxNewtonIter, 5, 5,
+							lambdaMin, localSolver,
+							rhs, csr_gen_jacobian, 
+							//norm2_interior, dot_interior,
+							norm2_interior_all_variables, dot_interior_all_variables,
+							linear_solve_1, linear_solve_2);
+					break;
+				// Residual-based algorithm.
+				case 2:
+					// ||f[0]|| is also an input parameter.
+					norm_f[0] = norm2_interior_all_variables(u[0]);
+					// Calle algorithm.
+					k = nleq_res(&errCode, u, f, lambda,
+							du, norm_f, Theta, mu, lambda_prime, mu_prime,
+							&J, epsilon, maxNewtonIter, 5, 5,
+							lambdaMin, localSolver, 
+							rhs, csr_gen_jacobian, 
+							//norm2_interior, dot_interior,
+							norm2_interior_all_variables, dot_interior_all_variables,
+							linear_solve_1, linear_solve_2);
+					break;
+			}
+
+			// Check for convergence.
+			if (errCode != 0)
+			{
+				printf("******************************************************\n");
+				printf("***                                                \n");
+				printf("***    Warning! Did not converge: Error Code = %lld  \n", errCode);
+				printf("***    Will output anyway. Do not trust results!   \n");
+				printf("***                                                \n");
+				printf("******************************************************\n");
+				k = -k;
+			}
+		}
+		else
+		{
+			printf("******************************************************\n");
+			printf("***                                                \n");
+			printf("***    Warning! User did not specify any Newton Iterations.  \n");
+			printf("***                                                \n");
+			printf("******************************************************\n");
+			k = 0;
+		}
+
+		// Get omega.
+		double w = omega_calc(u[k][w_idx], m);
+
+		// Print final solutions
+		write_single_file_2d(u[k]          , "log_alpha_f.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u[k] +     dim, "beta_f.asc",		NrTotal, NzTotal);
+		write_single_file_2d(u[k] + 2 * dim, "log_h_f.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u[k] + 3 * dim, "log_a_f.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u[k] + 4 * dim, "psi_f.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u[k] + 5 * dim, "lambda_f.asc", 	NrTotal, NzTotal);
+		write_single_file_1d(&w, "w_f.asc", 1);
+
+		// Print final update.
+		if (k > 0)
+		{
+			write_single_file_2d(du[k - 1]          , "du0_f.asc", NrTotal, NzTotal);
+			write_single_file_2d(du[k - 1] +     dim, "du1_f.asc", NrTotal, NzTotal);
+			write_single_file_2d(du[k - 1] + 2 * dim, "du2_f.asc", NrTotal, NzTotal);
+			write_single_file_2d(du[k - 1] + 3 * dim, "du3_f.asc", NrTotal, NzTotal);
+			write_single_file_2d(du[k - 1] + 4 * dim, "du4_f.asc", NrTotal, NzTotal);
+			write_single_file_2d(du[k - 1] + 5 * dim, "du5_f.asc", NrTotal, NzTotal);
+		}
+
+		// Print final RHS.
+		write_single_file_2d(f[k]          , "f0_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[k] +     dim, "f1_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[k] + 2 * dim, "f2_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[k] + 3 * dim, "f3_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[k] + 4 * dim, "f4_f.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[k] + 5 * dim, "f5_f.asc", NrTotal, NzTotal);
+
+		// Also print Newton parameters.
 		switch (solverType)
 		{
-			// Error-based algorithm.
 			case 1:
-				// Call algorithm.
-				k = nleq_err(&errCode, u, f, lambda,
-						du, du_bar, norm_du, norm_du_bar,
-						Theta, mu, lambda_prime, mu_prime,
-						&J, epsilon, maxNewtonIter, 5, 5,
-						lambdaMin, localSolver,
-						rhs, csr_gen_jacobian, 
-						//norm2_interior, dot_interior,
-						norm2_interior_all_variables, dot_interior_all_variables,
-						linear_solve_1, linear_solve_2);
+				write_single_file_1d(norm_du,		"norm_du.asc",	 	k);
+				write_single_file_1d(norm_du_bar,	"norm_du_bar.asc",	k);
 				break;
-			// Residual-based algorithm.
 			case 2:
-				// ||f[0]|| is also an input parameter.
-				norm_f[0] = norm2_interior_all_variables(u[0]);
-				// Calle algorithm.
-				k = nleq_res(&errCode, u, f, lambda,
-						du, norm_f, Theta, mu, lambda_prime, mu_prime,
-						&J, epsilon, maxNewtonIter, 5, 5,
-						lambdaMin, localSolver, 
-						rhs, csr_gen_jacobian, 
-						//norm2_interior, dot_interior,
-						norm2_interior_all_variables, dot_interior_all_variables,
-						linear_solve_1, linear_solve_2);
+				write_single_file_1d(norm_f,	"norm_f.asc",	 	k);
 				break;
 		}
 
-		// Check for convergence.
-		if (errCode != 0)
+		write_single_file_1d(lambda,		"lambda.asc",	 k);
+		write_single_file_1d(Theta,		"Theta.asc",	 k);
+		write_single_file_1d(mu,		"mu.asc",	 k);
+		write_single_file_1d(lambda_prime,	"lambda_prime.asc",	 k);
+		write_single_file_1d(mu_prime,	"mu_prime.asc",		 k);
+
+		// Print final iteration's RHS's norms.
+		f_norms[0] = norm2_interior(f[k]          );
+		f_norms[1] = norm2_interior(f[k] +     dim);
+		f_norms[2] = norm2_interior(f[k] + 2 * dim);
+		f_norms[3] = norm2_interior(f[k] + 3 * dim);
+		f_norms[4] = norm2_interior(f[k] + 4 * dim);
+		f_norms[5] = norm2_interior(f[k] + 5 * dim);
+		printf("***                                                \n");
+		printf("***        FINAL ITERATION:                        \n");
+		printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
+		printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
+		printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
+		printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
+		printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+		printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
+		printf("***                                                \n");
+
+		printf("***                                                \n");
+		printf("******************************************************\n");
+
+		// Also print omega.
+		printf("******************************************************\n");
+		printf("***                                                \n");
+		printf("***           FINAL OMEGA:                         \n");
+		printf("***            w          = %-12.10E            \n", w);
+		printf("***                                                \n");
+		printf("******************************************************\n");
+
+		// ANALYSIS PHASE.
+		// Most analysis or global quantities are calcualted in spherical coordinates.
+		// Interpolate. Memory will be allocated in this subroutine.
+		cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, GNUM);
+		// Write to file.
+		write_single_file_2d_polar(i_rr           , "sph_rr.asc", 		NrrTotal, NthTotal);
+		write_single_file_2d_polar(i_th           , "sph_th.asc", 		NrrTotal, NthTotal);
+		write_single_file_2d_polar(i_u            , "sph_log_alpha_f.asc", 	NrrTotal, NthTotal);
+		write_single_file_2d_polar(i_u +     p_dim, "sph_beta_f.asc",		NrrTotal, NthTotal);
+		write_single_file_2d_polar(i_u + 2 * p_dim, "sph_log_h_f.asc", 		NrrTotal, NthTotal);
+		write_single_file_2d_polar(i_u + 3 * p_dim, "sph_log_a_f.asc", 		NrrTotal, NthTotal);
+		write_single_file_2d_polar(i_u + 4 * p_dim, "sph_psi_f.asc", 		NrrTotal, NthTotal);
+		write_single_file_2d_polar(i_u + 5 * p_dim, "sph_lambda_f.asc", 	NrrTotal, NthTotal);
+		// Do analysis.
+		analysis(i_u, i_rr, i_th, w);
+		// Calculate rr(phi_max).
+		ex_phi_analysis(1, &phi_max, &rr_phi_max, &k_rr_max, i_u, i_rr, i_th, l, ghost, order, NrrTotal, NthTotal, p_dim, drr, dth, rr_inf);
+
+		// Exit directory by going up one level (executable level).
+		chdir(work_dirname);
+
+		// Rename directory to include w.
+		snprintf(final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", l, w, dr, NrInterior);
+		rename(initial_dirname, final_dirname);
+
+		// Sweep continuation if sanity checks first.
+		if (errCode == 0)
 		{
-			printf("******************************************************\n");
-			printf("***                                                \n");
-			printf("***    Warning! Did not converge: Error Code = %lld  \n", errCode);
-			printf("***    Will output anyway. Do not trust results!   \n");
-			printf("***                                                \n");
-			printf("******************************************************\n");
-			k = -k;
+			// Check if sweep should continue on this resolution.
+			if (rr_phi_max >= rr_phi_max_minimum)
+			{
+				// If so, set initial guess to final solution and continue.
+				memcpy(u[0], u[k], GNUM * dim + 1);
+				// Rescale psi.
+				cblas_dscal(dim, psi0, u[0] + 4 * dim, 1);
+				// Set initial omega.
+				w0 = w;
+				printf("******************************************************\n");
+				printf("***                                                \n");
+				printf("***   Setting initial data to last solution and continuing...\n");
+				printf("***                                                \n");
+				printf("******************************************************\n");
+			}
+			// Else, exit.
+			else
+			{
+				printf("******************************************************\n");
+				printf("***                                                \n");
+				printf("***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n", rr_phi_max_minimum);
+				printf("***                                                \n");
+				printf("******************************************************\n");
+				break;
+			}
 		}
-	}
-	else
-	{
-		printf("******************************************************\n");
-		printf("***                                                \n");
-		printf("***    Warning! User did not specify any Newton Iterations.  \n");
-		printf("***                                                \n");
-		printf("******************************************************\n");
-		k = 0;
-	}
-
-	// Get omega.
-	double w = omega_calc(u[k][w_idx], m);
-
-	// Print entire history of solutions and updates.
-	// TODO
-
-	// Print final solutions
-	write_single_file_2d(u[k]          , "log_alpha_f.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[k] +     dim, "beta_f.asc",		NrTotal, NzTotal);
-	write_single_file_2d(u[k] + 2 * dim, "log_h_f.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[k] + 3 * dim, "log_a_f.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[k] + 4 * dim, "psi_f.asc", 	NrTotal, NzTotal);
-	write_single_file_2d(u[k] + 5 * dim, "lambda_f.asc", 	NrTotal, NzTotal);
-	write_single_file_1d(&w, "w_f.asc", 1);
-
-	// Print final update.
-	if (k > 0)
-	{
-		write_single_file_2d(du[k - 1]          , "du0_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] +     dim, "du1_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 2 * dim, "du2_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 3 * dim, "du3_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 4 * dim, "du4_f.asc", NrTotal, NzTotal);
-		write_single_file_2d(du[k - 1] + 5 * dim, "du5_f.asc", NrTotal, NzTotal);
-	}
-
-	// Print final RHS.
-	write_single_file_2d(f[k]          , "f0_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] +     dim, "f1_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 2 * dim, "f2_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 3 * dim, "f3_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 4 * dim, "f4_f.asc", NrTotal, NzTotal);
-	write_single_file_2d(f[k] + 5 * dim, "f5_f.asc", NrTotal, NzTotal);
-
-	// Also print Newton parameters.
-	switch (solverType)
-	{
-		case 1:
-			write_single_file_1d(norm_du,		"norm_du.asc",	 	k);
-			write_single_file_1d(norm_du_bar,	"norm_du_bar.asc",	k);
+		else
+		{
+			// Cannot continue sweep because errCode != 0.
+			printf("******************************************************\n");
+			printf("***                                                \n");
+			printf("***   Sweep cannot continue because errCode = %lld !\n", errCode);
+			printf("***                                                \n");
+			printf("******************************************************\n");
 			break;
-		case 2:
-			write_single_file_1d(norm_f,	"norm_f.asc",	 	k);
-			break;
+		}
+		
 	}
-
-	write_single_file_1d(lambda,		"lambda.asc",	 k);
-	write_single_file_1d(Theta,		"Theta.asc",	 k);
-	write_single_file_1d(mu,		"mu.asc",	 k);
-	write_single_file_1d(lambda_prime,	"lambda_prime.asc",	 k);
-	write_single_file_1d(mu_prime,	"mu_prime.asc",		 k);
-
-	// Print final iteration's RHS's norms.
-	f_norms[0] = norm2_interior(f[k]          );
-	f_norms[1] = norm2_interior(f[k] +     dim);
-	f_norms[2] = norm2_interior(f[k] + 2 * dim);
-	f_norms[3] = norm2_interior(f[k] + 3 * dim);
-	f_norms[4] = norm2_interior(f[k] + 4 * dim);
-	f_norms[5] = norm2_interior(f[k] + 5 * dim);
-	printf("***                                                \n");
-	printf("***        FINAL ITERATION:                        \n");
-	printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-	printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-	printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-	printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-	printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-	printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
-	printf("***                                                \n");
-
-	printf("***                                                \n");
-	printf("******************************************************\n");
-
-	// Also print omega.
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***           FINAL OMEGA:                         \n");
-	printf("***            w          = %-12.10E            \n", w);
-	printf("***                                                \n");
-	printf("******************************************************\n");
-
-
-	// ANALYSIS PHASE.
-	// Most analysis or global quantities are calcualted in spherical coordinates.
-	// Pointers to memory for spherical variables.
-	double *i_rr = NULL;
-	double *i_th = NULL;
-	double *i_u = NULL;
-	// Interpolate. Memory will be allocated in this subroutine.
-	cart_to_pol(&i_u, &i_rr, &i_th, r, z, u[k], Dr_u, Dz_u, Drz_u, GNUM);
-	// Write to file.
-	write_single_file_2d_polar(i_rr           , "sph_rr.asc", 		NrrTotal, NthTotal);
-	write_single_file_2d_polar(i_th           , "sph_th.asc", 		NrrTotal, NthTotal);
-	write_single_file_2d_polar(i_u            , "sph_log_alpha_f.asc", 	NrrTotal, NthTotal);
-	write_single_file_2d_polar(i_u +     p_dim, "sph_beta_f.asc",		NrrTotal, NthTotal);
-	write_single_file_2d_polar(i_u + 2 * p_dim, "sph_log_h_f.asc", 		NrrTotal, NthTotal);
-	write_single_file_2d_polar(i_u + 3 * p_dim, "sph_log_a_f.asc", 		NrrTotal, NthTotal);
-	write_single_file_2d_polar(i_u + 4 * p_dim, "sph_psi_f.asc", 		NrrTotal, NthTotal);
-	write_single_file_2d_polar(i_u + 5 * p_dim, "sph_lambda_f.asc", 	NrrTotal, NthTotal);
-	// Do analysis.
-	double M_KOMAR, J_KOMAR, GRV2, GRV3;
-	analysis(i_u, i_rr, i_th, w);
-
 
 	// Clear memory.
 	printf("******************************************************\n");
@@ -608,6 +673,3 @@ int main(int argc, char *argv[])
 	// All done.
 	return 0;
 }
-
-// Centered print line.
-//printf("***                        **                      ***\n");

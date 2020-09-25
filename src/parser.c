@@ -602,12 +602,52 @@ void parser(const char *fname)
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"useLowRank\" from parameter file. Setting to default value, useLowRank = %lld\n", useLowRank);
 	}
 
-	// OUTPUT
-	// dirname.
-	if (config_lookup_string(&cfg, "dirname", &dirname) != CONFIG_TRUE)
+	// INITIAL GUESS CHECK.
+	if (config_lookup_int64(&cfg, "max_initial_guess_checks", &max_initial_guess_checks) == CONFIG_TRUE)
 	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"dirname\" from parameter file. Setting to default value, dirname = %s\n", dirname);
+		if (max_initial_guess_checks < 0 || max_initial_guess_checks > 10)
+		{
+			fprintf(stderr, "PARSER: ERROR! max_initial_guess_checks = %lld is out of bounds.\n", max_initial_guess_checks);
+			exit(-1);
+		}
 	}
+	else
+	{
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"max_initial_guess_checks\" from parameter file. Setting to default value, max_initial_guess_checks = %lld\n", max_initial_guess_checks);
+	}
+	if (config_lookup_float(&cfg, "norm_f0_target", &norm_f0_target) == CONFIG_TRUE)
+	{
+		if (norm_f0_target < epsilon || norm_f0_target > 1.0)
+		{
+			fprintf(stderr, "PARSER: ERROR! norm_f0_target = %3.5E out of bounds!\n", norm_f0_target);
+			exit(-1);
+		}
+	}
+	else
+	{
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"norm_f0_target\" from parameter file. Setting to default value, norm_f0_target = %3.5E\n", norm_f0_target);
+	}
+	
+	// SWEEP CONTROL.
+	if (config_lookup_float(&cfg, "rr_phi_max_minimum", &rr_phi_max_minimum) == CONFIG_TRUE)
+	{
+		if (rr_phi_max_minimum < 4 * dr || norm_f0_target > dr * NrInterior)
+		{
+			fprintf(stderr, "PARSER: ERROR! rr_phi_max_minimum = %3.5E out of bounds!\n", rr_phi_max_minimum);
+			exit(-1);
+		}
+	}
+	else
+	{
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_minimum\" from parameter file. Setting to default value, norm_f0_target = %3.5E\n", norm_f0_target);
+	}
+
+	// OUTPUT
+	// work_dirname.
+	getcwd(work_dirname, MAX_STR_LEN);
+
+	// Set initial directory name.
+	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,w=X.XXXXXE-01,dr=%.5E,N=%04lld", l, dr, NrInterior);
 
 	// All done.
 	return;
