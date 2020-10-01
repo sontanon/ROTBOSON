@@ -573,7 +573,7 @@ int main(int argc, char *argv[])
 			if (rr_phi_max >= rr_phi_max_minimum)
 			{
 				// If so, set initial guess to final solution and continue.
-				memcpy(u[0], u[k], GNUM * dim + 1);
+				memcpy(u[0], u[k], (GNUM * dim + 1) * sizeof(double));
 				// Rescale psi.
 				cblas_dscal(dim, psi0_i, u[0] + 4 * dim, 1);
 				// Set initial omega.
