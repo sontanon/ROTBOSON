@@ -611,7 +611,8 @@ int main(int argc, char *argv[])
 				w0 = w;
 
 				// Set analysis phase to 0 again.
-				J.analysis_phase = 0;
+				if (!useLowRank)
+					J.analysis_phase = 0;
 
 				printf("******************************************************\n");
 				printf("***                                                \n");
