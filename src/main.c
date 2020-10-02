@@ -77,6 +77,9 @@ int main(int argc, char *argv[])
 	// Initial psi0 damper.
 	double psi0_i = psi0;
 
+	// Future scale factors.
+	double next_scale[GNUM] = { 0.0 };
+
 	// Print program start and parameters.
 	printf("******************************************************\n");
 	printf("***                                                \n");
@@ -369,7 +372,7 @@ int main(int argc, char *argv[])
 			}
 			else
 			{
-				if (counter_i < MAX_INITIAL_GUESS_CHECKS - 1)
+				if (counter_i < max_initial_guess_checks - 1)
 				{
 					// Change psi0 and rescale.
 					printf("******************************************************\n");
@@ -572,15 +575,52 @@ int main(int argc, char *argv[])
 			// Check if sweep should continue on this resolution.
 			if (rr_phi_max >= rr_phi_max_minimum)
 			{
-				// If so, set initial guess to final solution and continue.
+#define NEXT_SCALE 0.0
+				#pragma omp parallel shared(u)
+				{
+					#pragma omp for schedule(dynamic, 1)
+					for (counter_i = 0; counter_i < GNUM * dim; ++counter_i)
+					{
+						u[0][counter_i] *= -NEXT_SCALE;
+						u[0][counter_i] += (1.0 + NEXT_SCALE) * u[k][counter_i];
+					}
+				}
+
+				// Scale psi.
+				cblas_dscal(dim, psi0, u[0] + 4 * dim, 1);
+			
+				/*
+				// Get "scaling factors".
+				for (counter_i = 0; counter_i < GNUM; ++counter_i)
+				{
+					next_scale[counter_i] = u[k][cblas_idamax(dim, u[k] + counter_i * dim, 1)] / u[0][cblas_idamax(dim, u[0] + counter_i * dim, 1)];
+				}
+				next_scale[4] = psi0;
+
+				// Now, set initial guess to final solution and continue.
 				memcpy(u[0], u[k], (GNUM * dim + 1) * sizeof(double));
-				// Rescale psi.
-				cblas_dscal(dim, psi0_i, u[0] + 4 * dim, 1);
+
+				// Rescale variables.
+				for (counter_i = 0; counter_i < GNUM; ++counter_i)
+				{
+					cblas_dscal(dim, next_scale[counter_i], u[0] + counter_i * dim, 1);
+				}
+				*/
+
 				// Set initial omega.
 				w0 = w;
+
+				// Set analysis phase to 0 again.
+				J.analysis_phase = 0;
+
 				printf("******************************************************\n");
 				printf("***                                                \n");
 				printf("***   Setting initial data to last solution and continuing...\n");
+				printf("***                                                \n");
+				/*
+				for (counter_i = 0; counter_i < GNUM; ++counter_i)
+					printf("***   next_scale[%lld] = %.5E                         \n", counter_i, next_scale[counter_i]);
+				*/
 				printf("***                                                \n");
 				printf("******************************************************\n");
 			}

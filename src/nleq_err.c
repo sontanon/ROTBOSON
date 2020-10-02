@@ -332,7 +332,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		 				/* In this case, the last update is stored in u[k + 1 - qnerr_stop] since qnerr_stop is negative. */
 						/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
 						/* lambda damping factor which will be set to 1.0. */
-						lambda[k + (-qnerr_stop) + 1] = 1.0;
+						lambda[k + (-qnerr_stop) + 1] = 0.5;
 
 						/* Set k to one place before last update. */
 						/* This k is not where the last solution is stored, but, rather, one place before. */
