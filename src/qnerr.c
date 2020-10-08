@@ -6,6 +6,10 @@
 #define ERROR_CODE_QNERR_THETA_INCREASE_EXIT 		- 2
 #define ERROR_CODE_EXCEEDED_MAX_ITERATIONS 		- 3
 
+#define NORMALIZED
+
+#define MIN_ITERATIONS 0
+
 MKL_INT nleq_err_qnerr(	
 	        MKL_INT	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
@@ -49,7 +53,11 @@ MKL_INT nleq_err_qnerr(
 #endif
 
 	// Calculate ||du^0||.
+#ifdef NORMALIZED
+	norm_du[l] = NORM(du[l]) / NORM(u[l]);
+#else
 	norm_du[l] = NORM(du[l]);
+#endif
 
 	// 1. Step l.
 	for (l = 0; l < max_newton_iterations; ++l)
@@ -80,7 +88,11 @@ MKL_INT nleq_err_qnerr(
 			for (i = 1; i < l + 1; ++i)
 			{
 				// alpha_bar = (du_bar^{l+1} . du^{i-1}) / ||du^{i-1}||^2.
+#ifdef NORMALIZED
+				alpha_bar = (DOT(du_bar[l + 1], du[i - 1]) / DOT(u[l + 1], u[i - 1])) / (norm_du[i - 1] * norm_du[i - 1]);
+#else
 				alpha_bar = DOT(du_bar[l + 1], du[i - 1]) / (norm_du[i - 1] * norm_du[i - 1]);
+#endif
 				// du_bar^{l+1} += alpha_bar * du^i.
 				ARRAY_SUM(du_bar[l + 1], 1.0, du_bar[l + 1], alpha_bar, du[i]);
 			}
@@ -88,13 +100,22 @@ MKL_INT nleq_err_qnerr(
 
 		// 3. Compute.
 		// alpha_{l+1} = (du_bar^{l+1} . du^l) / ||du^l||^2.
+#ifdef NORMALIZED
+		alpha[l + 1] = (DOT(du_bar[l + 1], du[l]) / DOT(u[l + 1], u[l])) / (norm_du[l] * norm_du[l]);
+#else
 		alpha[l + 1] = DOT(du_bar[l + 1], du[l]) / (norm_du[l] * norm_du[l]);
+#endif
+
+#ifdef NORMALIZED
+		norm_du_bar[l + 1] = NORM(du_bar[l + 1]) / NORM(u[l + 1]);
+#else
 		norm_du_bar[l + 1] = NORM(du_bar[l + 1]);
+#endif
 		// Theta_l = ||du_bar^{l+1}|| / ||du^l||.
 		Theta[l] = norm_du_bar[l + 1] / norm_du[l];
 
 		// If Theta_l > 1/2: stop, no convergence.
-		if (Theta[l] > 0.5)
+		if (Theta[l] > 0.5 && (l + 1) > MIN_ITERATIONS)
 		{
 
 			/* Print message. */
@@ -111,7 +132,11 @@ MKL_INT nleq_err_qnerr(
 		// 4. Compute.
 		// du^{l+1} = du_bar^{l+1} / (1 - alpha_{l+1}).
 		ARRAY_SUM(du[l + 1], 1.0 / (1.0 - alpha[l + 1]), du_bar[l + 1], 0.0, du[l + 1]);
+#ifdef NORMALIZED
+		norm_du[l + 1] = NORM(du[l + 1]) / NORM(u[l + 1]);
+#else
 		norm_du[l + 1] = NORM(du[l + 1]);
+#endif
 
 		// Convergence test: If ||du^{l+1}|| < epsilon: stop. Solution found u* = u^{l+1} + du^{l+1}.
 		if (norm_du[l + 1] < epsilon)
