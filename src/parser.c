@@ -410,19 +410,18 @@ void parser(const char *fname)
 				NrTotalInitial = NrTotal;
 				NzTotalInitial = NzTotal;
 			}
-
-			// psi0.
-			if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
-			{
-				if (MAX_PSI0 < psi0 || psi0 < MIN_PSI0)
-				{
-					fprintf(stderr, "PARSER: ERROR! psi0 = %3.5E is not in range [%3.5E, %3.5E]\n", psi0, MIN_PSI0, MAX_PSI0);
-					fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-					exit(-1);
-				}
-			}
 			break;
 	}
+
+	// Scale initial data.
+	config_lookup_float(&cfg, "scale_u0", &scale_u0);
+	config_lookup_float(&cfg, "scale_u1", &scale_u1);
+	config_lookup_float(&cfg, "scale_u2", &scale_u2);
+	config_lookup_float(&cfg, "scale_u3", &scale_u3);
+	config_lookup_float(&cfg, "scale_u4", &scale_u4);
+	config_lookup_float(&cfg, "scale_u5", &scale_u5);
+	config_lookup_float(&cfg, "scale_u6", &scale_u6);
+
 	// Generate via analytic guess.
 	if (!readInitialData)
 	{
