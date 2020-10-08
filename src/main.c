@@ -74,11 +74,12 @@ int main(int argc, char *argv[])
 	// w will be unknown for now so set it to X.XXXXXE-01.
 	parser(argv[1]);
 
-	// Initial psi0 damper.
-	double psi0_i = psi0;
-
 	// Future scale factors.
-	double next_scale[GNUM] = { 0.0 };
+	double next_scale[GNUM + 1] = { scale_u0, scale_u1, scale_u2, scale_u3, scale_u4, scale_u5 };
+
+	// Peaks.
+	double peak_next[GNUM + 1] = { 0.0 };
+	double peak_prev[GNUM + 1] = { 0.0 };
 
 	// Print program start and parameters.
 	printf("******************************************************\n");
@@ -294,112 +295,53 @@ int main(int argc, char *argv[])
 	// Loop over sweep.
 	while (1)
 	{
-		// First do initial guess subroutine.
-		for (counter_i = 0; counter_i <= max_initial_guess_checks; ++counter_i)
-		{
-			// Print initial guess.
-			if (counter_i == 0)
-			{
-				// Do I/O: create ouput directory, copy parameter file, change to output directory.
-				io(initial_dirname, argv[1]);
+		// Do I/O: create ouput directory, copy parameter file, change to output directory.
+		io(initial_dirname, argv[1]);
 
-				// Print main variables.
-				write_single_file_2d(u[0]          , "log_alpha_i.asc", 	NrTotal, NzTotal);
-				write_single_file_2d(u[0] +     dim, "beta_i.asc",		NrTotal, NzTotal);
-				write_single_file_2d(u[0] + 2 * dim, "log_h_i.asc", 	NrTotal, NzTotal);
-				write_single_file_2d(u[0] + 3 * dim, "log_a_i.asc", 	NrTotal, NzTotal);
-				write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
-				write_single_file_2d(u[0] + 5 * dim, "lambda_i.asc", 	NrTotal, NzTotal);
-				write_single_file_1d(&w0, "w_i.asc", 1);
-				
-				// Also print r, z grids.
-				write_single_file_2d(r, "r.asc", NrTotal, NzTotal);
-				write_single_file_2d(z, "z.asc", NrTotal, NzTotal);
-			}
-			else
-			{
-				// If going back into checks, reprint psi.
-				write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
-			}
-
-			// Do initial guess check.
-			// First calculate initial RHS.
-			rhs(f[0], u[0]);
-
-			// Print initial RHS.
-			write_single_file_2d(f[0]          , "f0_i.asc", NrTotal, NzTotal);
-			write_single_file_2d(f[0] +     dim, "f1_i.asc", NrTotal, NzTotal);
-			write_single_file_2d(f[0] + 2 * dim, "f2_i.asc", NrTotal, NzTotal);
-			write_single_file_2d(f[0] + 3 * dim, "f3_i.asc", NrTotal, NzTotal);
-			write_single_file_2d(f[0] + 4 * dim, "f4_i.asc", NrTotal, NzTotal);
-			write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
-
-			// Calculate 2-norms.
-			f_norms[0] = norm2_interior(f[0]          );
-			f_norms[1] = norm2_interior(f[0] +     dim);
-			f_norms[2] = norm2_interior(f[0] + 2 * dim);
-			f_norms[3] = norm2_interior(f[0] + 3 * dim);
-			f_norms[4] = norm2_interior(f[0] + 4 * dim);
-			f_norms[5] = norm2_interior(f[0] + 5 * dim);
-			
-			printf("***                                                \n");
-			printf("***        INITIAL GUESS:                          \n");
-			printf("***           counter_i  = %lld\n", counter_i);
-			printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-			printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-			printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-			printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-			printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-			printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
-			printf("***                                                \n");
-
-			printf("***                                                \n");
-			printf("******************************************************\n");
-
-			// Calculate f_norms average.
-			double f_norms_avg = (f_norms[0] + f_norms[1] + f_norms[2] + f_norms[3] + f_norms[4] + f_norms[5]) / 6.0;
-
-			// Do main check.
-			if (f_norms_avg < norm_f0_target)
-			{
-				// Exit loop.
-				printf("******************************************************\n");
-				printf("***\n");
-				printf("**** Initial guess has small-enough norm. Will continue...\n");
-				printf("***\n");
-				printf("******************************************************\n");
-				break;
-			}
-			else
-			{
-				if (counter_i < max_initial_guess_checks - 1)
-				{
-					// Change psi0 and rescale.
-					printf("******************************************************\n");
-					printf("***\n");
-					printf("*** Initial guess norm is not small enough with psi0 = %3.5E.\n", psi0);
-
-					cblas_dscal(dim, 0.5 * (1.0 + 1.0 / psi0), u[0] + 4 * dim, 1);
-					psi0 = 0.5 * (1.0 + psi0);
-
-					printf("*** Trying again with psi0 = %.5E.\n", psi0);
-					printf("***\n");
-					printf("******************************************************\n");
-					continue;
-				}
-				else
-				{
-					// Change psi0 and rescale.
-					printf("******************************************************\n");
-					printf("***\n");
-					printf("*** WARNING: MAX_INITIAL_GUESS_CHECKS were not enough to lower initial guess norm!\n");
-					printf("***\n");
-					printf("******************************************************\n");
-					continue;
-				}
-			}
-		}
+		// Print main variables.
+		write_single_file_2d(u[0]          , "log_alpha_i.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u[0] +     dim, "beta_i.asc",		NrTotal, NzTotal);
+		write_single_file_2d(u[0] + 2 * dim, "log_h_i.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u[0] + 3 * dim, "log_a_i.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u[0] + 4 * dim, "psi_i.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u[0] + 5 * dim, "lambda_i.asc", 	NrTotal, NzTotal);
+		write_single_file_1d(&w0, "w_i.asc", 1);
 		
+		// Also print r, z grids.
+		write_single_file_2d(r, "r.asc", NrTotal, NzTotal);
+		write_single_file_2d(z, "z.asc", NrTotal, NzTotal);
+
+		// First calculate initial RHS.
+		rhs(f[0], u[0]);
+
+		// Print initial RHS.
+		write_single_file_2d(f[0]          , "f0_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] +     dim, "f1_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] + 2 * dim, "f2_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] + 3 * dim, "f3_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] + 4 * dim, "f4_i.asc", NrTotal, NzTotal);
+		write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
+
+		// Calculate 2-norms.
+		f_norms[0] = norm2_interior(f[0]          );
+		f_norms[1] = norm2_interior(f[0] +     dim);
+		f_norms[2] = norm2_interior(f[0] + 2 * dim);
+		f_norms[3] = norm2_interior(f[0] + 3 * dim);
+		f_norms[4] = norm2_interior(f[0] + 4 * dim);
+		f_norms[5] = norm2_interior(f[0] + 5 * dim);
+		
+		printf("***                                                \n");
+		printf("***        INITIAL GUESS:                          \n");
+		printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
+		printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
+		printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
+		printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
+		printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+		printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
+		printf("***                                                \n");
+
+		printf("***                                                \n");
+		printf("******************************************************\n");
 
 		// Set initial damping factor lambda[0].
 		lambda[0] = lambda0;
@@ -419,7 +361,7 @@ int main(int argc, char *argv[])
 					k = nleq_err(&errCode, u, f, lambda,
 							du, du_bar, norm_du, norm_du_bar,
 							Theta, mu, lambda_prime, mu_prime,
-							&J, epsilon, maxNewtonIter, 5, 5,
+							&J, epsilon, maxNewtonIter, 8, 8,
 							lambdaMin, localSolver,
 							rhs, csr_gen_jacobian, 
 							//norm2_interior, dot_interior,
@@ -433,7 +375,7 @@ int main(int argc, char *argv[])
 					// Calle algorithm.
 					k = nleq_res(&errCode, u, f, lambda,
 							du, norm_f, Theta, mu, lambda_prime, mu_prime,
-							&J, epsilon, maxNewtonIter, 5, 5,
+							&J, epsilon, maxNewtonIter, 8, 8,
 							lambdaMin, localSolver, 
 							rhs, csr_gen_jacobian, 
 							//norm2_interior, dot_interior,
@@ -575,6 +517,34 @@ int main(int argc, char *argv[])
 			// Check if sweep should continue on this resolution.
 			if (rr_phi_max >= rr_phi_max_minimum)
 			{
+				for (counter_i = 0; counter_i < GNUM; ++counter_i)
+				{
+					// Get peaks.
+					peak_prev[counter_i] = u[0][counter_i * dim + cblas_idamax(dim, u[0] + counter_i * dim, 1)];
+					peak_next[counter_i] = u[k][counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)];
+
+					if (counter_i == 4)
+					{
+						next_scale[counter_i] = scale_u4;
+					}
+					else
+					{
+						next_scale[counter_i] = 1.0 + scale_u4 * (1.0 - peak_prev[counter_i] / peak_next[counter_i]);
+					}
+
+					printf("**** Variable %lld peak = %-.5E, previous peak = %-.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
+				}
+				// Omega prediction.
+				peak_prev[GNUM] = omega_calc(u[0][GNUM * dim], m);
+				peak_next[GNUM] = omega_calc(u[k][GNUM * dim], m);
+
+				next_scale[GNUM] = 1.0 + scale_u4 * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
+				
+				printf("**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w, next_scale[GNUM]);
+
+				u[k][GNUM * dim] = inverse_omega_calc(next_scale[GNUM] * w, m);
+
+				// Trasfer to initial data, notice that omega was transfered previously.
 #define NEXT_SCALE 0.0
 				#pragma omp parallel shared(u)
 				{
@@ -586,27 +556,13 @@ int main(int argc, char *argv[])
 					}
 				}
 
-				// Scale psi.
-				cblas_dscal(dim, psi0, u[0] + 4 * dim, 1);
-			
-				/*
-				// Get "scaling factors".
-				for (counter_i = 0; counter_i < GNUM; ++counter_i)
-				{
-					next_scale[counter_i] = u[k][cblas_idamax(dim, u[k] + counter_i * dim, 1)] / u[0][cblas_idamax(dim, u[0] + counter_i * dim, 1)];
-				}
-				next_scale[4] = psi0;
 
-				// Now, set initial guess to final solution and continue.
-				memcpy(u[0], u[k], (GNUM * dim + 1) * sizeof(double));
-
-				// Rescale variables.
+				// Scale variables.
 				for (counter_i = 0; counter_i < GNUM; ++counter_i)
 				{
 					cblas_dscal(dim, next_scale[counter_i], u[0] + counter_i * dim, 1);
 				}
-				*/
-
+			
 				// Set initial omega.
 				w0 = w;
 
@@ -616,12 +572,8 @@ int main(int argc, char *argv[])
 
 				printf("******************************************************\n");
 				printf("***                                                \n");
-				printf("***   Setting initial data to last solution and continuing...\n");
+				printf("***   Setting initial data to last solution, scaling, and continuing...\n");
 				printf("***                                                \n");
-				/*
-				for (counter_i = 0; counter_i < GNUM; ++counter_i)
-					printf("***   next_scale[%lld] = %.5E                         \n", counter_i, next_scale[counter_i]);
-				*/
 				printf("***                                                \n");
 				printf("******************************************************\n");
 			}
