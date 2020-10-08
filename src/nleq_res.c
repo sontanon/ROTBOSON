@@ -191,7 +191,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		//if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
 		if (Theta[k] >= 1.0)
 		{
-			lambda_prime[k] = MIN(0.5 * lambda[k], mu_prime[k]);
+			lambda_prime[k] = MIN(0.25 * lambda[k], mu_prime[k]);
 
 			/* Print message: iterate is rejected because Theta[k] > 1.0 - 0.25 * lambda[k]. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_f[k], lambda[k], Theta[k], lambda_prime[k], "REJECT A");
@@ -287,7 +287,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 					/* In this case, the last update is stored in u[k + 1 - qnres_stop] since qnres_stop is negative. */
 					/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
 					/* lambda damping factor which will be set to 1.0. */
-					lambda[k + (-qnres_stop) + 1] = 1.0;
+					lambda[k + (-qnres_stop) + 1] = 0.25;
 
 					/* Set k to one place before last update. */
 					/* This k is not where the last solution is stored, but, rather, one place before. */
