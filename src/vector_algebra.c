@@ -1,7 +1,8 @@
 #include "tools.h"
 #include "param.h"
 
-#define GNUM_VECTOR 6
+#define GRID_VARIABLE_START	4
+#define GRID_VARIABLE_END	6
 
 double norm2(double *x)
 {
@@ -49,13 +50,13 @@ double dot_interior_all_variables(double *x, double *y)
 	MKL_INT k = 0;
 
 	// Add all dot products.
-	for (k = 0; k < GNUM_VECTOR; ++k)
+	for (k = GRID_VARIABLE_START; k < GRID_VARIABLE_END; ++k)
 	{
 		sum += dot_interior(x + k * dim, y + k * dim);
 	}
 
 	// Rescale.
-	return sum / ((double)GNUM_VECTOR);
+	return sum / ((double)(GRID_VARIABLE_END - GRID_VARIABLE_START));
 }
 
 double norm2_interior_all_variables(double *x)
