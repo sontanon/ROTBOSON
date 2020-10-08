@@ -15,6 +15,11 @@
 
 #include "regularization_coupling.h"
 
+#define NORMALIZED
+
+#define LOCAL_LAMBDA 	0.75
+#define THETA_MAX	1.0E+6
+
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0).
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
@@ -107,7 +112,11 @@ MKL_INT nleq_err(
 #endif
 
 		/* Calculate ||du^k||. */
+#ifdef NORMALIZED
+		norm_du[k] = NORM(du[k]) / NORM(u[k]);
+#else
 		norm_du[k] = NORM(du[k]);
+#endif
 
 		/* Print table header every 50 iterations. */
 		if (k % 50 == 0)
@@ -152,7 +161,14 @@ MKL_INT nleq_err(
 			mu[k] = (norm_du[k - 1] * norm_du_bar[k] * lambda[k - 1]) / (norm_du_bar_minus_du * norm_du[k]);
 
 			/* Expected damping factor. */
-			lambda[k] = MIN(1.0, mu[k]);
+			if (Theta[k - 1] > 0.5)
+			{
+				lambda[k] = MIN(2.0 * lambda[k - 1], MIN(LOCAL_LAMBDA, mu[k]));
+			}
+			else
+			{
+				lambda[k] = MIN(1.25 * lambda[k - 1], MIN(LOCAL_LAMBDA, mu[k]));
+			}
 		}
 
 		// Regularity test: If lambda_k < lambda_min: stop. Convergence failure.
@@ -189,7 +205,11 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		coupled_du(du_bar[k + 1], u[k + 1], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
 #endif
 
+#ifdef NORMALIZED
+		norm_du_bar[k + 1] = NORM(du_bar[k + 1]) / NORM(u[k + 1]);
+#else
 		norm_du_bar[k + 1] = NORM(du_bar[k + 1]);
+#endif
 
 		// 3. Compute the monitoring quantities
 		//    Theta_k    = ||du_bar^{k + 1}|| / ||du^k||
@@ -204,9 +224,11 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		// If Theta_k > 1 - lambda_k / 4: 
 		// then replace lambda_k by lambda_prime_k = min(mu_prime_k, lambda_k / 2). Go to regularity test.
-		if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
+		//if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
+		//if (Theta[k] > 2.0)
+		if (Theta[k] > THETA_MAX)
 		{
-			lambda_prime[k] = MIN(0.5 * lambda[k], mu_prime[k]);
+			lambda_prime[k] = MIN(0.25 * lambda[k], mu_prime[k]);
 
 			/* Print message: iterate is rejected because Theta[k] > 1.0 - 0.25 * lambda[k]. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "REJECT A");
@@ -251,7 +273,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		else
 		{
 			/* Make replacement. */
-			lambda_prime[k] = MIN(1.0, mu_prime[k]);
+			lambda_prime[k] = MIN(LOCAL_LAMBDA, mu_prime[k]);
 
 			/* Reset l_A trial counter since we have found a proper lambda factor that makes Theta[k] < 1 - lambda[k] / 4. */
 			l_A = 0;
@@ -259,7 +281,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		// Test if we are inside "local" region.
 		// If lambda_prime_k = lambda_k = 1:
-		if (lambda_prime[k] == lambda[k] && lambda[k] == 1.0)
+		if (lambda_prime[k] == lambda[k] && lambda[k] == LOCAL_LAMBDA)
 		{
 			// Convergence test: If ||du_bar^{k+1}|| < epsilon: stop. Solution found u* = u^{k+1} + du_bar^{k+1}.
 			if (norm_du_bar[k + 1] < epsilon)
@@ -332,7 +354,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		 				/* In this case, the last update is stored in u[k + 1 - qnerr_stop] since qnerr_stop is negative. */
 						/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
 						/* lambda damping factor which will be set to 1.0. */
-						lambda[k + (-qnerr_stop) + 1] = 0.5;
+						lambda[k + (-qnerr_stop) + 1] = 0.25 * LOCAL_LAMBDA;
 
 						/* Set k to one place before last update. */
 						/* This k is not where the last solution is stored, but, rather, one place before. */
