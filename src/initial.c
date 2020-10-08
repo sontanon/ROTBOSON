@@ -40,6 +40,10 @@ void initial_guess(double *u)
 		read_single_file_1d(&w0, w_i, 1, __FILE__, __LINE__);
 		printf("***          Read omega initial data.       \n");
 	}
+
+	// Scale omega.
+	w0 *= scale_u6;
+
 	u[w_idx] = inverse_omega_calc(w0, m);
 
 	double m2 = m * m;
@@ -180,7 +184,6 @@ void initial_guess(double *u)
 		{
 			// Rescale scalar field by constant psi0.
 			read_single_file_2d(u + 4 * dim, psi_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
-			cblas_dscal(dim, psi0, u + 4 * dim, 1);
 			printf("***           Read psi initial data.        \n");
 		}
 
@@ -226,6 +229,14 @@ void initial_guess(double *u)
 		}
 	}
 	
+	// Scale initial data.
+	cblas_dscal(dim, scale_u0, u + 0 * dim, 1);
+	cblas_dscal(dim, scale_u1, u + 1 * dim, 1);
+	cblas_dscal(dim, scale_u2, u + 2 * dim, 1);
+	cblas_dscal(dim, scale_u3, u + 3 * dim, 1);
+	cblas_dscal(dim, scale_u4, u + 4 * dim, 1);
+	cblas_dscal(dim, scale_u5, u + 5 * dim, 1);
+
 	// Assert symmetries since they might not be automatic.
 	// All functions are even with respect to the axis and equator.
 	// Corner.

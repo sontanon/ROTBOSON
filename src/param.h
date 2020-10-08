@@ -51,6 +51,15 @@ MKL_INT order_i		= 2;
 double dr_i		= 1.0;
 double dz_i		= 1.0;
 
+/* SCALE INITIAL DATA */
+double scale_u0 = 1.0;
+double scale_u1 = 1.0;
+double scale_u2 = 1.0;
+double scale_u3 = 1.0;
+double scale_u4 = 1.0;
+double scale_u5 = 1.0;
+double scale_u6 = 1.0;
+
 /* SOLVER PARAMETERS */
 MKL_INT solverType	= 1;
 MKL_INT localSolver	= 1;
@@ -134,6 +143,15 @@ extern MKL_INT ghost_i;
 extern MKL_INT order_i;
 extern double dr_i;
 extern double dz_i;
+
+/* SCALE INITIAL DATA */
+extern double scale_u0;
+extern double scale_u1;
+extern double scale_u2;
+extern double scale_u3;
+extern double scale_u4;
+extern double scale_u5;
+extern double scale_u6;
 
 /* SOLVER PARAMETERS */
 extern MKL_INT solverType;
