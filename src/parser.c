@@ -505,9 +505,9 @@ void parser(const char *fname)
 	// solverType.
 	if (config_lookup_int64(&cfg, "solverType", &solverType) == CONFIG_TRUE)
 	{
-		if (solverType != 1 && solverType != 2)
+		if (solverType != 1 && solverType != 2 && solverType != 3)
 		{
-			fprintf(stderr, "PARSER: ERROR! solverType = %lld is not supported. Only 1 or 2 are supported for indication of whether to use error or residual based solver.\n", solverType);
+			fprintf(stderr, "PARSER: ERROR! solverType = %lld is not supported. Only 1 or 2 or 3 are supported for indication of whether to use error or residual based solver.\n", solverType);
 			fprintf(stderr, "        Please input proper value in parameter file.\n");
 			exit(-1);
 		}

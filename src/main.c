@@ -13,6 +13,7 @@
 #include "csr.h"
 #include "nleq_err.h"
 #include "nleq_res.h"
+#include "newton.h"
 #include "vector_algebra.h"
 #include "pardiso_solve.h"
 #include "low_rank.h"
@@ -380,6 +381,16 @@ int main(int argc, char *argv[])
 							//norm2_interior, dot_interior,
 							norm2_interior_all_variables, dot_interior_all_variables,
 							linear_solve_1, linear_solve_2);
+					break;
+				case 3: 
+					// ||f[0]|| is also an input parameter.
+					norm_f[0] = norm2_interior_all_variables(u[0]);
+					k = newton(&errCode, u, f, lambda,
+							du, norm_du, Theta,
+							&J, epsilon, maxNewtonIter,
+							rhs, csr_gen_jacobian,
+							norm2_interior_all_variables,
+							linear_solve_1);
 					break;
 			}
 
