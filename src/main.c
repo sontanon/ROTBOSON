@@ -441,9 +441,9 @@ int main(int argc, char *argv[])
 
 		// Print whole history.
 #ifdef PRINT_HISTORY
-		printf("***\n")
+		printf("***\n");
 		printf("*** Will print entire history over k = %lld iterations...\n", k);
-		printf("***\n")
+		printf("***\n");
 		// Write number of iterations.
 		write_single_integer_file_1d(&k, "num_iter.asc", 1);
 
@@ -574,7 +574,7 @@ int main(int argc, char *argv[])
 				for (counter_i = 0; counter_i < GNUM; ++counter_i)
 				{
 					// Get peaks.
-					peak_prev[counter_i] = u[0][counter_i * dim + cblas_idamax(dim, u[0] + counter_i * dim, 1)];
+					peak_prev[counter_i] = u[0][counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)] / next_scale[counter_i];
 					peak_next[counter_i] = u[k][counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)];
 
 					if (counter_i == 4)
@@ -589,7 +589,7 @@ int main(int argc, char *argv[])
 					printf("**** Variable %lld peak = %-.5E, previous peak = %-.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
 				}
 				// Omega prediction.
-				peak_prev[GNUM] = omega_calc(u[0][GNUM * dim], m);
+				peak_prev[GNUM] = omega_calc(u[0][GNUM * dim], m) / next_scale[GNUM];
 				peak_next[GNUM] = omega_calc(u[k][GNUM * dim], m);
 
 				next_scale[GNUM] = 1.0 + scale_u4 * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
