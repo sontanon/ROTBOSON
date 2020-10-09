@@ -59,6 +59,7 @@ double scale_u3 = 1.0;
 double scale_u4 = 1.0;
 double scale_u5 = 1.0;
 double scale_u6 = 1.0;
+double *u_seed = NULL;
 
 /* SOLVER PARAMETERS */
 MKL_INT solverType	= 1;
@@ -152,6 +153,7 @@ extern double scale_u3;
 extern double scale_u4;
 extern double scale_u5;
 extern double scale_u6;
+extern double *u_seed;
 
 /* SOLVER PARAMETERS */
 extern MKL_INT solverType;

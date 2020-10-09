@@ -20,7 +20,10 @@
 #include "cart_to_pol.h"
 #include "analysis.h"
 
-#define PRINT_HISTORY
+#undef PRINT_HISTORY
+
+#define NEXT_SCALE_JUMP
+#define NEXT_SCALE 1.0
 
 int main(int argc, char *argv[])
 {
@@ -75,7 +78,7 @@ int main(int argc, char *argv[])
 	parser(argv[1]);
 
 	// Future scale factors.
-	double next_scale[GNUM + 1] = { scale_u0, scale_u1, scale_u2, scale_u3, scale_u4, scale_u5 };
+	double next_scale[GNUM + 1] = { scale_u0, scale_u1, scale_u2, scale_u3, scale_u4, scale_u5, scale_u6 };
 
 	// Peaks.
 	double peak_next[GNUM + 1] = { 0.0 };
@@ -186,6 +189,9 @@ int main(int argc, char *argv[])
 	double *r = (double *)SAFE_MALLOC(dim * sizeof(double));
 	double *z = (double *)SAFE_MALLOC(dim * sizeof(double));
 
+	// Initial data seed.
+	u_seed = (double *)SAFE_MALLOC((GNUM * dim + 1) * sizeof(double));
+
 	// Since these grids never change, fill them once and for all.
 	// Fill coordinate grids.
 	double aux_r;
@@ -236,6 +242,9 @@ int main(int argc, char *argv[])
 	double M_KOMAR, J_KOMAR, GRV2, GRV3;
 	double phi_max = 1.0, rr_phi_max = 0.0;
 	MKL_INT k_rr_max = 0;
+	
+	// Final omega.
+	double w = m;
 
 	printf("***               Finished allocation!             \n");
 	printf("***                                                \n");
@@ -310,6 +319,16 @@ int main(int argc, char *argv[])
 		// Also print r, z grids.
 		write_single_file_2d(r, "r.asc", NrTotal, NzTotal);
 		write_single_file_2d(z, "z.asc", NrTotal, NzTotal);
+
+		// And initial "seed".
+		write_single_file_2d(u_seed          , "log_alpha_seed.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u_seed +     dim, "beta_seed.asc",		NrTotal, NzTotal);
+		write_single_file_2d(u_seed + 2 * dim, "log_h_seed.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u_seed + 3 * dim, "log_a_seed.asc", 	NrTotal, NzTotal);
+		write_single_file_2d(u_seed + 4 * dim, "psi_seed.asc", 		NrTotal, NzTotal);
+		write_single_file_2d(u_seed + 5 * dim, "lambda_seed.asc", 	NrTotal, NzTotal);
+		w = omega_calc(u_seed[GNUM * dim], m);
+		write_single_file_1d(&w, "w_seed.asc", 1);
 
 		// First calculate initial RHS.
 		rhs(f[0], u[0]);
@@ -420,7 +439,7 @@ int main(int argc, char *argv[])
 		}
 
 		// Get omega.
-		double w = omega_calc(u[k][w_idx], m);
+		w = omega_calc(u[k][w_idx], m);
 
 		// Print final solutions
 		write_single_file_2d(u[k]          , "log_alpha_f.asc", 	NrTotal, NzTotal);
@@ -585,51 +604,58 @@ int main(int argc, char *argv[])
 				for (counter_i = 0; counter_i < GNUM; ++counter_i)
 				{
 					// Get peaks.
-					peak_prev[counter_i] = u[0][counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)] / next_scale[counter_i];
+					peak_prev[counter_i] = u_seed[counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)];
 					peak_next[counter_i] = u[k][counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)];
-
-					if (counter_i == 4)
-					{
-						next_scale[counter_i] = scale_u4;
-					}
-					else
-					{
-						next_scale[counter_i] = 1.0 + scale_u4 * (1.0 - peak_prev[counter_i] / peak_next[counter_i]);
-					}
-
-					printf("**** Variable %lld peak = %-.5E, previous peak = %-.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
 				}
+				next_scale[4] = peak_next[4] / peak_prev[4];
+				next_scale[0] = 1.0 + next_scale[4] * (1.0 - peak_prev[0] / peak_next[0]);
+				next_scale[1] = 1.0 + next_scale[4] * (1.0 - peak_prev[1] / peak_next[1]);
+				next_scale[2] = 1.0 + next_scale[4] * (1.0 - peak_prev[2] / peak_next[2]);
+				next_scale[3] = 1.0 + next_scale[4] * (1.0 - peak_prev[3] / peak_next[3]);
+				next_scale[5] = 1.0 + next_scale[4] * (1.0 - peak_prev[5] / peak_next[5]);
+
+				for (counter_i = 0; counter_i < GNUM; ++counter_i)
+					printf("**** Variable %lld peak = %-.5E, previous peak = %-.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
+				
 				// Omega prediction.
-				peak_prev[GNUM] = omega_calc(u[0][GNUM * dim], m) / next_scale[GNUM];
+				peak_prev[GNUM] = omega_calc(u_seed[GNUM * dim], m);
 				peak_next[GNUM] = omega_calc(u[k][GNUM * dim], m);
 
-				next_scale[GNUM] = 1.0 + scale_u4 * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
+				next_scale[GNUM] = 1.0 + next_scale[4] * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
 				
 				printf("**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w, next_scale[GNUM]);
 
-				u[k][GNUM * dim] = inverse_omega_calc(next_scale[GNUM] * w, m);
-
-				// Trasfer to initial data, notice that omega was transfered previously.
-#define NEXT_SCALE 0.0
+				// Trasfer to initial data.
+#ifdef NEXT_SCALE_JUMP
 				#pragma omp parallel shared(u)
 				{
 					#pragma omp for schedule(dynamic, 1)
-					for (counter_i = 0; counter_i < GNUM * dim; ++counter_i)
+					for (counter_i = 0; counter_i < GNUM * dim + 1; ++counter_i)
 					{
-						u[0][counter_i] *= -NEXT_SCALE;
+						u[0][counter_i] = -NEXT_SCALE * u_seed[counter_i];
 						u[0][counter_i] += (1.0 + NEXT_SCALE) * u[k][counter_i];
+						u_seed[counter_i] = u[k][counter_i];
 					}
 				}
-
-
+#else
+				#pragma omp parallel shared(u)
+				{
+					#pragma omp for schedule(dynamic, 1)
+					for (counter_i = 0; counter_i < GNUM * dim + 1; ++counter_i)
+					{
+						u[0][counter_i] = u_seed[counter_i] = u[k][counter_i];
+					}
+				}
 				// Scale variables.
 				for (counter_i = 0; counter_i < GNUM; ++counter_i)
 				{
 					cblas_dscal(dim, next_scale[counter_i], u[0] + counter_i * dim, 1);
 				}
-			
+				u[0][GNUM * dim] = inverse_omega_calc(next_scale[GNUM] * w, m);
+#endif
+
 				// Set initial omega.
-				w0 = w;
+				w0 = omega_calc(u[0][GNUM * dim], m);
 
 				// Set analysis phase to 0 again.
 				if (!useLowRank)
@@ -718,6 +744,9 @@ int main(int argc, char *argv[])
 	SAFE_FREE(i_rr);
 	SAFE_FREE(i_th);
 	SAFE_FREE(i_u);
+
+	// Initial data seed.
+	SAFE_FREE(u_seed);
 
 	// Clear libconfig configuration.
 	config_destroy(&cfg);

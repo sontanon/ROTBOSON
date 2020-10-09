@@ -228,6 +228,15 @@ void initial_guess(double *u)
 			printf("***           Read lambda_i initial data.         \n");
 		}
 	}
+
+	// Before scaling, copy seed to u_seed.
+	memcpy(u_seed + 0 * dim, u + 0 * dim, dim * sizeof(double));
+	memcpy(u_seed + 1 * dim, u + 1 * dim, dim * sizeof(double));
+	memcpy(u_seed + 2 * dim, u + 2 * dim, dim * sizeof(double));
+	memcpy(u_seed + 3 * dim, u + 3 * dim, dim * sizeof(double));
+	memcpy(u_seed + 4 * dim, u + 4 * dim, dim * sizeof(double));
+	memcpy(u_seed + 5 * dim, u + 5 * dim, dim * sizeof(double));
+	memcpy(u_seed + 6 * dim, u + 6 * dim,   1 * sizeof(double));
 	
 	// Scale initial data.
 	cblas_dscal(dim, scale_u0, u + 0 * dim, 1);
