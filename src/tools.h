@@ -84,6 +84,8 @@ void write_single_file_1d(double *u, const char *fname, const MKL_INT dim);
 void write_single_integer_file_1d(const MKL_INT *u, const char *fname, const MKL_INT dim);
 // Write simple ASCII 2D file.
 void write_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal);
+// Write ASCII 2D file with iterations.
+void write_iterated_file_2d(double **u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT iterations, const MKL_INT gnum);
 // Write simple ASCII 2D polar file.
 void write_single_file_2d_polar(double *u, const char *fname, const MKL_INT NrrTotal, const MKL_INT NthTotal);
 // Read simple ASCII 1D file.

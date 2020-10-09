@@ -194,6 +194,36 @@ void write_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, c
 	return;
 }
 
+// Write ASCII 2D file with iterations.
+void write_iterated_file_2d(double **u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT iterations, const MKL_INT gnum)
+{
+	// Auxiliary integers.
+	MKL_INT i, j, k;
+
+	// Open file.
+	FILE *fp = fopen(fname, "w");
+
+	// Write iterations.
+	for (k = 0; k < iterations; ++k)
+	{
+		// Print header comment.
+		fprintf(fp, "# % 6lld\n", k);
+		// Loop over r and write values.
+		for (i = 0; i < NrTotal; ++i)
+		{
+			for (j = 0; j < NzTotal; ++j)
+			{
+				fprintf(fp, (j < NzTotal - 1) ? "%9.18E\t" : "%9.18E\n", u[k][gnum * NrTotal * NzTotal + IDX(i, j)]);
+			}
+		}
+	}
+
+	// Close file.
+	fclose(fp);
+
+	return;
+}
+
 // Write simple ASCII 2D polar file.
 void write_single_file_2d_polar(double *u, const char *fname, const MKL_INT NrrTotal, const MKL_INT NthTotal)
 {

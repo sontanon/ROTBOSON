@@ -19,8 +19,7 @@
 #include "cart_to_pol.h"
 #include "analysis.h"
 
-#define MAX_INITIAL_GUESS_CHECKS 8
-#define NORM_F0_TARGET 1.0E-05
+#define PRINT_HISTORY
 
 int main(int argc, char *argv[])
 {
@@ -439,6 +438,61 @@ int main(int argc, char *argv[])
 		write_single_file_2d(f[k] + 3 * dim, "f3_f.asc", NrTotal, NzTotal);
 		write_single_file_2d(f[k] + 4 * dim, "f4_f.asc", NrTotal, NzTotal);
 		write_single_file_2d(f[k] + 5 * dim, "f5_f.asc", NrTotal, NzTotal);
+
+		// Print whole history.
+#ifdef PRINT_HISTORY
+		printf("***\n")
+		printf("*** Will print entire history over k = %lld iterations...\n", k);
+		printf("***\n")
+		// Write number of iterations.
+		write_single_integer_file_1d(&k, "num_iter.asc", 1);
+
+		// Grid variables.
+		write_iterated_file_2d(u, "history_u0.asc", NrTotal, NzTotal, k + 1, 0);
+		write_iterated_file_2d(u, "history_u1.asc", NrTotal, NzTotal, k + 1, 1);
+		write_iterated_file_2d(u, "history_u2.asc", NrTotal, NzTotal, k + 1, 2);
+		write_iterated_file_2d(u, "history_u3.asc", NrTotal, NzTotal, k + 1, 3);
+		write_iterated_file_2d(u, "history_u4.asc", NrTotal, NzTotal, k + 1, 4);
+		write_iterated_file_2d(u, "history_u5.asc", NrTotal, NzTotal, k + 1, 5);
+
+		// RHS's
+		write_iterated_file_2d(f, "history_f0.asc", NrTotal, NzTotal, k + 1, 0);
+		write_iterated_file_2d(f, "history_f1.asc", NrTotal, NzTotal, k + 1, 1);
+		write_iterated_file_2d(f, "history_f2.asc", NrTotal, NzTotal, k + 1, 2);
+		write_iterated_file_2d(f, "history_f3.asc", NrTotal, NzTotal, k + 1, 3);
+		write_iterated_file_2d(f, "history_f4.asc", NrTotal, NzTotal, k + 1, 4);
+		write_iterated_file_2d(f, "history_f5.asc", NrTotal, NzTotal, k + 1, 5);
+
+		// Grid updates.
+		if (k > 0)
+		{
+			write_iterated_file_2d(du, "history_du0.asc", NrTotal, NzTotal, k, 0);
+			write_iterated_file_2d(du, "history_du1.asc", NrTotal, NzTotal, k, 1);
+			write_iterated_file_2d(du, "history_du2.asc", NrTotal, NzTotal, k, 2);
+			write_iterated_file_2d(du, "history_du3.asc", NrTotal, NzTotal, k, 3);
+			write_iterated_file_2d(du, "history_du4.asc", NrTotal, NzTotal, k, 4);
+			write_iterated_file_2d(du, "history_du5.asc", NrTotal, NzTotal, k, 5);
+		}
+
+
+		// Write omega related quantities.
+		FILE *fa = fopen("history_u6.asc", "w");
+		FILE *fb = fopen("history_f6.asc", "w");
+		FILE *fc = fopen("history_du6.asc", "w");
+		for (counter_i = 0; counter_i < k + 1; ++counter_i)
+		{
+			fprintf(fa, "%9.18E\n", u[counter_i][GNUM * dim]);
+			fprintf(fb, "%9.18E\n", f[counter_i][GNUM * dim]);
+			if (counter_i < k)
+				fprintf(fc, "%9.18E\n", du[counter_i][GNUM * dim]);
+		}
+		fclose(fa);
+		fclose(fb);
+		fclose(fc);
+
+		printf("*** Finished printing history.\n");
+		printf("***\n");
+#endif
 
 		// Also print Newton parameters.
 		switch (solverType)
