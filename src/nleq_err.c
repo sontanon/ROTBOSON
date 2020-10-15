@@ -17,8 +17,8 @@
 
 #define NORMALIZED
 
-#define LOCAL_LAMBDA 	0.75
-#define THETA_MAX	1.0E+6
+#define LOCAL_LAMBDA 	9.3750E-01
+#define THETA_MAX	4.0000E+00
 
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0).
