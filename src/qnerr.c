@@ -1,5 +1,4 @@
 #include "tools.h"
-#include "regularization_coupling.h"
 
 // Error codes.
 #define ERROR_CODE_SUCCESS 				  0
@@ -42,22 +41,17 @@ MKL_INT nleq_err_qnerr(
 	/* Auxiliary double. */
 	double alpha_bar = 0.0;
 
+	/* Solution norm for relative error. */
+	double norm_u = 1.0;
+
 	/* Calculate Jacobian J(u^0). */
 	JACOBIAN_CALC(*J, u[l], 0);
 
 	// Solve  linear system J(u^0) du^0 = -f(u^0).
 	LINEAR_SOLVE_1(du[l], J, f[l]);
 
-#ifdef REGULARIZATION_COUPLING
-	coupled_du(du[l], u[l], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
-#endif
-
 	// Calculate ||du^0||.
-#ifdef NORMALIZED
-	norm_du[l] = NORM(du[l]) / NORM(u[l]);
-#else
 	norm_du[l] = NORM(du[l]);
-#endif
 
 	// 1. Step l.
 	for (l = 0; l < max_newton_iterations; ++l)
@@ -79,20 +73,13 @@ MKL_INT nleq_err_qnerr(
 		// Linear system solve J(u^0) du_bar^{l+1} = -f(u^{l+1}).
 		LINEAR_SOLVE_2(du_bar[l + 1], J, f[l + 1]);
 
-#ifdef REGULARIZATION_COUPLING
-		coupled_du(du_bar[l + 1], u[l + 1], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
-#endif
 		// 2. If l > 0. For i = 1, ... , l:
 		if (l > 0)
 		{
 			for (i = 1; i < l + 1; ++i)
 			{
 				// alpha_bar = (du_bar^{l+1} . du^{i-1}) / ||du^{i-1}||^2.
-#ifdef NORMALIZED
-				alpha_bar = (DOT(du_bar[l + 1], du[i - 1]) / DOT(u[l + 1], u[i - 1])) / (norm_du[i - 1] * norm_du[i - 1]);
-#else
 				alpha_bar = DOT(du_bar[l + 1], du[i - 1]) / (norm_du[i - 1] * norm_du[i - 1]);
-#endif
 				// du_bar^{l+1} += alpha_bar * du^i.
 				ARRAY_SUM(du_bar[l + 1], 1.0, du_bar[l + 1], alpha_bar, du[i]);
 			}
@@ -100,17 +87,10 @@ MKL_INT nleq_err_qnerr(
 
 		// 3. Compute.
 		// alpha_{l+1} = (du_bar^{l+1} . du^l) / ||du^l||^2.
-#ifdef NORMALIZED
-		alpha[l + 1] = (DOT(du_bar[l + 1], du[l]) / DOT(u[l + 1], u[l])) / (norm_du[l] * norm_du[l]);
-#else
 		alpha[l + 1] = DOT(du_bar[l + 1], du[l]) / (norm_du[l] * norm_du[l]);
-#endif
 
-#ifdef NORMALIZED
-		norm_du_bar[l + 1] = NORM(du_bar[l + 1]) / NORM(u[l + 1]);
-#else
 		norm_du_bar[l + 1] = NORM(du_bar[l + 1]);
-#endif
+
 		// Theta_l = ||du_bar^{l+1}|| / ||du^l||.
 		Theta[l] = norm_du_bar[l + 1] / norm_du[l];
 
@@ -132,20 +112,21 @@ MKL_INT nleq_err_qnerr(
 		// 4. Compute.
 		// du^{l+1} = du_bar^{l+1} / (1 - alpha_{l+1}).
 		ARRAY_SUM(du[l + 1], 1.0 / (1.0 - alpha[l + 1]), du_bar[l + 1], 0.0, du[l + 1]);
-#ifdef NORMALIZED
-		norm_du[l + 1] = NORM(du[l + 1]) / NORM(u[l + 1]);
-#else
 		norm_du[l + 1] = NORM(du[l + 1]);
-#endif
+		norm_u = NORM(u[l + 1]);
 
 		// Convergence test: If ||du^{l+1}|| < epsilon: stop. Solution found u* = u^{l+1} + du^{l+1}.
+#ifdef NORMALIZED
+		if (norm_du[l + 1] < epsilon * norm_u)
+#else
 		if (norm_du[l + 1] < epsilon)
+#endif
 		{
 			/* Update solution */
 			ARRAY_SUM(u[l + 1], 1.0, u[l + 1], 1.0, du[l + 1]);
 			
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l + 1], alpha_bar, Theta[l], alpha[l + 1], "CONVERGED C");
+	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l + 1] / norm_u, alpha_bar, Theta[l], alpha[l + 1], "CONVERGED C");
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
 
 			/* No error code. */
@@ -155,7 +136,7 @@ MKL_INT nleq_err_qnerr(
 			return l + 1;
 		}
 		/* Print message before continuing. */
-	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l+1], alpha_bar, Theta[l], alpha[l + 1], "ACCEPT");
+	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l + 1] / norm_u, alpha_bar, Theta[l], alpha[l + 1], "ACCEPT");
 	}
 
 	/* If we reach this point we did not converge after the maximum iterations. */
