@@ -11,8 +11,8 @@
 #define D_2_21 (-2.0)
 #define D_2_22 (+1.0)
 
-#define Q1 1
-#define Q2 1
+#define Q1 1.0
+#define Q2 1.0
 
 #define GNUM 6
 
@@ -407,6 +407,8 @@ void jacobian_2nd_order_variable_omega_cc
 
 	// Row start at offset. This is grid 6.
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
+	// a2 calculation changes.
+	a2 = h2 + r2 * lambda;
 
 	// Set values.
 	aa[offset6 +  0] = D_2_20*dzodr*(2*lambda + (2*h2*Q1)/((r2))) + D_2_10*dzodr*(-dRu6 + 4*dRu1*lambda + (Q1*((-2*h2)/(ri*ri*ri) + (4*dRu1*h2)/(ri*ri)) - (4*dRu3*h2)/(ri*ri))/((dr2)) - (2*lambda)/ri);
@@ -1656,6 +1658,63 @@ void jacobian_4th_order_variable_omega_cs
 
 
 	// lambda: grid number 5
+
+	// Change a2 calculation accordingly.
+	a2 = h2 + r2 * lambda;
+
+	// Full Jacobian Matrix.
+	double jacobian_matrix[31] = { 0.0 };
+
+	// Jacobian submatrices.
+	// log(alpha)
+	double jacobian_submatrix_0[5] = {
+		drodz*(2.0*dZu2*dZu2*h2*h2/alpha2) + dzodr*(2.0*h2 + r2*lambda)*(2.0*dRu2*dRu2*h2/alpha2), 
+ 		dzodr*(-dRu6 + 4.0*dRu1*(lambda + Q1*h2/r2) - (2.0/ri)*(lambda + Q1*h2/r2) - 4.0*dRu3*h2/r2), 
+		drodz*dZu6, 
+		dzodr*2.0*(lambda + Q1*h2/r2), 
+		0.0};
+	// beta
+	double jacobian_submatrix_1[5] = {
+		0.0, 
+		dzodr*(-2.0*dRu2*h2/alpha2)*(2.0*h2 + r2*lambda), 
+ 		drodz*(-2.0*dZu2*h2*h2/alpha2), 
+		0.0, 
+		0.0};
+	// log(h)
+	double jacobian_submatrix_2[5] = {
+		drodz*(2.0*h2)*(-2.0*dZu2*dZu2*h2/alpha2 + r2*(dZu6 - 2.0*dZu3*lambda)*(dZu6 - 2.0*dZu3*lambda)/(a2*a2))
+		+ dzodr*((Q1*(dRRu1 + dRu1*(dRu1 - 1.0/ri)) + Q2*(dRRu3 + dRu3*(2.0*dRu3 - 1.0/ri)))*(4.0*h2/r2)
+			- 8.0*dRu1*dRu3*(h2/r2) + 64.0*M_PI*l*h2*rlm1*rlm1*psi*(dRu5/ri) + 32.0*M_PI*h2*rlm1*rlm1*(dRu5*dRu5)
+			+ 8.0*h2*r2*lambda*(dRu6/ri)/(a2*a2) + 2.0*r2*h2*dRu6*dRu6/(a2*a2) + (dRu2*dRu2)*(-8.0*h2*h2/alpha2 - 2.0*r2*lambda*h2/alpha2)
+			+ dr2*h2*(16.0*M_PI*rlm1*rlm1*r2*lambda*m2*psi*psi + 8.0*(lambda/a2)*(lambda/a2))+ (dRu3/ri)*(-16.0*h2*r2*lambda*lambda/(a2*a2) 
+			- 8.0*h2*r2*lambda*(ri*dRu6)/(a2*a2)) + (dRu3*dRu3)*(h2/r2)*(-4.0 + 8.0*(h2/a2)*(h2/a2) - 16.0*h2/a2)),
+		dzodr*(Q2*(8.0*dRu3 - 2.0/ri)*(lambda + h2/r2)*(h2/a2) + dRu6*(-5.0*h2 - r2*lambda)/a2 - 4.0*dRu1*(h2/a2)*(lambda + h2/r2) 
+			+ dRu3*(-12.0*h2*h2/r2 + 4.0*r2*lambda*lambda)/a2 + lambda*(-6.0*h2/ri + 2.0*r2*lambda/ri)/a2),
+		drodz*(8.0*dZu3*lambda*h2 + dZu6*(-3.0*h2 + r2*lambda))/a2,
+		dzodr*2.0*(lambda + Q2*h2/r2),
+		0.0};
+	// log(a)
+	double jacobian_submatrix_3[5] = { 0.0 };
+	// psi
+	double jacobian_submatrix_4[5] = {
+		dzodr*(16.0*a2*M_PI*rlm1*rlm1)*(dr2*r2*lambda*m2*psi + 2.0*l*dRu5/ri), 
+		dzodr*(32.0*a2*M_PI*rlm1*rlm1)*(l*psi/ri + dRu5), 
+		0.0, 
+		0.0, 
+		0.0};
+	// lambda
+	double jacobian_submatrix_5[5] = {
+		drodz*(r2*dZu6 + 2.0*h2*dZu3)*(r2*dZu6 + 2.0*h2*dZu3)/(a2*a2)
+		+ dzodr*(2.0*dRRu1 + 2.0*dRRu3 + 2.0*dRu1*(dRu1 - 1.0/ri) - r2*h2*dRu2*dRu2/alpha2 
+			+ 16.0*M_PI*rl*rl*dRu5*dRu5 + 32.0*M_PI*l*rl*rl*psi*(dRu5/ri) + (r2*dRu6/a2)*(r2*dRu6/a2) 
+			+ (dRu3*dRu3)*(2.0 + 4.0*(h2/a2)*(h2/a2)) + dr2*(r2*lambda)*(8.0*M_PI*m2*phi2 + 4.0*lambda/(a2*a2)) 
+			+ (dRu6/ri)*(4.0*r2)*(-h2/(a2*a2)) + (dRu3/ri)*(-6.0*(h2/a2)*(h2/a2) + 4.0*h2*(ri*r2*dRu6)/(a2*a2) 
+			- 2.0*(r2*lambda/a2)*(r2*lambda/a2) + 4.0*r2*lambda/a2) + dr2*(-8.0*lambda/a2 + 8.0*M_PI*a2*m2*phi2)),
+		dzodr*((3.0*h2 - r2*lambda)/ri - dRu1*(h2 + r2*lambda) - dRu3*(5.0*h2 + r2*lambda) - 2.0*r2*dRu6)/a2,
+		drodz*(-2.0*r2*dZu6 + dZu1*(h2 + r2*lambda) + dZu3*(-3.0*h2 + r2*lambda))/a2,
+		dzodr,
+		drodz};
+
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
 
 	// Values
