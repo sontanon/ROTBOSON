@@ -37,8 +37,8 @@ void rhs(double *f, double *u)
 
 	// Regularization Auxiliaries.
 	// First calculate derivatives: Dr(log(alpha)) and Dr(log(h)).
-	diff1r(u_aux + 0 * dim, u + 0 * dim, 1);
-	diff1r(u_aux + 1 * dim, u + 2 * dim, 1);
+	diff1r(u_aux + 0 * dim, u + 0 * dim, EVEN);
+	diff1r(u_aux + 1 * dim, u + 2 * dim, EVEN);
 	// Rescale.
 	#pragma omp parallel shared(u_aux) private(i, j, r)
 	{

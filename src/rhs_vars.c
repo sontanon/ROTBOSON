@@ -2,8 +2,8 @@
 #include "omega_calc.h"
 
 // Regularized terms.
-#define Q1 1
-#define Q2 1
+#define Q1 1.0
+#define Q2 1.0
 
 void rhs_vars(
 	double *f, 
@@ -170,8 +170,8 @@ void rhs_vars(
 	f[4 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Drr_psi + Dzz_psi + (2.0 * l + 1.0) * (Dr_psi / r)
 		+ D_l_alpha_D_psi + D_l_h_D_psi
 		+ l * ((Dr_l_alpha / r) + (Dr_l_h / r)) * psi
-		+ a2 * (w_plus_l_beta2 / alpha2 - m2) * psi)
-		- dr * dr * dzodr * l * l * lambda * psi / h2);
+		+ a2 * (w_plus_l_beta2 / alpha2 - m2) * psi
+		- l * l * lambda * psi / h2));
 
 	// u5 = lambda = (A - H) / r**2.
 	// Change a2 calculation.
