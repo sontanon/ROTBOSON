@@ -70,6 +70,41 @@ void ex_diff1r(double *dvar, double *var, const MKL_INT symr, const double dr, c
 			}
 		}
 	}
+	else if (order == 6)
+	{
+		// Parity on axis and boundary.
+		#pragma omp parallel shared(dvar) private(j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (j = 0; j < NzTotal; ++j)
+			{
+				// First interior point.
+				dvar[IDX(ghost + 0, j)] = idr * (-1.0 * (var[IDX(ghost + 2, j)] - var[IDX(ghost + 3, j)]) + 9.0 * (var[IDX(ghost + 1, j)] - var[IDX(ghost + 2, j)]) - 45.0 * (var[IDX(ghost + 0, j)] - var[IDX(ghost + 1, j)])) / 60.0;
+				// Second interior point.
+				dvar[IDX(ghost + 1, j)] = idr * (-1.0 * (var[IDX(ghost + 1, j)] - var[IDX(ghost + 4, j)]) + 9.0 * (var[IDX(ghost + 0, j)] - var[IDX(ghost + 3, j)]) - 45.0 * (var[IDX(ghost + 0, j)] - var[IDX(ghost + 2, j)])) / 60.0;
+				// Third interior point.
+				dvar[IDX(ghost + 2, j)] = idr * (-1.0 * (var[IDX(ghost + 0, j)] - var[IDX(ghost + 5, j)]) + 9.0 * (var[IDX(ghost + 0, j)] - var[IDX(ghost + 4, j)]) - 45.0 * (var[IDX(ghost + 1, j)] - var[IDX(ghost + 3, j)])) / 60.0;
+				// Third-to-last point.
+				dvar[IDX(NrTotal - 3, j)] = idr * (+  1.0 * var[IDX(NrTotal - 7, j)] -  8.0 * var[IDX(NrTotal - 6, j)] + 30.0 * var[IDX(NrTotal - 5, j)] - 80.0 * var[IDX(NrTotal - 4, j)] + 35.0 * var[IDX(NrTotal - 3, j)] + 24.0 * var[IDX(NrTotal - 2, j)] -  2.0 * var[IDX(NrTotal - 1, j)]) / 60.0;
+				// Second-to-last point.
+				dvar[IDX(NrTotal - 2, j)] = idr * (-  2.0 * var[IDX(NrTotal - 7, j)] + 15.0 * var[IDX(NrTotal - 6, j)] - 50.0 * var[IDX(NrTotal - 5, j)] +100.0 * var[IDX(NrTotal - 4, j)] -150.0 * var[IDX(NrTotal - 3, j)] + 77.0 * var[IDX(NrTotal - 2, j)] + 10.0 * var[IDX(NrTotal - 1, j)]) / 60.0;
+				// Last point.
+				dvar[IDX(NrTotal - 1, j)] = idr * (+ 10.0 * var[IDX(NrTotal - 7, j)] - 72.0 * var[IDX(NrTotal - 6, j)] +225.0 * var[IDX(NrTotal - 5, j)] -400.0 * var[IDX(NrTotal - 4, j)] +450.0 * var[IDX(NrTotal - 3, j)] -360.0 * var[IDX(NrTotal - 2, j)] +147.0 * var[IDX(NrTotal - 1, j)]) / 60.0;
+			}
+		}
+		// Main interior points.
+		#pragma omp parallel shared(dvar) private(i, j)
+		{
+			#pragma omp for schedule(dynamic, 1)
+			for (i = ghost + 3; i < NrTotal - 3; ++i)
+			{
+				for (j = 0; j < NzTotal; ++j)
+				{
+					dvar[IDX(i, j)] = idr * (-1.0 * (var[IDX(i - 3, j)] - var[IDX(i + 3, j)]) + 9.0 * (var[IDX(i - 2, j)] - var[IDX(i + 2, j)]) - 45.0 * (var[IDX(i - 1, j)] - var[IDX(i + 1, j)])) / 60.0;
+				}
+			}
+		}
+	}
 	// Symmetries on axis.
 	#pragma omp parallel shared(dvar) private(i, j)
 	{
