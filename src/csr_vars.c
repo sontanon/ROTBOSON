@@ -1023,6 +1023,9 @@ void jacobian_4th_order_variable_omega_cc
 	// lambda: grid number 5
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
 
+	// a2 calculation changes.
+	a2 = h2 + r2 * lambda;
+
 	// Values.
 	aa[offset6 +  0] = D20*dzodr*(2*lambda + (2*h2*Q1)/((r2))) + D10*dzodr*(-dRu6 + 4*dRu1*lambda + (Q1*((-2*h2)/(ri*ri*ri) + (4*dRu1*h2)/(ri*ri)) - (4*dRu3*h2)/(ri*ri))/((dr2)) - (2*lambda)/ri);
 	aa[offset6 +  1] = D21*dzodr*(2*lambda + (2*h2*Q1)/((r2))) + D11*dzodr*(-dRu6 + 4*dRu1*lambda + (Q1*((-2*h2)/(ri*ri*ri) + (4*dRu1*h2)/(ri*ri)) - (4*dRu3*h2)/(ri*ri))/((dr2)) - (2*lambda)/ri);
@@ -1661,9 +1664,6 @@ void jacobian_4th_order_variable_omega_cs
 
 	// Change a2 calculation accordingly.
 	a2 = h2 + r2 * lambda;
-
-	// Full Jacobian Matrix.
-	double jacobian_matrix[31] = { 0.0 };
 
 	// Jacobian submatrices.
 	// log(alpha)
@@ -2357,6 +2357,9 @@ void jacobian_4th_order_variable_omega_sc
 	// lambda: grid number 5
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
 
+	// Change a2 calculation.
+	a2 = h2 + r2 * lambda;
+
 	// Values
 	aa[offset6 +  0] = dzodr*(2*lambda + (2*h2*Q1)/(r2))*S20;
 	aa[offset6 +  1] = dzodr*(-dRu6 + 4*dRu1*lambda + (Q1*((-2*h2)/(ri*ri*ri) + (4*dRu1*h2)/(ri*ri)) - (4*dRu3*h2)/(ri*ri))/((dr2)) - (2*lambda)/ri)*S11 + dzodr*(2*lambda + (2*h2*Q1)/(r2))*S21;
@@ -3010,6 +3013,9 @@ void jacobian_4th_order_variable_omega_ss
 
 	// lambda: grid number 5
 	ia[5 * dim + IDX(i, j)] = BASE + offset6;
+
+	// Change a2 calculation.
+	a2 = h2 + r2 * lambda;
 
 	// Values
 	aa[offset6 +  0] = dzodr*(2*lambda + (2*h2*Q1)/((r2)))*S20;
