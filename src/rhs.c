@@ -37,8 +37,10 @@ void rhs(double *f, double *u)
 
 	// Regularization Auxiliaries.
 	// First calculate derivatives: Dr(log(alpha)) and Dr(log(h)).
-	diff1r(u_aux + 0 * dim, u + 0 * dim, EVEN);
-	diff1r(u_aux + 1 * dim, u + 2 * dim, EVEN);
+	// Notive that derivatives are calculate to greater order.
+	// For 4th order, they are calculated at 6th order.
+	ex_diff1r(u_aux + 0 * dim, u + 0 * dim, EVEN, dr, NrTotal, NzTotal, ghost, order + 2);
+	ex_diff1r(u_aux + 1 * dim, u + 2 * dim, EVEN, dr, NrTotal, NzTotal, ghost, order + 2);
 	// Rescale.
 	#pragma omp parallel shared(u_aux) private(i, j, r)
 	{
@@ -55,10 +57,9 @@ void rhs(double *f, double *u)
 			}
 		}
 	}
-
-	// Now calculate auxiliary derivatives.
-	diff1r(Dr_u_aux + 0 * dim, u_aux + 0 * dim, EVEN);
-	diff1r(Dr_u_aux + 1 * dim, u_aux + 1 * dim, EVEN);
+	// Now calculate auxiliary derivatives. Similarily, to greater order.
+	ex_diff1r(Dr_u_aux + 0 * dim, u_aux + 0 * dim, EVEN, dr, NrTotal, NzTotal, ghost, order + 2);
+	ex_diff1r(Dr_u_aux + 1 * dim, u_aux + 1 * dim, EVEN, dr, NrTotal, NzTotal, ghost, order + 2);
 
 #ifdef DERIVATIVE_DEBUG
 	write_single_file_2d(Dr_u, "Dr_log_alpha.asc", NrTotal, NzTotal);
