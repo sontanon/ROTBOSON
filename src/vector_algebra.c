@@ -1,7 +1,7 @@
 #include "tools.h"
 #include "param.h"
 
-#define GRID_VARIABLE_START	4
+#define GRID_VARIABLE_START	1
 #define GRID_VARIABLE_END	6
 
 double norm2(double *x)
