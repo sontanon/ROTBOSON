@@ -11,6 +11,8 @@
 
 #undef DERIVATIVE_DEBUG
 
+#define REGULARIZATION_AUXILIARIES
+
 void rhs(double *f, double *u)
 {
 	// Omega.
@@ -36,6 +38,7 @@ void rhs(double *f, double *u)
 	}
 
 	// Regularization Auxiliaries.
+#ifdef REGULARIZATION_AUXILIARIES
 	// First calculate derivatives: Dr(log(alpha)) and Dr(log(h)).
 	// Notive that derivatives are calculate to greater order.
 	// For 4th order, they are calculated at 6th order.
@@ -60,6 +63,27 @@ void rhs(double *f, double *u)
 	// Now calculate auxiliary derivatives. Similarily, to greater order.
 	ex_diff1r(Dr_u_aux + 0 * dim, u_aux + 0 * dim, EVEN, dr, NrTotal, NzTotal, ghost, order + 2);
 	ex_diff1r(Dr_u_aux + 1 * dim, u_aux + 1 * dim, EVEN, dr, NrTotal, NzTotal, ghost, order + 2);
+#else
+	#pragma omp parallel shared(u_aux, Dr_u_aux) private(i, j, r)
+	{
+		#pragma omp for schedule(dynamic, 1)
+		for (i = 0; i < NrTotal; ++i)
+		{
+			r = ((double)(i - ghost) + 0.5) * dr;
+			for (j = 0; j < NzTotal; ++j)
+			{
+				// Dr(alpha) / r.
+				u_aux[0 * dim + IDX(i, j)] = exp(u[0 * dim + IDX(i, j)]) * (Dr_u[0 * dim + IDX(i, j)] / r);
+				// Dr(H) / r.
+				u_aux[1 * dim + IDX(i, j)] = 2.0 * exp(2.0 * u[2 * dim + IDX(i, j)]) * (Dr_u[2 * dim + IDX(i, j)] / r);
+				// Dr(Dr(alpha) / r) = (Drr(alpha) - Dr(alpha) / r) / r = alpha * ((Drr(log(alpha)) - Dr(log(alpha)) / r) + Dr(log(alpha))**2) / r.
+				Dr_u_aux[0 * dim + IDX(i, j)] = exp(u[0 * dim + IDX(i, j)]) * ((Drr_u[0 * dim + IDX(i, j)] - Dr_u[0 * dim + IDX(i, j)] / r) + Dr_u[0 * dim + IDX(i, j)] * Dr_u[0 * dim + IDX(i, j)]) / r;
+				// Dr(Dr(H) / r) = 2.0 * H * ((Drr(log(h)) - Dr(log(h)) / r) + 2.0 * Dr(log(h))**2) / r.
+				Dr_u_aux[1 * dim + IDX(i, j)] = 2.0 * exp(2.0 * u[2 * dim + IDX(i, j)]) * ((Drr_u[2 * dim + IDX(i, j)] - Dr_u[2 * dim + IDX(i, j)] / r) + 2.0 * Dr_u[2 * dim + IDX(i, j)] * Dr_u[2 * dim + IDX(i, j)]) / r;
+			}
+		}
+	}
+#endif
 
 #ifdef DERIVATIVE_DEBUG
 	write_single_file_2d(Dr_u, "Dr_log_alpha.asc", NrTotal, NzTotal);
