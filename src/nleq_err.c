@@ -166,11 +166,13 @@ MKL_INT nleq_err(
 			/* Expected damping factor. */
 			if (Theta[k - 1] > 0.5)
 			{
-				lambda[k] = MIN(2.00 * lambda[k - 1], MIN(LOCAL_LAMBDA, mu[k]));
+				//lambda[k] = MIN(2.00 * lambda[k - 1], MIN(LOCAL_LAMBDA, mu[k]));
+				lambda[k] = MIN(LOCAL_LAMBDA, mu[k]);
 			}
 			else
 			{
-				lambda[k] = MIN(1.25 * lambda[k - 1], MIN(LOCAL_LAMBDA, mu[k]));
+				//lambda[k] = MIN(1.25 * lambda[k - 1], MIN(LOCAL_LAMBDA, mu[k]));
+				lambda[k] = MIN(LOCAL_LAMBDA, mu[k]);
 			}
 		}
 
@@ -226,7 +228,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		//if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
 		if (Theta[k] > THETA_MAX - RESTRICTED * 0.25 * lambda[k])
 		{
-			lambda_prime[k] = MIN(0.25 * lambda[k], mu_prime[k]);
+			lambda_prime[k] = MIN(0.5 * lambda[k], mu_prime[k]);
 
 			/* Print message: iterate is rejected because Theta[k] > 1.0 - 0.25 * lambda[k]. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k] / norm_u, lambda[k], Theta[k], lambda_prime[k], "REJECT A");
@@ -356,7 +358,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		 				/* In this case, the last update is stored in u[k + 1 - qnerr_stop] since qnerr_stop is negative. */
 						/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
 						/* lambda damping factor which will be set to 1.0. */
-						lambda[k + (-qnerr_stop) + 1] = 0.25 * LOCAL_LAMBDA;
+						lambda[k + (-qnerr_stop) + 1] = LOCAL_LAMBDA;
 
 						/* Set k to one place before last update. */
 						/* This k is not where the last solution is stored, but, rather, one place before. */
