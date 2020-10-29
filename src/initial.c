@@ -229,23 +229,6 @@ void initial_guess(double *u)
 		}
 	}
 
-	// Before scaling, copy seed to u_seed.
-	memcpy(u_seed + 0 * dim, u + 0 * dim, dim * sizeof(double));
-	memcpy(u_seed + 1 * dim, u + 1 * dim, dim * sizeof(double));
-	memcpy(u_seed + 2 * dim, u + 2 * dim, dim * sizeof(double));
-	memcpy(u_seed + 3 * dim, u + 3 * dim, dim * sizeof(double));
-	memcpy(u_seed + 4 * dim, u + 4 * dim, dim * sizeof(double));
-	memcpy(u_seed + 5 * dim, u + 5 * dim, dim * sizeof(double));
-	memcpy(u_seed + 6 * dim, u + 6 * dim,   1 * sizeof(double));
-	
-	// Scale initial data.
-	cblas_dscal(dim, scale_u0, u + 0 * dim, 1);
-	cblas_dscal(dim, scale_u1, u + 1 * dim, 1);
-	cblas_dscal(dim, scale_u2, u + 2 * dim, 1);
-	cblas_dscal(dim, scale_u3, u + 3 * dim, 1);
-	cblas_dscal(dim, scale_u4, u + 4 * dim, 1);
-	cblas_dscal(dim, scale_u5, u + 5 * dim, 1);
-
 	// Assert symmetries since they might not be automatic.
 	// All functions are even with respect to the axis and equator.
 	// Corner.
@@ -295,6 +278,24 @@ void initial_guess(double *u)
 			}
 		}
 	}
+
+	// Before scaling, copy seed to u_seed.
+	memcpy(u_seed + 0 * dim, u + 0 * dim, dim * sizeof(double));
+	memcpy(u_seed + 1 * dim, u + 1 * dim, dim * sizeof(double));
+	memcpy(u_seed + 2 * dim, u + 2 * dim, dim * sizeof(double));
+	memcpy(u_seed + 3 * dim, u + 3 * dim, dim * sizeof(double));
+	memcpy(u_seed + 4 * dim, u + 4 * dim, dim * sizeof(double));
+	memcpy(u_seed + 5 * dim, u + 5 * dim, dim * sizeof(double));
+	memcpy(u_seed + 6 * dim, u + 6 * dim,   1 * sizeof(double));
+	
+	// Scale initial data.
+	cblas_dscal(dim, scale_u0, u + 0 * dim, 1);
+	cblas_dscal(dim, scale_u1, u + 1 * dim, 1);
+	cblas_dscal(dim, scale_u2, u + 2 * dim, 1);
+	cblas_dscal(dim, scale_u3, u + 3 * dim, 1);
+	cblas_dscal(dim, scale_u4, u + 4 * dim, 1);
+	cblas_dscal(dim, scale_u5, u + 5 * dim, 1);
+	cblas_dscal(  1, scale_u6, u + 6 * dim, 1);
 
 	// All done.
 	return;

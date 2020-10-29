@@ -605,7 +605,7 @@ int main(int argc, char *argv[])
 				{
 					// Get peaks.
 					peak_prev[counter_i] = u_seed[counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)];
-					peak_next[counter_i] = u[k][counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)];
+					peak_next[counter_i] =   u[k][counter_i * dim + cblas_idamax(dim, u[k] + counter_i * dim, 1)];
 				}
 				next_scale[4] = peak_next[4] / peak_prev[4];
 				next_scale[0] = 1.0 + next_scale[4] * (1.0 - peak_prev[0] / peak_next[0]);
@@ -615,11 +615,11 @@ int main(int argc, char *argv[])
 				next_scale[5] = 1.0 + next_scale[4] * (1.0 - peak_prev[5] / peak_next[5]);
 
 				for (counter_i = 0; counter_i < GNUM; ++counter_i)
-					printf("**** Variable %lld peak = %-.5E, previous peak = %-.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
+					printf("**** Variable %lld peak = % -.5E, previous peak = % -.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
 				
 				// Omega prediction.
 				peak_prev[GNUM] = omega_calc(u_seed[GNUM * dim], m);
-				peak_next[GNUM] = omega_calc(u[k][GNUM * dim], m);
+				peak_next[GNUM] = omega_calc(  u[k][GNUM * dim], m);
 
 				next_scale[GNUM] = 1.0 + next_scale[4] * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
 				
