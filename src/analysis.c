@@ -23,22 +23,36 @@ void ex_phi_analysis(const MKL_INT print,
 	{
 		sph_phi[k] = pow(sph_rr[k] * sin(sph_th[k]), l) * sph_psi[k];
 	}
-	// Calculate maximum and quantities.
+	// Calculate maximum index.
 	*k_rr_max = cblas_idamax(p_dim, sph_phi, 1);
-	*phi_max = sph_phi[*k_rr_max];
-	*rr_phi_max = sph_rr[*k_rr_max];
 
+	// 2D indices.
+	MKL_INT i, j;
+	i = *k_rr_max / NthTotal;
+	j = *k_rr_max & NthTotal;
+	
+	// Use parabolic interpolation.
+	double fa = sph_phi[P_IDX(i - 1, j)];
+	double fb = sph_phi[P_IDX(i    , j)];
+	double fc = sph_phi[P_IDX(i + 1, j)];
+	double a = sph_rr[P_IDX(i - 1, j)];
+	double b = sph_rr[P_IDX(i, j)];
+	double c = sph_rr[P_IDX(i + 1, j)];
+	double x = b;
+
+	*rr_phi_max = x = b + 0.5 * drr * ((fb - fa) - (fb - fc)) / ((fb - fa) + (fb - fc));
+	*phi_max = fa * ((x - b) / (a - b)) * ((x - c) / (a - c)) + fb * ((x - c) / (b - c)) * ((x - a) / (b - a)) + fc * ((x - a) / (c - a)) * ((x - b) / (c - b));
 		
 	if (print)
 	{
 		// Write files.
 		write_single_file_1d(phi_max, "phi_max.asc", 1);
 		write_single_file_1d(rr_phi_max, "rr_phi_max.asc", 1);
-		printf("***  -------------------------- ----------------------- ----------------- \n");
-		printf("*** | max(phi)                 | rr(max(phi))          | k(rr(max(phi))) |\n");
-		printf("***  -------------------------- ----------------------- ----------------- \n");	
-		printf("*** |       %-6.5e        |      %-6.5e      |   %lld    |\n", *phi_max, *rr_phi_max, *k_rr_max);
-		printf("***  -------------------------- ----------------------- ----------------- \n");
+		printf("***  -------------------------- ----------------------- \n");
+		printf("*** | max(phi)                 | rr(max(phi))          |\n");
+		printf("***  -------------------------- ----------------------- \n");	
+		printf("*** |       %-6.5e        |      %-6.5e      |\n", *phi_max, *rr_phi_max);
+		printf("***  -------------------------- ----------------------- \n");
 		printf("**** \n");
 	}
 
@@ -245,7 +259,7 @@ void ex_analysis(
 		// Sum all components.
 		i3[k] = i0[k] + i1[k] + i2[k];
 	}
-	// Integrate angles.
+	// Integrate angles: theta from 0 to PI.
 	I3[0] = 0.0;
 	#pragma omp parallel for schedule(dynamic, 1) shared(I3) private(k)
 	for (k = 1; k < NrrTotal; ++k)
@@ -310,18 +324,56 @@ void ex_analysis(
 	// Integrate radius.
 	*GRV3 = simps(I3, drr, NrrTotal);
 
+	// Set pointer values.
+	*M = 0.5 * (M_Komar1[NrrTotal - 1] + M_Komar2[NrrTotal - 1]);
+	*J = 0.5 * (J_Komar1[NrrTotal - 1] + J_Komar2[NrrTotal - 1]);
+
+	// Radius 99.
+	double r99 = 0.0;
+	for (k = NrrTotal - 2; k > 0; --k)
+	{
+		if (0.5 * (M_Komar1[k] + M_Komar2[k]) < 0.99 * *M)
+		{
+			// Linear interpolation.
+			r99 = sph_rr[P_IDX(k, 0)] + drr * (0.99 * *M - 0.5 * (M_Komar1[k] + M_Komar2[k])) / (0.5 * (M_Komar1[k + 1] + M_Komar2[k + 1] - M_Komar1[k] - M_Komar2[k]));
+			break;
+		}
+	}
+
+	// Complementary terms for GRV2 and GRV3 using Kerr extrapolation.
+	double GRV2_c = 0.0;
+	double GRV3_c = 0.0;
+
+	// Kerr ratio.
+	double a = *J / *M;
+
+	double rInf = sph_rr[P_IDX(NrrTotal - 1, 0)];
+
+	GRV2_c = -M_PI * (*M / rInf) * (*M / rInf) * (0.5 
+		+ (*M / rInf) * ((4.0 / 3.0) 
+		+ (*M / rInf) * (3.0 - (33.0 / 8.0) * a * a / (*M * *M) 
+		+ (*M / rInf) * ((32.0 / 5.0) - (31.0 / 5.0) * a * a / (*M * *M)))));
+
+	GRV3_c = M_PI * *M * (*M / rInf) * (4.0
+		+ (*M / rInf) * (8.0
+		+ (*M / rInf) * (8.0 * (86.0 - 15.0 * a * a / (*M * *M)) / 45.0
+		+ (*M / rInf) * (2.0 * (1526.0 - 379.0 * a * a / (*M * *M)) / 105.0
+		+ (*M / rInf) * (4.0 * (21576.0 - 9256.0 * a * a / (*M * *M) + 1365.0 * a * a * a * a / (*M * *M * *M * *M)) / 1575.0)))));
+
+	// Determine if ergoregion exists.
+	MKL_INT ergoregion_flag = 0;
+	for (k = 0; k < p_dim; ++k)
+	{
+		// Metric component -g_{tt}.
+		i0[k] = exp(2.0 * sph_log_alpha[k]) - sph_rr[k] * sph_rr[k] * sin(sph_th[k]) * sin(sph_th[k]) * exp(2.0 * sph_log_h[k]) * sph_beta[k] * sph_beta[k];
+		if (i0[k] < 0.0 && !ergoregion_flag)
+		{
+			ergoregion_flag = 1;
+		}
+	}
+
 	if (print)
 	{
-		// Write files.
-		write_single_file_1d(M_Schwarz, "M_Schwarz.asc", NrrTotal);
-		write_single_file_1d(M_Komar1, "M_Komar1.asc", NrrTotal);
-		write_single_file_1d(M_Komar2, "M_Komar2.asc", NrrTotal);
-		write_single_file_1d(M_ADM, "M_ADM.asc", NrrTotal);
-		write_single_file_1d(J_Komar1, "J_Komar1.asc", NrrTotal);
-		write_single_file_1d(J_Komar2, "J_Komar2.asc", NrrTotal);
-		write_single_file_1d(GRV2, "GRV2.asc", 1);
-		write_single_file_1d(GRV3, "GRV3.asc", 1);
-
 		// Print information to screen.
 		printf("*** \n");
 		printf("*** GLOBAL QUANTITIES ANALYSIS\n");
@@ -348,17 +400,41 @@ void ex_analysis(
 		printf("***  -------------------------- ----------------------- ----------------- \n");
 		printf("*** \n");
 		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | Radius 99%% M            | Ergoregion Exists      |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %-6.5e        |      %lld               |\n", r99, ergoregion_flag);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** \n");
+		printf("***  -------------------------- ------------------------ \n");
 		printf("*** | GRV2 Virital Identity    | GRV3 Virial Identity   |\n");
 		printf("***  -------------------------- ------------------------ \n");
 		printf("*** |       %-6.5e        |      %-6.5e       |\n", *GRV2, *GRV3);
 		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | GRV2 Kerr Extrapolat.    | GRV3 Kerr Extrapolat.  |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %-6.5e        |      %-6.5e       |\n", GRV2_c, GRV3_c);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | GRV2 Total               | GRV3 Total             |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %-6.5e        |      %-6.5e       |\n", *GRV2 + GRV2_c, *GRV3 + GRV3_c);
+		printf("***  -------------------------- ------------------------ \n");
 		printf("**** \n");
+
+		// Write files.
+		*GRV2 += GRV2_c;
+		*GRV3 += GRV3_c;
+
+		write_single_file_1d(M_Schwarz, "M_Schwarz.asc", NrrTotal);
+		write_single_file_1d(M_Komar1, "M_Komar1.asc", NrrTotal);
+		write_single_file_1d(M_Komar2, "M_Komar2.asc", NrrTotal);
+		write_single_file_1d(M_ADM, "M_ADM.asc", NrrTotal);
+		write_single_file_1d(J_Komar1, "J_Komar1.asc", NrrTotal);
+		write_single_file_1d(J_Komar2, "J_Komar2.asc", NrrTotal);
+		write_single_file_1d(GRV2, "GRV2.asc", 1);
+		write_single_file_1d(GRV3, "GRV3.asc", 1);
+		write_single_file_1d(&r99, "r99.asc", 1);
+		write_single_integer_file_1d(&ergoregion_flag, "ergoregion_flag.asc", 1);
 	}
-
-	// Set pointer values.
-	*M = 0.5 * (M_Komar1[NrrTotal - 1] + M_Komar2[NrrTotal - 1]);
-	*J = 0.5 * (J_Komar1[NrrTotal - 1] + J_Komar2[NrrTotal - 1]);
-
 	// Free memory.
 	SAFE_FREE(sph_Drr_log_alpha);
 	SAFE_FREE(sph_Drr_beta);
