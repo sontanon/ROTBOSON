@@ -2327,7 +2327,7 @@ void jacobian_4th_order_variable_omega_sc
 	double dZu1 = D10 * u140 + D11 * u141 + D13 * u143 + D14 * u144;
 	double dZu2 = D10 * u240 + D11 * u241 + D13 * u243 + D14 * u244;
 	double dZu3 = D10 * u340 + D11 * u341 + D13 * u343 + D14 * u344;
-	double dZu4 = D10 * u440 + D11 * u441 + D13 * u443 + D14 * u444;
+	//double dZu4 = D10 * u440 + D11 * u441 + D13 * u443 + D14 * u444;
 	double dZu5 = D10 * u540 + D11 * u541 + D13 * u543 + D14 * u544;
 	double dZu6 = D10 * u640 + D11 * u641 + D13 * u643 + D14 * u644;
 	// Second derivatives.
