@@ -292,8 +292,7 @@ void parser(const char *fname)
 			}
 			if (config_lookup_string(&cfg, "lambda_i", &lambda_i) == CONFIG_FALSE)
 			{
-				fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"psi_i\".\n");
-				exit(-1);
+				fprintf(stderr, "PARSER: WARNING! readInitialData = 3 requires values for all initial files. Did not find \"lambda_i\".\n");
 			}
 
 

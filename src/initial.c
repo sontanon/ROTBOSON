@@ -61,7 +61,35 @@ void initial_guess(double *u)
 		read_single_file_2d(u_0 + 2 * NrTotalInitial * NzTotalInitial, log_h_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
 		read_single_file_2d(u_0 + 3 * NrTotalInitial * NzTotalInitial, log_a_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
 		read_single_file_2d(u_0 + 4 * NrTotalInitial * NzTotalInitial, psi_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
-		read_single_file_2d(u_0 + 5 * NrTotalInitial * NzTotalInitial, lambda_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+		if (lambda_i)
+		{
+			read_single_file_2d(u_0 + 5 * NrTotalInitial * NzTotalInitial, lambda_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+		}
+		else
+		{
+			k = (MKL_INT)floor(0.5 / dr_i + ghost_i - 0.5);
+			#pragma omp parallel shared(u) private(i, j, r) // rr.
+			{
+				#pragma omp for schedule(dynamic, 1)
+				for (i = k; i < NrTotalInitial; ++i)
+				{
+					r = dr_i * (i + 0.5 - ghost_i);
+					//rl = pow(r, l);
+
+					for (j = ghost_i; j < NzTotalInitial; ++j)
+					{
+						u_0[5 * NrTotalInitial * NzTotalInitial + i * NzTotalInitial + j] = (exp(2.0 * u_0[3 * NrTotalInitial * NzTotalInitial + i * NzTotalInitial + j]) - exp(2.0 * u_0[2 * NrTotalInitial * NzTotalInitial + i * NzTotalInitial + j])) / (r * r);
+					}
+				}
+			}
+			for (i = 0; i < k; ++i)
+			{
+				for (j = ghost_i; j < NzTotalInitial; ++j)
+				{
+					u_0[5 * NrTotalInitial * NzTotalInitial + i * NzTotalInitial + j] = u_0[5 * NrTotalInitial * NzTotalInitial + k * NzTotalInitial + j];
+				}
+			}
+		}
 		u_0[GNUM * NrTotalInitial * NzTotalInitial] = u[w_idx];
 
 #ifdef I_DEBUG
