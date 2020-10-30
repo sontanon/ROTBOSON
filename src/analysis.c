@@ -23,35 +23,54 @@ void ex_phi_analysis(const MKL_INT print,
 	{
 		sph_phi[k] = pow(sph_rr[k] * sin(sph_th[k]), l) * sph_psi[k];
 	}
+
+	// Minimum value.
+	double phi_min = sph_phi[cblas_idamin(p_dim, sph_phi, 1)];
+
 	// Calculate maximum index.
-	*k_rr_max = cblas_idamax(p_dim, sph_phi, 1);
+	*k_rr_max = k = cblas_idamax(p_dim, sph_phi, 1);
 
 	// 2D indices.
 	MKL_INT i, j;
-	i = *k_rr_max / NthTotal;
-	j = *k_rr_max & NthTotal;
+	i = k / NthTotal;
+	j = k % NthTotal;
 	
 	// Use parabolic interpolation.
-	double fa = sph_phi[P_IDX(i - 1, j)];
-	double fb = sph_phi[P_IDX(i    , j)];
-	double fc = sph_phi[P_IDX(i + 1, j)];
-	double a = sph_rr[P_IDX(i - 1, j)];
-	double b = sph_rr[P_IDX(i, j)];
-	double c = sph_rr[P_IDX(i + 1, j)];
+	double fa = sph_phi[k - NthTotal];
+	double fb = sph_phi[k];
+	double fc = sph_phi[k + NthTotal];
+	double a = sph_rr[k - NthTotal];
+	double b = sph_rr[k];
+	double c = sph_rr[k + NthTotal];
 	double x = b;
 
-	*rr_phi_max = x = b + 0.5 * drr * ((fb - fa) - (fb - fc)) / ((fb - fa) + (fb - fc));
-	*phi_max = fa * ((x - b) / (a - b)) * ((x - c) / (a - c)) + fb * ((x - c) / (b - c)) * ((x - a) / (b - a)) + fc * ((x - a) / (c - a)) * ((x - b) / (c - b));
+	if (((fb - fa) + (fb - fc)) != 0.0)
+		*rr_phi_max = x = b + 0.5 * drr * ((fb - fa) - (fb - fc)) / ((fb - fa) + (fb - fc));
+	else
+		*rr_phi_max = x = b;
+	if (x != b)
+		*phi_max = fa * ((x - b) / (a - b)) * ((x - c) / (a - c)) + fb * ((x - c) / (b - c)) * ((x - a) / (b - a)) + fc * ((x - a) / (c - a)) * ((x - b) / (c - b));
+	else
+		*phi_max = fb;
 		
 	if (print)
 	{
 		// Write files.
 		write_single_file_1d(phi_max, "phi_max.asc", 1);
 		write_single_file_1d(rr_phi_max, "rr_phi_max.asc", 1);
+		printf("***\n");
+		printf("*** Scalar Field Analysis: Maximum coordinates k = %lld, i = %lld, j = %lld .\n", k, i, j);
+		printf("***\n");
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("*** | max(phi)                 | rr(max(phi))          | min(phi)              |\n");
+		printf("***  -------------------------- ----------------------- ----------------------- \n");	
+		printf("*** |       %-6.5e        |      %-6.5e      |      %-6.5e      |\n", *phi_max, *rr_phi_max, phi_min);
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("***\n");
 		printf("***  -------------------------- ----------------------- \n");
-		printf("*** | max(phi)                 | rr(max(phi))          |\n");
-		printf("***  -------------------------- ----------------------- \n");	
-		printf("*** |       %-6.5e        |      %-6.5e      |\n", *phi_max, *rr_phi_max);
+		printf("*** | psi(0)                   | psi(rr(max(phi))      |\n");
+		printf("***  -------------------------- ----------------------- \n");
+		printf("*** |       %-6.5e        |      %-6.5e      |\n", sph_psi[0], sph_psi[*k_rr_max]);
 		printf("***  -------------------------- ----------------------- \n");
 		printf("**** \n");
 	}
@@ -347,18 +366,16 @@ void ex_analysis(
 	// Kerr ratio.
 	double a = *J / *M;
 
-	double rInf = sph_rr[P_IDX(NrrTotal - 1, 0)];
+	GRV2_c = -M_PI * (*M / rr_inf) * (*M / rr_inf) * (0.5 
+		+ (*M / rr_inf) * ((4.0 / 3.0) 
+		+ (*M / rr_inf) * (3.0 - (33.0 / 8.0) * a * a / (*M * *M) 
+		+ (*M / rr_inf) * ((32.0 / 5.0) - (31.0 / 5.0) * a * a / (*M * *M)))));
 
-	GRV2_c = -M_PI * (*M / rInf) * (*M / rInf) * (0.5 
-		+ (*M / rInf) * ((4.0 / 3.0) 
-		+ (*M / rInf) * (3.0 - (33.0 / 8.0) * a * a / (*M * *M) 
-		+ (*M / rInf) * ((32.0 / 5.0) - (31.0 / 5.0) * a * a / (*M * *M)))));
-
-	GRV3_c = M_PI * *M * (*M / rInf) * (4.0
-		+ (*M / rInf) * (8.0
-		+ (*M / rInf) * (8.0 * (86.0 - 15.0 * a * a / (*M * *M)) / 45.0
-		+ (*M / rInf) * (2.0 * (1526.0 - 379.0 * a * a / (*M * *M)) / 105.0
-		+ (*M / rInf) * (4.0 * (21576.0 - 9256.0 * a * a / (*M * *M) + 1365.0 * a * a * a * a / (*M * *M * *M * *M)) / 1575.0)))));
+	GRV3_c = M_PI * *M * (*M / rr_inf) * (4.0
+		+ (*M / rr_inf) * (8.0
+		+ (*M / rr_inf) * (8.0 * (86.0 - 15.0 * a * a / (*M * *M)) / 45.0
+		+ (*M / rr_inf) * (2.0 * (1526.0 - 379.0 * a * a / (*M * *M)) / 105.0
+		+ (*M / rr_inf) * (4.0 * (21576.0 - 9256.0 * a * a / (*M * *M) + 1365.0 * a * a * a * a / (*M * *M * *M * *M)) / 1575.0)))));
 
 	// Determine if ergoregion exists.
 	MKL_INT ergoregion_flag = 0;
@@ -400,7 +417,7 @@ void ex_analysis(
 		printf("***  -------------------------- ----------------------- ----------------- \n");
 		printf("*** \n");
 		printf("***  -------------------------- ------------------------ \n");
-		printf("*** | Radius 99%% M            | Ergoregion Exists      |\n");
+		printf("*** | Radius 99%% M             | Ergoregion Exists      |\n");
 		printf("***  -------------------------- ------------------------ \n");
 		printf("*** |       %-6.5e        |      %lld               |\n", r99, ergoregion_flag);
 		printf("***  -------------------------- ------------------------ \n");
@@ -408,15 +425,15 @@ void ex_analysis(
 		printf("***  -------------------------- ------------------------ \n");
 		printf("*** | GRV2 Virital Identity    | GRV3 Virial Identity   |\n");
 		printf("***  -------------------------- ------------------------ \n");
-		printf("*** |       %-6.5e        |      %-6.5e       |\n", *GRV2, *GRV3);
+		printf("*** |       %- 6.5e       |      %- 6.5e      |\n", *GRV2, *GRV3);
 		printf("***  -------------------------- ------------------------ \n");
 		printf("*** | GRV2 Kerr Extrapolat.    | GRV3 Kerr Extrapolat.  |\n");
 		printf("***  -------------------------- ------------------------ \n");
-		printf("*** |       %-6.5e        |      %-6.5e       |\n", GRV2_c, GRV3_c);
+		printf("*** |       %- 6.5e       |      %- 6.5e      |\n", GRV2_c, GRV3_c);
 		printf("***  -------------------------- ------------------------ \n");
 		printf("*** | GRV2 Total               | GRV3 Total             |\n");
 		printf("***  -------------------------- ------------------------ \n");
-		printf("*** |       %-6.5e        |      %-6.5e       |\n", *GRV2 + GRV2_c, *GRV3 + GRV3_c);
+		printf("*** |       %- 6.5e       |      %- 6.5e      |\n", *GRV2 + GRV2_c, *GRV3 + GRV3_c);
 		printf("***  -------------------------- ------------------------ \n");
 		printf("**** \n");
 
