@@ -632,8 +632,8 @@ int main(int argc, char *argv[])
 					#pragma omp for schedule(dynamic, 1)
 					for (counter_i = 0; counter_i < GNUM * dim + 1; ++counter_i)
 					{
-						u[0][counter_i] = -NEXT_SCALE * u_seed[counter_i];
-						u[0][counter_i] += (1.0 + NEXT_SCALE) * u[k][counter_i];
+						u[0][counter_i] = -scale_next * u_seed[counter_i];
+						u[0][counter_i] += (1.0 + scale_next) * u[k][counter_i];
 						u_seed[counter_i] = u[k][counter_i];
 					}
 				}

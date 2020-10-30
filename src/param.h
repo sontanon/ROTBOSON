@@ -61,6 +61,9 @@ double scale_u5 = 1.0;
 double scale_u6 = 1.0;
 double *u_seed = NULL;
 
+/* NEXT SCALE ADVANCE */
+double scale_next = 1.0;
+
 /* SOLVER PARAMETERS */
 MKL_INT solverType	= 1;
 MKL_INT localSolver	= 1;
@@ -154,6 +157,9 @@ extern double scale_u4;
 extern double scale_u5;
 extern double scale_u6;
 extern double *u_seed;
+
+/* NEXT SCALE ADVANCE */
+extern double scale_next;
 
 /* SOLVER PARAMETERS */
 extern MKL_INT solverType;

@@ -641,6 +641,9 @@ void parser(const char *fname)
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_minimum\" from parameter file. Setting to default value, norm_f0_target = %3.5E\n", norm_f0_target);
 	}
 
+	// NEXT SCALE ADVANCEMENT.
+	config_lookup_float(&cfg, "scale_next", &scale_next);
+
 	// OUTPUT
 	// work_dirname.
 	getcwd(work_dirname, MAX_STR_LEN);
