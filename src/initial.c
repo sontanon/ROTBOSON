@@ -323,7 +323,8 @@ void initial_guess(double *u)
 	cblas_dscal(dim, scale_u3, u + 3 * dim, 1);
 	cblas_dscal(dim, scale_u4, u + 4 * dim, 1);
 	cblas_dscal(dim, scale_u5, u + 5 * dim, 1);
-	cblas_dscal(  1, scale_u6, u + 6 * dim, 1);
+	// Omega has already been scaled.
+	//cblas_dscal(  1, scale_u6, u + 6 * dim, 1);
 
 	// All done.
 	return;
