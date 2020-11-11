@@ -61,7 +61,7 @@ void ex_phi_analysis(const MKL_INT print,
 
 	for (counter = i; counter >= 0; --counter)
 	{
-		if (sph_phi[P_IDX(i, j)] > hwl)
+		if (sph_phi[P_IDX(counter, j)] > hwl)
 			++l_res;
 		else
 			break;
@@ -69,7 +69,7 @@ void ex_phi_analysis(const MKL_INT print,
 
 	for (counter = i + 1; counter < NrrTotal; ++counter)
 	{
-		if (sph_phi[P_IDX(i, j)] > hwl)
+		if (sph_phi[P_IDX(counter, j)] > hwl)
 			++r_res;
 		else
 			break;
@@ -83,6 +83,7 @@ void ex_phi_analysis(const MKL_INT print,
 		// Write files.
 		write_single_file_1d(phi_max, "phi_max.asc", 1);
 		write_single_file_1d(rr_phi_max, "rr_phi_max.asc", 1);
+		write_single_integer_file_1d(f_res, "hwl_resolution.asc", 1);
 		printf("***\n");
 		printf("*** Scalar Field Analysis: Maximum coordinates k = %lld, i = %lld, j = %lld .\n", k, i, j);
 		printf("***\n");
@@ -95,7 +96,7 @@ void ex_phi_analysis(const MKL_INT print,
 		printf("***  -------------------------- ----------------------- ----------------------- \n");
 		printf("*** | psi(0)                   | psi(rr(max(phi))      | HWL Resolution        |\n");
 		printf("***  -------------------------- ----------------------- ----------------------- \n");
-		printf("*** |       %-6.5e        |      %-6.5e      |        % 4lld       |\n", sph_psi[0], sph_psi[k], *f_res);
+		printf("*** |       %-6.5e        |      %-6.5e      |        % 4lld          |\n", sph_psi[0], sph_psi[k], *f_res);
 		printf("***  -------------------------- ----------------------- ----------------------- \n");
 		printf("**** \n");
 	}
