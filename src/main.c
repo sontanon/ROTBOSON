@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 	double *i_u = NULL;
 	double M_KOMAR, J_KOMAR, GRV2, GRV3;
 	double phi_max = 1.0, rr_phi_max = 0.0;
-	MKL_INT k_rr_max = 0;
+	MKL_INT hwl_res = 0;
 	
 	// Final omega.
 	double w = m;
@@ -586,20 +586,58 @@ int main(int argc, char *argv[])
 		// Do analysis.
 		analysis(i_u, i_rr, i_th, w);
 		// Calculate rr(phi_max).
-		ex_phi_analysis(1, &phi_max, &rr_phi_max, &k_rr_max, i_u, i_rr, i_th, l, ghost, order, NrrTotal, NthTotal, p_dim, drr, dth, rr_inf);
+		ex_phi_analysis(1, &phi_max, &rr_phi_max, &hwl_res, i_u, i_rr, i_th, l, ghost, order, NrrTotal, NthTotal, p_dim, drr, dth, rr_inf);
 
 		// Exit directory by going up one level (executable level).
 		chdir(work_dirname);
 
 		// Rename directory to include w.
-		snprintf(final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", l, w, dr, NrInterior);
+		snprintf(final_dirname, MAX_STR_LEN, "l=%lld,psi=%.5E,w=%.5E,dr=%.5E,N=%04lld,order=%lld", l, i_u[4 * p_dim], w, dr, NrInterior, order);
 		rename(initial_dirname, final_dirname);
 
 		// Sweep continuation if sanity checks first.
 		if (errCode == 0)
 		{
 			// Check if sweep should continue on this resolution.
-			if (rr_phi_max >= rr_phi_max_minimum)
+			if (rr_phi_max < rr_phi_max_minimum)
+			{
+				printf("******************************************************\n");
+				printf("***                                                \n");
+				printf("***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n", rr_phi_max_minimum);
+				printf("***                                                \n");
+				printf("******************************************************\n");
+				break;
+			}
+			else if (rr_phi_max > rr_phi_max_maximum)
+			{
+				printf("******************************************************\n");
+				printf("***                                                \n");
+				printf("***   Sweep cannot continue because rr(max(phi)) > max(rr(max(phi))) = %.5E !\n", rr_phi_max_maximum);
+				printf("***                                                \n");
+				printf("******************************************************\n");
+				break;
+			}
+			else if (hwl_res < hwl_min)
+			{
+				printf("******************************************************\n");
+				printf("***                                                \n");
+				printf("***   Sweep cannot continue because N(HWL) < MIN(N(HWL)) = %lld !\n", hwl_min);
+				printf("***   In other words, scalar field has not enough resolution. Try with more resolution or decrease hwl_min.\n");
+				printf("***                                                \n");
+				printf("******************************************************\n");
+				break;
+			}
+			else if (hwl_res > hwl_max)
+			{
+				printf("******************************************************\n");
+				printf("***                                                \n");
+				printf("***   Sweep cannot continue because N(HWL) > MAX(N(HWL)) = %lld !\n", hwl_max);
+				printf("***   In other words, scalar field is too scattered. Try with less resolution or increase hwl_max.\n");
+				printf("***                                                \n");
+				printf("******************************************************\n");
+				break;
+			}
+			else
 			{
 				for (counter_i = 0; counter_i < GNUM; ++counter_i)
 				{
@@ -658,8 +696,7 @@ int main(int argc, char *argv[])
 				w0 = omega_calc(u[0][GNUM * dim], m);
 
 				// Set analysis phase to 0 again.
-				if (!useLowRank)
-					J.analysis_phase = 0;
+				J.analysis_phase = 0;
 
 				printf("******************************************************\n");
 				printf("***                                                \n");
@@ -667,16 +704,6 @@ int main(int argc, char *argv[])
 				printf("***                                                \n");
 				printf("***                                                \n");
 				printf("******************************************************\n");
-			}
-			// Else, exit.
-			else
-			{
-				printf("******************************************************\n");
-				printf("***                                                \n");
-				printf("***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n", rr_phi_max_minimum);
-				printf("***                                                \n");
-				printf("******************************************************\n");
-				break;
 			}
 		}
 		else

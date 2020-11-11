@@ -5,12 +5,12 @@
 #define EVEN 1
 
 void ex_phi_analysis(const MKL_INT print, 
-	double *phi_max, double *rr_phi_max, MKL_INT *k_rr_max,
+	double *phi_max, double *rr_phi_max, MKL_INT *f_res,
 	double *sph_u, double *sph_rr, double *sph_th, 
 	const MKL_INT l,
 	const MKL_INT ghost, const MKL_INT order, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT p_dim, const double drr, const double dth, const double rr_inf)
 {
-	// Loop counter.
+	// Grid variable maximum location.
 	MKL_INT k = 0;
 
 	// Extract variables.
@@ -28,7 +28,7 @@ void ex_phi_analysis(const MKL_INT print,
 	double phi_min = sph_phi[cblas_idamin(p_dim, sph_phi, 1)];
 
 	// Calculate maximum index.
-	*k_rr_max = k = cblas_idamax(p_dim, sph_phi, 1);
+	k = cblas_idamax(p_dim, sph_phi, 1);
 
 	// 2D indices.
 	MKL_INT i, j;
@@ -52,6 +52,31 @@ void ex_phi_analysis(const MKL_INT print,
 		*phi_max = fa * ((x - b) / (a - b)) * ((x - c) / (a - c)) + fb * ((x - c) / (b - c)) * ((x - a) / (b - a)) + fc * ((x - a) / (c - a)) * ((x - b) / (c - b));
 	else
 		*phi_max = fb;
+
+	// Now count number of points at half-width-length.
+	double hwl = 0.5 * *phi_max;
+	MKL_INT l_res = 0;
+	MKL_INT r_res = 0;
+	MKL_INT counter = 0;
+
+	for (counter = i; counter >= 0; --counter)
+	{
+		if (sph_phi[P_IDX(i, j)] > hwl)
+			++l_res;
+		else
+			break;
+	}
+
+	for (counter = i + 1; counter < NrrTotal; ++counter)
+	{
+		if (sph_phi[P_IDX(i, j)] > hwl)
+			++r_res;
+		else
+			break;
+	}
+
+	*f_res = l_res + r_res;
+
 		
 	if (print)
 	{
@@ -67,11 +92,11 @@ void ex_phi_analysis(const MKL_INT print,
 		printf("*** |       %-6.5e        |      %-6.5e      |      %-6.5e      |\n", *phi_max, *rr_phi_max, phi_min);
 		printf("***  -------------------------- ----------------------- ----------------------- \n");
 		printf("***\n");
-		printf("***  -------------------------- ----------------------- \n");
-		printf("*** | psi(0)                   | psi(rr(max(phi))      |\n");
-		printf("***  -------------------------- ----------------------- \n");
-		printf("*** |       %-6.5e        |      %-6.5e      |\n", sph_psi[0], sph_psi[*k_rr_max]);
-		printf("***  -------------------------- ----------------------- \n");
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("*** | psi(0)                   | psi(rr(max(phi))      | HWL Resolution        |\n");
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("*** |       %-6.5e        |      %-6.5e      |        % 4lld       |\n", sph_psi[0], sph_psi[k], *f_res);
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
 		printf("**** \n");
 	}
 

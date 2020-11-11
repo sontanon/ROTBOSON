@@ -103,6 +103,9 @@ char   final_dirname[MAX_STR_LEN] = { 0 };
 
 /* SWEEP CONTROL */
 double rr_phi_max_minimum = 1.0;
+double rr_phi_max_maximum = 100.0;
+MKL_INT hwl_min = 10;
+MKL_INT hwl_max = 100;
 #else
 /* CONFIG FILE */
 extern config_t cfg;
@@ -200,4 +203,7 @@ extern char initial_dirname[MAX_STR_LEN];
 
 /* SWEEP CONTROL */
 extern double rr_phi_max_minimum;
+extern double rr_phi_max_maximum;
+extern MKL_INT hwl_min;
+extern MKL_INT hwl_max;
 #endif

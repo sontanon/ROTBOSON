@@ -629,7 +629,7 @@ void parser(const char *fname)
 	// SWEEP CONTROL.
 	if (config_lookup_float(&cfg, "rr_phi_max_minimum", &rr_phi_max_minimum) == CONFIG_TRUE)
 	{
-		if (rr_phi_max_minimum < 4 * dr || norm_f0_target > dr * NrInterior)
+		if (rr_phi_max_minimum < 4 * dr || rr_phi_max_minimum > dr * NrInterior)
 		{
 			fprintf(stderr, "PARSER: ERROR! rr_phi_max_minimum = %3.5E out of bounds!\n", rr_phi_max_minimum);
 			exit(-1);
@@ -637,9 +637,22 @@ void parser(const char *fname)
 	}
 	else
 	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_minimum\" from parameter file. Setting to default value, norm_f0_target = %3.5E\n", norm_f0_target);
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_minimum\" from parameter file. Setting to default value, rr_phi_max_minimum = %3.5E\n", rr_phi_max_minimum);
 	}
-
+	if (config_lookup_float(&cfg, "rr_phi_max_maximum", &rr_phi_max_maximum) == CONFIG_TRUE)
+	{
+		if (rr_phi_max_maximum < rr_phi_max_minimum || rr_phi_max_maximum > dr * NrTotal)
+		{
+			fprintf(stderr, "PARSER: ERROR! rr_phi_max_maximum = %3.5E out of bounds!\n", rr_phi_max_maximum);
+			exit(-1);
+		}
+	}
+	else
+	{
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_maximum\" from parameter file. Setting to default value, rr_phi_max_maximum = %3.5E\n", rr_phi_max_maximum);
+	}
+	config_lookup_int64(&cfg, "hwl_min", &hwl_min);
+	config_lookup_int64(&cfg, "hwl_max", &hwl_max);
 	// NEXT SCALE ADVANCEMENT.
 	config_lookup_float(&cfg, "scale_next", &scale_next);
 
@@ -648,7 +661,7 @@ void parser(const char *fname)
 	getcwd(work_dirname, MAX_STR_LEN);
 
 	// Set initial directory name.
-	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,w=X.XXXXXE-01,dr=%.5E,N=%04lld", l, dr, NrInterior);
+	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,psi=X.XXXXXE+00,w=X.XXXXXE-01,dr=%.5E,N=%04lld,order=%lld", l, dr, NrInterior, order);
 
 	// All done.
 	return;
