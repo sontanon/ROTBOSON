@@ -653,6 +653,9 @@ void parser(const char *fname)
 	}
 	config_lookup_int64(&cfg, "hwl_min", &hwl_min);
 	config_lookup_int64(&cfg, "hwl_max", &hwl_max);
+	config_lookup_float(&cfg, "w_max", &w_max);
+	config_lookup_float(&cfg, "w_min", &w_min);
+	config_lookup_float(&cfg, "w_step", &w_step);
 	// NEXT SCALE ADVANCEMENT.
 	config_lookup_float(&cfg, "scale_next", &scale_next);
 
@@ -661,7 +664,8 @@ void parser(const char *fname)
 	getcwd(work_dirname, MAX_STR_LEN);
 
 	// Set initial directory name.
-	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,psi=X.XXXXXE+00,w=X.XXXXXE-01,dr=%.5E,N=%04lld,order=%lld", l, dr, NrInterior, order);
+	//snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,psi=X.XXXXXE+00,w=X.XXXXXE-01,dr=%.5E,N=%04lld,order=%lld", l, dr, NrInterior, order);
+	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,w=X.XXXXXE-01,dr=%.5E,N=%04lld", l, dr, NrInterior, order);
 
 	// All done.
 	return;

@@ -592,14 +592,24 @@ int main(int argc, char *argv[])
 		chdir(work_dirname);
 
 		// Rename directory to include w.
-		snprintf(final_dirname, MAX_STR_LEN, "l=%lld,psi=%.5E,w=%.5E,dr=%.5E,N=%04lld,order=%lld", l, i_u[4 * p_dim], w, dr, NrInterior, order);
+		//snprintf(final_dirname, MAX_STR_LEN, "l=%lld,psi=%.5E,w=%.5E,dr=%.5E,N=%04lld,order=%lld", l, i_u[4 * p_dim], w, dr, NrInterior, order);
+		snprintf(final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", l, w, dr, NrInterior);
 		rename(initial_dirname, final_dirname);
 
 		// Sweep continuation if sanity checks first.
 		if (errCode == 0)
 		{
 			// Check if sweep should continue on this resolution.
-			if (rr_phi_max < rr_phi_max_minimum)
+			if (w <= w_min || w >= w_max)
+			{
+				printf("******************************************************\n");
+				printf("***                                                \n");
+				printf("***   Sweep cannot continue because w is out of range (%.5E, %.5E) !\n", w_min, w_max);
+				printf("***                                                \n");
+				printf("******************************************************\n");
+				break;
+			}
+			else if (rr_phi_max < rr_phi_max_minimum)
 			{
 				printf("******************************************************\n");
 				printf("***                                                \n");
@@ -691,9 +701,12 @@ int main(int argc, char *argv[])
 				}
 				u[0][GNUM * dim] = inverse_omega_calc(next_scale[GNUM] * w, m);
 #endif
-
+				if (w_step != 0.0)
+				{
+					u[0][w_idx] = inverse_omega_calc(w + w_step, m);
+				}
 				// Set initial omega.
-				w0 = omega_calc(u[0][GNUM * dim], m);
+				w0 = omega_calc(u[0][w_idx], m);
 
 				// Set analysis phase to 0 again.
 				J.analysis_phase = 0;

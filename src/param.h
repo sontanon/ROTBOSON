@@ -106,6 +106,9 @@ double rr_phi_max_minimum = 1.0;
 double rr_phi_max_maximum = 100.0;
 MKL_INT hwl_min = 10;
 MKL_INT hwl_max = 100;
+double w_max = 1.0;
+double w_min = 0.0;
+double w_step = 0.0;
 #else
 /* CONFIG FILE */
 extern config_t cfg;
@@ -206,4 +209,7 @@ extern double rr_phi_max_minimum;
 extern double rr_phi_max_maximum;
 extern MKL_INT hwl_min;
 extern MKL_INT hwl_max;
+extern double w_max;
+extern double w_min;
+extern double w_step;
 #endif
