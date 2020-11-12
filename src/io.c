@@ -39,6 +39,7 @@ void io(const char *dirname, const char *parfile)
 	}
 
 	// Copy parameter file to directory.
+	/*
 	char cmd[256];
 	memset(cmd, 0, 256);
 #ifdef WIN
@@ -73,6 +74,7 @@ void io(const char *dirname, const char *parfile)
 			exit(1);
 		}
 	}
+	*/
 	// Cd to output directory.
 	if (chdir(dirname) == -1)
 	{
