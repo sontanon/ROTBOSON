@@ -665,7 +665,7 @@ void parser(const char *fname)
 
 	// Set initial directory name.
 	//snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,psi=X.XXXXXE+00,w=X.XXXXXE-01,dr=%.5E,N=%04lld,order=%lld", l, dr, NrInterior, order);
-	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,w=X.XXXXXE-01,dr=%.5E,N=%04lld", l, dr, NrInterior, order);
+	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,w=X.XXXXXE-01,dr=%.5E,N=%04lld", l, dr, NrInterior);
 
 	// All done.
 	return;
