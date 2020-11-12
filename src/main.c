@@ -711,6 +711,9 @@ int main(int argc, char *argv[])
 				// Set analysis phase to 0 again.
 				J.analysis_phase = 0;
 
+				// Set new lambda0 to one since convergence has improved.
+				lambda0 = 1.0;
+
 				printf("******************************************************\n");
 				printf("***                                                \n");
 				printf("***   Setting initial data to last solution, scaling, and continuing...\n");
