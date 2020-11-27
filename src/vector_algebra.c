@@ -65,3 +65,25 @@ double norm2_interior_all_variables(double *x)
 
 	return sqrt(sum);
 }
+
+double dot_all_variables(double *x, double *y)
+{
+	double sum = 0.0;
+	MKL_INT k = 0;
+
+	// Add all dot products.
+	for (k = GRID_VARIABLE_START; k < GRID_VARIABLE_END; ++k)
+	{
+		sum += dot(x + k * dim, y + k * dim);
+	}
+
+	// Rescale.
+	return sum / ((double)(GRID_VARIABLE_END - GRID_VARIABLE_START));
+}
+
+double norm2_all_variables(double *x)
+{
+	double sum = dot_all_variables(x, x);
+
+	return sqrt(sum);
+}

@@ -6,3 +6,6 @@ double norm2_interior(double *x);
 
 double dot_interior_all_variables(double *x, double *y);
 double norm2_interior_all_variables(double *x);
+
+double dot_all_variables(double *x, double *y);
+double norm2_all_variables(double *x);
