@@ -34,4 +34,6 @@ void rhs_bdry(double *f,
 	const MKL_INT l,
 	const double m, 
 	const double w,
+	const double M,
+	const double J,
 	const double rescale);

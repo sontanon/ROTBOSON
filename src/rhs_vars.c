@@ -5,6 +5,8 @@
 #define Q1 1.0
 #define Q2 1.0
 
+#undef ANALYTIC
+
 void rhs_vars(
 	double *f, 
 	double *u, 
@@ -218,6 +220,8 @@ void rhs_bdry(
 	const MKL_INT l,
 	const double m,
 	const double w,
+	const double M,
+	const double J,
 	const double rescale
 )
 {
@@ -254,18 +258,94 @@ void rhs_bdry(
 	double Dr_lambda = Dr_u[5 * dim + IDX(i, j)];
 	double Dz_lambda = Dz_u[5 * dim + IDX(i, j)];
 
+	// Kerr matching.
+	/*
+	double a = J / M;
+	double M2 = M * M;
+	double a2 = a * a;
+	double a4 = a2 * a2;
+	double rr4 = rr2 * rr2;
+	double sin_th_2 = r * r / rr2;
+	double sin_th_3 = sin_th_2 * (r / rr);
+	double sin_th_4 = sin_th_2 * sin_th_2;
+	double sin_th_6 = sin_th_4 * sin_th_2;
+	double cos_th_2 = z * z / rr2;
+	double cos_th_4 = cos_th_2 * cos_th_2;
+	double cos_th_6 = cos_th_4 * cos_th_2;
+	double cos_2th = cos_th_2 - sin_th_2;
+	double cos_4th = 1.0 - 8.0 * cos_th_2 * sin_th_2;
+	double cos_6th = cos_th_6 - 15.0 * cos_th_4 * sin_th_2 + 15.0 * cos_th_2 * sin_th_4 - sin_th_6;
+	*/
+
+	/* Analytic expressions. */
+#ifdef ANALYTIC
+	double kerr_alpha2 = (
+		(  (a2 + 2.0 * rr2 - 4.0 * M * rr + a2 * cos_2th) 
+		 / (a2 + 2.0 * rr2                + a2 * cos_2th))
+		* 
+		(  (3.0 * a4 + 8.0 * rr4 + a2 * (+ 6.0 * M2 + 8.0 * rr2) + a2 * ((4.0 * a2 -        M2 + 8.0 * rr2) * cos_2th + (a2 - 6.0 * M2) * cos_4th + M2 * cos_6th))
+		 / (3.0 * a4 + 8.0 * rr4 + a2 * (-10.0 * M2 + 8.0 * rr2) + a2 * ((4.0 * a2 + 15.0 * M2 + 8.0 * rr2) * cos_2th + (a2 - 6.0 * M2) * cos_4th + M2 * cos_6th))));
+
+	double kerr_Omega = - ((2.0 * J / rr) * (a2 * cos_th_2 + rr2 - 2.0 * M * rr) / (-4.0 * a2 * M2 * sin_th_6 + (rr2 + a2 * cos_th_2) * (rr2 + a2 * cos_th_2)));
+
+	double kerr_A = (rr2 + a2 * cos_th_2) / ((a2 - M2) * cos_th_2 + (M2 + rr2 - 2.0 * M * rr));
+
+	double kerr_H = ((rr2 + a2 * cos_th_2) * (rr2 + a2 * cos_th_2) - 4.0 * a2 * M2 * sin_th_6) / ((rr2 + a2 * cos_th_2) * (rr2 - 2.0 * M * rr + a2 * cos_th_2));
+
+	double kerr_lambda = ((-M2 / (rr2 * (rr2 + a2 * cos_th_2))) * (((rr2 + a2) * (rr2 + a2 * cos_2th) - a2 * (a2 + 2.0 * M2 - 8.0 * M * rr + 4.0 * rr2 + 2.0 * (a - M) * (a + M) * cos_2th) * sin_th_4) / ((rr2 - 2.0 * M * rr + a2 * cos_th_2) * (rr2 - 2.0 * M * rr + M2 + (a - M) * (a + M) * cos_th_2))));
+
+	double kerr_d0 = 2.0 * (((rr2 - M * rr) / (a2 + 2.0 * rr2 - 4.0 * M * rr + a2 * cos_2th) - rr2 / (a2 + 2.0 * rr2 + a2 * cos_2th))
+		 + ((4.0 * rr2 * (a2 + 2.0 * rr2 + a2 * cos_2th) / (3.0 * a4 + 8.0 * rr4 + a2 * (  6.0 * M2 + 8.0 * rr2) + a2 * ((4.0 * a2 -        M2 + 8.0 * rr2) * cos_2th + (a2 - 6.0 * M2) * cos_4th + M2 * cos_6th)))
+		   -(4.0 * rr2 * (a2 + 2.0 * rr2 + a2 * cos_2th) / (3.0 * a4 + 8.0 * rr4 + a2 * (-10.0 * M2 + 8.0 * rr2) + a2 * ((4.0 * a2 + 15.0 * M2 + 8.0 * rr2) * cos_2th + (a2 - 6.0 * M2) * cos_4th + M2 * cos_6th))) ));
+
+	double kerr_d1 = -(-0.125 * J * (a2 + 2.0 * rr2 + a2 * cos_2th) * (3.0 * a4 + 16.0 * a2 * rr2 + 8.0 * rr2 * (3.0 * rr2 - 8.0 * M * rr) + 4.0 * a2 * (a2 + 4.0 * rr2) * cos_2th + a4 * cos_4th) + 4.0 * J * J * J * (a2 - 2.0 * rr2 + a2 * cos_2th) * sin_th_6) / (rr * pow((-4.0 * J * J * sin_th_6 + pow(a2 * cos_th_2 + rr2, 2)), 2));
+	double kerr_d2 = (-rr2 / (rr2 + a2 * cos_th_2) + (M * rr - rr2) / (rr2 - 2.0 * M * rr + a2 * cos_th_2) + rr2 / (rr2 + a2 * cos_th_2 - 2.0 * a * M * sin_th_3) + rr2 / (rr2 + a2 * cos_th_2 + 2.0 * a * M * sin_th_3));
+	double kerr_d3 = (M * rr) * ((M - rr) * rr + (a2 - M * rr) * cos_th_2) / ((rr2 + a2 * cos_th_2) * (M2 + rr2 - 2.0 * M * rr + (a2 - M2) * cos_th_2));
+	double kerr_d5 = 2.0 * kerr_lambda * (-1.0 + (M * rr - rr2) / (rr2 - 2.0 * M * rr + a2 * cos_th_2) + (M * rr - rr2) / (M2 - 2.0 * M * rr + rr2 + (a2 - M2) * cos_th_2) + rr2 / (rr2 + a2 * cos_th_2) + (rr2 * (a2 + 2.0 * rr2 + a2 * cos_2th) + 4.0 * a2 * (M * rr - rr2) * sin_th_4) / ((a2 + rr2) * (rr2 + a2 * cos_2th) - a2 * (a2 + 2.0 * M2 - 8.0 * M * rr + 4.0 * rr2 + 2.0 * (a2 - M2) * cos_2th) * sin_th_4));
+#endif
+
 	// Robin and exponential decay boundary conditions.
-	f[IDX(i, j)] = rescale * scale * (r * Dr_l_alpha + z * Dz_l_alpha + l_alpha);
+	f[IDX(i, j)] = rescale * scale * (r * Dr_l_alpha + z * Dz_l_alpha + l_alpha
+#ifdef ANALYTIC
+		-(kerr_d0 + 0.5 * log(kerr_alpha2))
+#else
+		//-(M2 / rr2)
+#endif
+		);
 	
-	f[dim + IDX(i, j)] = rescale * scale * (r * Dr_beta + z * Dz_beta + 3.0 * beta);
+	f[dim + IDX(i, j)] = rescale * scale * (r * Dr_beta + z * Dz_beta + 3.0 * beta
+#ifdef ANALYTIC
+		-(kerr_d1 + 3.0 * kerr_Omega)
+#else
+		//-(-4.0 * J * M / rr4)
+#endif
+		);
 
-	f[2 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_h + z * Dz_l_h + l_h);
+	f[2 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_h + z * Dz_l_h + l_h
+#ifdef ANALYTIC
+		-(kerr_d2 + 0.5 * log(kerr_H))
+#else
+		//-(-M2 / rr2)
+#endif
+		);
 
-	f[3 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_a + z * Dz_l_a + l_a);
+	f[3 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_a + z * Dz_l_a + l_a
+#ifdef ANALYTIC
+		-(kerr_d3 + 0.5 * log(kerr_A))
+#else
+		//-(-0.5 * M2 * (1.0 + cos_th_2) / rr2)
+#endif
+		);
 
 	f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi);
 
-	f[5 * dim + IDX(i, j)] = rescale * scale * (r * Dr_lambda + z * Dz_lambda + 4.0 * lambda);
+	f[5 * dim + IDX(i, j)] = rescale * scale * (r * Dr_lambda + z * Dz_lambda + 4.0 * lambda
+#ifdef ANALYTIC
+		-(kerr_d5 + 4.0 * kerr_lambda)
+#else
+		//-(4.0 * M * M2 / (rr * rr4))
+#endif
+		);
 
 	// All done.
 	return;

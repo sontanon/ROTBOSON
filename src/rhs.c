@@ -170,6 +170,7 @@ void rhs(double *f, double *u)
 	}
 
 	// Before doing boundary, analysis must be done.
+	/*
 	ex_cart_to_pol(&i_u, &i_rr, &i_th, NULL, NULL, u, Dr_u, Dz_u, Drz_u, GNUM, dr, dz, NrInterior, NzInterior, ghost, &NrrTotal, &NthTotal, &p_dim, &drr, &dth, &rr_inf);
 	ex_analysis(0, &M_KOMAR, &J_KOMAR, &GRV2, &GRV3, i_u, i_rr, i_th, w, m, l, ghost, order, NrrTotal, NthTotal, p_dim, drr, dth, rr_inf);
 
@@ -178,6 +179,7 @@ void rhs(double *f, double *u)
 	SAFE_FREE(i_u);
 	SAFE_FREE(i_rr);
 	SAFE_FREE(i_th);
+	*/
 
 	// Z boundary condition.
 	j = NzTotal - 1;
