@@ -5,6 +5,8 @@
 #include "omega_calc.h"
 
 #include "rhs_vars.h"
+#include "cart_to_pol.h"
+#include "analysis.h"
 
 // All functions are even about the equator and the axis.
 #define EVEN 1
@@ -167,6 +169,16 @@ void rhs(double *f, double *u)
 		}
 	}
 
+	// Before doing boundary, analysis must be done.
+	ex_cart_to_pol(&i_u, &i_rr, &i_th, NULL, NULL, u, Dr_u, Dz_u, Drz_u, GNUM, dr, dz, NrInterior, NzInterior, ghost, &NrrTotal, &NthTotal, &p_dim, &drr, &dth, &rr_inf);
+	ex_analysis(0, &M_KOMAR, &J_KOMAR, &GRV2, &GRV3, i_u, i_rr, i_th, w, m, l, ghost, order, NrrTotal, NthTotal, p_dim, drr, dth, rr_inf);
+
+	//printf("Hi there, friend! M_KOMAR = %.5E, J_KOMAR = %.5E.\n", M_KOMAR, J_KOMAR);
+
+	SAFE_FREE(i_u);
+	SAFE_FREE(i_rr);
+	SAFE_FREE(i_th);
+
 	// Z boundary condition.
 	j = NzTotal - 1;
 	#pragma omp parallel shared(f) private(i)
@@ -174,7 +186,7 @@ void rhs(double *f, double *u)
 		#pragma omp for schedule(dynamic, 1)
 		for (i = ghost; i < NrTotal - 1; ++i)
 		{
-			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
+			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, M_KOMAR, J_KOMAR, -1.0);
 		}
 	}
 
@@ -196,14 +208,14 @@ void rhs(double *f, double *u)
 		#pragma omp for schedule(dynamic, 1)
 		for (j = ghost; j < NzTotal - 1; ++j)
 		{
-			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
+			rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, M_KOMAR, J_KOMAR, -1.0);
 		}
 	}
 
 	// Top-right corner boundary condition.
 	i = NrTotal - 1;
 	j = NzTotal - 1;
-	rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, -1.0);
+	rhs_bdry(f, u, Dr_u, Dz_u, NrTotal, NzTotal, dim, ghost, i, j, dr, dz, l, m, w, M_KOMAR, J_KOMAR, -1.0);
 
 	// Omega constraint.
 	f[w_idx] = 0.0;
