@@ -235,14 +235,7 @@ int main(int argc, char *argv[])
 	// Initial guess norms.
 	double f_norms[GNUM];
 
-	// Pointers to memory for spherical variables.
-	double *i_rr = NULL;
-	double *i_th = NULL;
-	double *i_u = NULL;
-	double M_KOMAR, J_KOMAR, GRV2, GRV3;
-	double phi_max = 1.0, rr_phi_max = 0.0;
-	MKL_INT hwl_res = 0;
-	
+
 	// Final omega.
 	double w = m;
 
@@ -342,12 +335,12 @@ int main(int argc, char *argv[])
 		write_single_file_2d(f[0] + 5 * dim, "f5_i.asc", NrTotal, NzTotal);
 
 		// Calculate 2-norms.
-		f_norms[0] = norm2_interior(f[0]          );
-		f_norms[1] = norm2_interior(f[0] +     dim);
-		f_norms[2] = norm2_interior(f[0] + 2 * dim);
-		f_norms[3] = norm2_interior(f[0] + 3 * dim);
-		f_norms[4] = norm2_interior(f[0] + 4 * dim);
-		f_norms[5] = norm2_interior(f[0] + 5 * dim);
+		f_norms[0] = norm2(f[0]          );
+		f_norms[1] = norm2(f[0] +     dim);
+		f_norms[2] = norm2(f[0] + 2 * dim);
+		f_norms[3] = norm2(f[0] + 3 * dim);
+		f_norms[4] = norm2(f[0] + 4 * dim);
+		f_norms[5] = norm2(f[0] + 5 * dim);
 		
 		printf("***                                                \n");
 		printf("***        INITIAL GUESS:                          \n");
@@ -384,7 +377,8 @@ int main(int argc, char *argv[])
 							lambdaMin, localSolver,
 							rhs, csr_gen_jacobian, 
 							//norm2_interior, dot_interior,
-							norm2_interior_all_variables, dot_interior_all_variables,
+							//norm2_interior_all_variables, dot_interior_all_variables,
+							norm2_all_variables, dot_all_variables,
 							linear_solve_1, linear_solve_2);
 					break;
 				// Residual-based algorithm.
@@ -398,7 +392,8 @@ int main(int argc, char *argv[])
 							lambdaMin, localSolver, 
 							rhs, csr_gen_jacobian, 
 							//norm2_interior, dot_interior,
-							norm2_interior_all_variables, dot_interior_all_variables,
+							//norm2_interior_all_variables, dot_interior_all_variables,
+							norm2_all_variables, dot_all_variables,
 							linear_solve_1, linear_solve_2);
 					break;
 				case 3: 
@@ -408,7 +403,8 @@ int main(int argc, char *argv[])
 							du, norm_du, Theta,
 							&J, epsilon, maxNewtonIter,
 							rhs, csr_gen_jacobian,
-							norm2_interior_all_variables,
+							//norm2_interior_all_variables,
+							norm2_all_variables,
 							linear_solve_1);
 					break;
 			}
@@ -543,12 +539,12 @@ int main(int argc, char *argv[])
 		write_single_file_1d(mu_prime,	"mu_prime.asc",		 k);
 
 		// Print final iteration's RHS's norms.
-		f_norms[0] = norm2_interior(f[k]          );
-		f_norms[1] = norm2_interior(f[k] +     dim);
-		f_norms[2] = norm2_interior(f[k] + 2 * dim);
-		f_norms[3] = norm2_interior(f[k] + 3 * dim);
-		f_norms[4] = norm2_interior(f[k] + 4 * dim);
-		f_norms[5] = norm2_interior(f[k] + 5 * dim);
+		f_norms[0] = norm2(f[k]          );
+		f_norms[1] = norm2(f[k] +     dim);
+		f_norms[2] = norm2(f[k] + 2 * dim);
+		f_norms[3] = norm2(f[k] + 3 * dim);
+		f_norms[4] = norm2(f[k] + 4 * dim);
+		f_norms[5] = norm2(f[k] + 5 * dim);
 		printf("***                                                \n");
 		printf("***        FINAL ITERATION:                        \n");
 		printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
@@ -587,6 +583,11 @@ int main(int argc, char *argv[])
 		analysis(i_u, i_rr, i_th, w);
 		// Calculate rr(phi_max).
 		ex_phi_analysis(1, &phi_max, &rr_phi_max, &hwl_res, i_u, i_rr, i_th, l, ghost, order, NrrTotal, NthTotal, p_dim, drr, dth, rr_inf);
+
+		// Clean analysis spherical variables.
+		SAFE_FREE(i_rr);
+		SAFE_FREE(i_th);
+		SAFE_FREE(i_u);
 
 		// Exit directory by going up one level (executable level).
 		chdir(work_dirname);
@@ -783,10 +784,6 @@ int main(int argc, char *argv[])
 	SAFE_FREE(lambda_prime);
 	SAFE_FREE(mu_prime);
 
-	// Analysis spherical variables.
-	SAFE_FREE(i_rr);
-	SAFE_FREE(i_th);
-	SAFE_FREE(i_u);
 
 	// Initial data seed.
 	SAFE_FREE(u_seed);

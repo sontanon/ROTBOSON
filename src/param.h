@@ -109,6 +109,18 @@ MKL_INT hwl_max = 100;
 double w_max = 1.0;
 double w_min = 0.0;
 double w_step = 0.0;
+
+/* ANALYSIS PARAMETERS */
+double *i_rr = NULL;
+double *i_th = NULL;
+double *i_u = NULL;
+double M_KOMAR;
+double J_KOMAR;
+double GRV2;
+double GRV3;
+double phi_max = 1.0;
+double rr_phi_max = 0.0;
+MKL_INT hwl_res = 0;
 #else
 /* CONFIG FILE */
 extern config_t cfg;
@@ -212,4 +224,16 @@ extern MKL_INT hwl_max;
 extern double w_max;
 extern double w_min;
 extern double w_step;
+
+/* ANALYSIS PARAMETERS */
+extern double *i_rr;
+extern double *i_th;
+extern double *i_u;
+extern double M_KOMAR;
+extern double J_KOMAR;
+extern double GRV2;
+extern double GRV3;
+extern double phi_max;
+extern double rr_phi_max;
+extern MKL_INT hwl_res;
 #endif
