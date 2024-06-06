@@ -11,45 +11,45 @@
 config_t cfg;
 
 /* GRID */
-double dr      		= 0.0625;
-double dz      		= 0.0625;
-MKL_INT NrInterior 	= 128;
-MKL_INT NzInterior 	= 128;
-MKL_INT NrTotal		= 130;
-MKL_INT NzTotal		= 130;
-MKL_INT dim       	= 16900;
-MKL_INT ghost     	= 1;
-MKL_INT order 		= 2;
+double dr = 0.0625;
+double dz = 0.0625;
+MKL_INT NrInterior = 128;
+MKL_INT NzInterior = 128;
+MKL_INT NrTotal = 130;
+MKL_INT NzTotal = 130;
+MKL_INT dim = 16900;
+MKL_INT ghost = 1;
+MKL_INT order = 2;
 
 /* SCALAR FIELD PARAMETERS */
-MKL_INT l		= 1;	
-double m 		= 1.0;
-double psi0 		= 0.2;
-double sigmaR		= 4.0;
-double sigmaZ		= 4.0;
-double rExt		= 16.0;
-double w0 		= 0.7;
-MKL_INT w_idx 		= 135200;
-MKL_INT fixedPhi    	= 1;
-MKL_INT fixedPhiR 	= 4;
-MKL_INT fixedPhiZ 	= 4;
-MKL_INT fixedOmega  	= 0;
+MKL_INT l = 1;
+double m = 1.0;
+double psi0 = 0.2;
+double sigmaR = 4.0;
+double sigmaZ = 4.0;
+double rExt = 16.0;
+double w0 = 0.7;
+MKL_INT w_idx = 135200;
+MKL_INT fixedPhi = 1;
+MKL_INT fixedPhiR = 4;
+MKL_INT fixedPhiZ = 4;
+MKL_INT fixedOmega = 0;
 
 /* INITIAL DATA */
 MKL_INT readInitialData = 0;
 const char *log_alpha_i = NULL;
-const char *beta_i 	= NULL;
-const char *log_h_i 	= NULL;
-const char *log_a_i 	= NULL;
-const char *psi_i 	= NULL;
-const char *lambda_i 	= NULL;
-const char *w_i 	= NULL;
-MKL_INT NrTotalInitial 	= 0;
-MKL_INT NzTotalInitial 	= 0;
-MKL_INT ghost_i		= 1;
-MKL_INT order_i		= 2;
-double dr_i		= 1.0;
-double dz_i		= 1.0;
+const char *beta_i = NULL;
+const char *log_h_i = NULL;
+const char *log_a_i = NULL;
+const char *psi_i = NULL;
+const char *lambda_i = NULL;
+const char *w_i = NULL;
+MKL_INT NrTotalInitial = 0;
+MKL_INT NzTotalInitial = 0;
+MKL_INT ghost_i = 1;
+MKL_INT order_i = 2;
+double dr_i = 1.0;
+double dz_i = 1.0;
 
 /* SCALE INITIAL DATA */
 double scale_u0 = 1.0;
@@ -65,13 +65,13 @@ double *u_seed = NULL;
 double scale_next = 1.0;
 
 /* SOLVER PARAMETERS */
-MKL_INT solverType	= 1;
-MKL_INT localSolver	= 1;
-double epsilon		= 1E-5;
-MKL_INT maxNewtonIter 	= 10;
-double lambda0 		= 1.0E-3;
-double lambdaMin 	= 1.0E-8;
-MKL_INT useLowRank	= 0;
+MKL_INT solverType = 1;
+MKL_INT localSolver = 1;
+double epsilon = 1E-5;
+MKL_INT maxNewtonIter = 10;
+double lambda0 = 1.0E-3;
+double lambdaMin = 1.0E-8;
+MKL_INT useLowRank = 0;
 
 /* INITIAL GUESS CHECK */
 MKL_INT max_initial_guess_checks = 8;
@@ -97,11 +97,12 @@ double dth;
 double rr_inf;
 
 /* OUTPUT */
-char    work_dirname[MAX_STR_LEN] = { 0 };
-char initial_dirname[MAX_STR_LEN] = { 0 };
-char   final_dirname[MAX_STR_LEN] = { 0 };
+char work_dirname[MAX_STR_LEN] = {0};
+char initial_dirname[MAX_STR_LEN] = {0};
+char final_dirname[MAX_STR_LEN] = {0};
 
 /* SWEEP CONTROL */
+MKL_INT sweep = 0;
 double rr_phi_max_minimum = 1.0;
 double rr_phi_max_maximum = 100.0;
 MKL_INT hwl_min = 10;
@@ -181,8 +182,8 @@ extern double scale_next;
 
 /* SOLVER PARAMETERS */
 extern MKL_INT solverType;
-extern MKL_INT localSolver; 
-extern double epsilon; 
+extern MKL_INT localSolver;
+extern double epsilon;
 extern MKL_INT maxNewtonIter;
 extern double lambda0;
 extern double lambdaMin;
@@ -212,11 +213,12 @@ extern double dth;
 extern double rr_inf;
 
 /* OUTPUT */
-extern char    work_dirname[MAX_STR_LEN];
-extern char   final_dirname[MAX_STR_LEN];
+extern char work_dirname[MAX_STR_LEN];
+extern char final_dirname[MAX_STR_LEN];
 extern char initial_dirname[MAX_STR_LEN];
 
 /* SWEEP CONTROL */
+extern MKL_INT sweep;
 extern double rr_phi_max_minimum;
 extern double rr_phi_max_maximum;
 extern MKL_INT hwl_min;
