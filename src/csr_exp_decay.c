@@ -55,7 +55,7 @@ void z_decay_2nd_order
 	const MKL_INT j, 	// Z integer coordinate.
 	const double dr, 	// R spatial step.
 	const double dz, 	// Z spatial step.
-	const double *u,	// Solution u.
+	double *u,	// Solution u.
 	const MKL_INT w_idx,	// Omega index.
 	const double m,		// Scalar field mass.
 	const MKL_INT l 	// Scalar field rotation number.
@@ -129,7 +129,7 @@ void r_decay_2nd_order
 	const MKL_INT j, 	// Z integer coordinate.
 	const double dr, 	// R spatial step.
 	const double dz, 	// Z spatial step.
-	const double *u,	// Solution u.
+	double *u,	// Solution u.
 	const MKL_INT w_idx,	// Omega index.
 	const double m,		// Scalar field mass.
 	const MKL_INT l 	// Scalar field rotation number.
@@ -203,7 +203,7 @@ void corner_decay_2nd_order
 	const MKL_INT j, 	// Z integer coordinate.
 	const double dr, 	// R spatial step.
 	const double dz, 	// Z spatial step.
-	const double *u,	// Solution u.
+	double *u,	// Solution u.
 	const MKL_INT w_idx,	// Omega index.
 	const double m,		// Scalar field mass.
 	const MKL_INT l 	// Scalar field rotation number.
@@ -298,7 +298,7 @@ void z_decay_4th_order
 	const MKL_INT j, 	// Z integer coordinate.
 	const double dr, 	// R spatial step.
 	const double dz, 	// Z spatial step.
-	const double *u,	// Solution u.
+	double *u,	// Solution u.
 	const MKL_INT w_idx,	// Omega index.
 	const double m,		// Scalar field mass.
 	const MKL_INT l 	// Scalar field rotation number.
@@ -380,7 +380,7 @@ void r_decay_4th_order
 	const MKL_INT j, 	// Z integer coordinate.
 	const double dr, 	// R spatial step.
 	const double dz, 	// Z spatial step.
-	const double *u,	// Solution u.
+	double *u,	// Solution u.
 	const MKL_INT w_idx,	// Omega index.
 	const double m,		// Scalar field mass.
 	const MKL_INT l 	// Scalar field rotation number.
@@ -462,7 +462,7 @@ void corner_decay_4th_order
 	const MKL_INT j, 	// Z integer coordinate.
 	const double dr, 	// R spatial step.
 	const double dz, 	// Z spatial step.
-	const double *u,	// Solution u.
+	double *u,	// Solution u.
 	const MKL_INT w_idx,	// Omega index.
 	const double m,		// Scalar field mass.
 	const MKL_INT l 	// Scalar field rotation number.
@@ -544,7 +544,7 @@ void z_so_decay_4th_order
 	const MKL_INT j, 	// Z integer coordinate.
 	const double dr, 	// R spatial step.
 	const double dz, 	// Z spatial step.
-	const double *u,	// Solution u.
+	double *u,	// Solution u.
 	const MKL_INT w_idx,	// Omega index.
 	const double m,		// Scalar field mass.
 	const MKL_INT l 	// Scalar field rotation number.
@@ -626,7 +626,7 @@ void r_so_decay_4th_order
 	const MKL_INT j, 	// Z integer coordinate.
 	const double dr, 	// R spatial step.
 	const double dz, 	// Z spatial step.
-	const double *u,	// Solution u.
+	double *u,	// Solution u.
 	const MKL_INT w_idx,	// Omega index.
 	const double m,		// Scalar field mass.
 	const MKL_INT l 	// Scalar field rotation number.

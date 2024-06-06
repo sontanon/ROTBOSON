@@ -50,7 +50,10 @@
 
 /* Macro for array sum z = alpha * x + beta * y: for alpha, beta scalars; z, x, y arrays. */
 #define ARRAY_SUM(Z, ALPHA, X, BETA, Y) array_sum((Z), (ALPHA), (X), (BETA), (Y), dim)
-void array_sum(double *z, const double alpha, const double *x, const double beta, const double *y, const MKL_INT dim);
+void array_sum(double *z, const double alpha, double *x, const double beta, double *y, const MKL_INT dim);
+
+/* Macro for coupled array sum for regularization. */
+void coupled_du(double *du, double *u, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const double dr, const double mu);
 
 // Safe allocation macros.
 #define SAFE_MALLOC(n) safe_malloc((n), __FILE__, __LINE__)
@@ -76,13 +79,15 @@ typedef struct csr_matrices
 // Forward declarations.
 // 
 // Write simple ASCII 1D file.
-void write_single_file_1d(const double *u, const char *fname, const MKL_INT dim);
+void write_single_file_1d(double *u, const char *fname, const MKL_INT dim);
 // Write simple integer ASCII 1D file.
 void write_single_integer_file_1d(const MKL_INT *u, const char *fname, const MKL_INT dim);
 // Write simple ASCII 2D file.
-void write_single_file_2d(const double *u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal);
+void write_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal);
+// Write ASCII 2D file with iterations.
+void write_iterated_file_2d(double **u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT iterations, const MKL_INT gnum);
 // Write simple ASCII 2D polar file.
-void write_single_file_2d_polar(const double *u, const char *fname, const MKL_INT NrrTotal, const MKL_INT NthTotal);
+void write_single_file_2d_polar(double *u, const char *fname, const MKL_INT NrrTotal, const MKL_INT NthTotal);
 // Read simple ASCII 1D file.
 void read_single_file_1d(double *u, const char *fname, const MKL_INT dim, const char *source_file, const MKL_INT source_line);
 // Read simple ASCII 2D file.

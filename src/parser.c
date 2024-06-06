@@ -1,5 +1,6 @@
 #include "tools.h"
 #include "param.h"
+#include "regularization_coupling.h"
 
 // Macros for parameter ranges.
 #define MAX_DR 1.0
@@ -44,7 +45,7 @@ void parser(const char *fname)
 	{
 		fprintf(stderr, "PARSER: CRITICAL ERROR IN FILE!\n");
 		fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-		config_error_line(&cfg), config_error_text(&cfg));
+				config_error_line(&cfg), config_error_text(&cfg));
 		config_destroy(&cfg);
 		exit(-1);
 	}
@@ -136,7 +137,15 @@ void parser(const char *fname)
 	NrTotal = NrInterior + 2 * ghost;
 	NzTotal = NzInterior + 2 * ghost;
 	dim = NrTotal * NzTotal;
-	w_idx = 5 * dim;
+	w_idx = GNUM * dim;
+
+	// REGULARIZATION COUPLING PARAMETERS.
+#ifdef REGULARIZATION_COUPLING
+	solver_NrTotal = NrTotal;
+	solver_NzTotal = NzTotal;
+	solver_dr = dr;
+	solver_ghost = ghost;
+#endif
 
 	// SCALAR FIELD PARAMETERS.
 	// l.
@@ -168,7 +177,7 @@ void parser(const char *fname)
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"m\" value from parameter file. Setting to default value, m = %3.5E\n", m);
 	}
 	// fixedPhi.
-	if (config_lookup_int64(&cfg, "fixedPhi",&fixedPhi) == CONFIG_TRUE)
+	if (config_lookup_int64(&cfg, "fixedPhi", &fixedPhi) == CONFIG_TRUE)
 	{
 		if (fixedPhi != 0 && fixedPhi != 1)
 		{
@@ -178,7 +187,7 @@ void parser(const char *fname)
 		}
 	}
 	// fixedOmega.
-	if (config_lookup_int64(&cfg, "fixedOmega",&fixedOmega) == CONFIG_TRUE)
+	if (config_lookup_int64(&cfg, "fixedOmega", &fixedOmega) == CONFIG_TRUE)
 	{
 		if (fixedOmega != 0 && fixedOmega != 1)
 		{
@@ -238,9 +247,9 @@ void parser(const char *fname)
 	// readInitialData.
 	if (config_lookup_int64(&cfg, "readInitialData", &readInitialData) == CONFIG_TRUE)
 	{
-		if (readInitialData != 0 && readInitialData != 1 && readInitialData != 2)
+		if (readInitialData != 0 && readInitialData != 1 && readInitialData != 2 && readInitialData != 3)
 		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = %lld is not supported. Only 0, 1, or 2 as boolean values for indication of whether to read initial data specified by user.\n", readInitialData);
+			fprintf(stderr, "PARSER: ERROR! readInitialData = %lld is not supported. Only 0, 1, 2, or 3 as boolean values for indication of whether to read initial data specified by user.\n", readInitialData);
 			fprintf(stderr, "        Please input proper value in parameter file.\n");
 			exit(-1);
 		}
@@ -251,15 +260,141 @@ void parser(const char *fname)
 	}
 
 	// Read initial data parameters.
-	if (readInitialData)
+	switch (readInitialData)
 	{
+	// Interpolation from different size and/or resolution grid.
+	case 3:
+		// Read filenames.
+		if (config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i) == CONFIG_FALSE)
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_alpha_i\".\n");
+			exit(-1);
+		}
+		if (config_lookup_string(&cfg, "beta_i", &beta_i) == CONFIG_FALSE)
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"beta_i\".\n");
+			exit(-1);
+		}
+		if (config_lookup_string(&cfg, "log_h_i", &log_h_i) == CONFIG_FALSE)
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_h_i\".\n");
+			exit(-1);
+		}
+		if (config_lookup_string(&cfg, "log_a_i", &log_a_i) == CONFIG_FALSE)
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_a_i\".\n");
+			exit(-1);
+		}
+		if (config_lookup_string(&cfg, "psi_i", &psi_i) == CONFIG_FALSE)
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"psi_i\".\n");
+			exit(-1);
+		}
+		if (config_lookup_string(&cfg, "lambda_i", &lambda_i) == CONFIG_FALSE)
+		{
+			fprintf(stderr, "PARSER: WARNING! readInitialData = 3 requires values for all initial files. Did not find \"lambda_i\".\n");
+		}
+
+		// Grid parameters.
+		if (config_lookup_int64(&cfg, "NrTotalInitial", &NrTotalInitial) == CONFIG_TRUE)
+		{
+			if (MAX_NRINTERIOR < NrTotalInitial || NrTotalInitial < MIN_NRINTERIOR)
+			{
+				fprintf(stderr, "PARSER: ERROR! NrTotalInitial = %lld is not in range [%lld, %lld]\n", NrTotalInitial, MIN_NRINTERIOR, MAX_NRINTERIOR);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for NrTotalInitial.\n");
+			exit(-1);
+		}
+		if (config_lookup_int64(&cfg, "NzTotalInitial", &NzTotalInitial) == CONFIG_TRUE)
+		{
+			if (MAX_NRINTERIOR < NzTotalInitial || NzTotalInitial < MIN_NRINTERIOR)
+			{
+				fprintf(stderr, "PARSER: ERROR! NzTotalInitial = %lld is not in range [%lld, %lld]\n", NzTotalInitial, MIN_NRINTERIOR, MAX_NRINTERIOR);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for NzTotalInitial.\n");
+			exit(-1);
+		}
+		if (config_lookup_int64(&cfg, "order_i", &order_i) == CONFIG_TRUE)
+		{
+			if (order_i != 2 && order_i != 4)
+			{
+				fprintf(stderr, "PARSER: ERROR! order_i = %lld is not supported. Only 2 or 4 are supported finite difference orders.\n", order);
+				fprintf(stderr, "        Please input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for order_i.\n");
+			exit(-1);
+		}
+		if (config_lookup_int64(&cfg, "ghost_i", &ghost_i) == CONFIG_TRUE)
+		{
+			if (ghost_i != 1 && ghost_i != 2)
+			{
+				fprintf(stderr, "PARSER: ERROR! ghost_i = %lld is not supported. Only 1 or 2 are supported.\n", order);
+				fprintf(stderr, "        Please input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for ghost_i.\n");
+			exit(-1);
+		}
+		if (config_lookup_float(&cfg, "dr_i", &dr_i) == CONFIG_TRUE)
+		{
+			if (MAX_DR < dr_i || dr_i < MIN_DR)
+			{
+				fprintf(stderr, "PARSER: ERROR! dr_i = %3.5E is not in range [%3.5E, %3.5E]\n", dr_i, MIN_DR, MAX_DR);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for dr_i.\n");
+			exit(-1);
+		}
+		if (config_lookup_float(&cfg, "dz_i", &dz_i) == CONFIG_TRUE)
+		{
+			if (MAX_DR < dz_i || dz_i < MIN_DR)
+			{
+				fprintf(stderr, "PARSER: ERROR! dz_i = %3.5E is not in range [%3.5E, %3.5E]\n", dz_i, MIN_DR, MAX_DR);
+				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
+				exit(-1);
+			}
+		}
+		else
+		{
+			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for dz_i.\n");
+			exit(-1);
+		}
+		config_lookup_string(&cfg, "w_i", &w_i);
+
+		break;
+
+	// Default case for 1 or 2.
+	case 2:
+	case 1:
 		config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i);
 		config_lookup_string(&cfg, "beta_i", &beta_i);
 		config_lookup_string(&cfg, "log_h_i", &log_h_i);
 		config_lookup_string(&cfg, "log_a_i", &log_a_i);
 		config_lookup_string(&cfg, "psi_i", &psi_i);
+		config_lookup_string(&cfg, "lambda_i", &lambda_i);
 		config_lookup_string(&cfg, "w_i", &w_i);
-		
+
 		// Initial Data extensions.
 		if (readInitialData == 2)
 		{
@@ -273,20 +408,20 @@ void parser(const char *fname)
 			NrTotalInitial = NrTotal;
 			NzTotalInitial = NzTotal;
 		}
-
-		// psi0.
-		if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
-		{
-			if (MAX_PSI0 < psi0 || psi0 < MIN_PSI0)
-			{
-				fprintf(stderr, "PARSER: ERROR! psi0 = %3.5E is not in range [%3.5E, %3.5E]\n", psi0, MIN_PSI0, MAX_PSI0);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+		break;
 	}
-	// Otherwise generate initial data analytically.
-	else
+
+	// Scale initial data.
+	config_lookup_float(&cfg, "scale_u0", &scale_u0);
+	config_lookup_float(&cfg, "scale_u1", &scale_u1);
+	config_lookup_float(&cfg, "scale_u2", &scale_u2);
+	config_lookup_float(&cfg, "scale_u3", &scale_u3);
+	config_lookup_float(&cfg, "scale_u4", &scale_u4);
+	config_lookup_float(&cfg, "scale_u5", &scale_u5);
+	config_lookup_float(&cfg, "scale_u6", &scale_u6);
+
+	// Generate via analytic guess.
+	if (!readInitialData)
 	{
 		// psi0.
 		if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
@@ -361,16 +496,16 @@ void parser(const char *fname)
 		else
 		{
 			fprintf(stderr, "PARSER: WARNING! Could not properly read \"w0\" value from parameter file. Setting to default value, w0 = %3.5E\n", w0);
-		}	
+		}
 	}
 
 	// SOLVER PARAMETERS.
 	// solverType.
 	if (config_lookup_int64(&cfg, "solverType", &solverType) == CONFIG_TRUE)
 	{
-		if (solverType != 1 && solverType != 2)
+		if (solverType != 1 && solverType != 2 && solverType != 3)
 		{
-			fprintf(stderr, "PARSER: ERROR! solverType = %lld is not supported. Only 1 or 2 are supported for indication of whether to use error or residual based solver.\n", solverType);
+			fprintf(stderr, "PARSER: ERROR! solverType = %lld is not supported. Only 1 or 2 or 3 are supported for indication of whether to use error or residual based solver.\n", solverType);
 			fprintf(stderr, "        Please input proper value in parameter file.\n");
 			exit(-1);
 		}
@@ -464,83 +599,73 @@ void parser(const char *fname)
 		fprintf(stderr, "PARSER: WARNING! Could not properly read \"useLowRank\" from parameter file. Setting to default value, useLowRank = %lld\n", useLowRank);
 	}
 
-	// BOUNDARY TYPES.
-	// alphaBoundOrder.
-	if (config_lookup_int64(&cfg, "alphaBoundOrder", &alphaBoundOrder) == CONFIG_TRUE)
+	// INITIAL GUESS CHECK.
+	if (config_lookup_int64(&cfg, "max_initial_guess_checks", &max_initial_guess_checks) == CONFIG_TRUE)
 	{
-		if (alphaBoundOrder != 0 && alphaBoundOrder != 1 && alphaBoundOrder != 2)
+		if (max_initial_guess_checks < 0 || max_initial_guess_checks > 10)
 		{
-			fprintf(stderr, "PARSER: ERROR! alphaBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
+			fprintf(stderr, "PARSER: ERROR! max_initial_guess_checks = %lld is out of bounds.\n", max_initial_guess_checks);
 			exit(-1);
 		}
 	}
 	else
 	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"alphaBoundOrder\" from parameter file. Setting to default value, alphaBoundOrder = %lld\n", alphaBoundOrder);
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"max_initial_guess_checks\" from parameter file. Setting to default value, max_initial_guess_checks = %lld\n", max_initial_guess_checks);
 	}
-	// betaBoundOrder.
-	if (config_lookup_int64(&cfg, "betaBoundOrder", &betaBoundOrder) == CONFIG_TRUE)
+	if (config_lookup_float(&cfg, "norm_f0_target", &norm_f0_target) == CONFIG_TRUE)
 	{
-		if (betaBoundOrder != 0 && betaBoundOrder != 1 && betaBoundOrder != 2)
+		if (norm_f0_target < epsilon || norm_f0_target > 1.0)
 		{
-			fprintf(stderr, "PARSER: ERROR! betaBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
+			fprintf(stderr, "PARSER: ERROR! norm_f0_target = %3.5E out of bounds!\n", norm_f0_target);
 			exit(-1);
 		}
 	}
 	else
 	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"betaBoundOrder\" from parameter file. Setting to default value, betaBoundOrder = %lld\n", betaBoundOrder);
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"norm_f0_target\" from parameter file. Setting to default value, norm_f0_target = %3.5E\n", norm_f0_target);
 	}
-	// hBoundOrder.
-	if (config_lookup_int64(&cfg, "hBoundOrder", &hBoundOrder) == CONFIG_TRUE)
+
+	// SWEEP CONTROL.
+	if (config_lookup_float(&cfg, "rr_phi_max_minimum", &rr_phi_max_minimum) == CONFIG_TRUE)
 	{
-		if (hBoundOrder != 0 && hBoundOrder != 1 && hBoundOrder != 2)
+		if (rr_phi_max_minimum < 4 * dr || rr_phi_max_minimum > dr * NrInterior)
 		{
-			fprintf(stderr, "PARSER: ERROR! hBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
+			fprintf(stderr, "PARSER: ERROR! rr_phi_max_minimum = %3.5E out of bounds!\n", rr_phi_max_minimum);
 			exit(-1);
 		}
 	}
 	else
 	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"hBoundOrder\" from parameter file. Setting to default value, hBoundOrder = %lld\n", hBoundOrder);
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_minimum\" from parameter file. Setting to default value, rr_phi_max_minimum = %3.5E\n", rr_phi_max_minimum);
 	}
-	// aBoundOrder.
-	if (config_lookup_int64(&cfg, "aBoundOrder", &aBoundOrder) == CONFIG_TRUE)
+	if (config_lookup_float(&cfg, "rr_phi_max_maximum", &rr_phi_max_maximum) == CONFIG_TRUE)
 	{
-		if (aBoundOrder != 0 && aBoundOrder != 1 && aBoundOrder != 2)
+		if (rr_phi_max_maximum < rr_phi_max_minimum || rr_phi_max_maximum > dr * NrTotal)
 		{
-			fprintf(stderr, "PARSER: ERROR! aBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
+			fprintf(stderr, "PARSER: ERROR! rr_phi_max_maximum = %3.5E out of bounds!\n", rr_phi_max_maximum);
 			exit(-1);
 		}
 	}
 	else
 	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"aBoundOrder\" from parameter file. Setting to default value, aBoundOrder = %lld\n", aBoundOrder);
+		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_maximum\" from parameter file. Setting to default value, rr_phi_max_maximum = %3.5E\n", rr_phi_max_maximum);
 	}
-	// phiBoundOrder.
-	if (config_lookup_int64(&cfg, "phiBoundOrder", &phiBoundOrder) == CONFIG_TRUE)
-	{
-		if (phiBoundOrder != 0 && phiBoundOrder != 1 && phiBoundOrder != 2)
-		{
-			fprintf(stderr, "PARSER: ERROR! phiBoundOrder = %lld is not supported. Only 0, 1, or 2 supported orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"phiBoundOrder\" from parameter file. Setting to default value, phiBoundOrder = %lld\n", phiBoundOrder);
-	}
+	config_lookup_int64(&cfg, "sweep", &sweep);
+	config_lookup_int64(&cfg, "hwl_min", &hwl_min);
+	config_lookup_int64(&cfg, "hwl_max", &hwl_max);
+	config_lookup_float(&cfg, "w_max", &w_max);
+	config_lookup_float(&cfg, "w_min", &w_min);
+	config_lookup_float(&cfg, "w_step", &w_step);
+	// NEXT SCALE ADVANCEMENT.
+	config_lookup_float(&cfg, "scale_next", &scale_next);
+
 	// OUTPUT
-	// dirname.
-	if (config_lookup_string(&cfg, "dirname", &dirname) != CONFIG_TRUE)
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"dirname\" from parameter file. Setting to default value, dirname = %s\n", dirname);
-	}
+	// work_dirname.
+	getcwd(work_dirname, MAX_STR_LEN);
+
+	// Set initial directory name.
+	// snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,psi=X.XXXXXE+00,w=X.XXXXXE-01,dr=%.5E,N=%04lld,order=%lld", l, dr, NrInterior, order);
+	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,w=X.XXXXXE-01,dr=%.5E,N=%04lld", l, dr, NrInterior);
 
 	// All done.
 	return;

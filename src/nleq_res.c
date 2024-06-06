@@ -1,6 +1,7 @@
 // Include headers.
 #include "tools.h"
 #include "qnres.h"
+#include "regularization_coupling.h"
 
 // Debug print Jacobian CSR matrix.
 #define DEBUG_PRINT 0
@@ -15,7 +16,7 @@
 #define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_B 	-13
 
 // Maximum expansion.
-#define THETA_MAX 0.25
+#define THETA_MAX 0.5
 
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0) and ||F(u^0)||.
@@ -42,10 +43,10 @@ MKL_INT nleq_res(
 		const MKL_INT	max_trial_B_iterations,	// INPUT: Maximum number of trial A iterations.
 		const double 	lambda_min,		// INPUT: Minimum damping factor.
 		const MKL_INT	qnres,			// INPUT: Boolean to indicate whether to use QNERR.
-		      void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
-		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *),					// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *),				// INPUT: Dot product calculation subroutine.
+		      void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
+		      void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
+		      double	(*NORM)(double *),					// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(double *, double *),				// INPUT: Dot product calculation subroutine.
 		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
 		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 	)
@@ -132,6 +133,10 @@ MKL_INT nleq_res(
 		/* Solve linear system. */
 		LINEAR_SOLVE_1(du[k], J, f[k]);
 
+#ifdef REGULARIZATION_COUPLING
+		coupled_du(du[k], u[k], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
+
 		// For k > 0: compute a prediction value for the damping factor.
 		if (k > prediction_start)
 		{
@@ -183,9 +188,10 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		// If Theta_k > 1 - lambda_k / 4: 
 		// then replace lambda_k by lambda_prime_k = min(mu_prime_k, lambda_k / 2). Go to regularity test.
-		if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
+		//if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
+		if (Theta[k] >= 1.0)
 		{
-			lambda_prime[k] = MIN(0.5 * lambda[k], mu_prime[k]);
+			lambda_prime[k] = MIN(0.25 * lambda[k], mu_prime[k]);
 
 			/* Print message: iterate is rejected because Theta[k] > 1.0 - 0.25 * lambda[k]. */
 	printf(	"***** | %-10lld | %-12.5E | %-11.5E | %-12.5E | %-11.5E | %-11s |\n", k, norm_f[k], lambda[k], Theta[k], lambda_prime[k], "REJECT A");
@@ -274,14 +280,14 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				/* Also include the case where the matrix was ill-conditioned. */
 				else if (qnres_code == ERROR_CODE_QNRES_THETA_INCREASE_EXIT || qnres_code == ERROR_CODE_QNRES_ILL_CONDITIONED)
 				{
-	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]    | Theta[k]     | lambda'[k]   | STATUS      |\n"
-	 	"***** |------------|--------------|--------------|--------------|--------------|-------------|\n");
+	printf(	"***** | NLEQ ITER  | ||du[k]||    | lambda[k]   | Theta[k]     | lambda'[k]  | STATUS      |\n"
+	 	"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
 
 					/* Prepare to restart NLEQ-RES. */
 					/* In this case, the last update is stored in u[k + 1 - qnres_stop] since qnres_stop is negative. */
 					/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
 					/* lambda damping factor which will be set to 1.0. */
-					lambda[k + (-qnres_stop) + 1] = 1.0;
+					lambda[k + (-qnres_stop) + 1] = 0.25;
 
 					/* Set k to one place before last update. */
 					/* This k is not where the last solution is stored, but, rather, one place before. */

@@ -13,6 +13,12 @@
 #define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_A 	-11
 #define ERROR_CODE_EXCEEDED_MAX_TRIAL_ITERATIONS_B 	-13
 
+#define NORMALIZED
+
+#define LOCAL_LAMBDA 	1.00000E+00
+#define THETA_MAX	1.00000E+00
+#define RESTRICTED	1.00000E+00
+
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0).
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
@@ -39,10 +45,10 @@ MKL_INT nleq_err(
 		const MKL_INT	max_trial_B_iterations,	// INPUT: Maximum number of trial B iterations.
 		const double 	lambda_min,		// INPUT: Minimum damping factor.
 		const MKL_INT	qnerr,			// INPUT: Boolean to indicate whether to use QNERR.
-		      void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
-		      void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(const double *),					// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(const double *, const double *),				// INPUT: Dot product calculation subroutine.
+		      void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
+		      void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
+		      double	(*NORM)(double *),					// INPUT: Norm calculation subroutine.
+		      double	(*DOT)(double *, double *),				// INPUT: Dot product calculation subroutine.
 		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
 		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 	)
@@ -79,6 +85,9 @@ MKL_INT nleq_err(
 	/* Prediction start. */
 	MKL_INT prediction_start = 0;
 
+	/* Solution norm for normalization or relative error. */
+	double norm_u = 1.0;
+
 	printf(	"***** INPUT PARAMETERS ARE:\n"
 		"***** \n"
 		"*****  ------------- --------------- ------------- ------------- --------- ----------- \n"
@@ -103,6 +112,11 @@ MKL_INT nleq_err(
 		/* Calculate ||du^k||. */
 		norm_du[k] = NORM(du[k]);
 
+#ifdef NORMALIZED
+		/* Calculate solution norm. */
+		norm_u = NORM(u[k]);
+#endif
+
 		/* Print table header every 50 iterations. */
 		if (k % 50 == 0)
 		{
@@ -112,13 +126,17 @@ MKL_INT nleq_err(
 		}
 
 		// Convergence test: If ||du^k|| < epsilon: stop. Solution found u* = u^k + du^k.
+#ifdef NORMALIZED
+		if (norm_du[k] < epsilon * norm_u)
+#else
 		if (norm_du[k] < epsilon)
+#endif
 		{
 			/* Update solution and store into u[k + 1] */
 			ARRAY_SUM(u[k + 1], 1.0, u[k], 1.0, du[k]);
 
 			/* Print message. */
-	printf(	"***** | %-10lld | %-12.5E |              |              |              | %-11s  |\n", k, norm_du[k], "CONVERGED A");
+	printf(	"***** | %-10lld | %-12.5E |              |              |              | %-11s |\n", k, norm_du[k] / norm_u, "CONVERGED A");
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
 		"***** \n"
 		"***** NLEQ-ERR Algorithm converged successfully after %lld iterations. Converged on ||du||.\n"
@@ -146,14 +164,23 @@ MKL_INT nleq_err(
 			mu[k] = (norm_du[k - 1] * norm_du_bar[k] * lambda[k - 1]) / (norm_du_bar_minus_du * norm_du[k]);
 
 			/* Expected damping factor. */
-			lambda[k] = MIN(1.0, mu[k]);
+			if (Theta[k - 1] > 0.5)
+			{
+				//lambda[k] = MIN(2.00 * lambda[k - 1], MIN(LOCAL_LAMBDA, mu[k]));
+				lambda[k] = MIN(LOCAL_LAMBDA, mu[k]);
+			}
+			else
+			{
+				//lambda[k] = MIN(1.25 * lambda[k - 1], MIN(LOCAL_LAMBDA, mu[k]));
+				lambda[k] = MIN(LOCAL_LAMBDA, mu[k]);
+			}
 		}
 
 		// Regularity test: If lambda_k < lambda_min: stop. Convergence failure.
 REGULARITY_TEST:if (lambda[k] < lambda_min)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E  |              |              | %-11s |\n", k, norm_du[k], lambda[k], "ERROR -1");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  |              |              | %-11s |\n", k, norm_du[k] / norm_u, lambda[k], "ERROR -1");
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
 		"***** \n"
 		"***** NLEQ-ERR Algorithm failed after %lld iterations.\n"
@@ -178,7 +205,12 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		RHS_CALC(f[k + 1], u[k + 1]);
 		LINEAR_SOLVE_2(du_bar[k + 1], J, f[k + 1]);
+
 		norm_du_bar[k + 1] = NORM(du_bar[k + 1]);
+
+#ifdef NORMALIZED
+		norm_u = NORM(u[k + 1]);
+#endif
 
 		// 3. Compute the monitoring quantities
 		//    Theta_k    = ||du_bar^{k + 1}|| / ||du^k||
@@ -193,12 +225,13 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		// If Theta_k > 1 - lambda_k / 4: 
 		// then replace lambda_k by lambda_prime_k = min(mu_prime_k, lambda_k / 2). Go to regularity test.
-		if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
+		//if (Theta[k] > 1.0 - 0.25 * lambda[k]) /* If not restricted (Theta[k]  >= 1.0) */
+		if (Theta[k] > THETA_MAX - RESTRICTED * 0.25 * lambda[k])
 		{
 			lambda_prime[k] = MIN(0.5 * lambda[k], mu_prime[k]);
 
 			/* Print message: iterate is rejected because Theta[k] > 1.0 - 0.25 * lambda[k]. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "REJECT A");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k] / norm_u, lambda[k], Theta[k], lambda_prime[k], "REJECT A");
 
 			/* Replace lambda_k by lambda_prime_k. */
 			lambda[k] = lambda_prime[k];
@@ -240,7 +273,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		else
 		{
 			/* Make replacement. */
-			lambda_prime[k] = MIN(1.0, mu_prime[k]);
+			lambda_prime[k] = MIN(LOCAL_LAMBDA, mu_prime[k]);
 
 			/* Reset l_A trial counter since we have found a proper lambda factor that makes Theta[k] < 1 - lambda[k] / 4. */
 			l_A = 0;
@@ -248,16 +281,20 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		// Test if we are inside "local" region.
 		// If lambda_prime_k = lambda_k = 1:
-		if (lambda_prime[k] == lambda[k] && lambda[k] == 1.0)
+		if (lambda_prime[k] == lambda[k] && lambda[k] == LOCAL_LAMBDA)
 		{
 			// Convergence test: If ||du_bar^{k+1}|| < epsilon: stop. Solution found u* = u^{k+1} + du_bar^{k+1}.
+#ifdef NORMALIZED
+			if (norm_du_bar[k + 1] < epsilon * norm_u)
+#else
 			if (norm_du_bar[k + 1] < epsilon)
+#endif
 			{
 				/* Update solution */
 				ARRAY_SUM(u[k + 1], 1.0, u[k + 1], 1.0, du_bar[k + 1]);
 
 				/* Print message for convergence. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "CONVERGED B");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1] / norm_u, lambda[k], Theta[k], lambda_prime[k], "CONVERGED B");
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n"
 		"***** \n"
 		"***** NLEQ-ERR Algorithm converged successfully after %lld iterations. Converged on ||du_bar||.\n"
@@ -280,7 +317,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 			{
 				if (qnerr)
 				{
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1], lambda[k], Theta[k], lambda_prime[k], "ENTER QNERR");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du_bar[k + 1] / norm_u, lambda[k], Theta[k], lambda_prime[k], "ENTER QNERR");
 
 					/* Call QNERR with initial iterates u[k+1], f[k+1]. J(u[k+1]) will be calculated inside QNERR. */
 					/* Theta will remain the monitoring quantity, whereas mu is the alpha parameter inside QNERR. */
@@ -321,7 +358,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		 				/* In this case, the last update is stored in u[k + 1 - qnerr_stop] since qnerr_stop is negative. */
 						/* Therefore, this will function as the initial iteration for NLEQ. We need, however, an initial */
 						/* lambda damping factor which will be set to 1.0. */
-						lambda[k + (-qnerr_stop) + 1] = 1.0;
+						lambda[k + (-qnerr_stop) + 1] = LOCAL_LAMBDA;
 
 						/* Set k to one place before last update. */
 						/* This k is not where the last solution is stored, but, rather, one place before. */
@@ -361,7 +398,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				else
 				{
 					/* Print message. Iterate accepted. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k] / norm_u, lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
 
 					/* Goto 1. */
 					continue;
@@ -372,7 +409,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		else if (lambda_prime[k] > 4.0 * lambda[k])
 		{
 			/* Print message. Iterate rejected because lambda_prime is bigger than lambda by at leaste a factor of 4. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "REJECT B");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k] / norm_u, lambda[k], Theta[k], lambda_prime[k], "REJECT B");
 
 			lambda[k] = lambda_prime[k];
 
@@ -412,7 +449,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 		else
 		{
 			/* Print message. Iterate accepted because Theta is not too big; we have not reached safe region; and lambda_prime is not too big. */
-	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k], lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
+	printf(	"***** | %-10lld | %-12.5E | %-11.5E  | %-12.5E | %-11.5E  | %-11s |\n", k, norm_du[k] / norm_u, lambda[k], Theta[k], lambda_prime[k], "ACCEPT");
 
 			/* Reset l_B counter. */
 			l_B = 0;

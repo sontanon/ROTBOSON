@@ -5,6 +5,10 @@
 #define ERROR_CODE_QNERR_THETA_INCREASE_EXIT 		- 2
 #define ERROR_CODE_EXCEEDED_MAX_ITERATIONS 		- 3
 
+#define NORMALIZED
+
+#define MIN_ITERATIONS 0
+
 MKL_INT nleq_err_qnerr(	
 	        MKL_INT	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
@@ -20,10 +24,10 @@ MKL_INT nleq_err_qnerr(
 	csr_matrix	*J,			// INPUT: Pointer to Jacobian matrix type.
 	const 	double	epsilon,		// INPUT: Exit tolerance.
 	const	MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.
-	      	void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
-	      	void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-	      	double	(*NORM)(const double *)	,					// INPUT: Norm calculation subroutine.
-	      	double	(*DOT)(const double *, const double *)	,			// INPUT: Dot product calculation subroutine.
+	      	void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
+	      	void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
+	      	double	(*NORM)(double *)	,					// INPUT: Norm calculation subroutine.
+	      	double	(*DOT)(double *, double *)	,			// INPUT: Dot product calculation subroutine.
 	      	void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
 	      	void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 	 )
@@ -36,6 +40,9 @@ MKL_INT nleq_err_qnerr(
 
 	/* Auxiliary double. */
 	double alpha_bar = 0.0;
+
+	/* Solution norm for relative error. */
+	double norm_u = 1.0;
 
 	/* Calculate Jacobian J(u^0). */
 	JACOBIAN_CALC(*J, u[l], 0);
@@ -81,12 +88,14 @@ MKL_INT nleq_err_qnerr(
 		// 3. Compute.
 		// alpha_{l+1} = (du_bar^{l+1} . du^l) / ||du^l||^2.
 		alpha[l + 1] = DOT(du_bar[l + 1], du[l]) / (norm_du[l] * norm_du[l]);
+
 		norm_du_bar[l + 1] = NORM(du_bar[l + 1]);
+
 		// Theta_l = ||du_bar^{l+1}|| / ||du^l||.
 		Theta[l] = norm_du_bar[l + 1] / norm_du[l];
 
 		// If Theta_l > 1/2: stop, no convergence.
-		if (Theta[l] > 0.5)
+		if (Theta[l] > 0.5 && (l + 1) > MIN_ITERATIONS)
 		{
 
 			/* Print message. */
@@ -104,15 +113,20 @@ MKL_INT nleq_err_qnerr(
 		// du^{l+1} = du_bar^{l+1} / (1 - alpha_{l+1}).
 		ARRAY_SUM(du[l + 1], 1.0 / (1.0 - alpha[l + 1]), du_bar[l + 1], 0.0, du[l + 1]);
 		norm_du[l + 1] = NORM(du[l + 1]);
+		norm_u = NORM(u[l + 1]);
 
 		// Convergence test: If ||du^{l+1}|| < epsilon: stop. Solution found u* = u^{l+1} + du^{l+1}.
+#ifdef NORMALIZED
+		if (norm_du[l + 1] < epsilon * norm_u)
+#else
 		if (norm_du[l + 1] < epsilon)
+#endif
 		{
 			/* Update solution */
 			ARRAY_SUM(u[l + 1], 1.0, u[l + 1], 1.0, du[l + 1]);
 			
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l + 1], alpha_bar, Theta[l], alpha[l + 1], "CONVERGED C");
+	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l + 1] / norm_u, alpha_bar, Theta[l], alpha[l + 1], "CONVERGED C");
 	printf(	"*****  ------------ -------------- -------------- -------------- -------------- ------------- \n");
 
 			/* No error code. */
@@ -122,7 +136,7 @@ MKL_INT nleq_err_qnerr(
 			return l + 1;
 		}
 		/* Print message before continuing. */
-	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l+1], alpha_bar, Theta[l], alpha[l + 1], "ACCEPT");
+	printf(	"***** | %-10lld | % -9.5E | % 11.5E | % -9.5E | % 11.5E | %-11s |\n", l, norm_du[l + 1] / norm_u, alpha_bar, Theta[l], alpha[l + 1], "ACCEPT");
 	}
 
 	/* If we reach this point we did not converge after the maximum iterations. */

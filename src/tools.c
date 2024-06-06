@@ -28,9 +28,16 @@
 // CSR matrix index base.
 #define BASE 1
 
+// MIN/MAX macros.
+#define MIN(X, Y) ((X) < (Y)) ? (X) : (Y)
+#define MAX(X, Y) ((X) > (Y)) ? (X) : (Y)
+
+// ABS macro.
+#define ABS(X) ((X) < 0) ? -(X) : (X)
+
 /* Macro for array sum z = alpha * x + beta * y: for alpha, beta scalars; z, x, y arrays. */
 #define ARRAY_SUM(Z, ALPHA, X, BETA, Y) array_sum((Z), (ALPHA), (X), (BETA), (Y), dim)
-void array_sum(double *z, const double alpha, const double *x, const double beta, const double *y, const MKL_INT dim)
+void array_sum(double *z, const double alpha, double *x, const double beta, double *y, const MKL_INT dim)
 {
 	MKL_INT i;
 	#pragma omp parallel shared(z) 
@@ -39,6 +46,30 @@ void array_sum(double *z, const double alpha, const double *x, const double beta
 		for (i = 0; i < dim; ++i) 
 			z[i] = alpha * x[i] + beta * y[i];
 	} 
+	return;
+}
+
+/* Macro for coupled array sum for regularization. */
+void coupled_du(double *du, double *u, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const double dr, const double mu)
+{
+	MKL_INT dim = NrTotal * NzTotal;
+	MKL_INT i = 0;
+	MKL_INT j = 0;
+	double r;
+	#pragma omp parallel shared(du) private(r, j)
+	{
+		#pragma omp for schedule(dynamic, 1)
+		for (i = 0; i < NrTotal; ++i)
+		{
+			r = dr * (i - ghost + 0.5);
+			for (j = 0; j < NzTotal; ++j)
+			{
+				du[3 * dim + IDX(i, j)] *= (1.0 - mu);
+				// 2 * a**2 * d(log(a)) = r**2 * d(lambda) + 2 * h**2 * d(log(h)).
+				du[3 * dim + IDX(i, j)] += mu * (0.5 * r * r * du[5 * dim + IDX(i, j)] + exp(2.0 * u[2 * dim + IDX(i, j)]) * du[2 * dim + IDX(i, j)]) / exp(2.0 * u[3 * dim + IDX(i, j)]);
+			}
+		}
+	}
 	return;
 }
 
@@ -98,7 +129,7 @@ typedef struct csr_matrices
 } csr_matrix;
 
 // Write simple ASCII 1D file.
-void write_single_file_1d(const double *u, const char *fname, const MKL_INT dim)
+void write_single_file_1d(double *u, const char *fname, const MKL_INT dim)
 {
 	// Auxiliary integers.
 	MKL_INT i;
@@ -140,7 +171,7 @@ void write_single_integer_file_1d(const MKL_INT *u, const char *fname, const MKL
 }
 
 // Write simple ASCII 2D file.
-void write_single_file_2d(const double *u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal)
+void write_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal)
 {
 	// Auxiliary integers.
 	MKL_INT i, j;
@@ -163,8 +194,38 @@ void write_single_file_2d(const double *u, const char *fname, const MKL_INT NrTo
 	return;
 }
 
+// Write ASCII 2D file with iterations.
+void write_iterated_file_2d(double **u, const char *fname, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT iterations, const MKL_INT gnum)
+{
+	// Auxiliary integers.
+	MKL_INT i, j, k;
+
+	// Open file.
+	FILE *fp = fopen(fname, "w");
+
+	// Write iterations.
+	for (k = 0; k < iterations; ++k)
+	{
+		// Print header comment.
+		fprintf(fp, "# % 6lld\n", k);
+		// Loop over r and write values.
+		for (i = 0; i < NrTotal; ++i)
+		{
+			for (j = 0; j < NzTotal; ++j)
+			{
+				fprintf(fp, (j < NzTotal - 1) ? "%9.18E\t" : "%9.18E\n", u[k][gnum * NrTotal * NzTotal + IDX(i, j)]);
+			}
+		}
+	}
+
+	// Close file.
+	fclose(fp);
+
+	return;
+}
+
 // Write simple ASCII 2D polar file.
-void write_single_file_2d_polar(const double *u, const char *fname, const MKL_INT NrrTotal, const MKL_INT NthTotal)
+void write_single_file_2d_polar(double *u, const char *fname, const MKL_INT NrrTotal, const MKL_INT NthTotal)
 {
 	// Auxiliary integers.
 	MKL_INT i, j;
@@ -224,10 +285,13 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 	// Open file.
 	FILE *fp = fopen(fname, "r");
 
+	MKL_INT small_dim_r = MIN(NrTotalInitial, NrTotal);
+	MKL_INT small_dim_z = MIN(NzTotalInitial, NzTotal);
+
 	// Loop over r and read values.
-	for (i = 0; i < NrTotalInitial; ++i)
+	for (i = 0; i < small_dim_r; ++i)
 	{
-		for (j = 0; j < NzTotalInitial - 1; ++j)
+		for (j = 0; j < small_dim_z - 1; ++j)
 		{
 			err = fscanf(fp, "%lE", u + IDX(i, j));
 
@@ -238,32 +302,35 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 			}
 		}
 		// Last element with line-jump.
-		j = NzTotalInitial - 1;
+		j = small_dim_z - 1;
 		err = fscanf(fp, "%lE%*[^\n]\n", u + IDX(i, j));
 	}
 
 	// Fill other values.
-	for (i = 0; i < NrTotalInitial; ++i)
+	if (NzTotalInitial < NzTotal || NrTotalInitial < NrTotal)
 	{
-		for (j = NzTotalInitial; j < NzTotal; ++j)
+		for (i = 0; i < NrTotalInitial; ++i)
 		{
-			u[IDX(i, j)] = u[IDX(i, NzTotalInitial - 1)];
+			for (j = NzTotalInitial; j < NzTotal; ++j)
+			{
+				u[IDX(i, j)] = u[IDX(i, NzTotalInitial - 1)];
+			}
 		}
-	}
 
-	for (j = 0; j < NzTotalInitial; ++j)
-	{
+		for (j = 0; j < NzTotalInitial; ++j)
+		{
+			for (i = NrTotalInitial; i < NrTotal; ++i)
+			{
+				u[IDX(i, j)] = u[IDX(NrTotalInitial - 1, j)];
+			}
+		}
+
 		for (i = NrTotalInitial; i < NrTotal; ++i)
 		{
-			u[IDX(i, j)] = u[IDX(NrTotalInitial - 1, j)];
-		}
-	}
-
-	for (i = NrTotalInitial; i < NrTotal; ++i)
-	{
-		for (j = NzTotalInitial; j < NzTotal; ++j)
-		{
-			u[IDX(i, j)] = 0.5 * (u[IDX(i, NzTotalInitial - 1)] + u[IDX(NrTotalInitial - 1, j)]);
+			for (j = NzTotalInitial; j < NzTotal; ++j)
+			{
+				u[IDX(i, j)] = 0.5 * (u[IDX(i, NzTotalInitial - 1)] + u[IDX(NrTotalInitial - 1, j)]);
+			}
 		}
 	}
 

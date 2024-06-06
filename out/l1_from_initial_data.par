@@ -1,0 +1,64 @@
+# GRID
+#
+# dr: Step size in rho coordinate.
+# dz: Step size in z coordinate.
+# NrInterior: Number of interior points in the rho direction.
+# NzInterior: Number of interior points in the z direction.
+# order: Finite difference order. Can be 2 or 4. 
+dr 		    = 6.25000E-02
+dz 		    = 6.25000E-02
+NrInterior	= 256
+NzInterior	= 256
+order 		= 4
+
+# INITIAL DATA
+#
+# Indicate whether we are readining initial data.
+# readInitialData: 0 or 1. 1 means that we are reading previous initial data.
+# This assumes that the previous solutions are stored in the following directory.
+readInitialData	= 1
+log_alpha_i     = "l=1,w=9.50000E-01,dr=6.25000E-02,N=0256/log_alpha_f.asc"
+beta_i          = "l=1,w=9.50000E-01,dr=6.25000E-02,N=0256/beta_f.asc"
+log_a_i         = "l=1,w=9.50000E-01,dr=6.25000E-02,N=0256/log_a_f.asc"
+log_h_i         = "l=1,w=9.50000E-01,dr=6.25000E-02,N=0256/log_h_f.asc"
+lambda_i        = "l=1,w=9.50000E-01,dr=6.25000E-02,N=0256/lambda_f.asc"
+psi_i           = "l=1,w=9.50000E-01,dr=6.25000E-02,N=0256/psi_f.asc"
+
+# SCALAR FIELD PROPERTIES
+# 
+# Define the scalar field parameters. The main parameters are l, m.
+l	    = 1
+m 	    = 1.0
+
+# INITIAL FREQUENCY.
+#
+# Define the scalar field initial frequency. The previous solution had w = 0.95,
+# so a small perturbation to w = 0.925 is now fixed.
+w0 	= 9.25000E-01
+
+# FIXED VARIABLE.
+#
+# We can either fix phi or omega. For the weak case, it is best to fix omega.
+fixedPhi  	= 0
+fixedPhiR 	= 0
+fixedPhiZ	= 0
+fixedOmega 	= 1
+
+# SOLVER PARAMETERS.
+solverType	    = 1
+localSolver	    = 1
+epsilon		    = 1.0E-8
+maxNewtonIter   = 20
+lambda0		    = 1.0E-03
+lambdaMin	    = 1.0E-05
+useLowRank	    = 0
+
+# NEXT SOLUTION.
+sweep = 0
+
+# BOUNDARY TYPES.
+alphaBoundOrder	= 1;
+betaBoundOrder	= 1;
+hBoundOrder	    = 1;
+aBoundOrder	    = 1;
+phiBoundOrder	= 1;

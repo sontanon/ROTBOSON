@@ -1,18 +1,125 @@
 #include "tools.h"
-#include "param.h"
 #include "derivatives.h"
 #include "simpson.h"
 
 #define EVEN 1
 
-void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const double w)
+void ex_phi_analysis(const MKL_INT print, 
+	double *phi_max, double *rr_phi_max, MKL_INT *f_res,
+	double *sph_u, double *sph_rr, double *sph_th, 
+	const MKL_INT l,
+	const MKL_INT ghost, const MKL_INT order, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT p_dim, const double drr, const double dth, const double rr_inf)
+{
+	// Grid variable maximum location.
+	MKL_INT k = 0;
+
+	// Extract variables.
+	double *sph_psi 	= sph_u + 4 * p_dim;
+
+	// Add scalar field.
+	double *sph_phi = (double *)SAFE_MALLOC(sizeof(double) * p_dim);
+	#pragma omp parallel for schedule(dynamic, 1) shared(sph_phi)	
+	for (k = 0; k < p_dim; ++k)
+	{
+		sph_phi[k] = pow(sph_rr[k] * sin(sph_th[k]), l) * sph_psi[k];
+	}
+
+	// Minimum value.
+	double phi_min = sph_phi[cblas_idamin(p_dim, sph_phi, 1)];
+
+	// Calculate maximum index.
+	k = cblas_idamax(p_dim, sph_phi, 1);
+
+	// 2D indices.
+	MKL_INT i, j;
+	i = k / NthTotal;
+	j = k % NthTotal;
+	
+	// Use parabolic interpolation.
+	double fa = sph_phi[k - NthTotal];
+	double fb = sph_phi[k];
+	double fc = sph_phi[k + NthTotal];
+	double a = sph_rr[k - NthTotal];
+	double b = sph_rr[k];
+	double c = sph_rr[k + NthTotal];
+	double x = b;
+
+	if (((fb - fa) + (fb - fc)) != 0.0)
+		*rr_phi_max = x = b + 0.5 * drr * ((fb - fa) - (fb - fc)) / ((fb - fa) + (fb - fc));
+	else
+		*rr_phi_max = x = b;
+	if (x != b)
+		*phi_max = fa * ((x - b) / (a - b)) * ((x - c) / (a - c)) + fb * ((x - c) / (b - c)) * ((x - a) / (b - a)) + fc * ((x - a) / (c - a)) * ((x - b) / (c - b));
+	else
+		*phi_max = fb;
+
+	// Now count number of points at half-width-length.
+	double hwl = 0.5 * *phi_max;
+	MKL_INT l_res = 0;
+	MKL_INT r_res = 0;
+	MKL_INT counter = 0;
+
+	for (counter = i; counter >= 0; --counter)
+	{
+		if (sph_phi[P_IDX(counter, j)] > hwl)
+			++l_res;
+		else
+			break;
+	}
+
+	for (counter = i + 1; counter < NrrTotal; ++counter)
+	{
+		if (sph_phi[P_IDX(counter, j)] > hwl)
+			++r_res;
+		else
+			break;
+	}
+
+	*f_res = l_res + r_res;
+
+		
+	if (print)
+	{
+		// Write files.
+		write_single_file_1d(phi_max, "phi_max.asc", 1);
+		write_single_file_1d(rr_phi_max, "rr_phi_max.asc", 1);
+		write_single_integer_file_1d(f_res, "hwl_resolution.asc", 1);
+		printf("***\n");
+		printf("*** Scalar Field Analysis: Maximum coordinates k = %lld, i = %lld, j = %lld .\n", k, i, j);
+		printf("***\n");
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("*** | max(phi)                 | rr(max(phi))          | min(phi)              |\n");
+		printf("***  -------------------------- ----------------------- ----------------------- \n");	
+		printf("*** |       %-6.5e        |      %-6.5e      |      %-6.5e      |\n", *phi_max, *rr_phi_max, phi_min);
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("***\n");
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("*** | psi(0)                   | psi(rr(max(phi))      | HWL Resolution        |\n");
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("*** |       %-6.5e        |      %-6.5e      |        % 4lld          |\n", sph_psi[0], sph_psi[k], *f_res);
+		printf("***  -------------------------- ----------------------- ----------------------- \n");
+		printf("**** \n");
+	}
+
+	// Free memory.
+	SAFE_FREE(sph_phi);
+
+	// All done.
+	return;
+}
+
+void ex_analysis(
+	const MKL_INT print, double *M, double *J, double *GRV2, double *GRV3,
+	double *sph_u, double *sph_rr, double *sph_th, 
+	const double w, const double m, const MKL_INT l,
+	const MKL_INT ghost, const MKL_INT order, const MKL_INT NrrTotal, const MKL_INT NthTotal, const MKL_INT p_dim, const double drr, const double dth, const double rr_inf)
 {
 	// Loop counter.
 	MKL_INT k = 0;
-
+	
 	// Rename or extract main variables.
-	double *sph_log_alpha 	= sph_u;
-	double *sph_beta 	= sph_u + p_dim;
+	double *sph_log_alpha 	= sph_u + 0 * p_dim;
+	double *sph_beta 	= sph_u + 1 * p_dim;
 	double *sph_log_h 	= sph_u + 2 * p_dim;
 	double *sph_log_a 	= sph_u + 3 * p_dim;
 	double *sph_psi 	= sph_u + 4 * p_dim;
@@ -145,17 +252,17 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 	double aux_th;
 	double aux_r;
 	double aux_rlm1;
-	double aux_rl;
+	//double aux_rl;
 	double aux_alpha2;
 	double aux_beta;
 	double aux_a2;
 	double aux_h2;
-	double aux_phi;
+	//double aux_phi;
 	double aux_phi_o_r;
-	double aux_phi2;
+	//double aux_phi2;
 	double aux_phi2_o_r2;
 	// GRV2.
-	double GRV2 = 0.0;
+	*GRV2 = 0.0;
 	// First compute auxiliary integrands.
 	// At the origin, the integrand is simply zero.
 	for (k = 0; k < NthTotal; ++k)
@@ -164,7 +271,8 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 	}
 	// Beyond the origin, the integrand must be calculated carefully.
 	#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1, i2, i3) private(k,\
-	aux_rr, aux_th, aux_r, aux_rlm1, aux_rl, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi, aux_phi_o_r, aux_phi2, aux_phi2_o_r2)
+	aux_rr, aux_th, aux_r, aux_rlm1, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi_o_r, aux_phi2_o_r2)
+	// aux_rl, axu_phi, aux_phi2)
 	for (k = NthTotal; k < p_dim; ++k)
 	{
 		// Coordinates.
@@ -172,7 +280,7 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 		aux_th = sph_th[k];
 		aux_r = aux_rr * sin(aux_th);
 		aux_rlm1 = (l == 1) ? 1.0 : pow(aux_r, l - 1);
-		aux_rl = aux_rlm1 * aux_r;
+		//aux_rl = aux_rlm1 * aux_r;
 		// Metric functions.
 		aux_alpha2 = exp(2.0 * sph_log_alpha[k]);
 		aux_beta = sph_beta[k];
@@ -182,8 +290,8 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 		aux_phi_o_r = sph_psi[k] * aux_rlm1;
 		aux_phi2_o_r2 = aux_phi_o_r * aux_phi_o_r;
 		// Scalar field proper.
-		aux_phi = aux_phi_o_r * aux_r;
-		aux_phi2 = aux_phi * aux_phi;
+		//aux_phi = aux_phi_o_r * aux_r;
+		//aux_phi2 = aux_phi * aux_phi;
 
 		// 8 * PI * A**2 * rr * S**phi_phi.
 		i0[k] = 4.0 * M_PI * aux_rr * (aux_a2 * (((w + l * aux_beta) * (w + l * aux_beta) / aux_alpha2 - m * m) * aux_r * aux_r + l * l / aux_h2) * aux_phi2_o_r2
@@ -196,7 +304,7 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 		// Sum all components.
 		i3[k] = i0[k] + i1[k] + i2[k];
 	}
-	// Integrate angles.
+	// Integrate angles: theta from 0 to PI.
 	I3[0] = 0.0;
 	#pragma omp parallel for schedule(dynamic, 1) shared(I3) private(k)
 	for (k = 1; k < NrrTotal; ++k)
@@ -204,10 +312,10 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 		I3[k] = 2.0 * simps(&i3[P_IDX(k, 0)], dth, NthTotal);
 	}
 	// Integrate radius.
-	GRV2 = simps(I3, drr, NrrTotal);
+	*GRV2 = simps(I3, drr, NrrTotal);
 
 	// GRV3
-	double GRV3 = 0.0;
+	*GRV3 = 0.0;
 	// At the origin, the integrand is simply zero.
 	for (k = 0; k < NthTotal; ++k)
 	{
@@ -215,7 +323,8 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 	}
 	// Beyond the origin, the integrand must be calculated carefully.
 	#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1, i2, i3) private(k,\
-	aux_rr, aux_th, aux_r, aux_rlm1, aux_rl, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi, aux_phi_o_r, aux_phi2, aux_phi2_o_r2)
+	aux_rr, aux_th, aux_r, aux_rlm1, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi_o_r, aux_phi2_o_r2)
+	// aux_rl, aux_phi, aux_phi2)
 	for (k = NthTotal; k < p_dim; ++k)
 	{
 		// Coordinates.
@@ -223,7 +332,7 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 		aux_th = sph_th[k];
 		aux_r = aux_rr * sin(aux_th);
 		aux_rlm1 = (l == 1) ? 1.0 : pow(aux_r, l - 1);
-		aux_rl = aux_rlm1 * aux_r;
+		//aux_rl = aux_rlm1 * aux_r;
 		// Metric functions.
 		aux_alpha2 = exp(2.0 * sph_log_alpha[k]);
 		aux_beta = sph_beta[k];
@@ -233,8 +342,8 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 		aux_phi_o_r = sph_psi[k] * aux_rlm1;
 		aux_phi2_o_r2 = aux_phi_o_r * aux_phi_o_r;
 		// Scalar field proper.
-		aux_phi = aux_phi_o_r * aux_r;
-		aux_phi2 = aux_phi * aux_phi;
+		//aux_phi = aux_phi_o_r * aux_r;
+		//aux_phi2 = aux_phi * aux_phi;
 
 		// 4 * PI * S * A**2 * H * rr**2 * sin(th).
 		i0[k] = 4.0 * M_PI * exp(sph_log_h[k]) * aux_rr * aux_rr * sin(aux_th) * 
@@ -258,50 +367,117 @@ void analysis(double *sph_u, const double *sph_rr, const double *sph_th, const d
 		I3[k] = 4.0 * M_PI * simps(&i3[P_IDX(k, 0)], dth, NthTotal);
 	}
 	// Integrate radius.
-	GRV3 = simps(I3, drr, NrrTotal);
+	*GRV3 = simps(I3, drr, NrrTotal);
 
-	// Write files.
-	write_single_file_1d(M_Schwarz, "M_Schwarz.asc", NrrTotal);
-	write_single_file_1d(M_Komar1, "M_Komar1.asc", NrrTotal);
-	write_single_file_1d(M_Komar2, "M_Komar2.asc", NrrTotal);
-	write_single_file_1d(M_ADM, "M_ADM.asc", NrrTotal);
-	write_single_file_1d(J_Komar1, "J_Komar1.asc", NrrTotal);
-	write_single_file_1d(J_Komar2, "J_Komar2.asc", NrrTotal);
-	write_single_file_1d(&GRV2, "GRV2.asc", 1);
-	write_single_file_1d(&GRV3, "GRV3.asc", 1);
+	// Set pointer values.
+	*M = 0.5 * (M_Komar1[NrrTotal - 1] + M_Komar2[NrrTotal - 1]);
+	*J = 0.5 * (J_Komar1[NrrTotal - 1] + J_Komar2[NrrTotal - 1]);
 
-	// Print information to screen.
-	printf("*** \n");
-	printf("*** GLOBAL QUANTITIES ANALYSIS\n");
-	printf("*** \n");
-	printf("*** Final radius is rr_inf = %6.5e.\n", rr_inf);
-	printf("*** \n");
-	printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");
-	printf("*** | Komar M Geometry Surface | Komar M Matter Volume |      ADM M      | Schwarzschild M |\n");
-	printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");	
-	//printf("*** |      1234567890123       |     1234567890123     |  1234567890123  |  1234567890123  |      1234567890123       |     1234567890123      |\n");
-	printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e   |   %-6.5e   |\n", M_Komar1[NrrTotal - 1], M_Komar2[NrrTotal - 1], M_ADM[NrrTotal - 1], M_Schwarz[NrrTotal - 1]);
-	printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");
-	printf("*** \n");
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** | Komar J Geometry Surface | Komar J Matter Surface |\n");
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** |       %-6.5e        |      %-6.5e       |\n", J_Komar1[NrrTotal - 1], J_Komar2[NrrTotal - 1]);
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** \n");
-	printf("***  -------------------------- ----------------------- ----------------- \n");
-	printf("*** | Baryon Number            | Baryon Mass           | Binding Energy  |\n");
-	printf("***  -------------------------- ----------------------- ----------------- \n");	
-	printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e  |\n", baryon_number, baryon_mass, binding_energy);
-	printf("***  -------------------------- ----------------------- ----------------- \n");
-	printf("*** \n");
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** | GRV2 Virital Identity    | GRV3 Virial Identity   |\n");
-	printf("***  -------------------------- ------------------------ \n");
-	printf("*** |       %-6.5e        |      %-6.5e       |\n", GRV2, GRV3);
-	printf("***  -------------------------- ------------------------ \n");
-	printf("**** \n");
+	// Radius 99.
+	double r99 = 0.0;
+	for (k = NrrTotal - 2; k > 0; --k)
+	{
+		if (0.5 * (M_Komar1[k] + M_Komar2[k]) < 0.99 * *M)
+		{
+			// Linear interpolation.
+			r99 = sph_rr[P_IDX(k, 0)] + drr * (0.99 * *M - 0.5 * (M_Komar1[k] + M_Komar2[k])) / (0.5 * (M_Komar1[k + 1] + M_Komar2[k + 1] - M_Komar1[k] - M_Komar2[k]));
+			break;
+		}
+	}
 
+	// Complementary terms for GRV2 and GRV3 using Kerr extrapolation.
+	double GRV2_c = 0.0;
+	double GRV3_c = 0.0;
+
+	// Kerr ratio.
+	double a = *J / *M;
+
+	GRV2_c = -M_PI * (*M / rr_inf) * (*M / rr_inf) * (0.5 
+		+ (*M / rr_inf) * ((4.0 / 3.0) 
+		+ (*M / rr_inf) * (3.0 - (33.0 / 8.0) * a * a / (*M * *M) 
+		+ (*M / rr_inf) * ((32.0 / 5.0) - (31.0 / 5.0) * a * a / (*M * *M)))));
+
+	GRV3_c = M_PI * *M * (*M / rr_inf) * (4.0
+		+ (*M / rr_inf) * (8.0
+		+ (*M / rr_inf) * (8.0 * (86.0 - 15.0 * a * a / (*M * *M)) / 45.0
+		+ (*M / rr_inf) * (2.0 * (1526.0 - 379.0 * a * a / (*M * *M)) / 105.0
+		+ (*M / rr_inf) * (4.0 * (21576.0 - 9256.0 * a * a / (*M * *M) + 1365.0 * a * a * a * a / (*M * *M * *M * *M)) / 1575.0)))));
+
+	// Determine if ergoregion exists.
+	MKL_INT ergoregion_flag = 0;
+	for (k = 0; k < p_dim; ++k)
+	{
+		// Metric component -g_{tt}.
+		i0[k] = exp(2.0 * sph_log_alpha[k]) - sph_rr[k] * sph_rr[k] * sin(sph_th[k]) * sin(sph_th[k]) * exp(2.0 * sph_log_h[k]) * sph_beta[k] * sph_beta[k];
+		if (i0[k] < 0.0 && !ergoregion_flag)
+		{
+			ergoregion_flag = 1;
+		}
+	}
+
+	if (print)
+	{
+		// Print information to screen.
+		printf("*** \n");
+		printf("*** GLOBAL QUANTITIES ANALYSIS\n");
+		printf("*** \n");
+		printf("*** Final radius is rr_inf = %6.5e.\n", rr_inf);
+		printf("*** \n");
+		printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");
+		printf("*** | Komar M Geometry Surface | Komar M Matter Volume |      ADM M      | Schwarzschild M |\n");
+		printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");	
+		//printf("*** |      1234567890123       |     1234567890123     |  1234567890123  |  1234567890123  |      1234567890123       |     1234567890123      |\n");
+		printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e   |   %-6.5e   |\n", M_Komar1[NrrTotal - 1], M_Komar2[NrrTotal - 1], M_ADM[NrrTotal - 1], M_Schwarz[NrrTotal - 1]);
+		printf("***  -------------------------- ----------------------- ----------------- ----------------- \n");
+		printf("*** \n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | Komar J Geometry Surface | Komar J Matter Surface |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %-6.5e        |      %-6.5e       |\n", J_Komar1[NrrTotal - 1], J_Komar2[NrrTotal - 1]);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** \n");
+		printf("***  -------------------------- ----------------------- ----------------- \n");
+		printf("*** | Baryon Number            | Baryon Mass           | Binding Energy  |\n");
+		printf("***  -------------------------- ----------------------- ----------------- \n");	
+		printf("*** |       %-6.5e        |      %-6.5e      |   %-6.5e  |\n", baryon_number, baryon_mass, binding_energy);
+		printf("***  -------------------------- ----------------------- ----------------- \n");
+		printf("*** \n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | Radius 99%% M             | Ergoregion Exists      |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %-6.5e        |      %lld               |\n", r99, ergoregion_flag);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** \n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | GRV2 Virital Identity    | GRV3 Virial Identity   |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %- 6.5e       |      %- 6.5e      |\n", *GRV2, *GRV3);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | GRV2 Kerr Extrapolat.    | GRV3 Kerr Extrapolat.  |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %- 6.5e       |      %- 6.5e      |\n", GRV2_c, GRV3_c);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** | GRV2 Total               | GRV3 Total             |\n");
+		printf("***  -------------------------- ------------------------ \n");
+		printf("*** |       %- 6.5e       |      %- 6.5e      |\n", *GRV2 + GRV2_c, *GRV3 + GRV3_c);
+		printf("***  -------------------------- ------------------------ \n");
+		printf("**** \n");
+
+		// Write files.
+		*GRV2 += GRV2_c;
+		*GRV3 += GRV3_c;
+
+		write_single_file_1d(M_Schwarz, "M_Schwarz.asc", NrrTotal);
+		write_single_file_1d(M_Komar1, "M_Komar1.asc", NrrTotal);
+		write_single_file_1d(M_Komar2, "M_Komar2.asc", NrrTotal);
+		write_single_file_1d(M_ADM, "M_ADM.asc", NrrTotal);
+		write_single_file_1d(J_Komar1, "J_Komar1.asc", NrrTotal);
+		write_single_file_1d(J_Komar2, "J_Komar2.asc", NrrTotal);
+		write_single_file_1d(GRV2, "GRV2.asc", 1);
+		write_single_file_1d(GRV3, "GRV3.asc", 1);
+		write_single_file_1d(&r99, "r99.asc", 1);
+		write_single_integer_file_1d(&ergoregion_flag, "ergoregion_flag.asc", 1);
+	}
 	// Free memory.
 	SAFE_FREE(sph_Drr_log_alpha);
 	SAFE_FREE(sph_Drr_beta);

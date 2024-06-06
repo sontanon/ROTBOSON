@@ -1,5 +1,6 @@
 // Include headers.
 #include "tools.h"
+#include "regularization_coupling.h"
 
 // Error codes.
 #define ERROR_CODE_SUCCESS 				  0
@@ -8,7 +9,7 @@
 #define ERROR_CODE_QNRES_ILL_CONDITIONED		- 4
 
 // Maximum expansion.
-#define THETA_MAX 0.25
+#define THETA_MAX 0.5
 
 // Maximum preconditioner.
 #define KAPPA_MAX 1.0E+6
@@ -28,10 +29,10 @@ MKL_INT nleq_res_qnres(
 	csr_matrix	*J,			// INPUT: Pointer to Jacobian matrix type.
 	const 	double	epsilon,		// INPUT: Exit tolerance.
 	const	MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.
-	      	void	(*RHS_CALC)(double *, const double *),				// INPUT: RHS calculation subroutine.
-	      	void	(*JACOBIAN_CALC)(csr_matrix, const double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-	      	double	(*NORM)(const double *)	,					// INPUT: Norm calculation subroutine.
-	      	double	(*DOT)(const double *, const double *)	,			// INPUT: Dot product calculation subroutine.
+	      	void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
+	      	void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
+	      	double	(*NORM)(double *)	,					// INPUT: Norm calculation subroutine.
+	      	double	(*DOT)(double *, double *)	,			// INPUT: Dot product calculation subroutine.
 	      	void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
 	      	void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
 		)
@@ -64,6 +65,10 @@ MKL_INT nleq_res_qnres(
 	// First linear solve.
 	// Solve linear system J(u^0) du^0 = -f(u^0).
 	LINEAR_SOLVE_1(du[l], J, f[l]);
+
+#ifdef REGULARIZATION_COUPLING
+	coupled_du(du[l], u[l], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
 
 	// Step l.
 	for (l = 0; l < max_newton_iterations; ++l)
@@ -101,7 +106,7 @@ MKL_INT nleq_res_qnres(
 		if (norm_f[l + 1] < epsilon)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "CONVERGED C");
+	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "CONVERGED C");
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* No error code. */
@@ -121,7 +126,7 @@ MKL_INT nleq_res_qnres(
 		if (Theta[l] > THETA_MAX)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
+	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.25. */
@@ -139,7 +144,7 @@ MKL_INT nleq_res_qnres(
 		if (kappa > KAPPA_MAX)
 		{
 			/* Print message */
-	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
+	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
 	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
 
 			/* Error code -2: Theta increases beyond 0.25. */
@@ -172,8 +177,12 @@ MKL_INT nleq_res_qnres(
 		// The minus signs work out in the end and there is no need to change v.
 		LINEAR_SOLVE_2(du[l + 1], J, v);
 
+#ifdef REGULARIZATION_COUPLING
+		coupled_du(du[l + 1], u[l + 1], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
+#endif
+
 		// Print message before continuing.
-	printf(	"***** | %-10lld | % -9.5E | %11.5E | % -9.5E | %11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");
+	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");
 		continue;
 	}
 

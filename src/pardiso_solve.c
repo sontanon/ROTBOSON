@@ -17,6 +17,8 @@ void pardiso_simple_solve(	double *u	,	// Solution array.
 		if (error != 0)
 		{
 			printf("ERROR during symbolic factorization: %lld.\n", error);
+			for (MKL_INT k = 0; k < 64; ++k)
+				printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
 			exit(1);
 		}
 
@@ -50,6 +52,8 @@ void pardiso_simple_solve(	double *u	,	// Solution array.
 	if (error != 0)
 	{
 		printf("ERROR during numerical factorization: %lld.\n", error);
+		for (MKL_INT k = 0; k < 64; ++k)
+			printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
 		exit(2);
 	}
 
@@ -66,7 +70,8 @@ void pardiso_simple_solve(	double *u	,	// Solution array.
 	if (error != 0)
 	{
 		printf("ERROR during solution: %lld,\n", error);
-		printf("iparm(30) = %lld\n", iparm[30 - 1]);
+		for (MKL_INT k = 0; k < 64; ++k)
+			printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
 		exit(3);
 	}
 
@@ -108,6 +113,8 @@ void pardiso_solve_low_rank(	double *u	,	// Solution array.
 		if (error != 0)
 		{
 			printf("ERROR during symbolic factorization: %lld.\n", error);
+			for (MKL_INT k = 0; k < 64; ++k)
+				printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
 			exit(1);
 		}
 
@@ -138,6 +145,8 @@ void pardiso_solve_low_rank(	double *u	,	// Solution array.
 	if (error != 0)
 	{
 		printf("ERROR during numerical factorization: %lld.\n", error);
+		for (MKL_INT k = 0; k < 64; ++k)
+			printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
 		exit(2);
 	}
 
@@ -154,6 +163,8 @@ void pardiso_solve_low_rank(	double *u	,	// Solution array.
 	if (error != 0)
 	{
 		printf("ERROR during solution: %lld,\n", error);
+		for (MKL_INT k = 0; k < 64; ++k)
+			printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
 		exit(3);
 	}
 
@@ -195,6 +206,8 @@ void pardiso_repeated_solve(	double *u	,	// Solution array.
 	if (error != 0)
 	{
 		printf("ERROR during solution: %lld,\n", error);
+		for (MKL_INT k = 0; k < 64; ++k)
+			printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
 		exit(3);
 	}
 

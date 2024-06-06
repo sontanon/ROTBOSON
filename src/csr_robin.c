@@ -72,6 +72,7 @@ void z_robin_2nd_order
 		// Robin with O(rr   ): rr d  u(rr   ) + n u(rr   ) = 0.
 		//                inf       rr    inf          inf 
 		case 1:
+		default:
 			// Coordinates.
 			r = (double)i - 0.5;
 			z = (double)j - 0.5;
@@ -148,6 +149,7 @@ void r_robin_2nd_order
 		// Robin with O(rr   ): rr d  u(rr   ) + n u(rr   ) = 0.
 		//                inf       rr    inf          inf 
 		case 1:
+		default:
 			// Coordinates.
 			r = (double)i - 0.5;
 			z = (double)j - 0.5;
@@ -224,6 +226,7 @@ void corner_robin_2nd_order
 		// Robin with O(rr   ): rr d  u(rr   ) + n u(rr   ) = 0.
 		//                inf       rr    inf          inf 
 		case 1:
+		default:
 			// Coordinates.
 			r = (double)i - 0.5;
 			z = (double)j - 0.5;
@@ -318,6 +321,7 @@ void z_robin_4th_order
 		// Robin with O(rr   ): rr d  u(rr   ) + n u(rr   ) = 0.
 		//                inf       rr    inf          inf 
 		case 1:
+		default:
 			// Coordinates.
 			ri = (double)i - 1.5;
 			zi = (double)j - 1.5;
@@ -402,6 +406,7 @@ void r_robin_4th_order
 		// Robin with O(rr   ): rr d  u(rr   ) + n u(rr   ) = 0.
 		//                inf       rr    inf          inf 
 		case 1:
+		default:
 			// Coordinates.
 			ri = (double)i - 1.5;
 			zi = (double)j - 1.5;
@@ -486,6 +491,7 @@ void corner_robin_4th_order
 		// Robin with O(rr   ): rr d  u(rr   ) + n u(rr   ) = 0.
 		//                inf       rr    inf          inf 
 		case 1:
+		default:
 			// Coordinates.
 			ri = (double)i - 1.5;
 			zi = (double)j - 1.5;
@@ -570,6 +576,7 @@ void z_so_robin_4th_order
 		// Robin with O(rr   ): rr d  u(rr   ) + n u(rr   ) = 0.
 		//                inf       rr    inf          inf 
 		case 1:
+		default:
 			// Coordinates.
 			ri = (double)i - 1.5;
 			zi = (double)j - 1.5;
@@ -654,6 +661,7 @@ void r_so_robin_4th_order
 		// Robin with O(rr   ): rr d  u(rr   ) + n u(rr   ) = 0.
 		//                inf       rr    inf          inf 
 		case 1:
+		default:
 			// Coordinates.
 			ri = (double)i - 1.5;
 			zi = (double)j - 1.5;
