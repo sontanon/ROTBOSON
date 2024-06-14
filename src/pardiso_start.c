@@ -57,7 +57,7 @@ void pardiso_start(const MKL_INT matrix_dim)
 	iparm[24 - 1] = 1;	// Parallel Numerical Factorization.
 	iparm[25 - 1] = 0;	// Parallel Forward/Backward Solve.
 	iparm[27 - 1] = 0; 	// Matrix check.
-	iparm[60 - 1] = 1;	// OOC.
+	iparm[60 - 1] = 0;	// OOC.
 	maxfct = 1;		// Maximum number of numerical factorizations.
 	mnum = 1;		// Which factorization to use.
 	msglvl = MESSAGE_LEVEL;	// Print statistical information in file.

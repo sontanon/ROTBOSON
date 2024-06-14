@@ -1,5 +1,11 @@
+# This parameter file will generate initial data for l=1.
+# This is a weak / scattered scalar field (frequency close to the mass),
+# and will serve as the "seed" to generate the rest of the l=1 data.
+
 # GRID
-#
+# Set to desired resolution and per memory limits.
+# The main point here is that this grid extends to ~16. 
+# Any less and the scalar field is too scattered to be actually fit into the grid.
 # dr: Step size in rho coordinate.
 # dz: Step size in z coordinate.
 # NrInterior: Number of interior points in the rho direction.
@@ -12,14 +18,12 @@ NzInterior	= 256
 order 		= 4
 
 # INITIAL DATA
-#
-# Indicate whether we are readining initial data.
+# Indicate whether we are readining initial data. 
 # readInitialData: 0 or 1. 0 means that we are not reading any initial data.
 # This will fill-in a flat metric plus a scalar field defined below.
 readInitialData	= 0
 
 # SCALAR FIELD PROPERTIES
-# 
 # Define the scalar field parameters. The main parameters are l, m.
 # For an initial guess, psi0, sigmaR, sigmaZ and rExt define an analytic
 # initial guess given by a mix of the near-axis behavior
@@ -28,29 +32,36 @@ readInitialData	= 0
 # psi0 * exp(-sqrt(m**2 - w0**2) * rr) / rr**(l+1),
 # where rr**2 = r*2 + z*2.
 # The quantity that defines the cut-off (i.e., where the asymptotic behavior dominates)
-# is rExt. That is, beyond rExt, we expect the field to be "spherical".
+# is rExt. That is, beyond rExt, we can reasonably expect the field to be "spherical".
 l	    = 1
 m 	    = 1.0
 psi0    = 0.01
 sigmaR  = 4.0
 sigmaZ  = 4.0
-rExt    = 16.0
+rExt    = 12.0
 
 # INITIAL FREQUENCY.
-#
 # Define the scalar field initial frequency. A frequency close to m (default 1)
-# is a weak field which is easier to solve for.
+# is a weak field which is easier to solve for. 
+# A frequency too close to m is too scattered.
 w0 	= 9.50000E-01
 
+######################################################################################################
+# NOTE: The parameters below should probably not be changed! They are only for the parser's benefit. #
+######################################################################################################
+
 # FIXED VARIABLE.
-#
-# We can either fix phi or omega. For the weak case, it is best to fix omega.
+# We can either fix phi or omega. 
+# For the weak case, it is best to fix omega. Which means that the solver will try
+# to find the solution to the initial frequency defined above.
 fixedPhi  	= 0
 fixedPhiR 	= 0
 fixedPhiZ	= 0
 fixedOmega 	= 1
 
 # SOLVER PARAMETERS.
+# These are the default parameters that should work well. 
+# Only edit the maxNetwonIter to if the solver does not converge in enough iterations.
 solverType	    = 1
 localSolver	    = 1
 epsilon		    = 1.0E-8
@@ -60,9 +71,11 @@ lambdaMin	    = 1.0E-05
 useLowRank	    = 0
 
 # NEXT SOLUTION.
+# Do not attempt to try to solve any more solutions.
 sweep = 0
 
 # BOUNDARY TYPES.
+# Radiative boundaries.
 alphaBoundOrder	= 1;
 betaBoundOrder	= 1;
 hBoundOrder	    = 1;

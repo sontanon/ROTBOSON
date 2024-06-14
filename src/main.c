@@ -723,11 +723,13 @@ int main(int argc, char *argv[])
 		else
 		{
 			// Cannot continue sweep because errCode != 0.
+			if (sweep > 0) {
 			printf("******************************************************\n");
 			printf("***                                                \n");
 			printf("***   Sweep cannot continue because errCode = %lld !\n", errCode);
 			printf("***                                                \n");
 			printf("******************************************************\n");
+			}
 			break;
 		}
 	} while (sweep > 0);
