@@ -63,6 +63,9 @@ jobs:
       - name: Sync Python tooling
         run: uv sync --dev
 
+      - name: Unit tests (CTest)
+        run: ctest --test-dir build/umfpack --output-on-failure
+
       - name: Smoke test (l=1, w=0.95, from scratch)
         run: uv run tools/smoke.py out/l1_from_scratch.toml --skip-build --binary build/umfpack/ROTBOSON 2>&1 | tail -20
 

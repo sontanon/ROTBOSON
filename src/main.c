@@ -129,6 +129,10 @@ static void configure_openmp(void)
 // Newton orchestration: pick the error-/residual-/classic-Newton driver and
 // run it, then record errCode. Returns the iteration index k (negative on
 // failure, matching the solver's convention).
+
+// Trial-iteration caps for the nleq_err/nleq_res inner loops.
+#define MAX_TRIAL_A_ITERATIONS 8
+#define MAX_TRIAL_B_ITERATIONS 8
 static MKL_INT run_newton(
 	rb_context *ctx,
 	MKL_INT *errCode,
@@ -154,7 +158,7 @@ static MKL_INT run_newton(
 			k = nleq_err(ctx, errCode, u, f, lambda,
 						 du, du_bar, norm_du, norm_du_bar,
 						 Theta, mu, lambda_prime, mu_prime,
-						 J, ctx->epsilon, ctx->maxNewtonIter, 8, 8,
+						 J, ctx->epsilon, ctx->maxNewtonIter, MAX_TRIAL_A_ITERATIONS, MAX_TRIAL_B_ITERATIONS,
 						 ctx->lambdaMin, ctx->localSolver,
 						 rhs, csr_gen_jacobian,
 						 norm2_all_variables, dot_all_variables,
@@ -165,7 +169,7 @@ static MKL_INT run_newton(
 			norm_f[0] = norm2_interior_all_variables(ctx, u[0]);
 			k = nleq_res(ctx, errCode, u, f, lambda,
 						 du, norm_f, Theta, mu, lambda_prime, mu_prime,
-						 J, ctx->epsilon, ctx->maxNewtonIter, 8, 8,
+						 J, ctx->epsilon, ctx->maxNewtonIter, MAX_TRIAL_A_ITERATIONS, MAX_TRIAL_B_ITERATIONS,
 						 ctx->lambdaMin, ctx->localSolver,
 						 rhs, csr_gen_jacobian,
 						 norm2_all_variables, dot_all_variables,
@@ -484,7 +488,7 @@ int main(int argc, char *argv[])
 	double f_norms[GNUM];
 
 	// Final omega.
-	double w = ctx.m;
+	double w = 0.0;
 
 	printf("***               Finished allocation!             \n");
 	printf("***                                                \n");

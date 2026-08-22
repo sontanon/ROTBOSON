@@ -230,8 +230,29 @@ abstraction, no metadata, no versioning. Phase 5 (HDF5) addresses this.
 - The `***` banner spam mixes logging with the actual output; there is no log
   level or structured output.
 
-**Fix:** the `w = m` dead initializer was kept only because it is harmless; the
+**Fix:** the `w = m` dead initializer is now `double w = 0.0;` (Phase 3); the
 banner/logging question is worth revisiting in Phase 5 alongside HDF5 output.
+
+---
+
+## 16. Derivative operators: boundary order and an unsupported symmetry  [documented]
+
+Findings from the Phase 3 convergence tests (`tests/test_derivatives.c`), which
+measure the empirical order of every operator on parity-consistent functions:
+
+- **Interior stencils converge at exactly their design order** (2/4/6).
+- **Boundary/axis points are ~3rd order** for the 4th-order operators (observed
+  ~3.3–5.4 depending on derivative order and parity). This is consistent with
+  the paper's "3rd-order boundary" claim, so it is the expected cost of the
+  hand-derived reflected/one-sided stencils — not a bug, but worth knowing: the
+  *local* boundary truncation error is the convergence bottleneck.
+- **The 6th-order radial operator (`ex_diff1r`, order 6) only works for EVEN
+  functions.** Its axis/equator stencils hard-code the even reflection (no `sym`
+  term, unlike the order-2/4 operators), so an odd input gives a constant ~O(1)
+  error (measured 0.002 observed order). This is latent rather than active:
+  production only calls it with `order+2` on the *even* metric functions in the
+  regularization auxiliaries. Phase 4's SymPy regeneration should fix it by
+  generating the reflected stencils for both parities (or dropping order 6).
 
 ---
 
