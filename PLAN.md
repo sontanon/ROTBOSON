@@ -143,6 +143,40 @@ was merged into `master` and tagged `phase0-complete`. Details in `VALIDATION.md
 - **CI (GitHub Actions):** matrix {MKL build, OSS-fallback build} × {smoke test, lint},
   plus a Python `ruff` job. Smoke test from Phase 0 runs on every PR.
 
+#### Phase 1 — OUTCOME (completed 2026-08-22)
+
+Phase 1 is **closed** on branch `phase1/build-system`.
+
+- **Build:** CMake + presets `release` / `dev` / `asan-ubsan` / `umfpack`;
+  `compile_commands.json` symlinked to the repo root (clangd/editors now resolve
+  MKL headers and `MKL_ILP64`). `env.bash` removed; README rewritten for
+  dnf/apt (Fedora, Ubuntu/Debian) and macOS (Homebrew).
+- **Solver backend interface** (`src/solver.h`) with two implementations:
+  - PARDISO (oneMKL) — default, behavior unchanged.
+  - UMFPACK (SuiteSparse, 64-bit `int64_t` indices) — MKL-free fallback, with a
+    `src/compat/mkl.h` shim (`MKL_INT = long long`, inline level-1 CBLAS,
+    thread-control no-ops). Low-rank update falls back to full refactorization.
+  - **Validated:** the UMFPACK smoke test reproduces the MKL result bit-for-bit.
+- **Tooling:** `.clang-format` (style target for Phase 2), `ruff` config (tools/
+  lint-clean), `--binary` flag + wall-time reporting in `smoke.py`.
+- **CI:** two build+smoke jobs (oneMKL and UMFPACK) + a ruff job.
+- **Notable finding:** MKL's `cblas_idamax` is 0-based (verified empirically);
+  the shim matches it.
+
+**CI timing (measured):** the l=1 N=256 from-scratch smoke solve is ~1.5 min on
+12 cores (~5 GB peak memory). On GitHub's 2-core Ubuntu runners expect ~3–8 min
+for the solve plus ~1–2 min for the oneMKL apt install (~8–15 min/job). The
+N=400 golden cases (~970k unknowns) exceed GitHub's 7 GB free-tier memory and
+are **not** per-push CI — run them via a manual `workflow_dispatch` (to add in a
+later phase) or locally.
+
+**Forward-looking conclusion (deferred to Phase 6/Rust):** oneMKL is increasingly
+not worth the dependency cost — the UMFPACK fallback is bit-for-bit equivalent at
+the sizes we solve, oneMKL's CMake package was buggy (dropped in favor of
+MKLROOT), and the Rust rewrite will likely target `faer` or SuiteSparse. MKL is
+kept as the default only because it is the battle-tested, parallel (faster)
+reference; revisit before Phase 6.
+
 ### Phase 2 — Config overhaul + structural refactor
 
 - libconfig → TOML (pure-C99 `tomlc99` preferred to keep the codebase C-only).

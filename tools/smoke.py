@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from rotboson_io import extract_scalars, find_solution_dirs
@@ -93,8 +94,13 @@ def main() -> None:
             raise SystemExit(f"binary not found: {binary}")
     else:
         binary = find_binary() if args.skip_build else build(args.jobs)
+
+    t0 = time.perf_counter()
     sol_dir = run_par(binary, args.parfile)
+    elapsed = time.perf_counter() - t0
     scalars = extract_scalars(sol_dir)
+
+    print(f"\n[smoke] ROTBOSON solve took {elapsed:.1f}s (wall)")
 
     print(f"\n[smoke] solution directory: {sol_dir.name}")
     print(f"[smoke] error_code = {scalars.get('error_code.asc', 'N/A')}")
