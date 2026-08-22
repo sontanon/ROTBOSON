@@ -18,6 +18,7 @@ __pycache__/
 # See PLAN.md and data/golden/README.md. Small provenance files under
 # data/summaries, data/params, and data/convergence ARE tracked.
 data/golden/
+data/seeds/
 
 # Re-derived symbolic notebooks are tracked under derivations/notebooks
 # (stripped of outputs); raw notebook files are ignored everywhere else.
