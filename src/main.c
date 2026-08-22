@@ -15,21 +15,14 @@
 #include "cart_to_pol.h"
 #include "analysis.h"
 
-int main(int argc, char *argv[])
+// ---------------------------------------------------------------------------
+// Driver helpers. main() below is a thin driver; each stage is a named unit
+// so the responsibilities are visible (banner / params / solver / analysis /
+// sweep) instead of one ~700-line function.
+// ---------------------------------------------------------------------------
+
+static void print_banner(void)
 {
-	// Integer counter.
-	MKL_INT i = 0, j = 0;
-
-	// Stop index.
-	MKL_INT k = 0;
-
-	// Other counters.
-	MKL_INT counter_i = 0;
-
-	// Error code.
-	MKL_INT errCode = 1;
-
-	// Initial message.
 	printf("******************************************************\n");
 	printf("******************************************************\n");
 	printf("***                                                \n");
@@ -47,9 +40,353 @@ int main(int argc, char *argv[])
 	printf("***             Last  Revision: 24/09/2020         \n");
 	printf("***                                                \n");
 	printf("******************************************************\n");
+}
 
-	// File name is in argv[1]. Check that we have at
-	// least one argument.
+static void print_parameters(const rb_context *ctx)
+{
+	printf("******************************************************\n");
+	printf("***                                                \n");
+	printf("***           Generating Rotating Boson           \n");
+	printf("***            Star Initial Data For NR.           \n");
+	printf("***                                                \n");
+	printf("***           GRID:                                \n");
+	printf("***            dr          = %-12.10E          \n", ctx->dr);
+	printf("***            dz          = %-12.10E          \n", ctx->dz);
+	printf("***            dim         = %-7lld               \n", ctx->dim);
+	printf("***            NrInterior  = %-7lld               \n", ctx->NrInterior);
+	printf("***            NzInterior  = %-7lld               \n", ctx->NzInterior);
+	printf("***            order       = %lld                     \n", ctx->order);
+	printf("***            ghost       = %lld                     \n", ctx->ghost);
+	printf("***                                                \n");
+	printf("***           SCALAR FIELD:                        \n");
+	printf("***            l           = %-7lld               \n", ctx->l);
+	printf("***            m           = %-12.10E          \n", ctx->m);
+	if (ctx->fixedPhi)
+	{
+		printf("***            Scalar Field is Fixed at:           \n");
+		printf("***            r(fixedPhi) = %-12.10E          \n", ctx->dr * (ctx->fixedPhiR - 0.5));
+		printf("***            z(fixedPhi) = %-12.10E          \n", ctx->dz * (ctx->fixedPhiZ - 0.5));
+	}
+	else if (ctx->fixedOmega)
+	{
+		printf("***            Initial Omega is Fixed.             \n");
+	}
+	printf("***                                                \n");
+	printf("***           INITIAL DATA:                        \n");
+	printf("***            readInitialData = %lld     \n", ctx->readInitialData);
+	if (ctx->readInitialData)
+	{
+		printf("***            log_alpha_i = %-18s     \n", ctx->log_alpha_i);
+		printf("***            beta_i      = %-18s     \n", ctx->beta_i);
+		printf("***            log_h_i     = %-18s     \n", ctx->log_h_i);
+		printf("***            log_a_i     = %-18s     \n", ctx->log_a_i);
+		printf("***            psi_i       = %-18s     \n", ctx->psi_i);
+		printf("***            lambda_i    = %-18s     \n", ctx->lambda_i);
+		printf("***            w_i         = %-18s     \n", ctx->w_i);
+	}
+	else
+	{
+		printf("***            psi0        = %-12.10E          \n", ctx->psi0);
+		printf("***            sigmaR      = %-12.10E          \n", ctx->sigmaR);
+		printf("***            sigmaZ      = %-12.10E          \n", ctx->sigmaZ);
+		printf("***            rExt        = %-12.10E          \n", ctx->rExt);
+	}
+	if (!ctx->w_i)
+	{
+		printf("***            w0          = %-12.10E          \n", ctx->w0);
+	}
+	printf("***                                                \n");
+	printf("***           SOLVER:                              \n");
+	printf("***            solverType    = %-18s  \n", (ctx->solverType == 1) ? "Error" : "Residual");
+	printf("***            epsilon       = %-12.10E        \n", ctx->epsilon);
+	printf("***            maxNewtonIter = %-4lld                \n", ctx->maxNewtonIter);
+	printf("***            lambda0       = %-12.10E        \n", ctx->lambda0);
+	printf("***            lambdaMin     = %-12.10E        \n", ctx->lambdaMin);
+	printf("***            useLowRank    = %lld       \n", ctx->useLowRank);
+	printf("***                                                \n");
+	printf("******************************************************\n");
+}
+
+static void configure_openmp(void)
+{
+#pragma omp parallel
+	{
+#pragma omp master
+		{
+			// Determine OMP threads.
+			printf("******************************************************\n");
+			printf("***                                                \n");
+			printf("***            Maximum OMP threads = %d             \n", omp_get_max_threads());
+			printf("***            Currently running on %d              \n", omp_get_num_threads());
+			printf("***                                                \n");
+			printf("******************************************************\n");
+			mkl_set_dynamic(0);
+			mkl_set_num_threads(omp_get_num_threads());
+		}
+	}
+}
+
+// Newton orchestration: pick the error-/residual-/classic-Newton driver and
+// run it, then record errCode. Returns the iteration index k (negative on
+// failure, matching the solver's convention).
+static MKL_INT run_newton(
+	rb_context *ctx,
+	MKL_INT *errCode,
+	double **u, double **f, double **du, double **du_bar,
+	double *norm_f, double *norm_du, double *norm_du_bar,
+	double *lambda, double *Theta, double *mu,
+	double *lambda_prime, double *mu_prime,
+	csr_matrix *J,
+	rb_linear_solve_fn linear_solve_1, rb_linear_solve_fn linear_solve_2)
+{
+	MKL_INT k = 0;
+
+	// Set initial damping factor lambda[0].
+	lambda[0] = ctx->lambda0;
+
+	/* MAIN ALGORITHM: NEWTON SOLVER */
+	if (ctx->maxNewtonIter > 0)
+	{
+		switch (ctx->solverType)
+		{
+		// Error-based algorithm.
+		case 1:
+			k = nleq_err(ctx, errCode, u, f, lambda,
+						 du, du_bar, norm_du, norm_du_bar,
+						 Theta, mu, lambda_prime, mu_prime,
+						 J, ctx->epsilon, ctx->maxNewtonIter, 8, 8,
+						 ctx->lambdaMin, ctx->localSolver,
+						 rhs, csr_gen_jacobian,
+						 norm2_all_variables, dot_all_variables,
+						 linear_solve_1, linear_solve_2);
+			break;
+		// Residual-based algorithm.
+		case 2:
+			norm_f[0] = norm2_interior_all_variables(ctx, u[0]);
+			k = nleq_res(ctx, errCode, u, f, lambda,
+						 du, norm_f, Theta, mu, lambda_prime, mu_prime,
+						 J, ctx->epsilon, ctx->maxNewtonIter, 8, 8,
+						 ctx->lambdaMin, ctx->localSolver,
+						 rhs, csr_gen_jacobian,
+						 norm2_all_variables, dot_all_variables,
+						 linear_solve_1, linear_solve_2);
+			break;
+		// Classic error-based Newton.
+		case 3:
+			norm_f[0] = norm2_interior_all_variables(ctx, u[0]);
+			k = newton(ctx, errCode, u, f, lambda,
+					   du, norm_du, Theta,
+					   J, ctx->epsilon, ctx->maxNewtonIter,
+					   rhs, csr_gen_jacobian,
+					   norm2_all_variables,
+					   linear_solve_1);
+			break;
+		}
+
+		// Write errCode to file.
+		write_single_integer_file_1d(errCode, "error_code.asc", 1);
+
+		// Check for convergence.
+		if (*errCode != 0)
+		{
+			printf("******************************************************\n");
+			printf("***                                                \n");
+			printf("***    Warning! Did not converge: Error Code = %lld  \n", *errCode);
+			printf("***    Will output anyway. Do not trust results!   \n");
+			printf("***                                                \n");
+			printf("******************************************************\n");
+			k = -k;
+		}
+	}
+	else
+	{
+		printf("******************************************************\n");
+		printf("***                                                \n");
+		printf("***    Warning! User did not specify any Newton Iterations.  \n");
+		printf("***                                                \n");
+		printf("******************************************************\n");
+		k = 0;
+	}
+
+	return k;
+}
+
+// Analysis phase: interpolate to spherical coordinates, write polar fields,
+// and compute Komar masses / angular momenta / virial identities plus
+// rr(phi_max).
+static void run_analysis(rb_context *ctx, double **u, double *r, double *z, MKL_INT k, double w)
+{
+	// Interpolate. Memory is allocated inside this subroutine.
+	ex_cart_to_pol(&ctx->i_u, &ctx->i_rr, &ctx->i_th, r, z, u[k], ctx->Dr_u, ctx->Dz_u, ctx->Drz_u, GNUM, ctx->dr, ctx->dz, ctx->NrInterior, ctx->NzInterior, ctx->ghost, &ctx->NrrTotal, &ctx->NthTotal, &ctx->p_dim, &ctx->drr, &ctx->dth, &ctx->rr_inf);
+
+	// Write spherical fields to file.
+	write_single_file_2d_polar(ctx->i_rr, "sph_rr.asc", ctx->NrrTotal, ctx->NthTotal);
+	write_single_file_2d_polar(ctx->i_th, "sph_th.asc", ctx->NrrTotal, ctx->NthTotal);
+	write_single_file_2d_polar(ctx->i_u, "sph_log_alpha_f.asc", ctx->NrrTotal, ctx->NthTotal);
+	write_single_file_2d_polar(ctx->i_u + ctx->p_dim, "sph_beta_f.asc", ctx->NrrTotal, ctx->NthTotal);
+	write_single_file_2d_polar(ctx->i_u + 2 * ctx->p_dim, "sph_log_h_f.asc", ctx->NrrTotal, ctx->NthTotal);
+	write_single_file_2d_polar(ctx->i_u + 3 * ctx->p_dim, "sph_log_a_f.asc", ctx->NrrTotal, ctx->NthTotal);
+	write_single_file_2d_polar(ctx->i_u + 4 * ctx->p_dim, "sph_psi_f.asc", ctx->NrrTotal, ctx->NthTotal);
+	write_single_file_2d_polar(ctx->i_u + 5 * ctx->p_dim, "sph_lambda_f.asc", ctx->NrrTotal, ctx->NthTotal);
+
+	// Do analysis.
+	ex_analysis(1, &ctx->M_KOMAR, &ctx->J_KOMAR, &ctx->GRV2, &ctx->GRV3, ctx->i_u, ctx->i_rr, ctx->i_th, w, ctx->m, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal, ctx->NthTotal, ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
+
+	// Calculate rr(phi_max).
+	ex_phi_analysis(1, &ctx->phi_max, &ctx->rr_phi_max, &ctx->hwl_res, ctx->i_u, ctx->i_rr, ctx->i_th, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal, ctx->NthTotal, ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
+
+	// Clean analysis spherical variables.
+	SAFE_FREE(ctx->i_rr);
+	SAFE_FREE(ctx->i_th);
+	SAFE_FREE(ctx->i_u);
+}
+
+// Sweep/continuation: sanity-check the converged solution, then either stop
+// (return 0) or seed the next solve from the current solution with predicted
+// scale factors (return 1).
+static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_INT errCode, csr_matrix *J)
+{
+	MKL_INT counter_i = 0;
+
+	// Peaks and predicted scale factors (recomputed each step).
+	double peak_next[GNUM + 1] = {0.0};
+	double peak_prev[GNUM + 1] = {0.0};
+	double next_scale[GNUM + 1] = {0.0};
+
+	if (!((errCode == 0) && (ctx->sweep > 0)))
+	{
+		if (ctx->sweep > 0)
+		{
+			printf("******************************************************\n");
+			printf("***                                                \n");
+			printf("***   Sweep cannot continue because errCode = %lld !\n", errCode);
+			printf("***                                                \n");
+			printf("******************************************************\n");
+		}
+		return 0;
+	}
+
+	// Sanity checks on this resolution.
+	if (w <= ctx->w_min || w >= ctx->w_max)
+	{
+		printf("******************************************************\n");
+		printf("***                                                \n");
+		printf("***   Sweep cannot continue because w is out of range (%.5E, %.5E) !\n", ctx->w_min, ctx->w_max);
+		printf("***                                                \n");
+		printf("******************************************************\n");
+		return 0;
+	}
+	if (ctx->rr_phi_max < ctx->rr_phi_max_minimum)
+	{
+		printf("******************************************************\n");
+		printf("***                                                \n");
+		printf("***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n", ctx->rr_phi_max_minimum);
+		printf("***                                                \n");
+		printf("******************************************************\n");
+		return 0;
+	}
+	if (ctx->rr_phi_max > ctx->rr_phi_max_maximum)
+	{
+		printf("******************************************************\n");
+		printf("***                                                \n");
+		printf("***   Sweep cannot continue because rr(max(phi)) > max(rr(max(phi))) = %.5E !\n", ctx->rr_phi_max_maximum);
+		printf("***                                                \n");
+		printf("******************************************************\n");
+		return 0;
+	}
+	if (ctx->hwl_res < ctx->hwl_min)
+	{
+		printf("******************************************************\n");
+		printf("***                                                \n");
+		printf("***   Sweep cannot continue because N(HWL) < MIN(N(HWL)) = %lld !\n", ctx->hwl_min);
+		printf("***   In other words, scalar field has not enough resolution. Try with more resolution or decrease hwl_min.\n");
+		printf("***                                                \n");
+		printf("******************************************************\n");
+		return 0;
+	}
+	if (ctx->hwl_res > ctx->hwl_max)
+	{
+		printf("******************************************************\n");
+		printf("***                                                \n");
+		printf("***   Sweep cannot continue because N(HWL) > MAX(N(HWL)) = %lld !\n", ctx->hwl_max);
+		printf("***   In other words, scalar field is too scattered. Try with less resolution or increase hwl_max.\n");
+		printf("***                                                \n");
+		printf("******************************************************\n");
+		return 0;
+	}
+
+	// Predict scale factors from the peak values.
+	for (counter_i = 0; counter_i < GNUM; ++counter_i)
+	{
+		peak_prev[counter_i] = ctx->u_seed[counter_i * ctx->dim + cblas_idamax(ctx->dim, u[k] + counter_i * ctx->dim, 1)];
+		peak_next[counter_i] = u[k][counter_i * ctx->dim + cblas_idamax(ctx->dim, u[k] + counter_i * ctx->dim, 1)];
+	}
+	next_scale[4] = peak_next[4] / peak_prev[4];
+	next_scale[0] = 1.0 + next_scale[4] * (1.0 - peak_prev[0] / peak_next[0]);
+	next_scale[1] = 1.0 + next_scale[4] * (1.0 - peak_prev[1] / peak_next[1]);
+	next_scale[2] = 1.0 + next_scale[4] * (1.0 - peak_prev[2] / peak_next[2]);
+	next_scale[3] = 1.0 + next_scale[4] * (1.0 - peak_prev[3] / peak_next[3]);
+	next_scale[5] = 1.0 + next_scale[4] * (1.0 - peak_prev[5] / peak_next[5]);
+
+	for (counter_i = 0; counter_i < GNUM; ++counter_i)
+		printf("**** Variable %lld peak = % -.5E, previous peak = % -.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
+
+	// Omega prediction.
+	peak_prev[GNUM] = omega_calc(ctx->u_seed[GNUM * ctx->dim], ctx->m);
+	peak_next[GNUM] = omega_calc(u[k][GNUM * ctx->dim], ctx->m);
+
+	next_scale[GNUM] = 1.0 + next_scale[4] * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
+
+	printf("**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w, next_scale[GNUM]);
+
+	// Transfer to initial data.
+#pragma omp parallel shared(u)
+	{
+#pragma omp for schedule(dynamic, 1)
+		for (counter_i = 0; counter_i < GNUM * ctx->dim + 1; ++counter_i)
+		{
+			u[0][counter_i] = -ctx->scale_next * ctx->u_seed[counter_i];
+			u[0][counter_i] += (1.0 + ctx->scale_next) * u[k][counter_i];
+			ctx->u_seed[counter_i] = u[k][counter_i];
+		}
+	}
+	if (ctx->w_step != 0.0)
+	{
+		u[0][ctx->w_idx] = inverse_omega_calc(w + ctx->w_step, ctx->m);
+	}
+	// Set initial omega.
+	ctx->w0 = omega_calc(u[0][ctx->w_idx], ctx->m);
+
+	// Set analysis phase to 0 again.
+	J->analysis_phase = 0;
+
+	// Set new lambda0 to one since convergence has improved.
+	ctx->lambda0 = 1.0;
+
+	printf("******************************************************\n");
+	printf("***                                                \n");
+	printf("***   Setting initial data to last solution, scaling, and continuing...\n");
+	printf("***                                                \n");
+	printf("***                                                \n");
+	printf("******************************************************\n");
+
+	return 1;
+}
+
+int main(int argc, char *argv[])
+{
+	// Integer counter.
+	MKL_INT i = 0, j = 0;
+
+	// Stop index.
+	MKL_INT k = 0;
+
+	// Error code.
+	MKL_INT errCode = 1;
+
+	print_banner();
+
+	// File name is in argv[1]. Check that we have at least one argument.
 	if (argc < 2)
 	{
 		printf("***                                                \n");
@@ -69,96 +406,11 @@ int main(int argc, char *argv[])
 	// Local alias for the IDX macro, which indexes by row-major stride NzTotal.
 	const MKL_INT NzTotal = ctx.NzTotal;
 
-	// Parse arguments and initial seed.
-	// Generate directory name via format "l=?,w=X.XXXXXE-??,dr=X.XXXXXE-??,N=XXXX"
-	// w will be unknown for now so set it to X.XXXXXE-01.
+	// Parse the parameter file into ctx.
 	parser(&ctx, argv[1]);
 
-	// Future scale factors.
-	double next_scale[GNUM + 1] = {ctx.scale_u0, ctx.scale_u1, ctx.scale_u2, ctx.scale_u3, ctx.scale_u4, ctx.scale_u5, ctx.scale_u6};
-
-	// Peaks.
-	double peak_next[GNUM + 1] = {0.0};
-	double peak_prev[GNUM + 1] = {0.0};
-
-	// Print program start and parameters.
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***           Generating Rotating Boson           \n");
-	printf("***            Star Initial Data For NR.           \n");
-	printf("***                                                \n");
-	printf("***           GRID:                                \n");
-	printf("***            dr          = %-12.10E          \n", ctx.dr);
-	printf("***            dz          = %-12.10E          \n", ctx.dz);
-	printf("***            dim         = %-7lld               \n", ctx.dim);
-	printf("***            NrInterior  = %-7lld               \n", ctx.NrInterior);
-	printf("***            NzInterior  = %-7lld               \n", ctx.NzInterior);
-	printf("***            order       = %lld                     \n", ctx.order);
-	printf("***            ghost       = %lld                     \n", ctx.ghost);
-	printf("***                                                \n");
-	printf("***           SCALAR FIELD:                        \n");
-	printf("***            l           = %-7lld               \n", ctx.l);
-	printf("***            m           = %-12.10E          \n", ctx.m);
-	if (ctx.fixedPhi)
-	{
-		printf("***            Scalar Field is Fixed at:           \n");
-		printf("***            r(fixedPhi) = %-12.10E          \n", ctx.dr * (ctx.fixedPhiR - 0.5));
-		printf("***            z(fixedPhi) = %-12.10E          \n", ctx.dz * (ctx.fixedPhiZ - 0.5));
-	}
-	else if (ctx.fixedOmega)
-	{
-		printf("***            Initial Omega is Fixed.             \n");
-	}
-	printf("***                                                \n");
-	printf("***           INITIAL DATA:                        \n");
-	printf("***            readInitialData = %lld     \n", ctx.readInitialData);
-	if (ctx.readInitialData)
-	{
-		printf("***            log_alpha_i = %-18s     \n", ctx.log_alpha_i);
-		printf("***            beta_i      = %-18s     \n", ctx.beta_i);
-		printf("***            log_h_i     = %-18s     \n", ctx.log_h_i);
-		printf("***            log_a_i     = %-18s     \n", ctx.log_a_i);
-		printf("***            psi_i       = %-18s     \n", ctx.psi_i);
-		printf("***            lambda_i    = %-18s     \n", ctx.lambda_i);
-		printf("***            w_i         = %-18s     \n", ctx.w_i);
-	}
-	else
-	{
-		printf("***            psi0        = %-12.10E          \n", ctx.psi0);
-		printf("***            sigmaR      = %-12.10E          \n", ctx.sigmaR);
-		printf("***            sigmaZ      = %-12.10E          \n", ctx.sigmaZ);
-		printf("***            rExt        = %-12.10E          \n", ctx.rExt);
-	}
-	if (!ctx.w_i)
-	{
-		printf("***            w0          = %-12.10E          \n", ctx.w0);
-	}
-	printf("***                                                \n");
-	printf("***           SOLVER:                              \n");
-	printf("***            solverType    = %-18s  \n", (ctx.solverType == 1) ? "Error" : "Residual");
-	printf("***            epsilon       = %-12.10E        \n", ctx.epsilon);
-	printf("***            maxNewtonIter = %-4lld                \n", ctx.maxNewtonIter);
-	printf("***            lambda0       = %-12.10E        \n", ctx.lambda0);
-	printf("***            lambdaMin     = %-12.10E        \n", ctx.lambdaMin);
-	printf("***            useLowRank    = %lld       \n", ctx.useLowRank);
-	printf("***                                                \n");
-	printf("******************************************************\n");
-
-#pragma omp parallel
-	{
-#pragma omp master
-		{
-			// Determine OMP threads.
-			printf("******************************************************\n");
-			printf("***                                                \n");
-			printf("***            Maximum OMP threads = %d             \n", omp_get_max_threads());
-			printf("***            Currently running on %d              \n", omp_get_num_threads());
-			printf("***                                                \n");
-			printf("******************************************************\n");
-			mkl_set_dynamic(0);
-			mkl_set_num_threads(omp_get_num_threads());
-		}
-	}
+	print_parameters(&ctx);
+	configure_openmp();
 
 	// Allocate memory.
 	printf("******************************************************\n");
@@ -207,7 +459,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// Auxiliary global derivative pointers.
+	// Auxiliary derivative buffers.
 	ctx.Dr_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
 	ctx.Dz_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
 	ctx.Drr_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
@@ -264,7 +516,6 @@ int main(int argc, char *argv[])
 	printf("******************************************************\n");
 
 	// LOW RANK UPDATE and linear solver subroutines.
-	// Linear Solver Subroutine.
 	rb_linear_solve_fn linear_solve_1;
 	if (ctx.useLowRank)
 	{
@@ -275,19 +526,19 @@ int main(int argc, char *argv[])
 		linear_solve_1 = solver_solve;
 
 	// Repeated solver.
-	rb_linear_solve_fn linear_solve_2;
-	linear_solve_2 = solver_repeated_solve;
+	rb_linear_solve_fn linear_solve_2 = solver_repeated_solve;
+
 	printf("******************************************************\n");
 	printf("***                                                \n");
 	printf("***          Setting initial guess and RHS.        \n");
 
-	// Set initial guess
+	// Set initial guess.
 	initial_guess(&ctx, u[0]);
 
 	// Loop over sweep.
 	do
 	{
-		// Do I/O: create ouput directory, copy parameter file, change to output directory.
+		// Do I/O: create output directory and change into it.
 		io(ctx.initial_dirname, argv[1]);
 
 		// Print main variables.
@@ -341,93 +592,19 @@ int main(int argc, char *argv[])
 		printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
 		printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
 		printf("***                                                \n");
-
 		printf("***                                                \n");
 		printf("******************************************************\n");
 
-		// Set initial damping factor lambda[0].
-		lambda[0] = ctx.lambda0;
-
-		// Set k = 0.
-		k = 0;
-
-		/* MAIN ALGORITHM: NEWTON SOLVER */
-		// Start Newton iterations.
-		if (ctx.maxNewtonIter > 0)
-		{
-			switch (ctx.solverType)
-			{
-			// Error-based algorithm.
-			case 1:
-				// Call algorithm.
-				k = nleq_err(&ctx, &errCode, u, f, lambda,
-							 du, du_bar, norm_du, norm_du_bar,
-							 Theta, mu, lambda_prime, mu_prime,
-							 &J, ctx.epsilon, ctx.maxNewtonIter, 8, 8,
-							 ctx.lambdaMin, ctx.localSolver,
-							 rhs, csr_gen_jacobian,
-							 // norm2_interior, dot_interior,
-							 // norm2_interior_all_variables, dot_interior_all_variables,
-							 norm2_all_variables, dot_all_variables,
-							 linear_solve_1, linear_solve_2);
-				break;
-			// Residual-based algorithm.
-			case 2:
-				// ||f[0]|| is also an input parameter.
-				norm_f[0] = norm2_interior_all_variables(&ctx, u[0]);
-				// Calle algorithm.
-				k = nleq_res(&ctx, &errCode, u, f, lambda,
-							 du, norm_f, Theta, mu, lambda_prime, mu_prime,
-							 &J, ctx.epsilon, ctx.maxNewtonIter, 8, 8,
-							 ctx.lambdaMin, ctx.localSolver,
-							 rhs, csr_gen_jacobian,
-							 // norm2_interior, dot_interior,
-							 // norm2_interior_all_variables, dot_interior_all_variables,
-							 norm2_all_variables, dot_all_variables,
-							 linear_solve_1, linear_solve_2);
-				break;
-			case 3:
-				// ||f[0]|| is also an input parameter.
-				norm_f[0] = norm2_interior_all_variables(&ctx, u[0]);
-				k = newton(&ctx, &errCode, u, f, lambda,
-						   du, norm_du, Theta,
-						   &J, ctx.epsilon, ctx.maxNewtonIter,
-						   rhs, csr_gen_jacobian,
-						   // norm2_interior_all_variables,
-						   norm2_all_variables,
-						   linear_solve_1);
-				break;
-			}
-
-			// Write errCode to file.
-			write_single_integer_file_1d(&errCode, "error_code.asc", 1);
-
-			// Check for convergence.
-			if (errCode != 0)
-			{
-				printf("******************************************************\n");
-				printf("***                                                \n");
-				printf("***    Warning! Did not converge: Error Code = %lld  \n", errCode);
-				printf("***    Will output anyway. Do not trust results!   \n");
-				printf("***                                                \n");
-				printf("******************************************************\n");
-				k = -k;
-			}
-		}
-		else
-		{
-			printf("******************************************************\n");
-			printf("***                                                \n");
-			printf("***    Warning! User did not specify any Newton Iterations.  \n");
-			printf("***                                                \n");
-			printf("******************************************************\n");
-			k = 0;
-		}
+		// Newton solve.
+		k = run_newton(&ctx, &errCode, u, f, du, du_bar,
+					   norm_f, norm_du, norm_du_bar,
+					   lambda, Theta, mu, lambda_prime, mu_prime,
+					   &J, linear_solve_1, linear_solve_2);
 
 		// Get omega.
 		w = omega_calc(u[k][ctx.w_idx], ctx.m);
 
-		// Print final solutions
+		// Print final solutions.
 		write_single_file_2d(u[k], "log_alpha_f.asc", ctx.NrTotal, ctx.NzTotal);
 		write_single_file_2d(u[k] + ctx.dim, "beta_f.asc", ctx.NrTotal, ctx.NzTotal);
 		write_single_file_2d(u[k] + 2 * ctx.dim, "log_h_f.asc", ctx.NrTotal, ctx.NzTotal);
@@ -489,7 +666,6 @@ int main(int argc, char *argv[])
 		printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
 		printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
 		printf("***                                                \n");
-
 		printf("***                                                \n");
 		printf("******************************************************\n");
 
@@ -502,157 +678,18 @@ int main(int argc, char *argv[])
 		printf("******************************************************\n");
 
 		// ANALYSIS PHASE.
-		// Most analysis or global quantities are calculated in spherical coordinates.
-		// Interpolate. Memory will be allocated in this subroutine.
-		ex_cart_to_pol(&ctx.i_u, &ctx.i_rr, &ctx.i_th, r, z, u[k], ctx.Dr_u, ctx.Dz_u, ctx.Drz_u, GNUM, ctx.dr, ctx.dz, ctx.NrInterior, ctx.NzInterior, ctx.ghost, &ctx.NrrTotal, &ctx.NthTotal, &ctx.p_dim, &ctx.drr, &ctx.dth, &ctx.rr_inf);
-		// Write to file.
-		write_single_file_2d_polar(ctx.i_rr, "sph_rr.asc", ctx.NrrTotal, ctx.NthTotal);
-		write_single_file_2d_polar(ctx.i_th, "sph_th.asc", ctx.NrrTotal, ctx.NthTotal);
-		write_single_file_2d_polar(ctx.i_u, "sph_log_alpha_f.asc", ctx.NrrTotal, ctx.NthTotal);
-		write_single_file_2d_polar(ctx.i_u + ctx.p_dim, "sph_beta_f.asc", ctx.NrrTotal, ctx.NthTotal);
-		write_single_file_2d_polar(ctx.i_u + 2 * ctx.p_dim, "sph_log_h_f.asc", ctx.NrrTotal, ctx.NthTotal);
-		write_single_file_2d_polar(ctx.i_u + 3 * ctx.p_dim, "sph_log_a_f.asc", ctx.NrrTotal, ctx.NthTotal);
-		write_single_file_2d_polar(ctx.i_u + 4 * ctx.p_dim, "sph_psi_f.asc", ctx.NrrTotal, ctx.NthTotal);
-		write_single_file_2d_polar(ctx.i_u + 5 * ctx.p_dim, "sph_lambda_f.asc", ctx.NrrTotal, ctx.NthTotal);
-		// Do analysis.
-		ex_analysis(1, &ctx.M_KOMAR, &ctx.J_KOMAR, &ctx.GRV2, &ctx.GRV3, ctx.i_u, ctx.i_rr, ctx.i_th, w, ctx.m, ctx.l, ctx.ghost, ctx.order, ctx.NrrTotal, ctx.NthTotal, ctx.p_dim, ctx.drr, ctx.dth, ctx.rr_inf);
-		// Calculate rr(phi_max).
-		ex_phi_analysis(1, &ctx.phi_max, &ctx.rr_phi_max, &ctx.hwl_res, ctx.i_u, ctx.i_rr, ctx.i_th, ctx.l, ctx.ghost, ctx.order, ctx.NrrTotal, ctx.NthTotal, ctx.p_dim, ctx.drr, ctx.dth, ctx.rr_inf);
-
-		// Clean analysis spherical variables.
-		SAFE_FREE(ctx.i_rr);
-		SAFE_FREE(ctx.i_th);
-		SAFE_FREE(ctx.i_u);
+		run_analysis(&ctx, u, r, z, k, w);
 
 		// Exit directory by going up one level (executable level).
 		chdir(ctx.work_dirname);
 
 		// Rename directory to include w.
-		// snprintf(final_dirname, MAX_STR_LEN, "l=%lld,psi=%.5E,w=%.5E,dr=%.5E,N=%04lld,order=%lld", l, i_u[4 * p_dim], w, dr, NrInterior, order);
 		snprintf(ctx.final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", ctx.l, w, ctx.dr, ctx.NrInterior);
 		rename(ctx.initial_dirname, ctx.final_dirname);
 
-		// Sweep continuation if sanity checks first.
-		if ((errCode == 0) && (ctx.sweep > 0))
-		{
-			// Check if sweep should continue on this resolution.
-			if (w <= ctx.w_min || w >= ctx.w_max)
-			{
-				printf("******************************************************\n");
-				printf("***                                                \n");
-				printf("***   Sweep cannot continue because w is out of range (%.5E, %.5E) !\n", ctx.w_min, ctx.w_max);
-				printf("***                                                \n");
-				printf("******************************************************\n");
-				break;
-			}
-			else if (ctx.rr_phi_max < ctx.rr_phi_max_minimum)
-			{
-				printf("******************************************************\n");
-				printf("***                                                \n");
-				printf("***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n", ctx.rr_phi_max_minimum);
-				printf("***                                                \n");
-				printf("******************************************************\n");
-				break;
-			}
-			else if (ctx.rr_phi_max > ctx.rr_phi_max_maximum)
-			{
-				printf("******************************************************\n");
-				printf("***                                                \n");
-				printf("***   Sweep cannot continue because rr(max(phi)) > max(rr(max(phi))) = %.5E !\n", ctx.rr_phi_max_maximum);
-				printf("***                                                \n");
-				printf("******************************************************\n");
-				break;
-			}
-			else if (ctx.hwl_res < ctx.hwl_min)
-			{
-				printf("******************************************************\n");
-				printf("***                                                \n");
-				printf("***   Sweep cannot continue because N(HWL) < MIN(N(HWL)) = %lld !\n", ctx.hwl_min);
-				printf("***   In other words, scalar field has not enough resolution. Try with more resolution or decrease hwl_min.\n");
-				printf("***                                                \n");
-				printf("******************************************************\n");
-				break;
-			}
-			else if (ctx.hwl_res > ctx.hwl_max)
-			{
-				printf("******************************************************\n");
-				printf("***                                                \n");
-				printf("***   Sweep cannot continue because N(HWL) > MAX(N(HWL)) = %lld !\n", ctx.hwl_max);
-				printf("***   In other words, scalar field is too scattered. Try with less resolution or increase hwl_max.\n");
-				printf("***                                                \n");
-				printf("******************************************************\n");
-				break;
-			}
-			else
-			{
-				for (counter_i = 0; counter_i < GNUM; ++counter_i)
-				{
-					// Get peaks.
-					peak_prev[counter_i] = ctx.u_seed[counter_i * ctx.dim + cblas_idamax(ctx.dim, u[k] + counter_i * ctx.dim, 1)];
-					peak_next[counter_i] = u[k][counter_i * ctx.dim + cblas_idamax(ctx.dim, u[k] + counter_i * ctx.dim, 1)];
-				}
-				next_scale[4] = peak_next[4] / peak_prev[4];
-				next_scale[0] = 1.0 + next_scale[4] * (1.0 - peak_prev[0] / peak_next[0]);
-				next_scale[1] = 1.0 + next_scale[4] * (1.0 - peak_prev[1] / peak_next[1]);
-				next_scale[2] = 1.0 + next_scale[4] * (1.0 - peak_prev[2] / peak_next[2]);
-				next_scale[3] = 1.0 + next_scale[4] * (1.0 - peak_prev[3] / peak_next[3]);
-				next_scale[5] = 1.0 + next_scale[4] * (1.0 - peak_prev[5] / peak_next[5]);
-
-				for (counter_i = 0; counter_i < GNUM; ++counter_i)
-					printf("**** Variable %lld peak = % -.5E, previous peak = % -.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
-
-				// Omega prediction.
-				peak_prev[GNUM] = omega_calc(ctx.u_seed[GNUM * ctx.dim], ctx.m);
-				peak_next[GNUM] = omega_calc(u[k][GNUM * ctx.dim], ctx.m);
-
-				next_scale[GNUM] = 1.0 + next_scale[4] * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
-
-				printf("**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w, next_scale[GNUM]);
-
-			// Transfer to initial data.
-#pragma omp parallel shared(u)
-			{
-#pragma omp for schedule(dynamic, 1)
-				for (counter_i = 0; counter_i < GNUM * ctx.dim + 1; ++counter_i)
-				{
-					u[0][counter_i] = -ctx.scale_next * ctx.u_seed[counter_i];
-					u[0][counter_i] += (1.0 + ctx.scale_next) * u[k][counter_i];
-					ctx.u_seed[counter_i] = u[k][counter_i];
-				}
-			}
-			if (ctx.w_step != 0.0)
-				{
-					u[0][ctx.w_idx] = inverse_omega_calc(w + ctx.w_step, ctx.m);
-				}
-				// Set initial omega.
-				ctx.w0 = omega_calc(u[0][ctx.w_idx], ctx.m);
-
-				// Set analysis phase to 0 again.
-				J.analysis_phase = 0;
-
-				// Set new lambda0 to one since convergence has improved.
-				ctx.lambda0 = 1.0;
-
-				printf("******************************************************\n");
-				printf("***                                                \n");
-				printf("***   Setting initial data to last solution, scaling, and continuing...\n");
-				printf("***                                                \n");
-				printf("***                                                \n");
-				printf("******************************************************\n");
-			}
-		}
-		else
-		{
-			// Cannot continue sweep because errCode != 0.
-			if (ctx.sweep > 0) {
-			printf("******************************************************\n");
-			printf("***                                                \n");
-			printf("***   Sweep cannot continue because errCode = %lld !\n", errCode);
-			printf("***                                                \n");
-			printf("******************************************************\n");
-			}
+		// Sweep continuation if sanity checks pass.
+		if (!sweep_advance(&ctx, u, k, w, errCode, &J))
 			break;
-		}
 	} while (ctx.sweep > 0);
 
 	// Clear memory.
@@ -678,7 +715,7 @@ int main(int argc, char *argv[])
 	SAFE_FREE(du);
 	SAFE_FREE(du_bar);
 
-	// Coordiante grids.
+	// Coordinate grids.
 	SAFE_FREE(r);
 	SAFE_FREE(z);
 
