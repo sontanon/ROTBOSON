@@ -18,8 +18,12 @@ def main() -> None:
     parser.add_argument("ref_dir", type=Path)
     parser.add_argument("new_dir", type=Path)
     parser.add_argument("--rtol", type=float, default=1e-10)
-    parser.add_argument("--atol", type=float, default=1e-12,
-                        help="absolute tolerance fallback for near-zero quantities")
+    parser.add_argument(
+        "--atol",
+        type=float,
+        default=1e-12,
+        help="absolute tolerance fallback for near-zero quantities",
+    )
     args = parser.parse_args()
 
     ref, new = args.ref_dir, args.new_dir
@@ -31,8 +35,9 @@ def main() -> None:
     ok = True
 
     print("Scalar observables:")
-    ok_s, lines = compare_scalars(extract_scalars(ref), extract_scalars(new),
-                                  rtol=args.rtol, atol=args.atol)
+    ok_s, lines = compare_scalars(
+        extract_scalars(ref), extract_scalars(new), rtol=args.rtol, atol=args.atol
+    )
     ok &= ok_s
     print("\n".join(lines))
 

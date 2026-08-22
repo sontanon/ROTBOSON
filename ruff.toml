@@ -1,0 +1,12 @@
+# ruff configuration for the Python tooling under tools/.
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+# E741: `l` is the standard symbol for the azimuthal rotation number in this
+# domain (matches the C code and the paper); acceptable as a single-letter name.
+ignore = ["E501", "E741"]
+
+[lint.per-file-ignores]
+"tools/*.py" = ["E501"]

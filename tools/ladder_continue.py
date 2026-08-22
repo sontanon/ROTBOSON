@@ -59,8 +59,11 @@ def run_step(par: Path, step: int) -> Path | None:
     with step_log.open("w") as lf:
         proc = subprocess.run(
             [str(BIN), str(par)],
-            cwd=OUT, stdin=subprocess.PIPE, stdout=lf,
-            stderr=subprocess.STDOUT, text=True,
+            cwd=OUT,
+            stdin=subprocess.PIPE,
+            stdout=lf,
+            stderr=subprocess.STDOUT,
+            text=True,
         )
     log(f"  step {step}: ROTBOSON exit={proc.returncode}, full log -> {step_log.name}")
     if proc.returncode != 0:
@@ -73,8 +76,9 @@ def run_step(par: Path, step: int) -> Path | None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("seed_dir", type=Path)
-    parser.add_argument("--target", type=float, required=True,
-                        help="stop when w <= target (e.g. 0.720859)")
+    parser.add_argument(
+        "--target", type=float, required=True, help="stop when w <= target (e.g. 0.720859)"
+    )
     parser.add_argument("--max-steps", type=int, default=12)
     args = parser.parse_args()
 

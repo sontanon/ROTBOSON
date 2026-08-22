@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build + smoke test (oneMKL)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libconfig-dev
+          wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+            | gpg --dearmor | sudo tee /usr/share/keyrings/intel-oneapi.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/intel-oneapi.gpg] https://apt.repos.intel.com/oneapi all main" \
+            | sudo tee /etc/apt/sources.list.d/intel-oneapi.list
+          sudo apt-get update
+          sudo apt-get install -y intel-oneapi-mkl-devel
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Configure
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          cmake --preset release
+
+      - name: Build
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          cmake --build --preset release -j2
+
+      - name: Sync Python tooling
+        run: uv sync --dev
+
+      - name: Smoke test (l=1, w=0.95, from scratch)
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          uv run tools/smoke.py out/l1_from_scratch.par --skip-build 2>&1 | tail -20
+
+  python-lint:
+    name: Python lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Sync Python tooling
+        run: uv sync --dev
+      - name: Ruff check
+        run: uv run ruff check tools/
+      - name: Ruff format check
+        run: uv run ruff format --check tools/

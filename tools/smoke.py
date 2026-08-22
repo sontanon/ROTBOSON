@@ -22,20 +22,39 @@ from rotboson_io import extract_scalars, find_solution_dirs
 
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "out"
-BIN = REPO / "ROTBOSON"
+
+# CMake build dirs (single-config presets); the binary lives in the configured
+# build tree. Keep support for the legacy Makefile binary at the repo root.
+BUILD_PRESETS = ("release", "dev", "asan-ubsan")
 
 
-def build(jobs: int) -> None:
-    print(f"[smoke] building ROTBOSON (make -j{jobs} all) ...")
-    subprocess.run(["make", f"-j{jobs}", "all"], cwd=REPO, check=True)
+def find_binary() -> Path:
+    for preset in BUILD_PRESETS:
+        candidate = REPO / "build" / preset / "ROTBOSON"
+        if candidate.exists():
+            return candidate
+    legacy = REPO / "ROTBOSON"
+    if legacy.exists():
+        return legacy
+    raise SystemExit(
+        "ROTBOSON binary not found. Build with: cmake --preset release && "
+        "cmake --build --preset release"
+    )
+
+
+def build(jobs: int) -> Path:
+    print("[smoke] building ROTBOSON with CMake (release preset) ...")
+    subprocess.run(["cmake", "--preset", "release"], cwd=REPO, check=True)
+    subprocess.run(["cmake", "--build", "--preset", "release", f"-j{jobs}"], cwd=REPO, check=True)
     print("[smoke] build OK")
+    return REPO / "build" / "release" / "ROTBOSON"
 
 
-def run_par(parfile: Path) -> Path:
+def run_par(binary: Path, parfile: Path) -> Path:
     par = parfile.resolve()
     print(f"[smoke] running ROTBOSON with {par.name} ...")
     proc = subprocess.run(
-        [str(BIN), str(par)],
+        [str(binary), str(par)],
         cwd=OUT,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -62,16 +81,23 @@ def main() -> None:
     parser.add_argument("--jobs", type=int, default=8)
     args = parser.parse_args()
 
-    if not args.skip_build:
-        build(args.jobs)
-    sol_dir = run_par(args.parfile)
+    binary = find_binary() if args.skip_build else build(args.jobs)
+    sol_dir = run_par(binary, args.parfile)
     scalars = extract_scalars(sol_dir)
 
     print(f"\n[smoke] solution directory: {sol_dir.name}")
     print(f"[smoke] error_code = {scalars.get('error_code.asc', 'N/A')}")
-    for key in ("w_f.asc", "M_ADM.asc", "M_Komar1.asc", "M_Komar2.asc",
-                "J_Komar1.asc", "J_Komar2.asc", "phi_max.asc",
-                "rr_phi_max.asc", "r99.asc"):
+    for key in (
+        "w_f.asc",
+        "M_ADM.asc",
+        "M_Komar1.asc",
+        "M_Komar2.asc",
+        "J_Komar1.asc",
+        "J_Komar2.asc",
+        "phi_max.asc",
+        "rr_phi_max.asc",
+        "r99.asc",
+    ):
         if key in scalars:
             print(f"[smoke] {key:16s} = {scalars[key]:+.16e}")
     print("\n[smoke] DONE")

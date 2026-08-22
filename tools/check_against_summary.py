@@ -20,7 +20,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-
 from rotboson_io import read_1d, read_scalar
 
 SUMMARIES = Path(__file__).resolve().parent.parent / "data" / "summaries"
@@ -39,8 +38,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("sol_dirs", nargs="+", type=Path)
     parser.add_argument("--rtol", type=float, default=1e-10)
-    parser.add_argument("--w_tol", type=float, default=1e-6,
-                        help="max |dw| to consider a table row as matching (else report no-match)")
+    parser.add_argument(
+        "--w_tol",
+        type=float,
+        default=1e-6,
+        help="max |dw| to consider a table row as matching (else report no-match)",
+    )
     args = parser.parse_args()
 
     ok = True
@@ -59,7 +62,9 @@ def main() -> int:
         w_tab, mk_tab, jk_tab = tab[j, 3], tab[j, 1], tab[j, 2]
         dw = abs(w - w_tab)
         if dw > args.w_tol:
-            print(f"l={l} w={w:.6e}  NO MATCHING ROW in l={l}.asc (closest w={w_tab:.6e}, dW={dw:.2e})\n")
+            print(
+                f"l={l} w={w:.6e}  NO MATCHING ROW in l={l}.asc (closest w={w_tab:.6e}, dW={dw:.2e})\n"
+            )
             continue
         dmk = abs(mk - mk_tab) / max(abs(mk_tab), 1e-300)
         djk = abs(jk - jk_tab) / max(abs(jk_tab), 1e-300)

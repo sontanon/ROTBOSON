@@ -115,8 +115,10 @@ def compare_scalars(
             rel = diff / max(abs(float(r)), 1e-300)
             status = "PASS" if (diff <= atol or rel <= rtol) else "FAIL"
             ok &= status == "PASS"
-            lines.append(f"  {key:22s} ref={float(r):+.16e} new={float(n):+.16e} "
-                         f"abs_diff={diff:.3e} rel_diff={rel:.3e} {status}")
+            lines.append(
+                f"  {key:22s} ref={float(r):+.16e} new={float(n):+.16e} "
+                f"abs_diff={diff:.3e} rel_diff={rel:.3e} {status}"
+            )
         else:
             match = "PASS" if r == n else "FAIL"
             ok &= match == "PASS"
@@ -128,7 +130,9 @@ def compare_scalars(
     return ok, lines
 
 
-def compare_fields(ref_dir: str | Path, new_dir: str | Path, rtol: float = 1e-10, atol: float = 1e-12) -> tuple[bool, list[str]]:
+def compare_fields(
+    ref_dir: str | Path, new_dir: str | Path, rtol: float = 1e-10, atol: float = 1e-12
+) -> tuple[bool, list[str]]:
     """Compare 2D field files between two solution dirs; return (ok, report)."""
     ref_dir, new_dir = Path(ref_dir), Path(new_dir)
     ok = True

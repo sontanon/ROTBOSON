@@ -1,85 +1,105 @@
-# Installation Instructions
+# ROTBOSON
+
+Numerical initial-data generation for rotating boson stars in axisymmetry
+(3+1 decomposition, quasi-isotropic coordinates, axis regularization). Solves a
+system of six coupled nonlinear elliptic PDEs plus the scalar-field frequency ω
+via global Newton methods and the PARDISO sparse direct solver.
+
+See `PLAN.md` for the modernization roadmap and `VALIDATION.md` for the
+Phase 0 fidelity results against the published data
+(arXiv:2103.13993, Class. Quantum Grav. **38** 154003 (2021)).
 
 ## Prerequisites
 
-This assumes you are running this on Linux with GCC. Before running the makefile, you must setup two libraries.
+Linux with GCC, CMake (>= 3.20), and a C compiler with OpenMP. Two libraries:
 
-### MKL 
+### oneMKL (Intel Math Kernel Library)
 
-Download Intel's MKL and follow the installation instructions [here](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl-download.html?operatingsystem=linux&linux-install=online). As of June 2024, this is:
+oneMKL is now free (no license/serial) and installable via package managers.
 
+Fedora:
 ```bash
-wget https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2f3a5785-1c41-4f65-a2f9-ddf9e0db3ea0/l_onemkl_p_2024.1.0.695.sh
-
-sudo sh ./l_onemkl_p_2024.1.0.695.sh
+sudo tee /etc/yum.repos.d/oneAPI.repo > /dev/null << 'EOF'
+[oneAPI]
+name=Intel oneAPI repository
+baseurl=https://yum.repos.intel.com/oneapi
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+EOF
+sudo dnf install intel-oneapi-mkl-devel
 ```
 
-By following the default installation, this will install MKL at  `/opt/intel/oneapi`. In particular, there should be a script named `setvars.sh`. By executing the following command, you will setup all the necessary MKL dependencies. 
+Ubuntu/Debian:
+```bash
+sudo apt-get install -y wget gpg
+wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+  | gpg --dearmor | sudo tee /usr/share/keyrings/intel-oneapi.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/intel-oneapi.gpg] https://apt.repos.intel.com/oneapi all main" \
+  | sudo tee /etc/apt/sources.list.d/intel-oneapi.list
+sudo apt-get update
+sudo apt-get install -y intel-oneapi-mkl-devel
+```
+
+Alternatively install via conda (`conda install -c conda-forge onemkl`),
+spack, or the Intel installer. Activate the environment (sets `MKLROOT` and the
+runtime library path) before configuring/building:
 
 ```bash
 source /opt/intel/oneapi/setvars.sh
 ```
 
-You can then verify that `MKLROOT` exists in your environment by running
+### libconfig
 
-```bash 
-echo $MKLROOT 
-``` 
+Fedora: `sudo dnf install libconfig-devel`
+Ubuntu/Debian: `sudo apt-get install libconfig-dev`
 
-In my case, this will output `/opt/intel/oneapi/mkl/2024.1`.
+(For the MKL-free build via OpenBLAS + SuiteSparse/UMFPACK, see the
+`ROTBOSON_SOLVER_BACKEND=umfpack` option in `CMakeLists.txt`.)
 
-### Libconfig
-
-Install libconfig by going [here](https://hyperrealm.github.io/libconfig/), download the latest tarball and follow the install instructions. In my case this was 
+## Compilation (CMake)
 
 ```bash
-tar -xf libconfig-1.7.3.tar.gz
-cd libconfig-1.7.3
-./configure 
-make 
-sudo make install
+source /opt/intel/oneapi/setvars.sh   # sets MKLROOT
+cmake --preset release                # or: dev (asan/ubsan), asan-ubsan
+cmake --build --preset release -j
 ```
 
-Notice the last `sudo` call: this will install the header and libraries to `/usr/local`. You should keep track of where you installed libconfig.
+This produces `build/release/ROTBOSON`. A legacy GNU Makefile is kept at the
+repo root but is deprecated.
 
-## Compilation
+## Python tooling
 
-After setting up these two dependencies, you are almost ready to compile. The provided `env.bash` will make sure that MKL and libconfig are available to the compiler and linker. By executing 
-
-```bash
-source env.bash
-``` 
-
-you should have `MKLROOT` and `LIBCONFIGROOT` properly setup. If you installed MKL or libconfig elsewhere, change the script as needed.
-
-Then, compile using 
+Analysis/validation tools live under `tools/` and are managed with `uv`:
 
 ```bash
-make all 
-``` 
-
-This will generate an executable in the current directory: `ROTBOSON`. 
+uv sync --dev
+uv run tools/smoke.py out/l1_from_scratch.par
+```
 
 # Generating l=1 data
 
-I have provided two parameter files to generate $l=1$ data in `out`. 
-
-Execute `l1_from_scratch.par` first. For example:
-
-```bash
-cd out 
-../ROTBOSON l1_from_scratch.par
-``` 
-
-This should generate initial data for $l=1$, $m=1$, $\omega=0.95$. The output should be a directory named `l=1,w=9.50000E-01,dr=6.25000E-02,N=0256` if you keep the parameters unchanged.
-
-Then, you can use the other parameter file to generate a lot more solutions (by using the previous "seed"):
+Two parameter files generate $l=1$ data in `out`. Run from `out/` (ROTBOSON
+changes into the output directory it creates):
 
 ```bash
-../ROTBOSON l1_from_initial_data.par
-``` 
+cd out
+../build/release/ROTBOSON l1_from_scratch.par
+```
 
-This will execute for a while (for this configuration it will generate solutions up to $\omega = 0.675222$, at which point it will exit because the scalar field is too "spiky" and the grid resolution should be increased).
+This generates initial data for $l=1$, $m=1$, $\omega=0.95$ in a directory named
+`l=1,w=9.50000E-01,dr=6.25000E-02,N=0256` (parameters unchanged).
+
+Then use the other parameter file to generate many more solutions by
+continuation from the previous "seed":
+
+```bash
+../build/release/ROTBOSON l1_from_initial_data.par
+```
+
+This runs for a while (up to $\omega = 0.675222$, where it stops because the
+scalar field is too "spiky" for the grid resolution).
 
 # TODO
 

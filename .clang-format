@@ -1,0 +1,13 @@
+# clang-format configuration for ROTBOSON.
+# Mass reformatting of the legacy sources happens in Phase 2; this file is the
+# agreed style from that point onward (and is what the CI format-check uses).
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 100
+SortIncludes: Never
+AllowShortFunctionsOnASingleLine: Empty
+BreakBeforeBraces: Allman
+PointerAlignment: Right
+SpaceAfterCStyleCast: false

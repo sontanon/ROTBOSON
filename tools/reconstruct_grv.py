@@ -20,7 +20,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-
 from rotboson_io import read_1d, read_2d, read_scalar
 
 M_PI = np.pi
@@ -35,17 +34,39 @@ def diff1rr(var: np.ndarray, drr: float, symrr: int) -> np.ndarray:
     # origin row
     dvar[0, :] = twelfth * idrr * (-var[2, :] + 8.0 * var[1, :]) * (1.0 - symrr)
     # row 1
-    dvar[1, :] = twelfth * idrr * (-var[3, :] + 8.0 * var[2, :] - 8.0 * var[0, :] + symrr * var[1, :])
+    dvar[1, :] = (
+        twelfth * idrr * (-var[3, :] + 8.0 * var[2, :] - 8.0 * var[0, :] + symrr * var[1, :])
+    )
     # interior
     for i in range(2, nrr - 2):
-        dvar[i, :] = twelfth * idrr * (-(var[i + 2, :] - var[i - 2, :]) + 8.0 * (var[i + 1, :] - var[i - 1, :]))
+        dvar[i, :] = (
+            twelfth
+            * idrr
+            * (-(var[i + 2, :] - var[i - 2, :]) + 8.0 * (var[i + 1, :] - var[i - 1, :]))
+        )
     # last two rows
-    dvar[nrr - 2, :] = twelfth * idrr * (
-        3.0 * var[nrr - 1, :] + 10.0 * var[nrr - 2, :] - 18.0 * var[nrr - 3, :]
-        + 6.0 * var[nrr - 4, :] - var[nrr - 5, :])
-    dvar[nrr - 1, :] = twelfth * idrr * (
-        25.0 * var[nrr - 1, :] - 48.0 * var[nrr - 2, :] + 36.0 * var[nrr - 3, :]
-        - 16.0 * var[nrr - 4, :] + 3.0 * var[nrr - 5, :])
+    dvar[nrr - 2, :] = (
+        twelfth
+        * idrr
+        * (
+            3.0 * var[nrr - 1, :]
+            + 10.0 * var[nrr - 2, :]
+            - 18.0 * var[nrr - 3, :]
+            + 6.0 * var[nrr - 4, :]
+            - var[nrr - 5, :]
+        )
+    )
+    dvar[nrr - 1, :] = (
+        twelfth
+        * idrr
+        * (
+            25.0 * var[nrr - 1, :]
+            - 48.0 * var[nrr - 2, :]
+            + 36.0 * var[nrr - 3, :]
+            - 16.0 * var[nrr - 4, :]
+            + 3.0 * var[nrr - 5, :]
+        )
+    )
     return dvar
 
 
@@ -56,13 +77,27 @@ def diff1th(var: np.ndarray, dth: float, symr: int, symz: int) -> np.ndarray:
     twelfth = 1.0 / 12.0
     # axial symmetry rows
     dvar[:, 0] = twelfth * idth * (-var[:, 2] + 8.0 * var[:, 1]) * (1.0 - symr)
-    dvar[:, 1] = twelfth * idth * (-8.0 * var[:, 0] + symr * var[:, 1] + 8.0 * var[:, 2] - var[:, 3])
+    dvar[:, 1] = (
+        twelfth * idth * (-8.0 * var[:, 0] + symr * var[:, 1] + 8.0 * var[:, 2] - var[:, 3])
+    )
     # interior
     for j in range(2, nth - 2):
-        dvar[:, j] = twelfth * idth * (-(var[:, j + 2] - var[:, j - 2]) + 8.0 * (var[:, j + 1] - var[:, j - 1]))
+        dvar[:, j] = (
+            twelfth
+            * idth
+            * (-(var[:, j + 2] - var[:, j - 2]) + 8.0 * (var[:, j + 1] - var[:, j - 1]))
+        )
     # equatorial symmetry rows
-    dvar[:, nth - 2] = -twelfth * idth * (
-        -8.0 * var[:, nth - 1] + symz * var[:, nth - 2] + 8.0 * var[:, nth - 3] - var[:, nth - 4])
+    dvar[:, nth - 2] = (
+        -twelfth
+        * idth
+        * (
+            -8.0 * var[:, nth - 1]
+            + symz * var[:, nth - 2]
+            + 8.0 * var[:, nth - 3]
+            - var[:, nth - 4]
+        )
+    )
     dvar[:, nth - 1] = -twelfth * idth * (-var[:, nth - 3] + 8.0 * var[:, nth - 2]) * (1.0 - symz)
     return dvar
 
@@ -127,11 +162,41 @@ def grv_reconstruct(sol_dir: Path):
         h2 = np.exp(2.0 * sph_log_h.ravel()[k])
         phi_o_r = sph_psi.ravel()[k] * rlm1
         phi2_o_r2 = phi_o_r * phi_o_r
-        i0.ravel()[k] = 4.0 * M_PI * rr * (a2 * (((w + l * beta) * (w + l * beta) / alpha2 - m * m) * r * r + l * l / h2) * phi2_o_r2
-            - (l * l * phi2_o_r2 + rlm1 * rlm1 * np.sin(th) ** 2 * ((rr * d_psi_r.ravel()[k]) ** 2 + d_psi_th.ravel()[k] ** 2)
-               + 2.0 * l * phi_o_r * rlm1 * np.sin(th) * (np.sin(th) * (rr * d_psi_r.ravel()[k]) + np.cos(th) * d_psi_th.ravel()[k])))
-        i1.ravel()[k] = 0.75 * h2 * rr * np.sin(th) ** 2 * ((rr * d_beta_r.ravel()[k]) ** 2 + d_beta_th.ravel()[k] ** 2) / alpha2
-        i2.ravel()[k] = -(d_log_alpha_r.ravel()[k] * (rr * d_log_alpha_r.ravel()[k]) + d_log_alpha_th.ravel()[k] * (d_log_alpha_th.ravel()[k] / rr))
+        i0.ravel()[k] = (
+            4.0
+            * M_PI
+            * rr
+            * (
+                a2
+                * (((w + l * beta) * (w + l * beta) / alpha2 - m * m) * r * r + l * l / h2)
+                * phi2_o_r2
+                - (
+                    l * l * phi2_o_r2
+                    + rlm1
+                    * rlm1
+                    * np.sin(th) ** 2
+                    * ((rr * d_psi_r.ravel()[k]) ** 2 + d_psi_th.ravel()[k] ** 2)
+                    + 2.0
+                    * l
+                    * phi_o_r
+                    * rlm1
+                    * np.sin(th)
+                    * (np.sin(th) * (rr * d_psi_r.ravel()[k]) + np.cos(th) * d_psi_th.ravel()[k])
+                )
+            )
+        )
+        i1.ravel()[k] = (
+            0.75
+            * h2
+            * rr
+            * np.sin(th) ** 2
+            * ((rr * d_beta_r.ravel()[k]) ** 2 + d_beta_th.ravel()[k] ** 2)
+            / alpha2
+        )
+        i2.ravel()[k] = -(
+            d_log_alpha_r.ravel()[k] * (rr * d_log_alpha_r.ravel()[k])
+            + d_log_alpha_th.ravel()[k] * (d_log_alpha_th.ravel()[k] / rr)
+        )
         i3.ravel()[k] = i0.ravel()[k] + i1.ravel()[k] + i2.ravel()[k]
     I3 = np.zeros(nr)
     for k in range(1, nr):
@@ -150,15 +215,57 @@ def grv_reconstruct(sol_dir: Path):
         h2 = np.exp(2.0 * sph_log_h.ravel()[k])
         phi_o_r = sph_psi.ravel()[k] * rlm1
         phi2_o_r2 = phi_o_r * phi_o_r
-        i0.ravel()[k] = 4.0 * M_PI * np.exp(sph_log_h.ravel()[k]) * rr * rr * np.sin(th) * (
-            a2 * (1.5 * ((w + l * beta) * (w + l * beta) / alpha2 - m * m) * r * r - 0.5 * l * l / h2) * phi2_o_r2
-            - 0.5 * (l * l * phi2_o_r2 + rlm1 * rlm1 * np.sin(th) ** 2 * ((rr * d_psi_r.ravel()[k]) ** 2 + d_psi_th.ravel()[k] ** 2)
-                     + 2.0 * l * phi_o_r * rlm1 * np.sin(th) * (np.sin(th) * (rr * d_psi_r.ravel()[k]) + np.cos(th) * d_psi_th.ravel()[k])))
-        i1.ravel()[k] = 0.375 * np.exp(3.0 * sph_log_h.ravel()[k]) * np.sin(th) ** 3 * rr * rr * ((rr * d_beta_r.ravel()[k]) ** 2 + d_beta_th.ravel()[k] ** 2) / alpha2
-        i2.ravel()[k] = -np.sin(th) * np.exp(sph_log_h.ravel()[k]) * (((rr * d_log_alpha_r.ravel()[k]) ** 2 + d_log_alpha_th.ravel()[k] ** 2)
-            - 0.5 * ((rr * d_log_h_r.ravel()[k]) * (rr * d_log_a_r.ravel()[k]) + d_log_h_th.ravel()[k] * d_log_a_th.ravel()[k])) \
-            + 0.5 * (h2 - a2) * (np.sin(th) * (rr * d_log_a_r.ravel()[k]) + np.cos(th) * d_log_a_th.ravel()[k]
-                                  - 0.5 * (np.sin(th) * (rr * d_log_h_r.ravel()[k]) + np.cos(th) * d_log_h_th.ravel()[k])) / np.exp(sph_log_h.ravel()[k])
+        i0.ravel()[k] = (
+            4.0
+            * M_PI
+            * np.exp(sph_log_h.ravel()[k])
+            * rr
+            * rr
+            * np.sin(th)
+            * (
+                a2
+                * (
+                    1.5 * ((w + l * beta) * (w + l * beta) / alpha2 - m * m) * r * r
+                    - 0.5 * l * l / h2
+                )
+                * phi2_o_r2
+                - 0.5
+                * (
+                    l * l * phi2_o_r2
+                    + rlm1
+                    * rlm1
+                    * np.sin(th) ** 2
+                    * ((rr * d_psi_r.ravel()[k]) ** 2 + d_psi_th.ravel()[k] ** 2)
+                    + 2.0
+                    * l
+                    * phi_o_r
+                    * rlm1
+                    * np.sin(th)
+                    * (np.sin(th) * (rr * d_psi_r.ravel()[k]) + np.cos(th) * d_psi_th.ravel()[k])
+                )
+            )
+        )
+        i1.ravel()[k] = (
+            0.375
+            * np.exp(3.0 * sph_log_h.ravel()[k])
+            * np.sin(th) ** 3
+            * rr
+            * rr
+            * ((rr * d_beta_r.ravel()[k]) ** 2 + d_beta_th.ravel()[k] ** 2)
+            / alpha2
+        )
+        i2.ravel()[k] = -np.sin(th) * np.exp(sph_log_h.ravel()[k]) * (
+            ((rr * d_log_alpha_r.ravel()[k]) ** 2 + d_log_alpha_th.ravel()[k] ** 2)
+            - 0.5
+            * (
+                (rr * d_log_h_r.ravel()[k]) * (rr * d_log_a_r.ravel()[k])
+                + d_log_h_th.ravel()[k] * d_log_a_th.ravel()[k]
+            )
+        ) + 0.5 * (h2 - a2) * (
+            np.sin(th) * (rr * d_log_a_r.ravel()[k])
+            + np.cos(th) * d_log_a_th.ravel()[k]
+            - 0.5 * (np.sin(th) * (rr * d_log_h_r.ravel()[k]) + np.cos(th) * d_log_h_th.ravel()[k])
+        ) / np.exp(sph_log_h.ravel()[k])
         i3.ravel()[k] = i0.ravel()[k] + i1.ravel()[k] + i2.ravel()[k]
     I3 = np.zeros(nr)
     for k in range(1, nr):
@@ -171,16 +278,60 @@ def grv_reconstruct(sol_dir: Path):
     rr_inf = drr * nr  # reconstructed spherical outer radius
     a = J / M
     x = M / rr_inf
-    grv2_c = -M_PI * x * x * (0.5 + x * ((4.0 / 3.0) + x * (3.0 - (33.0 / 8.0) * a * a / (M * M) + x * ((32.0 / 5.0) - (31.0 / 5.0) * a * a / (M * M)))))
-    grv3_c = M_PI * M * x * (4.0 + x * (8.0 + x * (8.0 * (86.0 - 15.0 * a * a / (M * M)) / 45.0
-        + x * (2.0 * (1526.0 - 379.0 * a * a / (M * M)) / 105.0
-        + x * (4.0 * (21576.0 - 9256.0 * a * a / (M * M) + 1365.0 * (a ** 4) / (M ** 4)) / 1575.0)))))
+    grv2_c = (
+        -M_PI
+        * x
+        * x
+        * (
+            0.5
+            + x
+            * (
+                (4.0 / 3.0)
+                + x
+                * (
+                    3.0
+                    - (33.0 / 8.0) * a * a / (M * M)
+                    + x * ((32.0 / 5.0) - (31.0 / 5.0) * a * a / (M * M))
+                )
+            )
+        )
+    )
+    grv3_c = (
+        M_PI
+        * M
+        * x
+        * (
+            4.0
+            + x
+            * (
+                8.0
+                + x
+                * (
+                    8.0 * (86.0 - 15.0 * a * a / (M * M)) / 45.0
+                    + x
+                    * (
+                        2.0 * (1526.0 - 379.0 * a * a / (M * M)) / 105.0
+                        + x
+                        * (
+                            4.0
+                            * (21576.0 - 9256.0 * a * a / (M * M) + 1365.0 * (a**4) / (M**4))
+                            / 1575.0
+                        )
+                    )
+                )
+            )
+        )
+    )
 
     stored2 = read_scalar(sol_dir / "GRV2.asc")
     stored3 = read_scalar(sol_dir / "GRV3.asc")
     print(f"solution: {sol_dir.name} (l={l}, w={w:.6e})")
-    print(f"GRV2 virial={grv2_virial:+.10e}  correction={grv2_c:+.10e}  total={grv2_virial+grv2_c:+.10e}  stored={stored2:+.10e}")
-    print(f"GRV3 virial={grv3_virial:+.10e}  correction={grv3_c:+.10e}  total={grv3_virial+grv3_c:+.10e}  stored={stored3:+.10e}")
+    print(
+        f"GRV2 virial={grv2_virial:+.10e}  correction={grv2_c:+.10e}  total={grv2_virial + grv2_c:+.10e}  stored={stored2:+.10e}"
+    )
+    print(
+        f"GRV3 virial={grv3_virial:+.10e}  correction={grv3_c:+.10e}  total={grv3_virial + grv3_c:+.10e}  stored={stored3:+.10e}"
+    )
     return grv2_virial, grv3_virial
 
 
