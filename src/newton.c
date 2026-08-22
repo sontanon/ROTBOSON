@@ -1,5 +1,6 @@
 // Include headers.
 #include "tools.h"
+#include "context.h"
 
 // Debug print Jacobian CSR matrix.
 #define DEBUG_PRINT 0
@@ -16,6 +17,7 @@
 // Guess an initial iterate u^0. Evaluate F(u^0).
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
 MKL_INT newton(	      
+		      rb_context 	*ctx,			// INPUT: Runtime context.
 		      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		      double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 		      					//            First entry contains initial guess.
@@ -29,10 +31,10 @@ MKL_INT newton(
 		csr_matrix 	*J,			// INPUT: Pointer to jacobian matrix type.
 		const double 	epsilon,		// INPUT: Exit tolerance.
 		const MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.	
-		      void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
-		      void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(double *),					// INPUT: Norm calculation subroutine.
-		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
+		      rb_rhs_fn	RHS_CALC,		// INPUT: RHS calculation subroutine.
+		      rb_jacobian_fn	JACOBIAN_CALC,		// INPUT: Jacobian calculation subroutine.
+		      rb_norm_fn	NORM,			// INPUT: Norm calculation subroutine.
+		      rb_linear_solve_fn LINEAR_SOLVE_1		// INPUT: Linear solver subroutine.
 	)
 {
 	// Print initial message.
@@ -62,16 +64,16 @@ MKL_INT newton(
 		//            J(u^k) du^k = -f(u^k).
 
 		/* Now calculate Jacobian matrix J(u^k) into matrix. */
-		JACOBIAN_CALC(*J, u[k], DEBUG_PRINT);
+		JACOBIAN_CALC(ctx, *J, u[k], DEBUG_PRINT);
 
 		/* Solve linear system. */
 		LINEAR_SOLVE_1(du[k], J, f[k]);
 
 		/* Calculate ||du^k||. */
 #ifdef NORMALIZED
-		norm_du[k] = NORM(du[k]) / NORM(u[k]);
+		norm_du[k] = NORM(ctx, du[k]) / NORM(ctx, u[k]);
 #else
-		norm_du[k] = NORM(du[k]);
+		norm_du[k] = NORM(ctx, du[k]);
 #endif
 
 		/* Print table header every 50 iterations. */
@@ -106,11 +108,11 @@ MKL_INT newton(
 
 		// 2. Compute new iterate. 
 		ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[0], du[k]);
-		RHS_CALC(f[k + 1], u[k + 1]);
+		RHS_CALC(ctx, f[k + 1], u[k + 1]);
 
 		// 3. Compute the monitoring quantities
 		//    Theta_k    = ||f^{k + 1}|| / ||f^k||
-		Theta[k]    = NORM(f[k + 1]) / NORM(f[k]);
+		Theta[k]    = NORM(ctx, f[k + 1]) / NORM(ctx, f[k]);
 
 		// Check for THETA_MAX violation.
 		if (Theta[k] > THETA_MAX)

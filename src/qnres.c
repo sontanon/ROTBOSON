@@ -1,5 +1,6 @@
 // Include headers.
 #include "tools.h"
+#include "context.h"
 
 // Error codes.
 #define ERROR_CODE_SUCCESS 				  0
@@ -16,6 +17,7 @@
 // Set a required residual error sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0) and ||F(u^0)||.
 MKL_INT nleq_res_qnres(
+	        rb_context	*ctx,		// INPUT: Runtime context.
 	        MKL_INT	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 						//            First entry contains initial guess.
@@ -28,12 +30,12 @@ MKL_INT nleq_res_qnres(
 	csr_matrix	*J,			// INPUT: Pointer to Jacobian matrix type.
 	const 	double	epsilon,		// INPUT: Exit tolerance.
 	const	MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.
-	      	void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
-	      	void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-	      	double	(*NORM)(double *)	,					// INPUT: Norm calculation subroutine.
-	      	double	(*DOT)(double *, double *)	,			// INPUT: Dot product calculation subroutine.
-	      	void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
-	      	void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
+	      	rb_rhs_fn	RHS_CALC,				// INPUT: RHS calculation subroutine.
+	      	rb_jacobian_fn	JACOBIAN_CALC,	// INPUT: Jacobian calculation subroutine.
+	      	rb_norm_fn	NORM,					// INPUT: Norm calculation subroutine.
+	      	rb_dot_fn	DOT,			// INPUT: Dot product calculation subroutine.
+	      	rb_linear_solve_fn	LINEAR_SOLVE_1,		// INPUT: Linear solver subroutine.
+	      	rb_linear_solve_fn	LINEAR_SOLVE_2		// INPUT: Linear solver subroutine.
 		)
 {
 	// Remeber:
@@ -59,7 +61,7 @@ MKL_INT nleq_res_qnres(
 
 	// Unique Jacobian.
 	// Calculate Jacobian J(u^0).
-	JACOBIAN_CALC(*J, u[l], 0);
+	JACOBIAN_CALC(ctx, *J, u[l], 0);
 
 	// First linear solve.
 	// Solve linear system J(u^0) du^0 = -f(u^0).
@@ -80,10 +82,10 @@ MKL_INT nleq_res_qnres(
 		ARRAY_SUM(u[l + 1], 1.0, u[l], 1.0, du[l]);
 
 		// Evaluation f(u^{l+1}).
-		RHS_CALC(f[l + 1], u[l + 1]);
+		RHS_CALC(ctx, f[l + 1], u[l + 1]);
 
 		// RHS norm.
-		norm_f[l + 1] = NORM(f[l + 1]);
+		norm_f[l + 1] = NORM(ctx, f[l + 1]);
 
 		// Theta.
 		Theta[l] = norm_f[l + 1] / norm_f[l];
@@ -95,7 +97,7 @@ MKL_INT nleq_res_qnres(
 		ARRAY_SUM(w, 1.0, f[l + 1], -1.0, f[l]);
 
 		// gamma[l] = <dF[l+1], dF[l+1]> = ||dF[l+1]||**2.
-		gamma[l] = DOT(w, w);
+		gamma[l] = DOT(ctx, w, w);
 
 		// Convergence test: If ||F(u^{l+1})|| < epsilon: stop. Solution found u* = u^{l+1}.
 		if (norm_f[l + 1] < epsilon)
@@ -155,14 +157,14 @@ MKL_INT nleq_res_qnres(
 
 		// If sanity tests are passed, we can calculate RHS.
 		// v = (1 - <w,F[l+1]>/gamma[l]) * F[l+1].
-		z = DOT(w, f[l + 1]);
+		z = DOT(ctx, w, f[l + 1]);
 		ARRAY_SUM(v, (1.0 - z / gamma[l]), f[l + 1], 0.0, v);
 
 		// Recursive update.
 		for (i = l - 1; i >= 0; --i)
 		{
 			// beta = <dF[i+1], v> / gammma[i].
-			beta = (DOT(f[i + 1], v) - DOT(f[i], v)) / gamma[i];
+			beta = (DOT(ctx, f[i + 1], v) - DOT(ctx, f[i], v)) / gamma[i];
 			// v = v - beta * F[i+1].
 			ARRAY_SUM(v, 1.0, v, -beta, f[i + 1]);
 		}

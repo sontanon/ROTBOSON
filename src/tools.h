@@ -1,4 +1,7 @@
 // ARCHITECTURE
+#ifndef ROTBOSON_TOOLS_H
+#define ROTBOSON_TOOLS_H
+
 #include "arch.h"
 
 // Standard headers.
@@ -84,3 +87,5 @@ void csr_allocate(csr_matrix *A, const MKL_INT nrows, const MKL_INT ncols, const
 void csr_deallocate(csr_matrix *A);
 // CSR matrix print.
 void csr_print(csr_matrix *A, const char *vA, const char *iA, const char *jA);
+
+#endif /* ROTBOSON_TOOLS_H */

@@ -1,5 +1,5 @@
 #include "tools.h"
-#include "param.h"
+#include "context.h"
 
 #include "csr_grid_fill.h"
 #include "csr_vars.h"
@@ -17,58 +17,58 @@
 // Print nnz cumulative sum.
 #undef DEBUG
 
-void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MKL_INT *p_nnz4, MKL_INT *p_nnz5, MKL_INT *p_nnz6)
+void nnz_jacobian_get_nnzs(const rb_context *ctx, MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MKL_INT *p_nnz4, MKL_INT *p_nnz5, MKL_INT *p_nnz6)
 {
 	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0, nnz6 = 0;
 
 	// Select order.
-	if (order == 4)
+	if (ctx->order == 4)
 	{
 		// Interior points plus parity boundaries.
-		nnz1 = 30 * NrInterior * NzInterior 
-			+ 31 * (NrInterior + NzInterior) + 32
-			+ 4 * (NrInterior + NzInterior) + 24;
-		nnz2 = 29 * NrInterior * NzInterior 
-			+ 31 * (NrInterior + NzInterior) + 32
-			+ 4 * (NrInterior + NzInterior) + 24;
-		nnz3 = 28 * NrInterior * NzInterior 
-			+ 30 * (NrInterior + NzInterior) + 31
-			+ 4 * (NrInterior + NzInterior) + 24;
-		nnz4 = 46 * NrInterior * NzInterior 
-			+ 47 * (NrInterior + NzInterior) + 48
-			+ 4 * (NrInterior + NzInterior) + 24;
-		nnz5 = 31 * NrInterior * NzInterior 
-			+ 32 * (NrInterior + NzInterior) + 33
-			+ 4 * (NrInterior + NzInterior) + 24;
-		nnz6 = 40 * NrInterior * NzInterior
-			+ 42 * NrInterior + 44 * NzInterior + 45
-			+ 4 * (NrInterior + NzInterior) + 24;
+		nnz1 = 30 * ctx->NrInterior * ctx->NzInterior 
+			+ 31 * (ctx->NrInterior + ctx->NzInterior) + 32
+			+ 4 * (ctx->NrInterior + ctx->NzInterior) + 24;
+		nnz2 = 29 * ctx->NrInterior * ctx->NzInterior 
+			+ 31 * (ctx->NrInterior + ctx->NzInterior) + 32
+			+ 4 * (ctx->NrInterior + ctx->NzInterior) + 24;
+		nnz3 = 28 * ctx->NrInterior * ctx->NzInterior 
+			+ 30 * (ctx->NrInterior + ctx->NzInterior) + 31
+			+ 4 * (ctx->NrInterior + ctx->NzInterior) + 24;
+		nnz4 = 46 * ctx->NrInterior * ctx->NzInterior 
+			+ 47 * (ctx->NrInterior + ctx->NzInterior) + 48
+			+ 4 * (ctx->NrInterior + ctx->NzInterior) + 24;
+		nnz5 = 31 * ctx->NrInterior * ctx->NzInterior 
+			+ 32 * (ctx->NrInterior + ctx->NzInterior) + 33
+			+ 4 * (ctx->NrInterior + ctx->NzInterior) + 24;
+		nnz6 = 40 * ctx->NrInterior * ctx->NzInterior
+			+ 42 * ctx->NrInterior + 44 * ctx->NzInterior + 45
+			+ 4 * (ctx->NrInterior + ctx->NzInterior) + 24;
 
 		// Select boundary conditions.
-		nnz1 +=  9 * (3 + (NrInterior + NzInterior));
-		nnz2 +=  9 * (3 + (NrInterior + NzInterior));
-		nnz3 +=  9 * (3 + (NrInterior + NzInterior));
-		nnz4 +=  9 * (3 + (NrInterior + NzInterior));
-		nnz5 += 10 * (3 + (NrInterior + NzInterior));
-		nnz6 +=  9 * (3 + (NrInterior + NzInterior));
+		nnz1 +=  9 * (3 + (ctx->NrInterior + ctx->NzInterior));
+		nnz2 +=  9 * (3 + (ctx->NrInterior + ctx->NzInterior));
+		nnz3 +=  9 * (3 + (ctx->NrInterior + ctx->NzInterior));
+		nnz4 +=  9 * (3 + (ctx->NrInterior + ctx->NzInterior));
+		nnz5 += 10 * (3 + (ctx->NrInterior + ctx->NzInterior));
+		nnz6 +=  9 * (3 + (ctx->NrInterior + ctx->NzInterior));
 	}
 	else
 	{
 		// Interior points plus parity boundaries.
-		nnz1 = 18 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
-		nnz2 = 17 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
-		nnz3 = 16 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
-		nnz4 = 26 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
-		nnz5 = 19 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
-		nnz6 = 22 * NrInterior * NzInterior + 2 * (NrInterior + NzInterior) + 6;
+		nnz1 = 18 * ctx->NrInterior * ctx->NzInterior + 2 * (ctx->NrInterior + ctx->NzInterior) + 6;
+		nnz2 = 17 * ctx->NrInterior * ctx->NzInterior + 2 * (ctx->NrInterior + ctx->NzInterior) + 6;
+		nnz3 = 16 * ctx->NrInterior * ctx->NzInterior + 2 * (ctx->NrInterior + ctx->NzInterior) + 6;
+		nnz4 = 26 * ctx->NrInterior * ctx->NzInterior + 2 * (ctx->NrInterior + ctx->NzInterior) + 6;
+		nnz5 = 19 * ctx->NrInterior * ctx->NzInterior + 2 * (ctx->NrInterior + ctx->NzInterior) + 6;
+		nnz6 = 22 * ctx->NrInterior * ctx->NzInterior + 2 * (ctx->NrInterior + ctx->NzInterior) + 6;
 
 		// Select boundary conditions.
-		nnz1 += 5 * (1 + (NrInterior + NzInterior));
-		nnz2 += 5 * (1 + (NrInterior + NzInterior));
-		nnz3 += 5 * (1 + (NrInterior + NzInterior));
-		nnz4 += 5 * (1 + (NrInterior + NzInterior));
-		nnz5 += 6 * (1 + (NrInterior + NzInterior));
-		nnz6 += 5 * (1 + (NrInterior + NzInterior));
+		nnz1 += 5 * (1 + (ctx->NrInterior + ctx->NzInterior));
+		nnz2 += 5 * (1 + (ctx->NrInterior + ctx->NzInterior));
+		nnz3 += 5 * (1 + (ctx->NrInterior + ctx->NzInterior));
+		nnz4 += 5 * (1 + (ctx->NrInterior + ctx->NzInterior));
+		nnz5 += 6 * (1 + (ctx->NrInterior + ctx->NzInterior));
+		nnz6 += 5 * (1 + (ctx->NrInterior + ctx->NzInterior));
 	}
 
 	*p_nnz1 = nnz1;
@@ -81,12 +81,12 @@ void nnz_jacobian_get_nnzs(MKL_INT *p_nnz1, MKL_INT *p_nnz2, MKL_INT *p_nnz3, MK
 	return;
 }
 
-MKL_INT nnz_jacobian(void)
+MKL_INT nnz_jacobian(const rb_context *ctx)
 {
 	// Number of nonzero elements per grid function.
 	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0, nnz6 = 0;
 
-	nnz_jacobian_get_nnzs(&nnz1, &nnz2, &nnz3, &nnz4, &nnz5, &nnz6);
+	nnz_jacobian_get_nnzs(ctx, &nnz1, &nnz2, &nnz3, &nnz4, &nnz5, &nnz6);
 #ifdef DEBUG
 	printf("nnz1 = %lld,\n", nnz1);
 	printf("nnz2 = %lld,\n", nnz2);
@@ -103,7 +103,7 @@ MKL_INT nnz_jacobian(void)
 	return nnz1 + nnz2 + nnz3 + nnz4 + nnz5 + nnz6 + 1;
 }
 
-void csr_gen_jacobian(csr_matrix A, double *u, const int print)
+void csr_gen_jacobian(rb_context *ctx, csr_matrix A, double *u, const MKL_INT print)
 {
 	// Number of elements we have filled in.
 	MKL_INT offset = 0;
@@ -112,7 +112,7 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 	MKL_INT nnz1 = 0, nnz2 = 0, nnz3 = 0, nnz4 = 0, nnz5 = 0, nnz6 = 0;
 
 	// Calculate nonzeros.
-	nnz_jacobian_get_nnzs(&nnz1, &nnz2, &nnz3, &nnz4, &nnz5, &nnz6);
+	nnz_jacobian_get_nnzs(ctx, &nnz1, &nnz2, &nnz3, &nnz4, &nnz5, &nnz6);
 
 	// Integer arrays.
 	MKL_INT r_sym[GNUM] = {EVEN, EVEN, EVEN, EVEN, EVEN, EVEN};
@@ -127,7 +127,7 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 	MKL_INT p_bound[GNUM] = {0, 0, 0, 0, 0, 0};
 
 	// Set integer arrays according to order.
-	if (order == 4)
+	if (ctx->order == 4)
 	{
 		p_cc[0] = 30;
 		p_cc[1] = 29;
@@ -169,10 +169,10 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 
 
 	// Check for order and fill matrix.
-	if (order == 4)
+	if (ctx->order == 4)
 	{
 		csr_grid_fill_4th(A,
-			NrInterior, NzInterior, dr, dz, u,l, m,
+			ctx->NrInterior, ctx->NzInterior, ctx->dr, ctx->dz, u,ctx->l, ctx->m,
 			r_sym, z_sym, bound_order, nnzs, p_cc, p_cs, p_sc, p_ss, p_bound,
 			jacobian_4th_order_variable_omega_cc,
 			jacobian_4th_order_variable_omega_cs,
@@ -183,7 +183,7 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 	else
 	{
 		csr_grid_fill_2nd(A, 
-			NrInterior, NzInterior, dr, dz, u, l, m, 
+			ctx->NrInterior, ctx->NzInterior, ctx->dr, ctx->dz, u, ctx->l, ctx->m, 
 			r_sym, z_sym, bound_order, nnzs, p_cc, p_bound,
 			jacobian_2nd_order_variable_omega_cc);
 	}
@@ -191,11 +191,11 @@ void csr_gen_jacobian(csr_matrix A, double *u, const int print)
 	// FINALLY FILL OMEGA EQUATION OR u5(1,1) CONSTRAINT.
 	//printf("ROTBOSON-JACOBIAN: Starting omega...\n");
 	offset = nnz1 + nnz2 + nnz3 + nnz4 + nnz5 + nnz6;
-	omega_constraint(A.a, A.ia, A.ja, offset, NrTotal, NzTotal, dim, 5, w_idx, fixedPhi, fixedPhiR, fixedPhiZ);
+	omega_constraint(A.a, A.ia, A.ja, offset, ctx->NrTotal, ctx->NzTotal, ctx->dim, 5, ctx->w_idx, ctx->fixedPhi, ctx->fixedPhiR, ctx->fixedPhiZ);
 	//printf("ROTBOSON-JACOBIAN: Done omega.\n");
 
 	// FILL LAST ELEMENT WITH NUMBER OF NONZEROS.
-	A.ia[w_idx + 1] = BASE + A.nnz;
+	A.ia[ctx->w_idx + 1] = BASE + A.nnz;
 
 	// PRINT MATRIX.
 	if (print)

@@ -13,6 +13,7 @@
 
 // Assumes tools.h is included first (defines MKL_INT and csr_matrix), matching
 // the codebase convention for headers that reference these types.
+#include "context.h"
 
 // Initialize the backend for a square system of dimension n.
 void solver_start(const MKL_INT n);
@@ -31,6 +32,6 @@ void solver_solve_low_rank(double *u, csr_matrix *A, double *f);
 void solver_repeated_solve(double *u, csr_matrix *A, double *f);
 
 // Prepare low-rank update bookkeeping (PARDISO only; no-op for UMFPACK).
-void solver_diff_gen(void);
+void solver_diff_gen(rb_context *ctx);
 
 #endif /* ROTBOSON_SOLVER_H */

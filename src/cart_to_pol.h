@@ -1,5 +1,3 @@
-#define cart_to_pol(i_u, i_rr, i_th, r, z, u, Dr_u, Dz_u, Drz_u, g_num) ex_cart_to_pol((i_u), (i_rr), (i_th), (r), (z), (u), (Dr_u), (Dz_u), (Drz_u), (g_num), dr, dz, NrInterior, NzInterior, ghost, &NrrTotal, &NthTotal, &p_dim, &drr, &dth, &rr_inf)
-
 void ex_cart_to_pol(
 	double **i_u,
 	double **i_rr,
