@@ -12,9 +12,7 @@
 // System headers.
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifndef WIN
 #include <unistd.h>
-#endif
 
 // MKL header.
 #include "mkl.h"
@@ -46,30 +44,6 @@ void array_sum(double *z, const double alpha, double *x, const double beta, doub
 		for (i = 0; i < dim; ++i) 
 			z[i] = alpha * x[i] + beta * y[i];
 	} 
-	return;
-}
-
-/* Macro for coupled array sum for regularization. */
-void coupled_du(double *du, double *u, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const double dr, const double mu)
-{
-	MKL_INT dim = NrTotal * NzTotal;
-	MKL_INT i = 0;
-	MKL_INT j = 0;
-	double r;
-	#pragma omp parallel shared(du) private(r, j)
-	{
-		#pragma omp for schedule(dynamic, 1)
-		for (i = 0; i < NrTotal; ++i)
-		{
-			r = dr * (i - ghost + 0.5);
-			for (j = 0; j < NzTotal; ++j)
-			{
-				du[3 * dim + IDX(i, j)] *= (1.0 - mu);
-				// 2 * a**2 * d(log(a)) = r**2 * d(lambda) + 2 * h**2 * d(log(h)).
-				du[3 * dim + IDX(i, j)] += mu * (0.5 * r * r * du[5 * dim + IDX(i, j)] + exp(2.0 * u[2 * dim + IDX(i, j)]) * du[2 * dim + IDX(i, j)]) / exp(2.0 * u[3 * dim + IDX(i, j)]);
-			}
-		}
-	}
 	return;
 }
 

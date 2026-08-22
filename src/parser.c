@@ -1,6 +1,5 @@
 #include "tools.h"
 #include "param.h"
-#include "regularization_coupling.h"
 
 // Macros for parameter ranges.
 #define MAX_DR 1.0
@@ -138,14 +137,6 @@ void parser(const char *fname)
 	NzTotal = NzInterior + 2 * ghost;
 	dim = NrTotal * NzTotal;
 	w_idx = GNUM * dim;
-
-	// REGULARIZATION COUPLING PARAMETERS.
-#ifdef REGULARIZATION_COUPLING
-	solver_NrTotal = NrTotal;
-	solver_NzTotal = NzTotal;
-	solver_dr = dr;
-	solver_ghost = ghost;
-#endif
 
 	// SCALAR FIELD PARAMETERS.
 	// l.

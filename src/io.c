@@ -6,11 +6,7 @@ void io(const char *dirname, const char *parfile)
 	struct stat st = { 0 };
 	if (stat(dirname, &st) == -1)
 	{
-#ifdef WIN
-		_mkdir(dirname);
-#else
 		mkdir(dirname, 0755);
-#endif
 	}
 	else
 	{
