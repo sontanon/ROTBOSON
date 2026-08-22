@@ -25,8 +25,8 @@ find_package(OpenMP REQUIRED)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBCONFIG REQUIRED IMPORTED_TARGET libconfig)
+# tomlc99 (vendored TOML parser) replaces libconfig for parameter files.
+set(TOMLC99_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/tomlc99")
 
 # ---------------------------------------------------------------------------
 # Solver backend
@@ -77,12 +77,13 @@ list(FILTER ROTBOSON_SOURCES EXCLUDE REGEX "/deprecated/")
 list(REMOVE_ITEM ROTBOSON_SOURCES
   ${ROTBOSON_PARDISO_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/src/umfpack_backend.c)
-list(APPEND ROTBOSON_SOURCES ${ROTBOSON_BACKEND_SOURCES})
+list(APPEND ROTBOSON_SOURCES ${ROTBOSON_BACKEND_SOURCES} ${TOMLC99_DIR}/toml.c)
 
 add_executable(ROTBOSON ${ROTBOSON_SOURCES})
 
 target_include_directories(ROTBOSON PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  ${TOMLC99_DIR}
   ${SUITESPARSE_INCLUDE_DIR})
 
 # MKL shim header: only for the OSS build (must not shadow the real <mkl.h>).
@@ -92,7 +93,6 @@ endif()
 
 target_link_libraries(ROTBOSON PRIVATE
   ${ROTBOSON_BACKEND_LIBS}
-  PkgConfig::LIBCONFIG
   OpenMP::OpenMP_C
 )
 

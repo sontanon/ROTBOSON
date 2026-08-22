@@ -1,7 +1,10 @@
 #include "tools.h"
 #include "param.h"
+#include "toml.h"
 
-// Macros for parameter ranges.
+#include <stdarg.h>
+
+// Parameter range bounds. Kept at the top so they are easy to audit and extend.
 #define MAX_DR 1.0
 #define MIN_DR 0.001
 
@@ -34,365 +37,325 @@
 #define MAX_EPS 1.0E-1
 #define MIN_EPS 1.0E-16
 
+// ---------------------------------------------------------------------------
+// Diagnostics
+// ---------------------------------------------------------------------------
+
+static void die(const char *fmt, ...)
+{
+	va_list ap;
+	fprintf(stderr, "PARSER: ERROR! ");
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	exit(EXIT_FAILURE);
+}
+
+static void warn(const char *fmt, ...)
+{
+	va_list ap;
+	fprintf(stderr, "PARSER: WARNING! ");
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+}
+
+// ---------------------------------------------------------------------------
+// Strict key validation: every key in the file must be known.
+// ---------------------------------------------------------------------------
+
+static const char *const KNOWN_KEYS[] = {
+	// Grid.
+	"dr", "dz", "NrInterior", "NzInterior", "order",
+	// Scalar field.
+	"l", "m", "fixedPhi", "fixedPhiR", "fixedPhiZ", "fixedOmega",
+	// Initial data (file paths + grid).
+	"readInitialData", "log_alpha_i", "beta_i", "log_h_i", "log_a_i",
+	"psi_i", "lambda_i", "w_i",
+	"NrTotalInitial", "NzTotalInitial", "order_i", "ghost_i", "dr_i", "dz_i",
+	// Scale initial data.
+	"scale_u0", "scale_u1", "scale_u2", "scale_u3", "scale_u4", "scale_u5", "scale_u6",
+	// Analytic initial guess.
+	"psi0", "sigmaR", "sigmaZ", "rExt",
+	// Initial frequency.
+	"w0",
+	// Solver.
+	"solverType", "localSolver", "epsilon", "maxNewtonIter",
+	"lambda0", "lambdaMin", "useLowRank",
+	// Initial guess check.
+	"max_initial_guess_checks", "norm_f0_target",
+	// Sweep control.
+	"rr_phi_max_minimum", "rr_phi_max_maximum", "sweep",
+	"hwl_min", "hwl_max", "w_max", "w_min", "w_step",
+	// Next-scale advancement.
+	"scale_next",
+	NULL
+};
+
+static int is_known_key(const char *key)
+{
+	for (int i = 0; KNOWN_KEYS[i] != NULL; i++)
+	{
+		if (strcmp(KNOWN_KEYS[i], key) == 0)
+			return 1;
+	}
+	return 0;
+}
+
+static void reject_unknown_keys(toml_table_t *tab)
+{
+	// The parameter format is a single flat table; nested tables/arrays are
+	// not part of it and are rejected outright.
+	if (toml_table_ntab(tab) != 0 || toml_table_narr(tab) != 0)
+		die("nested tables/arrays are not supported in the flat parameter format.\n");
+
+	int n = toml_table_nkval(tab);
+	for (int i = 0; i < n; i++)
+	{
+		const char *key = toml_key_in(tab, i);
+		if (!is_known_key(key))
+			die("unknown parameter key \"%s\".\n", key);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Typed lookups. Return 1 when the key is present and stored, 0 when absent.
+// A present key with the wrong TOML type is a hard error (not silently
+// ignored, as libconfig did).
+// ---------------------------------------------------------------------------
+
+static int lookup_int(toml_table_t *tab, const char *key, MKL_INT *out)
+{
+	if (!toml_key_exists(tab, key))
+		return 0;
+	toml_datum_t d = toml_int_in(tab, key);
+	if (!d.ok)
+		die("\"%s\" must be an integer.\n", key);
+	*out = (MKL_INT)d.u.i;
+	return 1;
+}
+
+static int lookup_double(toml_table_t *tab, const char *key, double *out)
+{
+	if (!toml_key_exists(tab, key))
+		return 0;
+	toml_datum_t d = toml_double_in(tab, key);
+	if (d.ok)
+	{
+		*out = d.u.d;
+		return 1;
+	}
+	// Accept integer literals where a float is expected.
+	d = toml_int_in(tab, key);
+	if (d.ok)
+	{
+		*out = (double)d.u.i;
+		return 1;
+	}
+	die("\"%s\" must be a number.\n", key);
+	return 0;
+}
+
+static int lookup_string(toml_table_t *tab, const char *key, const char **out)
+{
+	if (!toml_key_exists(tab, key))
+		return 0;
+	toml_datum_t d = toml_string_in(tab, key);
+	if (!d.ok)
+		die("\"%s\" must be a string.\n", key);
+	*out = strdup(d.u.s);
+	free(d.u.s);
+	return 1;
+}
+
+// ---------------------------------------------------------------------------
+// Range validation.
+// ---------------------------------------------------------------------------
+
+static void check_in_range(const char *key, double v, double lo, double hi)
+{
+	if (v < lo || v > hi)
+		die("%s = %3.5E is not in range [%3.5E, %3.5E].\n", key, v, lo, hi);
+}
+
+static void check_int_in_range(const char *key, MKL_INT v, MKL_INT lo, MKL_INT hi)
+{
+	if (v < lo || v > hi)
+		die("%s = %lld is not in range [%lld, %lld].\n", key, v, lo, hi);
+}
+
+static void check_is_int(const char *key, MKL_INT v, MKL_INT a, MKL_INT b)
+{
+	if (v != a && v != b)
+		die("%s = %lld is not supported. Allowed values are %lld or %lld.\n", key, v, a, b);
+}
+
+// ---------------------------------------------------------------------------
+// Parser
+// ---------------------------------------------------------------------------
+
 void parser(const char *fname)
 {
-	// Initialize cfg.
-	config_init(&cfg);
+	FILE *fp = fopen(fname, "r");
+	if (!fp)
+		die("could not open parameter file \"%s\".\n", fname);
 
-	// Read the file. If there is an error, report and exit.
-	if (!config_read_file(&cfg, fname))
-	{
-		fprintf(stderr, "PARSER: CRITICAL ERROR IN FILE!\n");
-		fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-				config_error_line(&cfg), config_error_text(&cfg));
-		config_destroy(&cfg);
-		exit(-1);
-	}
+	char errbuf[256];
+	toml_table_t *tab = toml_parse_file(fp, errbuf, sizeof(errbuf));
+	fclose(fp);
+	if (!tab)
+		die("could not parse \"%s\":\n%s\n", fname, errbuf);
 
-	// Parse arguments doing sanity checks.
+	reject_unknown_keys(tab);
 
-	// GRID.
-	// dr.
-	if (config_lookup_float(&cfg, "dr", &dr) == CONFIG_TRUE)
-	{
-		if (MAX_DR < dr || dr < MIN_DR)
-		{
-			fprintf(stderr, "PARSER: ERROR! dr = %3.5E is not in range [%3.5E, %3.5E]\n", dr, MIN_DR, MAX_DR);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+	// -- GRID --------------------------------------------------------------
+	if (lookup_double(tab, "dr", &dr))
+		check_in_range("dr", dr, MIN_DR, MAX_DR);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"dr\" from parameter file. Setting to default value, dr = %3.5E\n", dr);
-	}
-	// dz.
-	if (config_lookup_float(&cfg, "dz", &dz) == CONFIG_TRUE)
-	{
-		if (MAX_DR < dz || dz < MIN_DR)
-		{
-			fprintf(stderr, "PARSER: ERROR! dz = %3.5E is not in range [%3.5E, %3.5E]\n", dz, MIN_DR, MAX_DR);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+		warn("missing \"dr\". Using default, dr = %3.5E.\n", dr);
+
+	if (lookup_double(tab, "dz", &dz))
+		check_in_range("dz", dz, MIN_DR, MAX_DR);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"dz\" from parameter file. Setting to default value, dz = %3.5E\n", dz);
-	}
-	// NrInterior.
-	if (config_lookup_int64(&cfg, "NrInterior", &NrInterior) == CONFIG_TRUE)
-	{
-		if (MAX_NRINTERIOR < NrInterior || NrInterior < MIN_NRINTERIOR)
-		{
-			fprintf(stderr, "PARSER: ERROR! NrInterior = %lld is not in range [%lld, %lld]\n", NrInterior, MIN_NRINTERIOR, MAX_NRINTERIOR);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+		warn("missing \"dz\". Using default, dz = %3.5E.\n", dz);
+
+	if (lookup_int(tab, "NrInterior", &NrInterior))
+		check_int_in_range("NrInterior", NrInterior, MIN_NRINTERIOR, MAX_NRINTERIOR);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"NrInterior\" from parameter file. Setting to default value, NrInterior = %lld\n", NrInterior);
-	}
-	// NzInterior.
-	if (config_lookup_int64(&cfg, "NzInterior", &NzInterior) == CONFIG_TRUE)
-	{
-		if (MAX_NRINTERIOR < NzInterior || NzInterior < MIN_NRINTERIOR)
-		{
-			fprintf(stderr, "PARSER: ERROR! NzInterior = %lld is not in range [%lld, %lld]\n", NzInterior, MIN_NRINTERIOR, MAX_NRINTERIOR);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+		warn("missing \"NrInterior\". Using default, NrInterior = %lld.\n", NrInterior);
+
+	if (lookup_int(tab, "NzInterior", &NzInterior))
+		check_int_in_range("NzInterior", NzInterior, MIN_NRINTERIOR, MAX_NRINTERIOR);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"NzInterior\" from parameter file. Setting to default value, NzInterior = %lld\n", NzInterior);
-	}
-	// order.
-	if (config_lookup_int64(&cfg, "order", &order) == CONFIG_TRUE)
-	{
-		if (order != 2 && order != 4)
-		{
-			fprintf(stderr, "PARSER: ERROR! order = %lld is not supported. Only 2 or 4 are supported finite difference orders.\n", order);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+		warn("missing \"NzInterior\". Using default, NzInterior = %lld.\n", NzInterior);
+
+	if (lookup_int(tab, "order", &order))
+		check_is_int("order", order, 2, 4);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"order\" from parameter file. Setting to default value, order = %lld\n", order);
-	}
-	// Determine parity ghost zones.
+		warn("missing \"order\". Using default, order = %lld.\n", order);
+
+	// Ghost zones follow from the FD order.
 	if (order == 2)
-	{
 		ghost = 1;
-	}
-	else if (order == 4)
-	{
+	else
 		ghost = 2;
-	}
 
-	// DO NOT FORGET TO CALCULATE NRTOTAL, NZTOTAL, DIM, AND W_IDX!
+	// Derived grid sizes.
 	NrTotal = NrInterior + 2 * ghost;
 	NzTotal = NzInterior + 2 * ghost;
 	dim = NrTotal * NzTotal;
 	w_idx = GNUM * dim;
 
-	// SCALAR FIELD PARAMETERS.
-	// l.
-	if (config_lookup_int64(&cfg, "l", &l) == CONFIG_TRUE)
-	{
-		if (MAX_L < l || l < MIN_L)
-		{
-			fprintf(stderr, "PARSER: ERROR! l = %lld is not in range [%lld, %lld]\n", l, MIN_L, MAX_L);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+	// -- SCALAR FIELD ------------------------------------------------------
+	if (lookup_int(tab, "l", &l))
+		check_int_in_range("l", l, MIN_L, MAX_L);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"l\" from parameter file. Setting to default value, l = %lld\n", l);
-	}
-	// m.
-	if (config_lookup_float(&cfg, "m", &m) == CONFIG_TRUE)
-	{
-		if (MAX_M < m || m < MIN_M)
-		{
-			fprintf(stderr, "PARSER: ERROR! m = %3.5E is not in range [%3.5E, %3.5E]\n", m, MIN_M, MAX_M);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"m\" value from parameter file. Setting to default value, m = %3.5E\n", m);
-	}
-	// fixedPhi.
-	if (config_lookup_int64(&cfg, "fixedPhi", &fixedPhi) == CONFIG_TRUE)
-	{
-		if (fixedPhi != 0 && fixedPhi != 1)
-		{
-			fprintf(stderr, "PARSER: ERROR! fixedPhi = %lld must be a boolean value 0 or 1.\n", fixedPhi);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	// fixedOmega.
-	if (config_lookup_int64(&cfg, "fixedOmega", &fixedOmega) == CONFIG_TRUE)
-	{
-		if (fixedOmega != 0 && fixedOmega != 1)
-		{
-			fprintf(stderr, "PARSER: ERROR! fixedOmega = %lld must be a boolean value 0 or 1.\n", fixedOmega);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	// Assert that one of the two last variables is fixed.
-	if (!fixedOmega && !fixedPhi)
-	{
-		fprintf(stderr, "PARSER: ERROR! fixedPhi = %lld and fixedOmega = %lld. One quantity must be held fixed.\n", fixedPhi, fixedOmega);
-		fprintf(stderr, "        Please specify whether Phi or Omega is held fixed in parameter file.\n");
-		exit(-1);
-	}
-	if (fixedOmega && fixedPhi)
-	{
-		fprintf(stderr, "PARSER: ERROR! fixedPhi = %lld and fixedOmega = %lld. Only one variable can be fixed.\n", fixedPhi, fixedOmega);
-		fprintf(stderr, "        Please specify which variable (and only one variable) is to be fixed.\n");
-		exit(-1);
-	}
+		warn("missing \"l\". Using default, l = %lld.\n", l);
 
-	// Read fixed coordinates.
+	if (lookup_double(tab, "m", &m))
+		check_in_range("m", m, MIN_M, MAX_M);
+	else
+		warn("missing \"m\". Using default, m = %3.5E.\n", m);
+
+	if (lookup_int(tab, "fixedPhi", &fixedPhi))
+		check_is_int("fixedPhi", fixedPhi, 0, 1);
+
+	if (lookup_int(tab, "fixedOmega", &fixedOmega))
+		check_is_int("fixedOmega", fixedOmega, 0, 1);
+
+	// Exactly one of phi or omega must be held fixed.
+	if (!fixedOmega && !fixedPhi)
+		die("fixedPhi = %lld and fixedOmega = %lld. One quantity must be held fixed.\n", fixedPhi, fixedOmega);
+	if (fixedOmega && fixedPhi)
+		die("fixedPhi = %lld and fixedOmega = %lld. Only one variable can be fixed.\n", fixedPhi, fixedOmega);
+
 	if (fixedPhi)
 	{
-		// fixedPhiR.
-		if (config_lookup_int64(&cfg, "fixedPhiR", &fixedPhiR) == CONFIG_TRUE)
-		{
-			if (NrInterior < fixedPhiR || fixedPhiR < 1)
-			{
-				fprintf(stderr, "PARSER: ERROR! fixedPhiR = %lld is not in range [%lld, %lld]\n", fixedPhiR, 1LL, NrInterior);
-				fprintf(stderr, "        Please input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+		if (lookup_int(tab, "fixedPhiR", &fixedPhiR))
+			check_int_in_range("fixedPhiR", fixedPhiR, 1, NrInterior);
 		else
-		{
-			fprintf(stderr, "PARSER: WARNING! Could not properly read \"fixedPhiR\" from parameter file. Setting to default value, fixedPhiR = %lld\n", fixedPhiR);
-		}
-		// fixedPhiZ.
-		if (config_lookup_int64(&cfg, "fixedPhiZ", &fixedPhiZ) == CONFIG_TRUE)
-		{
-			if (NzInterior < fixedPhiZ || fixedPhiZ < 1)
-			{
-				fprintf(stderr, "PARSER: ERROR! fixedPhiZ = %lld is not in range [%lld, %lld]\n", fixedPhiZ, 1LL, NzInterior);
-				fprintf(stderr, "        Please input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+			warn("missing \"fixedPhiR\". Using default, fixedPhiR = %lld.\n", fixedPhiR);
+
+		if (lookup_int(tab, "fixedPhiZ", &fixedPhiZ))
+			check_int_in_range("fixedPhiZ", fixedPhiZ, 1, NzInterior);
 		else
-		{
-			fprintf(stderr, "PARSER: WARNING! Could not properly read \"fixedPhiZ\" from parameter file. Setting to default value, fixedPhiZ = %lld\n", fixedPhiZ);
-		}
+			warn("missing \"fixedPhiZ\". Using default, fixedPhiZ = %lld.\n", fixedPhiZ);
 	}
 
-	// INITIAL DATA.
-	// readInitialData.
-	if (config_lookup_int64(&cfg, "readInitialData", &readInitialData) == CONFIG_TRUE)
+	// -- INITIAL DATA ------------------------------------------------------
+	if (lookup_int(tab, "readInitialData", &readInitialData))
 	{
 		if (readInitialData != 0 && readInitialData != 1 && readInitialData != 2 && readInitialData != 3)
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = %lld is not supported. Only 0, 1, 2, or 3 as boolean values for indication of whether to read initial data specified by user.\n", readInitialData);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
+			die("readInitialData = %lld is not supported. Allowed values are 0, 1, 2 or 3.\n", readInitialData);
 	}
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"readInitialData\" from parameter file. Setting to default value, readInitialData = %lld\n", readInitialData);
-	}
+		warn("missing \"readInitialData\". Using default, readInitialData = %lld.\n", readInitialData);
 
-	// Read initial data parameters.
 	switch (readInitialData)
 	{
-	// Interpolation from different size and/or resolution grid.
+	// Interpolation from a different grid (size and/or resolution).
 	case 3:
-		// Read filenames.
-		if (config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i) == CONFIG_FALSE)
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_alpha_i\".\n");
-			exit(-1);
-		}
-		if (config_lookup_string(&cfg, "beta_i", &beta_i) == CONFIG_FALSE)
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"beta_i\".\n");
-			exit(-1);
-		}
-		if (config_lookup_string(&cfg, "log_h_i", &log_h_i) == CONFIG_FALSE)
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_h_i\".\n");
-			exit(-1);
-		}
-		if (config_lookup_string(&cfg, "log_a_i", &log_a_i) == CONFIG_FALSE)
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"log_a_i\".\n");
-			exit(-1);
-		}
-		if (config_lookup_string(&cfg, "psi_i", &psi_i) == CONFIG_FALSE)
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires values for all initial files. Did not find \"psi_i\".\n");
-			exit(-1);
-		}
-		if (config_lookup_string(&cfg, "lambda_i", &lambda_i) == CONFIG_FALSE)
-		{
-			fprintf(stderr, "PARSER: WARNING! readInitialData = 3 requires values for all initial files. Did not find \"lambda_i\".\n");
-		}
+		if (!lookup_string(tab, "log_alpha_i", &log_alpha_i))
+			die("readInitialData = 3 requires \"log_alpha_i\".\n");
+		if (!lookup_string(tab, "beta_i", &beta_i))
+			die("readInitialData = 3 requires \"beta_i\".\n");
+		if (!lookup_string(tab, "log_h_i", &log_h_i))
+			die("readInitialData = 3 requires \"log_h_i\".\n");
+		if (!lookup_string(tab, "log_a_i", &log_a_i))
+			die("readInitialData = 3 requires \"log_a_i\".\n");
+		if (!lookup_string(tab, "psi_i", &psi_i))
+			die("readInitialData = 3 requires \"psi_i\".\n");
+		if (!lookup_string(tab, "lambda_i", &lambda_i))
+			warn("readInitialData = 3 expects \"lambda_i\" (optional).\n");
 
-		// Grid parameters.
-		if (config_lookup_int64(&cfg, "NrTotalInitial", &NrTotalInitial) == CONFIG_TRUE)
-		{
-			if (MAX_NRINTERIOR < NrTotalInitial || NrTotalInitial < MIN_NRINTERIOR)
-			{
-				fprintf(stderr, "PARSER: ERROR! NrTotalInitial = %lld is not in range [%lld, %lld]\n", NrTotalInitial, MIN_NRINTERIOR, MAX_NRINTERIOR);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+		if (lookup_int(tab, "NrTotalInitial", &NrTotalInitial))
+			check_int_in_range("NrTotalInitial", NrTotalInitial, MIN_NRINTERIOR, MAX_NRINTERIOR);
 		else
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for NrTotalInitial.\n");
-			exit(-1);
-		}
-		if (config_lookup_int64(&cfg, "NzTotalInitial", &NzTotalInitial) == CONFIG_TRUE)
-		{
-			if (MAX_NRINTERIOR < NzTotalInitial || NzTotalInitial < MIN_NRINTERIOR)
-			{
-				fprintf(stderr, "PARSER: ERROR! NzTotalInitial = %lld is not in range [%lld, %lld]\n", NzTotalInitial, MIN_NRINTERIOR, MAX_NRINTERIOR);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
-		else
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for NzTotalInitial.\n");
-			exit(-1);
-		}
-		if (config_lookup_int64(&cfg, "order_i", &order_i) == CONFIG_TRUE)
-		{
-			if (order_i != 2 && order_i != 4)
-			{
-				fprintf(stderr, "PARSER: ERROR! order_i = %lld is not supported. Only 2 or 4 are supported finite difference orders.\n", order);
-				fprintf(stderr, "        Please input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
-		else
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for order_i.\n");
-			exit(-1);
-		}
-		if (config_lookup_int64(&cfg, "ghost_i", &ghost_i) == CONFIG_TRUE)
-		{
-			if (ghost_i != 1 && ghost_i != 2)
-			{
-				fprintf(stderr, "PARSER: ERROR! ghost_i = %lld is not supported. Only 1 or 2 are supported.\n", order);
-				fprintf(stderr, "        Please input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
-		else
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for ghost_i.\n");
-			exit(-1);
-		}
-		if (config_lookup_float(&cfg, "dr_i", &dr_i) == CONFIG_TRUE)
-		{
-			if (MAX_DR < dr_i || dr_i < MIN_DR)
-			{
-				fprintf(stderr, "PARSER: ERROR! dr_i = %3.5E is not in range [%3.5E, %3.5E]\n", dr_i, MIN_DR, MAX_DR);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
-		else
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for dr_i.\n");
-			exit(-1);
-		}
-		if (config_lookup_float(&cfg, "dz_i", &dz_i) == CONFIG_TRUE)
-		{
-			if (MAX_DR < dz_i || dz_i < MIN_DR)
-			{
-				fprintf(stderr, "PARSER: ERROR! dz_i = %3.5E is not in range [%3.5E, %3.5E]\n", dz_i, MIN_DR, MAX_DR);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
-		else
-		{
-			fprintf(stderr, "PARSER: ERROR! readInitialData = 3 requires value for dz_i.\n");
-			exit(-1);
-		}
-		config_lookup_string(&cfg, "w_i", &w_i);
+			die("readInitialData = 3 requires \"NrTotalInitial\".\n");
 
+		if (lookup_int(tab, "NzTotalInitial", &NzTotalInitial))
+			check_int_in_range("NzTotalInitial", NzTotalInitial, MIN_NRINTERIOR, MAX_NRINTERIOR);
+		else
+			die("readInitialData = 3 requires \"NzTotalInitial\".\n");
+
+		if (lookup_int(tab, "order_i", &order_i))
+			check_is_int("order_i", order_i, 2, 4);
+		else
+			die("readInitialData = 3 requires \"order_i\".\n");
+
+		if (lookup_int(tab, "ghost_i", &ghost_i))
+			check_is_int("ghost_i", ghost_i, 1, 2);
+		else
+			die("readInitialData = 3 requires \"ghost_i\".\n");
+
+		if (lookup_double(tab, "dr_i", &dr_i))
+			check_in_range("dr_i", dr_i, MIN_DR, MAX_DR);
+		else
+			die("readInitialData = 3 requires \"dr_i\".\n");
+
+		if (lookup_double(tab, "dz_i", &dz_i))
+			check_in_range("dz_i", dz_i, MIN_DR, MAX_DR);
+		else
+			die("readInitialData = 3 requires \"dz_i\".\n");
+
+		lookup_string(tab, "w_i", &w_i);
 		break;
 
-	// Default case for 1 or 2.
+	// Read from file on the same grid (1) or a stated grid (2).
 	case 2:
 	case 1:
-		config_lookup_string(&cfg, "log_alpha_i", &log_alpha_i);
-		config_lookup_string(&cfg, "beta_i", &beta_i);
-		config_lookup_string(&cfg, "log_h_i", &log_h_i);
-		config_lookup_string(&cfg, "log_a_i", &log_a_i);
-		config_lookup_string(&cfg, "psi_i", &psi_i);
-		config_lookup_string(&cfg, "lambda_i", &lambda_i);
-		config_lookup_string(&cfg, "w_i", &w_i);
+		lookup_string(tab, "log_alpha_i", &log_alpha_i);
+		lookup_string(tab, "beta_i", &beta_i);
+		lookup_string(tab, "log_h_i", &log_h_i);
+		lookup_string(tab, "log_a_i", &log_a_i);
+		lookup_string(tab, "psi_i", &psi_i);
+		lookup_string(tab, "lambda_i", &lambda_i);
+		lookup_string(tab, "w_i", &w_i);
 
-		// Initial Data extensions.
 		if (readInitialData == 2)
 		{
-			// NrTotalInitial.
-			config_lookup_int64(&cfg, "NrTotalInitial", &NrTotalInitial);
-			// NzTotalInitial.
-			config_lookup_int64(&cfg, "NzTotalInitial", &NzTotalInitial);
+			lookup_int(tab, "NrTotalInitial", &NrTotalInitial);
+			lookup_int(tab, "NzTotalInitial", &NzTotalInitial);
 		}
 		else
 		{
@@ -402,262 +365,142 @@ void parser(const char *fname)
 		break;
 	}
 
-	// Scale initial data.
-	config_lookup_float(&cfg, "scale_u0", &scale_u0);
-	config_lookup_float(&cfg, "scale_u1", &scale_u1);
-	config_lookup_float(&cfg, "scale_u2", &scale_u2);
-	config_lookup_float(&cfg, "scale_u3", &scale_u3);
-	config_lookup_float(&cfg, "scale_u4", &scale_u4);
-	config_lookup_float(&cfg, "scale_u5", &scale_u5);
-	config_lookup_float(&cfg, "scale_u6", &scale_u6);
+	// -- SCALE INITIAL DATA ------------------------------------------------
+	lookup_double(tab, "scale_u0", &scale_u0);
+	lookup_double(tab, "scale_u1", &scale_u1);
+	lookup_double(tab, "scale_u2", &scale_u2);
+	lookup_double(tab, "scale_u3", &scale_u3);
+	lookup_double(tab, "scale_u4", &scale_u4);
+	lookup_double(tab, "scale_u5", &scale_u5);
+	lookup_double(tab, "scale_u6", &scale_u6);
 
-	// Generate via analytic guess.
+	// -- ANALYTIC INITIAL GUESS -------------------------------------------
 	if (!readInitialData)
 	{
-		// psi0.
-		if (config_lookup_float(&cfg, "psi0", &psi0) == CONFIG_TRUE)
-		{
-			if (MAX_PSI0 < psi0 || psi0 < MIN_PSI0)
-			{
-				fprintf(stderr, "PARSER: ERROR! psi0 = %3.5E is not in range [%3.5E, %3.5E]\n", psi0, MIN_PSI0, MAX_PSI0);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+		if (lookup_double(tab, "psi0", &psi0))
+			check_in_range("psi0", psi0, MIN_PSI0, MAX_PSI0);
 		else
-		{
-			fprintf(stderr, "PARSER: WARNING! Could not properly read \"psi0\" value from parameter file. Setting to default value, psi0 = %3.5E\n", psi0);
-		}
-		// sigmaR.
-		if (config_lookup_float(&cfg, "sigmaR", &sigmaR) == CONFIG_TRUE)
-		{
-			if (MAX_SIGMA < sigmaR || sigmaR < MIN_SIGMA)
-			{
-				fprintf(stderr, "PARSER: ERROR! sigmaR = %3.5E is not in range [%3.5E, %3.5E]\n", sigmaR, MIN_SIGMA, MAX_SIGMA);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+			warn("missing \"psi0\". Using default, psi0 = %3.5E.\n", psi0);
+
+		if (lookup_double(tab, "sigmaR", &sigmaR))
+			check_in_range("sigmaR", sigmaR, MIN_SIGMA, MAX_SIGMA);
 		else
-		{
-			fprintf(stderr, "PARSER: WARNING! Could not properly read \"sigmaR\" value from parameter file. Setting to default value, sigmaR = %3.5E\n", sigmaR);
-		}
-		// sigmaZ.
-		if (config_lookup_float(&cfg, "sigmaZ", &sigmaZ) == CONFIG_TRUE)
-		{
-			if (MAX_SIGMA < sigmaZ || sigmaZ < MIN_SIGMA)
-			{
-				fprintf(stderr, "PARSER: ERROR! sigmaZ = %3.5E is not in range [%3.5E, %3.5E]\n", sigmaZ, MIN_SIGMA, MAX_SIGMA);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+			warn("missing \"sigmaR\". Using default, sigmaR = %3.5E.\n", sigmaR);
+
+		if (lookup_double(tab, "sigmaZ", &sigmaZ))
+			check_in_range("sigmaZ", sigmaZ, MIN_SIGMA, MAX_SIGMA);
 		else
-		{
-			fprintf(stderr, "PARSER: WARNING! Could not properly read \"sigmaZ\" value from parameter file. Setting to default value, sigmaZ = %3.5E\n", sigmaZ);
-		}
-		// rExt.
-		if (config_lookup_float(&cfg, "rExt", &rExt) == CONFIG_TRUE)
-		{
-			if (MAX_R_EXT < rExt || rExt < MIN_R_EXT)
-			{
-				fprintf(stderr, "PARSER: ERROR! rExt = %3.5E is not in range [%3.5E, %3.5E]\n", rExt, MIN_R_EXT, MAX_R_EXT);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+			warn("missing \"sigmaZ\". Using default, sigmaZ = %3.5E.\n", sigmaZ);
+
+		if (lookup_double(tab, "rExt", &rExt))
+			check_in_range("rExt", rExt, MIN_R_EXT, MAX_R_EXT);
 		else
-		{
-			fprintf(stderr, "PARSER: WARNING! Could not properly read \"rExt\" value from parameter file. Setting to default value, rExt = %3.5E\n", rExt);
-		}
+			warn("missing \"rExt\". Using default, rExt = %3.5E.\n", rExt);
 	}
-	// Initial frequency.
+
+	// -- INITIAL FREQUENCY -------------------------------------------------
 	if (!w_i)
 	{
-		// w0.
-		if (config_lookup_float(&cfg, "w0", &w0) == CONFIG_TRUE)
-		{
-			if (MAX_W0 < w0 / m || w0 / m < MIN_W0)
-			{
-				fprintf(stderr, "PARSER: ERROR! (w0 / m) = (%3.5E / m) is not in range (%3.5E, %3.5E)\n", w0, MIN_W0, MAX_W0);
-				fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-				exit(-1);
-			}
-		}
+		if (lookup_double(tab, "w0", &w0))
+			check_in_range("w0 / m", w0 / m, MIN_W0, MAX_W0);
 		else
-		{
-			fprintf(stderr, "PARSER: WARNING! Could not properly read \"w0\" value from parameter file. Setting to default value, w0 = %3.5E\n", w0);
-		}
+			warn("missing \"w0\". Using default, w0 = %3.5E.\n", w0);
 	}
 
-	// SOLVER PARAMETERS.
-	// solverType.
-	if (config_lookup_int64(&cfg, "solverType", &solverType) == CONFIG_TRUE)
+	// -- SOLVER ------------------------------------------------------------
+	if (lookup_int(tab, "solverType", &solverType))
 	{
 		if (solverType != 1 && solverType != 2 && solverType != 3)
-		{
-			fprintf(stderr, "PARSER: ERROR! solverType = %lld is not supported. Only 1 or 2 or 3 are supported for indication of whether to use error or residual based solver.\n", solverType);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
+			die("solverType = %lld is not supported. Allowed values are 1, 2 or 3.\n", solverType);
 	}
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"solverType\" from parameter file. Setting to default value, solverType = %lld\n", solverType);
-	}
-	// localSolver.
-	if (config_lookup_int64(&cfg, "localSolver", &localSolver) == CONFIG_TRUE)
-	{
-		if (localSolver != 0 && localSolver != 1)
-		{
-			fprintf(stderr, "PARSER: ERROR! localSolver = %lld is not supported. Only 0 or 1 boolean are supported for indication of whether to use local solver inside global solver.\n", localSolver);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+		warn("missing \"solverType\". Using default, solverType = %lld.\n", solverType);
+
+	if (lookup_int(tab, "localSolver", &localSolver))
+		check_is_int("localSolver", localSolver, 0, 1);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"localSolver\" from parameter file. Setting to default value, localSolver = %lld\n", localSolver);
-	}
-	// epsilon.
-	if (config_lookup_float(&cfg, "epsilon", &epsilon) == CONFIG_TRUE)
-	{
-		if (MAX_EPS < epsilon || epsilon < MIN_EPS)
-		{
-			fprintf(stderr, "PARSER: ERROR! exit tolerance epsilon = %3.5E is not in range [%3.5E, %.35E]\n", epsilon, MIN_EPS, MAX_EPS);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+		warn("missing \"localSolver\". Using default, localSolver = %lld.\n", localSolver);
+
+	if (lookup_double(tab, "epsilon", &epsilon))
+		check_in_range("epsilon", epsilon, MIN_EPS, MAX_EPS);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"epsilon\" from parameter file. Setting to default value, epsilon = %3.5E\n", epsilon);
-	}
-	// maxNewtonIter.
-	if (config_lookup_int64(&cfg, "maxNewtonIter", &maxNewtonIter) == CONFIG_TRUE)
-	{
-		if (MAX_MAXITER < maxNewtonIter || maxNewtonIter < MIN_MAXITER)
-		{
-			fprintf(stderr, "PARSER: ERROR! maxNewtonIter = %lld is not in range [%lld, %lld]\n", maxNewtonIter, MIN_MAXITER, MAX_MAXITER);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
+		warn("missing \"epsilon\". Using default, epsilon = %3.5E.\n", epsilon);
+
+	if (lookup_int(tab, "maxNewtonIter", &maxNewtonIter))
+		check_int_in_range("maxNewtonIter", maxNewtonIter, MIN_MAXITER, MAX_MAXITER);
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"maxNewtonIter\" from parameter file. Setting to default value, maxIter = %lld\n", maxNewtonIter);
-	}
-	// lambda0.
-	if (config_lookup_float(&cfg, "lambda0", &lambda0) == CONFIG_TRUE)
+		warn("missing \"maxNewtonIter\". Using default, maxNewtonIter = %lld.\n", maxNewtonIter);
+
+	if (lookup_double(tab, "lambda0", &lambda0))
 	{
 		if (1.0 < lambda0 || lambda0 <= MIN_WEIGHT)
-		{
-			fprintf(stderr, "PARSER: ERROR! initial damping factor lambda0 = %3.5E is not in range (%3.5E, 1.0]\n", lambda0, MIN_WEIGHT);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
+			die("lambda0 = %3.5E is not in range (%3.5E, 1.0].\n", lambda0, MIN_WEIGHT);
 	}
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"lambda0\" from parameter file. Setting to default value, lambda0 = %3.5E\n", lambda0);
-	}
-	// lambdaMin.
-	if (config_lookup_float(&cfg, "lambdaMin", &lambdaMin) == CONFIG_TRUE)
+		warn("missing \"lambda0\". Using default, lambda0 = %3.5E.\n", lambda0);
+
+	if (lookup_double(tab, "lambdaMin", &lambdaMin))
 	{
 		if (lambda0 <= lambdaMin || lambdaMin < MIN_WEIGHT)
-		{
-			fprintf(stderr, "PARSER: ERROR! minimum damping factor lambdaMin = %3.5E is not in range [%3.5E, lambda0)\n", lambdaMin, MIN_WEIGHT);
-			fprintf(stderr, "        Please edit range in \"parser.c\" source file or input proper value in parameter file.\n");
-			exit(-1);
-		}
+			die("lambdaMin = %3.5E is not in range [%3.5E, lambda0).\n", lambdaMin, MIN_WEIGHT);
 	}
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"lambdaMin\" from parameter file. Setting to default value, lambdaMin = %3.5E\n", lambdaMin);
-	}
-	// useLowRank.
-	if (config_lookup_int64(&cfg, "useLowRank", &useLowRank) == CONFIG_TRUE)
-	{
-		if (useLowRank != 0 && useLowRank != 1)
-		{
-			fprintf(stderr, "PARSER: ERROR! useLowRank = %lld is not supported. Only 0 or 1 boolean are supported for indication of whether to use Low Rank Update.\n", useLowRank);
-			fprintf(stderr, "        Please input proper value in parameter file.\n");
-			exit(-1);
-		}
-	}
-	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"useLowRank\" from parameter file. Setting to default value, useLowRank = %lld\n", useLowRank);
-	}
+		warn("missing \"lambdaMin\". Using default, lambdaMin = %3.5E.\n", lambdaMin);
 
-	// INITIAL GUESS CHECK.
-	if (config_lookup_int64(&cfg, "max_initial_guess_checks", &max_initial_guess_checks) == CONFIG_TRUE)
+	if (lookup_int(tab, "useLowRank", &useLowRank))
+		check_is_int("useLowRank", useLowRank, 0, 1);
+	else
+		warn("missing \"useLowRank\". Using default, useLowRank = %lld.\n", useLowRank);
+
+	// -- INITIAL GUESS CHECK ----------------------------------------------
+	if (lookup_int(tab, "max_initial_guess_checks", &max_initial_guess_checks))
 	{
 		if (max_initial_guess_checks < 0 || max_initial_guess_checks > 10)
-		{
-			fprintf(stderr, "PARSER: ERROR! max_initial_guess_checks = %lld is out of bounds.\n", max_initial_guess_checks);
-			exit(-1);
-		}
+			die("max_initial_guess_checks = %lld is out of bounds [0, 10].\n", max_initial_guess_checks);
 	}
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"max_initial_guess_checks\" from parameter file. Setting to default value, max_initial_guess_checks = %lld\n", max_initial_guess_checks);
-	}
-	if (config_lookup_float(&cfg, "norm_f0_target", &norm_f0_target) == CONFIG_TRUE)
+		warn("missing \"max_initial_guess_checks\". Using default, max_initial_guess_checks = %lld.\n", max_initial_guess_checks);
+
+	if (lookup_double(tab, "norm_f0_target", &norm_f0_target))
 	{
 		if (norm_f0_target < epsilon || norm_f0_target > 1.0)
-		{
-			fprintf(stderr, "PARSER: ERROR! norm_f0_target = %3.5E out of bounds!\n", norm_f0_target);
-			exit(-1);
-		}
+			die("norm_f0_target = %3.5E is out of bounds [epsilon, 1.0].\n", norm_f0_target);
 	}
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"norm_f0_target\" from parameter file. Setting to default value, norm_f0_target = %3.5E\n", norm_f0_target);
-	}
+		warn("missing \"norm_f0_target\". Using default, norm_f0_target = %3.5E.\n", norm_f0_target);
 
-	// SWEEP CONTROL.
-	if (config_lookup_float(&cfg, "rr_phi_max_minimum", &rr_phi_max_minimum) == CONFIG_TRUE)
+	// -- SWEEP CONTROL -----------------------------------------------------
+	if (lookup_double(tab, "rr_phi_max_minimum", &rr_phi_max_minimum))
 	{
 		if (rr_phi_max_minimum < 4 * dr || rr_phi_max_minimum > dr * NrInterior)
-		{
-			fprintf(stderr, "PARSER: ERROR! rr_phi_max_minimum = %3.5E out of bounds!\n", rr_phi_max_minimum);
-			exit(-1);
-		}
+			die("rr_phi_max_minimum = %3.5E is out of bounds [4*dr, dr*NrInterior].\n", rr_phi_max_minimum);
 	}
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_minimum\" from parameter file. Setting to default value, rr_phi_max_minimum = %3.5E\n", rr_phi_max_minimum);
-	}
-	if (config_lookup_float(&cfg, "rr_phi_max_maximum", &rr_phi_max_maximum) == CONFIG_TRUE)
+		warn("missing \"rr_phi_max_minimum\". Using default, rr_phi_max_minimum = %3.5E.\n", rr_phi_max_minimum);
+
+	if (lookup_double(tab, "rr_phi_max_maximum", &rr_phi_max_maximum))
 	{
 		if (rr_phi_max_maximum < rr_phi_max_minimum || rr_phi_max_maximum > dr * NrTotal)
-		{
-			fprintf(stderr, "PARSER: ERROR! rr_phi_max_maximum = %3.5E out of bounds!\n", rr_phi_max_maximum);
-			exit(-1);
-		}
+			die("rr_phi_max_maximum = %3.5E is out of bounds [rr_phi_max_minimum, dr*NrTotal].\n", rr_phi_max_maximum);
 	}
 	else
-	{
-		fprintf(stderr, "PARSER: WARNING! Could not properly read \"rr_phi_max_maximum\" from parameter file. Setting to default value, rr_phi_max_maximum = %3.5E\n", rr_phi_max_maximum);
-	}
-	config_lookup_int64(&cfg, "sweep", &sweep);
-	config_lookup_int64(&cfg, "hwl_min", &hwl_min);
-	config_lookup_int64(&cfg, "hwl_max", &hwl_max);
-	config_lookup_float(&cfg, "w_max", &w_max);
-	config_lookup_float(&cfg, "w_min", &w_min);
-	config_lookup_float(&cfg, "w_step", &w_step);
-	// NEXT SCALE ADVANCEMENT.
-	config_lookup_float(&cfg, "scale_next", &scale_next);
+		warn("missing \"rr_phi_max_maximum\". Using default, rr_phi_max_maximum = %3.5E.\n", rr_phi_max_maximum);
 
-	// OUTPUT
-	// work_dirname.
+	lookup_int(tab, "sweep", &sweep);
+	lookup_int(tab, "hwl_min", &hwl_min);
+	lookup_int(tab, "hwl_max", &hwl_max);
+	lookup_double(tab, "w_max", &w_max);
+	lookup_double(tab, "w_min", &w_min);
+	lookup_double(tab, "w_step", &w_step);
+
+	// -- NEXT SCALE ADVANCEMENT -------------------------------------------
+	lookup_double(tab, "scale_next", &scale_next);
+
+	// -- OUTPUT ------------------------------------------------------------
 	getcwd(work_dirname, MAX_STR_LEN);
 
-	// Set initial directory name.
-	// snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,psi=X.XXXXXE+00,w=X.XXXXXE-01,dr=%.5E,N=%04lld,order=%lld", l, dr, NrInterior, order);
+	// Set initial directory name (w is unknown until the solve completes).
 	snprintf(initial_dirname, MAX_STR_LEN, "l=%lld,w=X.XXXXXE-01,dr=%.5E,N=%04lld", l, dr, NrInterior);
 
-	// All done.
-	return;
+	toml_free(tab);
 }

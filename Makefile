@@ -12,10 +12,8 @@ LDFLAGS =
 MKL_INCLUDE = -I${MKLROOT}/include
 MKL_LD_PATH = -L${MKLROOT}/lib/intel64
 MKL_LIBS = -lmkl_intel_ilp64 -lmkl_core 
-# Libconfig.
-LIBCONFIG_INCLUDE = -I${LIBCONFIGROOT}/include
-LIBCONFIG_LD_PATH = -L${LIBCONFIGROOT}/lib -L${LIBCONFIGROOT}/lib/x86_64-linux-gnu
-LIBCONFIG_LIB = -lconfig
+# Vendored TOML parser (replaces libconfig).
+TOML_INCLUDE = -I./third_party/tomlc99
 # OpenMP.
 OMP_LIB = 
 # Other Libraries.
@@ -114,7 +112,7 @@ $(shell mkdir -p $(OUT_DIR))
 
 #SRCS = $(wildcard $(SRC_DIR)/*.c)
 SRCS = src/newton.c src/initial_interpolation.c src/qnres.c src/analysis.c src/simpson.c src/bicubic_interpolation.c src/cart_to_pol.c src/low_rank.c src/csr_exp_decay.c src/csr_omega_constraint.c src/csr_robin.c src/csr_symmetry.c src/csr_vars.c src/derivatives.c src/initial.c src/io.c src/main.c src/nleq_err.c src/nleq_res.c src/omega_calc.c src/pardiso_solve.c src/pardiso_start.c src/pardiso_stop.c src/parser.c src/qnerr.c src/rhs_vars.c src/rhs.c src/tools.c src/vector_algebra.c src/csr.c src/csr_grid_fill.c
-OBJS = $(subst src/,obj/,$(subst .c,.o,$(SRCS)))
+OBJS = $(subst src/,obj/,$(subst .c,.o,$(SRCS))) obj/toml.o
 
 MAIN = ROTBOSON
 
@@ -144,11 +142,14 @@ all: $(MAIN)
 	@echo Executable has been compiled.
 
 obj/%.o: src/%.c
-	$(CC) $(CFLAGS) $(OPT) $(MKL_INCLUDE) $(LIBCONFIG_INCLUDE) -c $< -o $@
+	$(CC) $(CFLAGS) $(OPT) $(MKL_INCLUDE) $(TOML_INCLUDE) -c $< -o $@
+
+obj/toml.o: third_party/tomlc99/toml.c
+	$(CC) $(CFLAGS) $(OPT) $(TOML_INCLUDE) -c $< -o $@
 
 $(MAIN): $(OBJS)
 	@echo "Compiling object files..."
-	$(CC) $(CFLAGS) $(OPT) $(MKL_INCLUDE) $(LIBCONFIG_INCLUDE) -o $(MAIN) $(OBJS) $(LDFLAGS) $(MKL_LD_PATH) $(LIBCONFIG_LD_PATH) $(MKL_LIBS) $(LIBCONFIG_LIB) $(OMP_LIB) $(OTHER_LIBS)
+	$(CC) $(CFLAGS) $(OPT) $(MKL_INCLUDE) $(TOML_INCLUDE) -o $(MAIN) $(OBJS) $(LDFLAGS) $(MKL_LD_PATH) $(MKL_LIBS) $(OMP_LIB) $(OTHER_LIBS)
 #	$(shell cp $(MAIN) $(OUT_DIR))
 
 clean:

@@ -52,8 +52,9 @@ source /opt/intel/oneapi/setvars.sh
 
 ### libconfig
 
-Fedora: `sudo dnf install libconfig-devel`
-Ubuntu/Debian: `sudo apt-get install libconfig-dev`
+Parameter files are now TOML (parsed by a vendored `tomlc99`, see
+`third_party/tomlc99/`); libconfig is no longer a dependency. Legacy `.par`
+files can be converted with `uv run tools/par_to_toml.py`.
 
 ### MKL-free fallback (SuiteSparse/UMFPACK)
 
@@ -88,7 +89,7 @@ Analysis/validation tools live under `tools/` and are managed with `uv`:
 
 ```bash
 uv sync --dev
-uv run tools/smoke.py out/l1_from_scratch.par
+uv run tools/smoke.py out/l1_from_scratch.toml
 ```
 
 # Generating l=1 data
@@ -98,7 +99,7 @@ changes into the output directory it creates):
 
 ```bash
 cd out
-../build/release/ROTBOSON l1_from_scratch.par
+../build/release/ROTBOSON l1_from_scratch.toml
 ```
 
 This generates initial data for $l=1$, $m=1$, $\omega=0.95$ in a directory named
@@ -108,7 +109,7 @@ Then use the other parameter file to generate many more solutions by
 continuation from the previous "seed":
 
 ```bash
-../build/release/ROTBOSON l1_from_initial_data.par
+../build/release/ROTBOSON l1_from_initial_data.toml
 ```
 
 This runs for a while (up to $\omega = 0.675222$, where it stops because the

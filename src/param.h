@@ -1,5 +1,3 @@
-#include <libconfig.h>
-
 // String length.
 #define MAX_STR_LEN 256
 
@@ -7,9 +5,6 @@
 #define GNUM 6
 
 #ifdef MAIN_FILE
-/* CONFIG FILE */
-config_t cfg;
-
 /* GRID */
 double dr = 0.0625;
 double dz = 0.0625;
@@ -123,9 +118,6 @@ double phi_max = 1.0;
 double rr_phi_max = 0.0;
 MKL_INT hwl_res = 0;
 #else
-/* CONFIG FILE */
-extern config_t cfg;
-
 /* GRID */
 extern double dr;
 extern double dz;

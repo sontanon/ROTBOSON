@@ -1,0 +1,48 @@
+# GRID
+dr = 2.6895119418483904E-01
+dz = 2.6895119418483904E-01
+NrInterior = 480
+NzInterior = 480
+order = 4
+
+# SCALAR FIELD PROPERTIES
+l = 2
+m = 1.0
+
+# INITIAL DATA
+readInitialData = 3
+NrTotalInitial = 401
+NzTotalInitial = 401
+dr_i = 3.2496863237139273E-01
+dz_i = 3.2496863237139273E-01
+ghost_i = 2
+order_i = 4
+log_alpha_i = "/storage/icn/sontanon/out/RConvergence/l=2,w=7.50000E-01,dr=3.24969E-01,N=0397/log_alpha_f.asc"
+beta_i = "/storage/icn/sontanon/out/RConvergence/l=2,w=7.50000E-01,dr=3.24969E-01,N=0397/beta_f.asc"
+log_h_i = "/storage/icn/sontanon/out/RConvergence/l=2,w=7.50000E-01,dr=3.24969E-01,N=0397/log_h_f.asc"
+log_a_i = "/storage/icn/sontanon/out/RConvergence/l=2,w=7.50000E-01,dr=3.24969E-01,N=0397/log_a_f.asc"
+psi_i = "/storage/icn/sontanon/out/RConvergence/l=2,w=7.50000E-01,dr=3.24969E-01,N=0397/psi_f.asc"
+lambda_i = "/storage/icn/sontanon/out/RConvergence/l=2,w=7.50000E-01,dr=3.24969E-01,N=0397/lambda_f.asc"
+w_i = "/storage/icn/sontanon/out/RConvergence/l=2,w=7.50000E-01,dr=3.24969E-01,N=0397/w_f.asc"
+
+# FIXED VARIABLE.
+fixedPhi = 0
+fixedPhiR = 0
+fixedPhiZ = 0
+fixedOmega = 1
+
+# SOLVER PARAMETERS.
+solverType = 1
+localSolver = 1
+epsilon = 2.00000E-13
+maxNewtonIter = 50
+lambda0 = 1.00000E-01
+lambdaMin = 1.00000E-05
+useLowRank = 0
+
+# INITIAL GUESS CHECK.
+max_initial_guess_checks = 0
+norm_f0_target = 5.0E-05
+
+# SWEEP CONTROL
+rr_phi_max_minimum = 8.0

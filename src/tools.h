@@ -19,9 +19,6 @@
 // Intel MKL
 #include "mkl.h"
 
-// Libconfig for parameter parsing.
-#include <libconfig.h>
-
 // Indexing macro: requires that NzTotal be defined in scope.
 #define IDX(i, j) ((i) * NzTotal + (j))
 

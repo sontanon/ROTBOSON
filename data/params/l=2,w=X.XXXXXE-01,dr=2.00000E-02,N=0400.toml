@@ -1,0 +1,57 @@
+# GRID
+dr = 2.000000E-02
+dz = 2.000000E-02
+NrInterior = 400
+NzInterior = 400
+order = 4
+
+# SCALAR FIELD PROPERTIES
+l = 2
+m = 1.0
+
+# INITIAL FREQUENCY.
+#w0 	= 6.00000E-01
+
+# INITIAL DATA
+readInitialData = 1
+NrTotalInitial = 404
+NzTotalInitial = 404
+dr_i = 2.00000E-02
+dz_i = 2.00000E-02
+ghost_i = 2
+order_i = 4
+log_alpha_i = "/storage/icn/sontanon/ROTBOSON/out/StandarizedOutput/l=2,w=6.00000E-01,dr=2.00000E-02,N=0400/log_alpha_f.asc"
+beta_i = "/storage/icn/sontanon/ROTBOSON/out/StandarizedOutput/l=2,w=6.00000E-01,dr=2.00000E-02,N=0400/beta_f.asc"
+log_h_i = "/storage/icn/sontanon/ROTBOSON/out/StandarizedOutput/l=2,w=6.00000E-01,dr=2.00000E-02,N=0400/log_h_f.asc"
+log_a_i = "/storage/icn/sontanon/ROTBOSON/out/StandarizedOutput/l=2,w=6.00000E-01,dr=2.00000E-02,N=0400/log_a_f.asc"
+psi_i = "/storage/icn/sontanon/ROTBOSON/out/StandarizedOutput/l=2,w=6.00000E-01,dr=2.00000E-02,N=0400/psi_f.asc"
+lambda_i = "/storage/icn/sontanon/ROTBOSON/out/StandarizedOutput/l=2,w=6.00000E-01,dr=2.00000E-02,N=0400/lambda_f.asc"
+w_i = "/storage/icn/sontanon/ROTBOSON/out/StandarizedOutput/l=2,w=6.00000E-01,dr=2.00000E-02,N=0400/w_f.asc"
+
+# SCALE INITIAL DATA.
+scale_u4 = 1.125
+
+# NEXT ADVANCEMENT.
+scale_next = 1.125
+
+# FIXED VARIABLE.
+fixedPhi = 1
+fixedPhiR = 2
+fixedPhiZ = 2
+fixedOmega = 0
+
+# SOLVER PARAMETERS.
+solverType = 1
+localSolver = 1
+epsilon = 2.0E-13
+maxNewtonIter = 50
+lambda0 = 1.0E-01
+lambdaMin = 1.0E-06
+useLowRank = 0
+
+# INITIAL GUESS CHECK.
+max_initial_guess_checks = 0
+norm_f0_target = 5.0E-05
+
+# SWEEP CONTROL
+rr_phi_max_minimum = 0.1250

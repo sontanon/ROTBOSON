@@ -700,9 +700,6 @@ int main(int argc, char *argv[])
 	// Initial data seed.
 	SAFE_FREE(u_seed);
 
-	// Clear libconfig configuration.
-	config_destroy(&cfg);
-
 	printf("***              Finished deallocation!            \n");
 	printf("***                                                \n");
 	printf("******************************************************\n");

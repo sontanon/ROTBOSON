@@ -250,11 +250,11 @@ them from the backup drive (see `data/golden/README.md` and `MANIFEST.sha256`).
 source /opt/intel/oneapi/setvars.sh        # sets MKLROOT (pardiso backend only)
 cmake --preset release && cmake --build --preset release -j
 uv sync --dev
-uv run tools/smoke.py out/l1_from_scratch.par --skip-build
+uv run tools/smoke.py out/l1_from_scratch.toml --skip-build
 
-# Regenerate one golden solution and compare (par must run from out/).
-# Regeneration par files for l=1..6 live in data/params/regeneration/.
-cd out && ../build/release/ROTBOSON ../data/params/regeneration/l=1,validate.par
+# Regenerate one golden solution and compare (config must run from out/).
+# Regeneration files for l=1..6 live in data/params/regeneration/.
+cd out && ../build/release/ROTBOSON ../data/params/regeneration/l=1,validate.toml
 cd .. && uv run tools/compare_solutions.py \
     "data/golden/l=1,w=9.00000E-01,dr=8.00000E-02,N=0400" \
     "out/l=1,w=9.00000E-01,dr=8.00000E-02,N=0400"
