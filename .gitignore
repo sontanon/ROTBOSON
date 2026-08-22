@@ -5,6 +5,8 @@ ooc_*
 out/*/*
 out/*.log
 *.egg-info/
+build/
+compile_commands.json
 
 # Editor / IDE
 .vscode/
@@ -31,3 +33,4 @@ data/seeds/
 *.asc
 *.cfg
 *.json
+!CMakePresets.json
