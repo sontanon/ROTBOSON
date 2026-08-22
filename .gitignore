@@ -1,14 +1,30 @@
-#.vscode/c_cpp_properties.json
+# Build artifacts
 obj/*.o
-#.vscode/settings.json
-VSC_Workspace
 ROTBOSON
-out/*/*
-*.json
-*.cfg
-*.ipynb
-.ipynb_checkpoints/*
-*.swp
-*.asc
 ooc_*
-.vscode/c_cpp_properties.json
+out/*/*
+
+# Editor / IDE
+.vscode/
+VSC_Workspace
+*.swp
+
+# Python tooling (uv)
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+
+# Phase 0 curated data: large golden dataset from the backup drive.
+# See PLAN.md and data/golden/README.md. Small provenance files under
+# data/summaries, data/params, and data/convergence ARE tracked.
+data/golden/
+
+# Re-derived symbolic notebooks are tracked under derivations/notebooks
+# (stripped of outputs); raw notebook files are ignored everywhere else.
+*.ipynb
+!derivations/notebooks/*.ipynb
+
+# Raw outputs and configs (legacy formats)
+*.asc
+*.cfg
+*.json
