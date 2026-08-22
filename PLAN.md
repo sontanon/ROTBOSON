@@ -320,6 +320,40 @@ first.
 Phase 4 also retires backlog item #7 (generated-code hygiene), since the code is
 regenerated rather than hand-cleaned.
 
+#### Phase 4 — INPUTS & starting point (handover)
+
+Everything needed is committed; start a `phase4/sympy` branch from `master` and
+build/test as in §4c. The symbolic inputs and the code to regenerate are:
+
+- **Derivations** (plain-text Wolfram `.nb`, no license needed):
+  `derivations/mathematica/Rotating Boson Stars {Regularization,Vanilla Scalar
+  Field,Decaying Scalar Field,...} Equations.nb` + `Full Jacobian Approach.nb`,
+  `Jacobian Approach.nb`, `Kerr in Lewis-Papapetrou.nb`, `Asymptotic Kerr.nb`.
+- **The existing codegen notebook** (python3 kernel; the Jacobian entries were
+  generated in Mathematica, pasted as strings, then emitted to `csr_vars.c`):
+  `derivations/notebooks/Mathematica CSR Code Generation.ipynb`.
+- **The generated code to regenerate + cross-check against:**
+  - residual kernel: `src/rhs_vars.c` + `src/rhs_vars.h`
+  - Jacobian kernel: `src/csr_vars.c` + `src/csr_vars.h` (~4000 lines)
+  - stencil assembly + boundary dispatch: `src/csr_grid_fill.c`,
+    `src/csr_exp_decay.c`, `src/csr_robin.c`, `src/csr_symmetry.c`,
+    `src/csr_omega_constraint.c`
+  - FD stencil weights: `src/derivatives.c` (already Fornberg-validated in
+    Phase 3; reuse `tests/fornberg.c` as the independent weight reference)
+- **Tooling:** `uv`-managed `pyproject.toml` already has `sympy>=1.14` and
+  `nbformat`; strip notebook outputs with `tools/strip_notebooks.py` before
+  committing (tracked `.ipynb` are output-stripped).
+
+Two things from earlier phases that shape Phase 4: (1) the MMS tests are
+deferred here because the SymPy `L` is their independent oracle (§Phase 3);
+(2) the order-6 radial operator's axis stencils hard-code the even reflection
+(`docs/code-critique.md` §16) — the regeneration should emit parity-correct
+stencils (or drop order 6).
+
+Note: `data/golden/` and `data/seeds/` are gitignored (restore from the backup
+drive, §4c) — not needed for the SymPy cross-check itself, but required for the
+full regression gate and any MMS-against-binary checks.
+
 ### Phase 5 — Output format: HDF5
 
 - HDF5 via CMake: one self-describing file per solution (fields, grids, attributes:
