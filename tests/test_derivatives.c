@@ -174,62 +174,194 @@ static void test_2drz_weights(void)
 }
 
 // ---------------------------------------------------------------------------
-// Convergence order: error on a smooth function must drop like h^order.
+// Convergence order: on a parity-consistent smooth function the max error must
+// drop like h^order as h is halved. Measured over the deep interior (centered
+// stencils) and over the whole physical grid (axis/equator + boundary). The
+// axis points rely on the assumed symmetry, so the input must be even for
+// sym=EVEN and odd for sym=ODD.
 // ---------------------------------------------------------------------------
 
-static double interior_error_1d(op1d_t fn, MKL_INT deriv, double h)
+static double conv_func(double x, MKL_INT sym)
 {
-	const MKL_INT dim = 256;
-	const MKL_INT ghost = 2;
-	const MKL_INT order = 4;
-	const double k = 1.7; // wavenumber
+	const double k = 1.1;
+	return (sym == EVEN) ? cos(k * x) : sin(k * x);
+}
+
+static double conv_exact(double x, MKL_INT sym, MKL_INT deriv)
+{
+	const double k = 1.1;
+	if (deriv == 1)
+		return (sym == EVEN) ? -k * sin(k * x) : k * cos(k * x);
+	if (deriv == 2)
+		return (sym == EVEN) ? -k * k * cos(k * x) : -k * k * sin(k * x);
+	return (sym == EVEN) ? k * k * k * sin(k * x) : -k * k * k * cos(k * x);
+}
+
+static void measure_1d(op1d_t fn, MKL_INT deriv, MKL_INT sym, double h, double *ei, double *eg)
+{
+	const MKL_INT ghost = 2, order = 4, dim = 96;
 	double *u = (double *)malloc((size_t)dim * sizeof(double));
 	double *du = (double *)malloc((size_t)dim * sizeof(double));
-	double maxe = 0.0;
 	MKL_INT i;
 
 	for (i = 0; i < dim; ++i)
-		u[i] = sin(k * ((double)(i - ghost) * h));
-	fn(du, u, EVEN, h, dim, ghost, order);
-
-	// Only deep interior points, far from the one-sided boundary stencils.
-	for (i = ghost + 4; i < dim - 4; ++i)
 	{
-		double x = (double)(i - ghost) * h;
-		double exact = 0.0;
-		if (deriv == 1)
-			exact = k * cos(k * x);
-		else if (deriv == 2)
-			exact = -k * k * sin(k * x);
-		else if (deriv == 3)
-			exact = -k * k * k * cos(k * x);
-		double e = fabs(du[i] - exact);
-		if (e > maxe)
-			maxe = e;
+		double x = ((double)(i - ghost) + 0.5) * h;
+		u[i] = conv_func(x, sym);
 	}
+	fn(du, u, sym, h, dim, ghost, order);
 
+	*ei = 0.0;
+	*eg = 0.0;
+	for (i = ghost; i < dim - 1; ++i)
+	{
+		double x = ((double)(i - ghost) + 0.5) * h;
+		double e = fabs(du[i] - conv_exact(x, sym, deriv));
+		if (e > *eg)
+			*eg = e;
+		if (i >= ghost + 3 && i <= dim - 4 && e > *ei)
+			*ei = e;
+	}
 	free(u);
 	free(du);
-	return maxe;
+}
+
+// Fill u[i][j] = f(coord along the differentiated axis), differentiate, and
+// measure the max error over the deep interior and the whole physical grid.
+static void measure_2d_r(op2d_t fn, MKL_INT deriv, MKL_INT sym, MKL_INT order, double h, double *ei, double *eg)
+{
+	const MKL_INT ghost = (order == 2) ? 1 : 2;
+	const MKL_INT NrTotal = 96, NzTotal = 96, j0 = NzTotal / 2;
+	double *u = (double *)calloc((size_t)NrTotal * NzTotal, sizeof(double));
+	double *du = (double *)calloc((size_t)NrTotal * NzTotal, sizeof(double));
+	MKL_INT i, j;
+
+	for (i = 0; i < NrTotal; ++i)
+	{
+		double x = ((double)(i - ghost) + 0.5) * h;
+		double f = conv_func(x, sym);
+		for (j = 0; j < NzTotal; ++j)
+			u[i * NzTotal + j] = f;
+	}
+	fn(du, u, sym, h, NrTotal, NzTotal, ghost, order);
+
+	*ei = 0.0;
+	*eg = 0.0;
+	for (i = ghost; i < NrTotal - 1; ++i)
+	{
+		double x = ((double)(i - ghost) + 0.5) * h;
+		double e = fabs(du[i * NzTotal + j0] - conv_exact(x, sym, deriv));
+		if (e > *eg)
+			*eg = e;
+		if (i >= ghost + 3 && i <= NrTotal - 4 && e > *ei)
+			*ei = e;
+	}
+	free(u);
+	free(du);
+}
+
+static void measure_2d_z(op2d_t fn, MKL_INT deriv, MKL_INT sym, MKL_INT order, double h, double *ei, double *eg)
+{
+	const MKL_INT ghost = (order == 2) ? 1 : 2;
+	const MKL_INT NrTotal = 96, NzTotal = 96, i0 = NrTotal / 2;
+	double *u = (double *)calloc((size_t)NrTotal * NzTotal, sizeof(double));
+	double *du = (double *)calloc((size_t)NrTotal * NzTotal, sizeof(double));
+	MKL_INT i, j;
+
+	for (j = 0; j < NzTotal; ++j)
+	{
+		double x = ((double)(j - ghost) + 0.5) * h;
+		double f = conv_func(x, sym);
+		for (i = 0; i < NrTotal; ++i)
+			u[i * NzTotal + j] = f;
+	}
+	fn(du, u, sym, h, NrTotal, NzTotal, ghost, order);
+
+	*ei = 0.0;
+	*eg = 0.0;
+	for (j = ghost; j < NzTotal - 1; ++j)
+	{
+		double x = ((double)(j - ghost) + 0.5) * h;
+		double e = fabs(du[i0 * NzTotal + j] - conv_exact(x, sym, deriv));
+		if (e > *eg)
+			*eg = e;
+		if (j >= ghost + 3 && j <= NzTotal - 4 && e > *ei)
+			*ei = e;
+	}
+	free(u);
+	free(du);
+}
+
+typedef void (*measure_2d_fn)(op2d_t, MKL_INT, MKL_INT, MKL_INT, double, double *, double *);
+
+// Interior stencils converge at the design order. The global error is bounded
+// by the boundary/axis stencils: orders 2 and 4 use reflected stencils at the
+// axis (so they keep the design order), but the 6th-order operator uses plain
+// one-sided stencils at the axis/equator, so its global order caps at 3.
+static void check_conv_1d(const char *name, op1d_t fn, MKL_INT deriv, MKL_INT sym)
+{
+	double ei1, eg1, ei2, eg2, oi, og;
+	measure_1d(fn, deriv, sym, 0.1, &ei1, &eg1);
+	measure_1d(fn, deriv, sym, 0.05, &ei2, &eg2);
+	oi = log2(ei1 / ei2);
+	og = log2(eg1 / eg2);
+	printf("  %-18s sym=%+d: interior order %.3f, global order %.3f\n", name, sym, oi, og);
+	CHECK(fabs(oi - 4.0) < 0.15); // interior: exact design order
+	CHECK(og > 2.5);              // boundary/axis: >= ~3rd order (paper)
+}
+
+static void check_conv_2d(const char *name, op2d_t fn, MKL_INT deriv, MKL_INT sym, MKL_INT order, measure_2d_fn measure)
+{
+	double ei1, eg1, ei2, eg2, oi, og;
+	measure(fn, deriv, sym, order, 0.1, &ei1, &eg1);
+	measure(fn, deriv, sym, order, 0.05, &ei2, &eg2);
+	oi = log2(ei1 / ei2);
+	og = log2(eg1 / eg2);
+	printf("  %-18s sym=%+d o=%lld: interior order %.3f, global order %.3f\n", name, sym, order, oi, og);
+	CHECK(fabs(oi - (double)order) < 0.15); // interior: exact design order
+	if (order == 2)
+		CHECK(fabs(og - 2.0) < 0.3); // 2nd-order boundary is clean 2nd order
+	else
+		CHECK(og > 2.5); // 4th/6th-order boundary degrades to ~3rd (paper)
 }
 
 static void test_convergence(void)
 {
-	// 4th-order operators: halving h should reduce the error by ~2^4 = 16.
-	double e1 = interior_error_1d(ex_diff1, 1, 0.1);
-	double e2 = interior_error_1d(ex_diff1, 1, 0.05);
-	double ratio = e1 / e2;
-	CHECK(ratio > 12.0 && ratio < 20.0);
+	// Interior stencils converge at their exact design order (2/4/6). The
+	// boundary/axis points (the hand-derived reflected and one-sided stencils)
+	// degrade to ~3rd order, consistent with the paper's "3rd-order boundary"
+	// claim. The 6th-order radial operator is only used for EVEN metric
+	// functions (its axis stencils hard-code the even reflection), so only the
+	// EVEN case is exercised here.
 
-	e1 = interior_error_1d(ex_diff2, 2, 0.1);
-	e2 = interior_error_1d(ex_diff2, 2, 0.05);
-	ratio = e1 / e2;
-	CHECK(ratio > 12.0 && ratio < 20.0);
+	// 1D, 4th order.
+	check_conv_1d("ex_diff1", ex_diff1, 1, EVEN);
+	check_conv_1d("ex_diff1", ex_diff1, 1, ODD);
+	check_conv_1d("ex_diff2", ex_diff2, 2, EVEN);
+	check_conv_1d("ex_diff2", ex_diff2, 2, ODD);
+	check_conv_1d("ex_diff3", ex_diff3, 3, EVEN);
+	check_conv_1d("ex_diff3", ex_diff3, 3, ODD);
 
-	e1 = interior_error_1d(ex_diff3, 3, 0.1);
-	e2 = interior_error_1d(ex_diff3, 3, 0.05);
-	ratio = e1 / e2;
-	CHECK(ratio > 12.0 && ratio < 20.0);
+	// 2D radial/axial, orders 2 and 4.
+	check_conv_2d("ex_diff1r", ex_diff1r, 1, EVEN, 2, measure_2d_r);
+	check_conv_2d("ex_diff1r", ex_diff1r, 1, ODD, 2, measure_2d_r);
+	check_conv_2d("ex_diff1r", ex_diff1r, 1, EVEN, 4, measure_2d_r);
+	check_conv_2d("ex_diff1r", ex_diff1r, 1, ODD, 4, measure_2d_r);
+	check_conv_2d("ex_diff1z", ex_diff1z, 1, EVEN, 2, measure_2d_z);
+	check_conv_2d("ex_diff1z", ex_diff1z, 1, ODD, 2, measure_2d_z);
+	check_conv_2d("ex_diff1z", ex_diff1z, 1, EVEN, 4, measure_2d_z);
+	check_conv_2d("ex_diff1z", ex_diff1z, 1, ODD, 4, measure_2d_z);
+	check_conv_2d("ex_diff2r", ex_diff2r, 2, EVEN, 2, measure_2d_r);
+	check_conv_2d("ex_diff2r", ex_diff2r, 2, ODD, 2, measure_2d_r);
+	check_conv_2d("ex_diff2r", ex_diff2r, 2, EVEN, 4, measure_2d_r);
+	check_conv_2d("ex_diff2r", ex_diff2r, 2, ODD, 4, measure_2d_r);
+	check_conv_2d("ex_diff2z", ex_diff2z, 2, EVEN, 2, measure_2d_z);
+	check_conv_2d("ex_diff2z", ex_diff2z, 2, ODD, 2, measure_2d_z);
+	check_conv_2d("ex_diff2z", ex_diff2z, 2, EVEN, 4, measure_2d_z);
+	check_conv_2d("ex_diff2z", ex_diff2z, 2, ODD, 4, measure_2d_z);
+
+	// 6th-order radial (EVEN only; production use case).
+	check_conv_2d("ex_diff1r", ex_diff1r, 1, EVEN, 6, measure_2d_r);
 }
 
 // ---------------------------------------------------------------------------

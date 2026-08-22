@@ -237,16 +237,33 @@ against the phase that will actually address them, so nothing is lost:
 | 10 | dead initializers / naming (`double w = m;`, reused `i,j,k,counter_i`) | 3 | trivial sweep |
 | 11 | `io.c` commented-out `system("cp …")` block | 5 | remove when I/O is reworked |
 
-### Phase 3 — Testing strategy (Criterion + CTest)
+### Phase 3 — Testing strategy (CTest + plain-C asserts)
 
-Layered suite:
-1. **Unit:** FD stencil weights vs Fornberg-generated coefficients; every derivative operator.
-2. **Component:** manufactured-solution tests — source terms added to the PDE; assert the
-   residual/Jacobian recovers the known solution with correct convergence order.
-   Templates come from the `data/convergence/` campaigns.
-3. **Integration:** full Newton solve on small grids vs the golden set.
-4. **Regression:** end-to-end par runs vs Phase 0 goldens (ω, masses, profiles),
-   run on every refactor commit.
+Decision: **CTest** (CMake's built-in runner, already installed) with plain-C
+assertion helpers, not Criterion — Criterion would add a system dependency +
+sudo for little benefit over the existing Python tooling (see `tests/`). The
+core library is split into `rotboson_core` so tests link it directly.
+
+Layered suite (only what has an independent oracle today):
+1. **Unit:** FD stencil weights vs Fornberg — interior, one-sided edges, and
+   symmetry reflection (done, `tests/test_derivatives.c`).
+2. **Unit:** FD convergence order (interior + axis/equator + boundary) using
+   parity-consistent functions.
+3. **Unit:** remaining operators — polar `diff1th`/`diff1rr`, second-to-last and
+   6th-order edges.
+4. **Sanity:** trivial-vacuum residual — `rhs(Minkowski, psi=0) ≈ 0` to machine
+   precision (no symbolic derivation needed).
+5. **Integration:** full Newton solve on small grids vs the golden set.
+6. **Regression:** end-to-end runs vs Phase 0 goldens (ω, masses, profiles); the
+   smoke test runs in CI, the full golden regeneration is the §4c gate.
+
+**Manufactured-solution (MMS) tests are deferred to Phase 4.** They require an
+independent source term `S = L[u_man]`, which only exists once SymPy re-derives
+`L`. Doing MMS now would be circular (validate the hand-written residual against
+a source computed from that same residual) or a throwaway duplicate of Phase 4's
+symbolic work. Phase 0 already validates the whole pipeline to ~1e-13 via the
+golden data (strong but indirect); MMS is the direct residual-order check that
+catches off-axis / mutually-cancelling bugs.
 
 Phase 3 also retires backlog items #4–#6 and #10 above as the tests give a safe
 net for the mechanical cleanups.
@@ -260,6 +277,13 @@ net for the mechanical cleanups.
 - Produce one standardized, `uv`-managed notebook/script that regenerates the residual
   and Jacobian C code (plus stencil weights). Generated files are checked in; a test
   verifies "regenerated == checked-in".
+
+**MMS (manufactured-solution) tests land here:** with the independent SymPy `L`,
+manufacture a solution, emit the source term `S = L[u_man]`, and assert the
+checked-in residual/Jacobian recovers it at the correct convergence order
+(4th-order interior / 3rd-order boundary). This is the direct, local validation
+the Phase-3 component layer wanted, deferred here because it needs `L` to exist
+first.
 
 Phase 4 also retires backlog item #7 (generated-code hygiene), since the code is
 regenerated rather than hand-cleaned.
