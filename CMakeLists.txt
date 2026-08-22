@@ -70,37 +70,49 @@ else()
 endif()
 
 # ---------------------------------------------------------------------------
-# Target
+# Targets
 # ---------------------------------------------------------------------------
 file(GLOB ROTBOSON_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 list(FILTER ROTBOSON_SOURCES EXCLUDE REGEX "/deprecated/")
 list(REMOVE_ITEM ROTBOSON_SOURCES
   ${ROTBOSON_PARDISO_SOURCES}
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/umfpack_backend.c)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/umfpack_backend.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/main.c)
 list(APPEND ROTBOSON_SOURCES ${ROTBOSON_BACKEND_SOURCES} ${TOMLC99_DIR}/toml.c)
 
-add_executable(ROTBOSON ${ROTBOSON_SOURCES})
+# Core library: everything except the main() driver, so tests can link it.
+add_library(rotboson_core STATIC ${ROTBOSON_SOURCES})
 
-target_include_directories(ROTBOSON PRIVATE
+target_include_directories(rotboson_core PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/src"
   ${TOMLC99_DIR}
   ${SUITESPARSE_INCLUDE_DIR})
 
 # MKL shim header: only for the OSS build (must not shadow the real <mkl.h>).
 if(ROTBOSON_SOLVER_BACKEND STREQUAL "umfpack")
-  target_include_directories(ROTBOSON PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/compat")
+  target_include_directories(rotboson_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src/compat")
 endif()
 
-target_link_libraries(ROTBOSON PRIVATE
+target_link_libraries(rotboson_core PUBLIC
   ${ROTBOSON_BACKEND_LIBS}
   OpenMP::OpenMP_C
 )
 
 # gnu_threaded MKL needs --no-as-needed so its dependencies are not dropped.
-target_link_options(ROTBOSON PRIVATE "LINKER:--no-as-needed")
+target_link_options(rotboson_core PUBLIC "LINKER:--no-as-needed")
 
 if(MSVC)
-  target_compile_options(ROTBOSON PRIVATE /W4)
+  target_compile_options(rotboson_core PRIVATE /W4)
 else()
-  target_compile_options(ROTBOSON PRIVATE -Wall -Wextra)
+  target_compile_options(rotboson_core PRIVATE -Wall -Wextra)
 endif()
+
+# Executable driver.
+add_executable(ROTBOSON "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+target_link_libraries(ROTBOSON PRIVATE rotboson_core)
+
+# ---------------------------------------------------------------------------
+# Tests (Phase 3)
+# ---------------------------------------------------------------------------
+enable_testing()
+add_subdirectory(tests)
