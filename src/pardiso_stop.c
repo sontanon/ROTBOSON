@@ -4,9 +4,9 @@
 
 // Clear PARDISO memory and structures.
 #ifdef FORTRAN
-extern "C" void pardiso_stop_(void)
+extern "C" void solver_stop_(void)
 #else
-void pardiso_stop(void)
+void solver_stop(void)
 #endif
 {
 #ifdef VERBOSE

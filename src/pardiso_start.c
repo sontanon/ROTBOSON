@@ -6,11 +6,11 @@
 
 // Initialize PARDISO parameters and memory.
 #ifdef FORTRAN
-extern "C" void pardiso_start_(const MKL_INT *p_matrix_dim)
+extern "C" void solver_start_(const MKL_INT *p_matrix_dim)
 {
 	MKL_INT matrix_dim = *p_matrix_dim;
 #else
-void pardiso_start(const MKL_INT matrix_dim)
+void solver_start(const MKL_INT matrix_dim)
 {
 #endif
 	// Real unsymmetric matrix.

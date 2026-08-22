@@ -5,7 +5,7 @@
 // Debug diff printer.
 #undef DEBUG
 
-void diff_gen(void)
+void solver_diff_gen(void)
 {
 	const MKL_INT P4_CC[6] = {30, 29, 28, 38, 31, 40};
 	const MKL_INT P4_CS[6] = {30, 30, 29, 38, 31, 41};

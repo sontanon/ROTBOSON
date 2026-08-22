@@ -2,7 +2,7 @@
 #include "pardiso_param.h"
 #include "pardiso.h"
 
-void pardiso_simple_solve(	double *u	,	// Solution array.
+void solver_solve(	double *u	,	// Solution array.
 				csr_matrix *A	, 	// Matrix system to solve: Au = f.
 				double *f	)	// RHS array.
 {
@@ -79,7 +79,7 @@ void pardiso_simple_solve(	double *u	,	// Solution array.
 	return;
 }
 
-void pardiso_solve_low_rank(	double *u	,	// Solution array.
+void solver_solve_low_rank(	double *u	,	// Solution array.
 				csr_matrix *A	, 	// Matrix system to solve: Au = f.
 				double *f	)	// RHS array.
 {
@@ -175,7 +175,7 @@ void pardiso_solve_low_rank(	double *u	,	// Solution array.
 	return;
 }
 
-void pardiso_repeated_solve(	double *u	,	// Solution array.
+void solver_repeated_solve(	double *u	,	// Solution array.
 				csr_matrix *A	, 	// Matrix system to solve: Au = f.
 				double *f	)	// RHS array.
 {

@@ -7,16 +7,13 @@
 #include "io.h"
 #include "initial.h"
 #include "rhs.h"
-#include "pardiso_start.h"
-#include "pardiso_stop.h"
+#include "solver.h"
 #include "omega_calc.h"
 #include "csr.h"
 #include "nleq_err.h"
 #include "nleq_res.h"
 #include "newton.h"
 #include "vector_algebra.h"
-#include "pardiso_solve.h"
-#include "low_rank.h"
 #include "cart_to_pol.h"
 #include "analysis.h"
 
@@ -249,7 +246,7 @@ int main(int argc, char *argv[])
 
 	// Initialize PARDISO memory and parameters.
 	// Square matrix dimension is (GNUM * dim + 1).
-	pardiso_start(GNUM * dim + 1);
+	solver_start(GNUM * dim + 1);
 
 	// Allocate CSR matrix.
 	csr_matrix J;
@@ -271,20 +268,15 @@ int main(int argc, char *argv[])
 	void (*linear_solve_1)(double *, csr_matrix *, double *);
 	if (useLowRank)
 	{
-		linear_solve_1 = pardiso_solve_low_rank;
-		diff_gen();
+		linear_solve_1 = solver_solve_low_rank;
+		solver_diff_gen();
 	}
 	else
-		linear_solve_1 = pardiso_simple_solve;
-
-	/* NO LOW-RANK UPDATE
-	void (*linear_solve_1)(double *, csr_matrix *, double *);
-	linear_solve_1 = pardiso_simple_solve;
-	*/
+		linear_solve_1 = solver_solve;
 
 	// Repeated solver.
 	void (*linear_solve_2)(double *, csr_matrix *, double *);
-	linear_solve_2 = pardiso_repeated_solve;
+	linear_solve_2 = solver_repeated_solve;
 	printf("******************************************************\n");
 	printf("***                                                \n");
 	printf("***          Setting initial guess and RHS.        \n");
@@ -740,7 +732,7 @@ int main(int argc, char *argv[])
 	printf("***              Deallocating memory...            \n");
 	printf("***                                                \n");
 
-	pardiso_stop();
+	solver_stop();
 	csr_deallocate(&J);
 
 	// Free main variables with full maxNewtonIter size by looping inside them.
