@@ -188,6 +188,35 @@ reference; revisit before Phase 6.
   re-running the golden tests after each step.
 - Delete `deprecated/`, dead `regularization_coupling.h` code, unused ifdefs.
 
+#### Phase 2 — OUTCOME (completed 2026-08-22)
+
+Phase 2 is **closed** on branch `phase2/config-refactor`. Full write-up of the
+anti-patterns found and how each was fixed is in `docs/code-critique.md`.
+
+- **Config:** libconfig removed; a vendored `tomlc99` (`third_party/tomlc99/`,
+  MIT, commit `29076df`) parses flat TOML parameter files. `parser.c` shrunk
+  ~672 → ~470 lines behind a known-key schema: unknown keys are **rejected**
+  (libconfig silently ignored them — e.g. the dead `*BoundOrder`/`dirname` keys),
+  wrong-typed values are hard errors, and range checks are unchanged. All
+  tracked `.par` files ported to `.toml` via `tools/par_to_toml.py`.
+- **Global state:** `param.h`'s `#ifdef MAIN_FILE` + `extern` globals are gone;
+  an `rb_context` struct (`src/context.h`) is passed explicitly to `parser`,
+  `rhs`, `csr_gen_jacobian`, `initial_guess`, `solver_diff_gen`, the norm/dot
+  algebra, and the Newton/qn solver cores (callback typedefs `rb_rhs_fn` etc.).
+  The global-capturing convenience macros (`diff1r/...`, `cart_to_pol`,
+  `analysis`) were deleted in favour of explicit `ex_*` calls. `tools.h` gained
+  the include guards it had always been missing.
+- **Structure:** `main.c` (797 → ~760 lines, but now a thin driver) split into
+  `print_banner` / `print_parameters` / `configure_openmp` / `run_newton` /
+  `run_analysis` / `sweep_advance`.
+- **Dead code:** `src/deprecated/`, `regularization_coupling.h`, the
+  always-disabled `REGULARIZATION_COUPLING` blocks and `coupled_du`, `#ifdef WIN`
+  branches, and the `#undef`'d `PRINT_HISTORY` / unused `NEXT_SCALE_JUMP` are gone.
+- **Validation:** bit-for-bit unchanged on **both** backends. l=1 w=0.95 smoke
+  solve reproduces `w=9.49999...E-01` and every Komar/phi observable to the last
+  digit (PARDISO and UMFPACK). The l=1 N=400 golden regeneration matches
+  `data/golden/` to ~1e-13 (same as Phase 0), all fields + observables PASS.
+
 ### Phase 3 — Testing strategy (Criterion + CTest)
 
 Layered suite:
