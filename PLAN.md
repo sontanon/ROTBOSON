@@ -101,16 +101,47 @@ Tasks:
    exactly, that commit becomes the reference baseline snapshot.
 5. If time permits, extract paper tables into CSV under `data/paper/`.
 
-### Phase 1 — Build & environment modernization
+#### Phase 0 — OUTCOME (completed 2026-08-22)
 
-- CMake + presets (`dev`, `release`, `asan-ubsan`), `compile_commands.json`,
-  `-Wall -Wextra` (warnings promoted as errors over time), keep OpenMP.
-- Dependency strategy: oneMKL via CMake when available (PARDISO + BLAS), otherwise
+Phase 0 is **closed**. Branch `phase0/curation` (commits `2b892aa`..`de2e9b5`)
+was merged into `master` and tagged `phase0-complete`. Details in `VALIDATION.md`.
+
+- Curated copy from the backup drive: `data/golden/` (4.6 GB, untracked, SHA-256
+  manifest), `data/summaries/`, `data/params/`, `data/convergence/`, `data/seeds/`,
+  `data/paper/`, `derivations/{mathematica,notebooks}/`.
+- `uv`-managed Python tooling under `tools/` (smoke, compare_solutions,
+  check_against_summary, reconstruct_grv, ladder_continue).
+- Fidelity chain established and passed:
+  - master regenerates the StandarizedOutput golden solutions (l=1,3,4,5,6) and the
+    l=2 catalogue step to ~1e-13 (fields + all physical observables).
+  - M_Komar / J_Komar match the published Catalogue2 tables to ~1e-14.
+  - Critical points (M_max, J_max) match the paper's Table IX.1 to all published
+    significant figures for l=1..6 (see `data/paper/table_ix1.csv`).
+- One documented discrepancy (not a code bug): GRV2/GRV3 for the l=2 Catalogue2 copy
+  differ ~1% due to a 2020-10-30 `analysis.c` change that postdates that run; the
+  publication dataset is unaffected. `tools/reconstruct_grv.py` reproduces the C output.
+- Build fix: `mkl_dcsrgemv` removed from MKL 2026 → replaced with inline CSR matvec
+  in `src/bicubic_interpolation.c`.
+- Deferred (see §5): perturbation-solver patch on the drive; l=2 golden points at
+  w=7.29141/7.20859 require finer continuation (Phase 3 territory).
+
+### Phase 1 — Build, environment & tooling modernization
+
+- **Build:** CMake + presets (`dev`, `release`, `asan-ubsan`), `compile_commands.json`,
+  `-Wall -Wextra` (promote to `-Werror` incrementally), keep OpenMP.
+- **Dependencies:** oneMKL via CMake when available (PARDISO + BLAS), otherwise
   OpenBLAS + SuiteSparse/UMFPACK fallback. Introduce a thin `solver_backend` interface
-  so both coexist (low-rank update remains PARDISO-only).
-- Remove `env.bash` in favor of presets + documented apt/conda/spack instructions.
-- CI (GitHub Actions): matrix {MKL build, OSS-fallback build} + smoke test from Phase 0.
-- oneMKL is now free (no license/serial); available via apt/conda/spack/docker.
+  so both coexist (low-rank update remains PARDISO-only). Remove `env.bash` in favor of
+  presets + documented `dnf`/`apt`/conda/spack instructions. oneMKL is now free
+  (no license/serial); available via package managers/docker.
+- **Linting / formatting / static analysis (new):**
+  - C: `clang-format` (checked in `.clang-format`), `clang-tidy` + `cppcheck` as CMake
+    `lint` target, compiler sanitizers (ASan/UBSan) in the `asan-ubsan` preset.
+  - Python: `ruff` (lint + format) as a `uv` dev dependency and CI check.
+  - `pre-commit` hooks (format + trailing-whitespace + the above) configured but optional
+    to enable.
+- **CI (GitHub Actions):** matrix {MKL build, OSS-fallback build} × {smoke test, lint},
+  plus a Python `ruff` job. Smoke test from Phase 0 runs on every PR.
 
 ### Phase 2 — Config overhaul + structural refactor
 
@@ -166,10 +197,20 @@ Layered suite:
 - Phase 4 and 5 are independent after Phase 2.
 - Phase 6 consumes all of the above.
 
+## 4b. Branching & working conventions
+
+- One feature branch per phase, merged into `master` at completion and tagged:
+  `phase0/curation` (done) → `phase1/build-system` → `phase2/config-refactor` → ...
+- `master` is always green and reproducible; the golden suite must pass before a merge.
+- Renaming per-phase branches is unnecessary — they are short-lived and deleted after merge.
+
 ## 5. Risks & notes
 
-- Phase 0 verification may show master ≠ StandarizedOutput exactly (post-Oct-2020 commits).
-  Mitigation: snapshot the matching commit as the reference baseline.
+- ~~Phase 0 verification may show master ≠ StandarizedOutput exactly.~~ RESOLVED:
+  master reproduces StandarizedOutput to ~1e-13 (see `VALIDATION.md`).
+- GRV2/GRV3 are sensitive derived diagnostics whose historical values predate a
+  2020-10-30 analysis fix; compare physical observables (M, J, fields) for regression,
+  not GRV (see `VALIDATION.md` §4).
 - Perturbation/stability solver: uncommitted, exists only on the drive (deferred copy).
   Drive failure before Phase 6 would lose it.
 - The paper reports 4th-order (resolution) and 3rd-order (boundary) convergence;
