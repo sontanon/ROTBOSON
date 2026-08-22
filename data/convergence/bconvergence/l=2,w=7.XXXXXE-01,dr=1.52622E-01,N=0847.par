@@ -1,0 +1,58 @@
+
+# GRID
+dr 		= 1.5262227460223923E-01
+dz 		= 1.5262227460223923E-01
+NrInterior	= 847
+NzInterior	= 847
+order 		= 4
+
+# SCALAR FIELD PROPERTIES
+l	 = 2
+m 	 = 1.0
+
+# INITIAL FREQUENCY.
+#w0 	= 7.50000E-01
+
+# INITIAL DATA
+readInitialData	= 3
+NrTotalInitial 	= 705
+NzTotalInitial 	= 705
+dr_i		= 1.5262227460223923E-01
+dz_i		= 1.5262227460223923E-01
+ghost_i		= 2
+order_i		= 4
+log_alpha_i 	= "/storage/icn/sontanon/ROTBOSON/out/BConvergence/l=2,w=7.4XXXXE-01,dr=1.52622E-01,N=0701/log_alpha_f.asc"
+beta_i		= "/storage/icn/sontanon/ROTBOSON/out/BConvergence/l=2,w=7.4XXXXE-01,dr=1.52622E-01,N=0701/beta_f.asc"
+log_h_i		= "/storage/icn/sontanon/ROTBOSON/out/BConvergence/l=2,w=7.4XXXXE-01,dr=1.52622E-01,N=0701/log_h_f.asc"
+log_a_i		= "/storage/icn/sontanon/ROTBOSON/out/BConvergence/l=2,w=7.4XXXXE-01,dr=1.52622E-01,N=0701/log_a_f.asc"
+psi_i		= "/storage/icn/sontanon/ROTBOSON/out/BConvergence/l=2,w=7.4XXXXE-01,dr=1.52622E-01,N=0701/psi_f.asc"
+lambda_i	= "/storage/icn/sontanon/ROTBOSON/out/BConvergence/l=2,w=7.4XXXXE-01,dr=1.52622E-01,N=0701/lambda_f.asc"
+w_i		= "/storage/icn/sontanon/ROTBOSON/out/BConvergence/l=2,w=7.4XXXXE-01,dr=1.52622E-01,N=0701/w_f.asc"
+
+# ANALYTIC INITIAL DATA PARAMETERS.
+psi0 	= 1.000
+sigmaR	= 0.0
+sigmaZ	= 0.0
+rExt	= 0.0
+
+# FIXED VARIABLE.
+fixedPhi  	= 1
+fixedPhiR 	= 2
+fixedPhiZ	= 2
+fixedOmega 	= 0
+
+# SOLVER PARAMETERS.
+solverType	= 1
+localSolver	= 1
+epsilon		= 2.0E-13
+maxNewtonIter   = 50
+lambda0		= 1.0E-01
+lambdaMin	= 1.0E-05
+useLowRank	= 0
+
+# INITIAL GUESS CHECK.
+max_initial_guess_checks = 0
+norm_f0_target = 5.0E-05
+
+# SWEEP CONTROL
+rr_phi_max_minimum = 8.0
