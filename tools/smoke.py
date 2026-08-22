@@ -25,7 +25,7 @@ OUT = REPO / "out"
 
 # CMake build dirs (single-config presets); the binary lives in the configured
 # build tree. Keep support for the legacy Makefile binary at the repo root.
-BUILD_PRESETS = ("release", "dev", "asan-ubsan")
+BUILD_PRESETS = ("release", "umfpack", "dev", "asan-ubsan")
 
 
 def find_binary() -> Path:
@@ -78,10 +78,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("parfile", type=Path, help="path to parameter file")
     parser.add_argument("--skip-build", action="store_true")
+    parser.add_argument(
+        "--binary",
+        type=Path,
+        default=None,
+        help="path to the ROTBOSON executable (overrides discovery/build)",
+    )
     parser.add_argument("--jobs", type=int, default=8)
     args = parser.parse_args()
 
-    binary = find_binary() if args.skip_build else build(args.jobs)
+    if args.binary is not None:
+        binary = args.binary.resolve()
+        if not binary.exists():
+            raise SystemExit(f"binary not found: {binary}")
+    else:
+        binary = find_binary() if args.skip_build else build(args.jobs)
     sol_dir = run_par(binary, args.parfile)
     scalars = extract_scalars(sol_dir)
 

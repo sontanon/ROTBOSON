@@ -42,6 +42,31 @@ jobs:
           source /opt/intel/oneapi/setvars.sh
           uv run tools/smoke.py out/l1_from_scratch.par --skip-build 2>&1 | tail -20
 
+  build-and-test-umfpack:
+    name: Build + smoke test (UMFPACK fallback)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libconfig-dev libsuitesparse-dev
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Configure
+        run: cmake --preset umfpack
+
+      - name: Build
+        run: cmake --build --preset umfpack -j2
+
+      - name: Sync Python tooling
+        run: uv sync --dev
+
+      - name: Smoke test (l=1, w=0.95, from scratch)
+        run: uv run tools/smoke.py out/l1_from_scratch.par --skip-build --binary build/umfpack/ROTBOSON 2>&1 | tail -20
+
   python-lint:
     name: Python lint (ruff)
     runs-on: ubuntu-latest

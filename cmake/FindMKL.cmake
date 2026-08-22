@@ -1,9 +1,10 @@
 # Locate Intel oneMKL and provide an imported target `MKL::ILP64` that links
 # the ILP64 (64-bit integer) interface with the GNU-threaded runtime.
 #
-# Detection order:
-#   1. CMake's oneMKL config package (find_package(MKL CONFIG))
-#   2. the MKLROOT environment variable (set by /opt/intel/oneapi/setvars.sh)
+# Detection: the MKLROOT environment variable (set by /opt/intel/oneapi/setvars.sh)
+# or a MKL_ROOT cache variable. oneMKL's own CMake config package is intentionally
+# NOT used here: its MKLConfig.cmake has been observed to error out (string
+# REPLACE) when probed from a build that does not consume MKL.
 #
 # Result:
 #   MKL::ILP64   imported interface target (include dirs, lib dirs, libs,
@@ -14,18 +15,10 @@ if(TARGET MKL::ILP64)
   return()
 endif()
 
-find_package(MKL CONFIG QUIET)
-
 set(MKL_ROOT "" CACHE PATH "Intel oneMKL installation root")
 
-if(NOT MKL_ROOT)
-  if(DEFINED ENV{MKLROOT})
-    set(MKL_ROOT "$ENV{MKLROOT}")
-  elseif(TARGET MKL::MKL)
-    get_target_property(_mkl_incs MKL::MKL INTERFACE_INCLUDE_DIRECTORIES)
-    list(GET _mkl_incs 0 _mkl_inc)
-    string(REGEX REPLACE "/include$" "" MKL_ROOT "${_mkl_inc}")
-  endif()
+if(NOT MKL_ROOT AND DEFINED ENV{MKLROOT})
+  set(MKL_ROOT "$ENV{MKLROOT}")
 endif()
 
 if(MKL_ROOT AND EXISTS "${MKL_ROOT}/include")

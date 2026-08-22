@@ -55,14 +55,27 @@ source /opt/intel/oneapi/setvars.sh
 Fedora: `sudo dnf install libconfig-devel`
 Ubuntu/Debian: `sudo apt-get install libconfig-dev`
 
-(For the MKL-free build via OpenBLAS + SuiteSparse/UMFPACK, see the
-`ROTBOSON_SOLVER_BACKEND=umfpack` option in `CMakeLists.txt`.)
+### MKL-free fallback (SuiteSparse/UMFPACK)
+
+To build without Intel oneMKL, use the UMFPACK backend instead:
+
+Fedora: `sudo dnf install suitesparse-devel`
+Ubuntu/Debian: `sudo apt-get install libsuitesparse-dev`
+
+Then build with `cmake --preset umfpack`. The UMFPACK backend produces results
+identical to the PARDISO backend (the low-rank factorization update is
+PARDISO-only and silently falls back to a full refactorization). UMFPACK is
+single-threaded, so it is slower than PARDISO for large grids.
+
+macOS (via Homebrew): `brew install suite-sparse` and
+`cmake --preset umfpack` (the OSS backend is the natural default there since
+oneMKL's macOS distribution is heavier).
 
 ## Compilation (CMake)
 
 ```bash
-source /opt/intel/oneapi/setvars.sh   # sets MKLROOT
-cmake --preset release                # or: dev (asan/ubsan), asan-ubsan
+source /opt/intel/oneapi/setvars.sh   # sets MKLROOT (pardiso backend only)
+cmake --preset release                # or: dev (asan/ubsan), asan-ubsan, umfpack
 cmake --build --preset release -j
 ```
 

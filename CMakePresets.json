@@ -21,6 +21,15 @@
       }
     },
     {
+      "name": "umfpack",
+      "displayName": "Release, MKL-free (SuiteSparse/UMFPACK)",
+      "binaryDir": "${sourceDir}/build/umfpack",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ROTBOSON_SOLVER_BACKEND": "umfpack"
+      }
+    },
+    {
       "name": "asan-ubsan",
       "displayName": "Release + ASan/UBSan",
       "binaryDir": "${sourceDir}/build/asan-ubsan",
@@ -34,6 +43,7 @@
   "buildPresets": [
     { "name": "dev", "configurePreset": "dev" },
     { "name": "release", "configurePreset": "release" },
+    { "name": "umfpack", "configurePreset": "umfpack" },
     { "name": "asan-ubsan", "configurePreset": "asan-ubsan" }
   ]
 }
