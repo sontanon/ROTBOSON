@@ -3,6 +3,8 @@ obj/*.o
 ROTBOSON
 ooc_*
 out/*/*
+out/*.log
+*.egg-info/
 
 # Editor / IDE
 .vscode/

@@ -67,11 +67,8 @@ double bicubic_csr_interpolator(const double f00,
 
 	// Matrix system properties.
 	//const MKL_INT NNZ = 100;
-	const MKL_INT NROWS = 16;
+	//const MKL_INT NROWS = 16;
 	//const MKL_INT NCOLS = 16;
-
-	// Matrix multiplication type.
-	const char T = 'N';
 
 	// Nonzero elements of the matrix.
 	const double  A[D_NNZ] = { 1.,                                                         //  1 
@@ -119,7 +116,15 @@ double bicubic_csr_interpolator(const double f00,
 	double a[D_NCOLS] = { 0.0 };
 
 	// Perform CSR matrix multiplication.
-	mkl_dcsrgemv(&T, &NROWS, A, iA, jA, x, a);
+	// NOTE: replaces removed legacy MKL sparse BLAS call mkl_dcsrgemv.
+	// The matrix is fixed 16x16, 1-based indexing: a = A * x.
+	for (MKL_INT row = 0; row < D_NROWS; ++row)
+	{
+		double acc = 0.0;
+		for (MKL_INT k = iA[row] - 1; k < iA[row + 1] - 1; ++k)
+			acc += A[k] * x[jA[k] - 1];
+		a[row] = acc;
+	}
 
 	// Now do dot product using step sizes obtained as follows:
 	double d00 = 1.0;

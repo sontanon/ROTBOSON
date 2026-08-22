@@ -17,18 +17,23 @@ SOLUTION_DIR_RE = re.compile(r"^l=\d+,w=[\d.Ee+-]+,dr=[\d.Ee+-]+,N=\d+$")
 
 SCALAR_FILES = [
     "w_f.asc",
-    "M_ADM.asc",
-    "M_Komar1.asc",
-    "M_Komar2.asc",
-    "M_Schwarz.asc",
-    "J_Komar1.asc",
-    "J_Komar2.asc",
     "GRV2.asc",
     "GRV3.asc",
     "r99.asc",
     "rr_phi_max.asc",
     "phi_max.asc",
     "ergoregion_flag.asc",
+]
+
+# Radial-profile files: the physically meaningful value is the LAST entry
+# (evaluated at the outer boundary rr_inf).
+PROFILE_FILES = [
+    "M_ADM.asc",
+    "M_Komar1.asc",
+    "M_Komar2.asc",
+    "M_Schwarz.asc",
+    "J_Komar1.asc",
+    "J_Komar2.asc",
 ]
 
 FIELD_FILES = [
@@ -48,7 +53,7 @@ FIELD_FILES = [
 
 
 def read_1d(path: str | Path) -> np.ndarray:
-    return np.loadtxt(path)
+    return np.atleast_1d(np.loadtxt(path))
 
 
 def read_2d(path: str | Path) -> np.ndarray:
@@ -70,13 +75,21 @@ def find_solution_dirs(root: str | Path) -> list[Path]:
 
 
 def extract_scalars(sol_dir: str | Path) -> dict[str, float | int]:
-    """Read all scalar observables from a solution directory."""
+    """Read all scalar observables from a solution directory.
+
+    M_*/J_* files are radial profiles; their last entry (outer boundary)
+    is extracted as the scalar value.
+    """
     sol_dir = Path(sol_dir)
     out: dict[str, float | int] = {}
     for fname in SCALAR_FILES:
         f = sol_dir / fname
         if f.exists():
             out[fname] = read_scalar(f)
+    for fname in PROFILE_FILES:
+        f = sol_dir / fname
+        if f.exists():
+            out[fname] = float(read_1d(f)[-1])
     f = sol_dir / "error_code.asc"
     if f.exists():
         out["error_code.asc"] = int(read_1d(f)[0])
@@ -84,9 +97,14 @@ def extract_scalars(sol_dir: str | Path) -> dict[str, float | int]:
 
 
 def compare_scalars(
-    ref: dict, new: dict, rtol: float = 1e-10, atol: float = 0.0
+    ref: dict, new: dict, rtol: float = 1e-10, atol: float = 1e-12
 ) -> tuple[bool, list[str]]:
-    """Compare scalar dicts; return (ok, report lines)."""
+    """Compare scalar dicts; return (ok, report lines).
+
+    A value passes if it agrees relatively (rtol) OR absolutely (atol);
+    the latter matters for near-zero quantities where relative error is
+    meaningless.
+    """
     ok = True
     lines = []
     keys = sorted(set(ref) & set(new))
@@ -110,7 +128,7 @@ def compare_scalars(
     return ok, lines
 
 
-def compare_fields(ref_dir: str | Path, new_dir: str | Path, rtol: float = 1e-10) -> tuple[bool, list[str]]:
+def compare_fields(ref_dir: str | Path, new_dir: str | Path, rtol: float = 1e-10, atol: float = 1e-12) -> tuple[bool, list[str]]:
     """Compare 2D field files between two solution dirs; return (ok, report)."""
     ref_dir, new_dir = Path(ref_dir), Path(new_dir)
     ok = True
@@ -131,7 +149,7 @@ def compare_fields(ref_dir: str | Path, new_dir: str | Path, rtol: float = 1e-10
         rel = diff / denom
         max_rel = float(rel.max())
         max_abs = float(diff.max())
-        status = "PASS" if max_rel <= rtol else "FAIL"
+        status = "PASS" if (max_abs <= atol or max_rel <= rtol) else "FAIL"
         ok &= status == "PASS"
         lines.append(f"  {fname:22s} max_abs={max_abs:.3e} max_rel={max_rel:.3e} {status}")
     return ok, lines

@@ -1,0 +1,14 @@
+# Published critical points, from arXiv:2103.13993 (Class. Quantum Grav. 38, 154003 (2021)),
+# Table IX.1 "Critical points for boson stars l in [0,6]".
+# Values as printed (5 sig figs for M and omega; 4 sig figs for J).
+# Reported as obtained by interpolating a 4th-degree spline into the data and
+# locating the derivative's zero; masses/angular momenta are m_P^2/m (and (m_P^2/m)^2),
+# frequency is (m/hbar).
+l, M_max, J_max, w_min
+0, 0.63300, 0, 0.76754
+1, 1.3155, 1.382, 0.64561
+2, 2.2159, 4.810, 0.51657
+3, 3.5287, 12.49, 0.44339
+4, 5.0590, 25.83, 0.40756
+5, 6.6681, 44.63, 0.38819
+6, 8.2824, 69.02, 0.37391
