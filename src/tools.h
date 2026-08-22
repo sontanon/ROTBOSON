@@ -38,8 +38,6 @@
 // CSR matrix index base.
 #define BASE 1
 
-#define RESCALE 1.0
-
 /* Macro for array sum z = alpha * x + beta * y: for alpha, beta scalars; z, x, y arrays. */
 #define ARRAY_SUM(Z, ALPHA, X, BETA, Y) array_sum((Z), (ALPHA), (X), (BETA), (Y), dim)
 void array_sum(double *z, const double alpha, double *x, const double beta, double *y, const MKL_INT dim);

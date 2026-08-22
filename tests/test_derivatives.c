@@ -16,7 +16,7 @@
 // 1D operators: ex_diff1 / ex_diff2 / ex_diff3 (4th order only).
 // ---------------------------------------------------------------------------
 
-typedef void (*op1d_t)(double *, double *, const MKL_INT, const double, const MKL_INT, const MKL_INT, const MKL_INT);
+typedef void (*op1d_t)(double *, const double *, const MKL_INT, const double, const MKL_INT, const MKL_INT, const MKL_INT);
 
 // Apply fn to a delta at k0 and return the interior stencil weights
 // w[-half..+half] (unit spacing, derivative order factored out), so
@@ -80,7 +80,7 @@ static void test_1d_weights(void)
 // 2D operators: interior stencil along r (or z) must match the 1D weights.
 // ---------------------------------------------------------------------------
 
-typedef void (*op2d_t)(double *, double *, const MKL_INT, const double, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT);
+typedef void (*op2d_t)(double *, const double *, const MKL_INT, const double, const MKL_INT, const MKL_INT, const MKL_INT, const MKL_INT);
 
 // Extract the stencil along the r direction (deriv in {1,2}) at a deep interior
 // point. Returns weights w[-half..+half].
@@ -370,36 +370,37 @@ static void test_convergence(void)
 // an independent reference instead of trusting the coefficients by hand.
 // ---------------------------------------------------------------------------
 
-static void check_boundary_r(op2d_t fn, MKL_INT order, MKL_INT deriv, MKL_INT npts)
+static void check_r_stencil(op2d_t fn, MKL_INT order, MKL_INT deriv, MKL_INT ie, const MKL_INT *off, MKL_INT npts)
 {
 	MKL_INT ghost = (order == 2) ? 1 : 2;
-	MKL_INT NrTotal = 40, NzTotal = 40, j0 = 20;
+	MKL_INT NrTotal = 48, NzTotal = 48, j0 = 24;
 	double h = 0.25;
 	double *u = (double *)calloc((size_t)NrTotal * NzTotal, sizeof(double));
 	double *du = (double *)calloc((size_t)NrTotal * NzTotal, sizeof(double));
 	double x[8], c[8 * 4], w[8];
-	MKL_INT s, d;
+	MKL_INT k, d;
 	double scale = 1.0;
 
 	for (d = 0; d < deriv; ++d)
 		scale *= h;
 
-	// Reference: Fornberg on one-sided nodes x[k] = -k*h (k = 0..npts-1) at z = 0.
-	for (s = 0; s < npts; ++s)
-		x[s] = -(double)s;
+	// Reference: Fornberg on the nodes at the given offsets from the
+	// evaluation point (z = 0).
+	for (k = 0; k < npts; ++k)
+		x[k] = (double)off[k];
 	fornberg_weights(x, npts, 0.0, deriv, c);
 
-	// Extract the operator's weights: delta at node NrTotal-1-s, read du[NrTotal-1].
-	for (s = 0; s < npts; ++s)
+	// Extract the operator's weights: delta at ie+off[k], read du[ie].
+	for (k = 0; k < npts; ++k)
 	{
 		memset(u, 0, (size_t)NrTotal * NzTotal * sizeof(double));
-		u[(NrTotal - 1 - s) * NzTotal + j0] = 1.0;
+		u[(ie + off[k]) * NzTotal + j0] = 1.0;
 		fn(du, u, EVEN, h, NrTotal, NzTotal, ghost, order);
-		w[s] = du[(NrTotal - 1) * NzTotal + j0] * scale;
+		w[k] = du[ie * NzTotal + j0] * scale;
 	}
 
-	for (s = 0; s < npts; ++s)
-		CHECK_NEAR(w[s], c[s * (deriv + 1) + deriv], 1e-12);
+	for (k = 0; k < npts; ++k)
+		CHECK_NEAR(w[k], c[k * (deriv + 1) + deriv], 1e-12);
 
 	free(u);
 	free(du);
@@ -407,14 +408,93 @@ static void check_boundary_r(op2d_t fn, MKL_INT order, MKL_INT deriv, MKL_INT np
 
 static void test_boundary_weights(void)
 {
+	const MKL_INT N = 48;
+	// Node offsets (relative to the evaluation point) for each edge stencil.
+	const MKL_INT d1_o2_last[3] = {0, -1, -2};
+	const MKL_INT d1_o4_last[5] = {0, -1, -2, -3, -4};
+	const MKL_INT d1_o4_2nd[5] = {-3, -2, -1, 0, 1};      // one node to the right
+	const MKL_INT d1_o6_last[7] = {-6, -5, -4, -3, -2, -1, 0};
+	const MKL_INT d1_o6_2nd[7] = {-5, -4, -3, -2, -1, 0, 1};
+	const MKL_INT d1_o6_3rd[7] = {-4, -3, -2, -1, 0, 1, 2};
+	const MKL_INT d2_o2_last[4] = {0, -1, -2, -3};
+	const MKL_INT d2_o4_last[6] = {0, -1, -2, -3, -4, -5};
+	const MKL_INT d2_o4_2nd[6] = {-4, -3, -2, -1, 0, 1};
+
 	// 1st derivative, 2nd order, one-sided: (3,-4,1)/(2h).
-	check_boundary_r(ex_diff1r, 2, 1, 3);
+	check_r_stencil(ex_diff1r, 2, 1, N - 1, d1_o2_last, 3);
 	// 1st derivative, 4th order, one-sided: (25,-48,36,-16,3)/(12h).
-	check_boundary_r(ex_diff1r, 4, 1, 5);
+	check_r_stencil(ex_diff1r, 4, 1, N - 1, d1_o4_last, 5);
+	// 1st derivative, 4th order, second-to-last: (3,10,-18,6,-1)/(12h).
+	check_r_stencil(ex_diff1r, 4, 1, N - 2, d1_o4_2nd, 5);
+	// 1st derivative, 6th order, last/second-to-last/third-to-last.
+	check_r_stencil(ex_diff1r, 6, 1, N - 1, d1_o6_last, 7);
+	check_r_stencil(ex_diff1r, 6, 1, N - 2, d1_o6_2nd, 7);
+	check_r_stencil(ex_diff1r, 6, 1, N - 3, d1_o6_3rd, 7);
 	// 2nd derivative, 2nd order, one-sided: (2,-5,4,-1)/h^2.
-	check_boundary_r(ex_diff2r, 2, 2, 4);
+	check_r_stencil(ex_diff2r, 2, 2, N - 1, d2_o2_last, 4);
 	// 2nd derivative, 4th order, one-sided: (45,-154,214,-156,61,-10)/(12h^2).
-	check_boundary_r(ex_diff2r, 4, 2, 6);
+	check_r_stencil(ex_diff2r, 4, 2, N - 1, d2_o4_last, 6);
+	// 2nd derivative, 4th order, second-to-last: (10,-15,-4,14,-6,1)/(12h^2).
+	check_r_stencil(ex_diff2r, 4, 2, N - 2, d2_o4_2nd, 6);
+}
+
+// ---------------------------------------------------------------------------
+// Polar operators (ex_diff1rr radial, ex_diff1th angular): interior stencils
+// use P_IDX indexing but are the same centered stencils as the Cartesian ones.
+// ---------------------------------------------------------------------------
+
+static void check_polar_rr(MKL_INT order, MKL_INT half)
+{
+	const MKL_INT NrrTotal = 48, NthTotal = 48, i0 = 24, j0 = 24;
+	const double h = 0.25;
+	double *u = (double *)calloc((size_t)NrrTotal * NthTotal, sizeof(double));
+	double *du = (double *)calloc((size_t)NrrTotal * NthTotal, sizeof(double));
+	double x[16], c[16 * 4], w[16];
+	MKL_INT s;
+
+	uniform_nodes(x, (int)half, 1.0);
+	fornberg_weights(x, 2 * half + 1, 0.0, 1, c);
+
+	u[i0 * NthTotal + j0] = 1.0;
+	ex_diff1rr(du, u, EVEN, h, NrrTotal, NthTotal, 2, order);
+	for (s = -half; s <= half; ++s)
+		w[s + half] = du[(i0 - s) * NthTotal + j0] * h;
+	for (s = 0; s <= 2 * half; ++s)
+		CHECK_NEAR(w[s], c[s * 2 + 1], 1e-12);
+
+	free(u);
+	free(du);
+}
+
+static void check_polar_th(MKL_INT order, MKL_INT half)
+{
+	const MKL_INT NrrTotal = 48, NthTotal = 48, i0 = 24, j0 = 24;
+	const double h = 0.25;
+	double *u = (double *)calloc((size_t)NrrTotal * NthTotal, sizeof(double));
+	double *du = (double *)calloc((size_t)NrrTotal * NthTotal, sizeof(double));
+	double x[16], c[16 * 4], w[16];
+	MKL_INT s;
+
+	uniform_nodes(x, (int)half, 1.0);
+	fornberg_weights(x, 2 * half + 1, 0.0, 1, c);
+
+	u[i0 * NthTotal + j0] = 1.0;
+	ex_diff1th(du, u, EVEN, EVEN, h, NrrTotal, NthTotal, 2, order);
+	for (s = -half; s <= half; ++s)
+		w[s + half] = du[i0 * NthTotal + (j0 - s)] * h;
+	for (s = 0; s <= 2 * half; ++s)
+		CHECK_NEAR(w[s], c[s * 2 + 1], 1e-12);
+
+	free(u);
+	free(du);
+}
+
+static void test_polar_weights(void)
+{
+	check_polar_rr(2, 1);
+	check_polar_rr(4, 2);
+	check_polar_th(2, 1);
+	check_polar_th(4, 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -466,5 +546,6 @@ int main(void)
 	test_convergence();
 	test_boundary_weights();
 	test_symmetry();
+	test_polar_weights();
 	return rb_test_summary();
 }

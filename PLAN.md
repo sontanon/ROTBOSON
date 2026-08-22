@@ -228,13 +228,13 @@ against the phase that will actually address them, so nothing is lost:
 | 1 | `pardiso_param.h` global state (`solver`/`pt[64]`/`iparm[64]`/`perm`/`diff`) | 6 | wrap in a `solver_backend` struct before the Rust port |
 | 2 | `MKL_INT` pervades non-MKL code | 6 | de-MKL-ification of types |
 | 3 | `tools.h` kitchen-sink header (MKL/OpenMP) | 6 (start in 3) | split while tests land |
-| 4 | magic numbers: `RESCALE`, `MIN/MAX/ABS`, `BASE=1`, `8,8` trial limits | 3 | named constants/removal as tests are written |
-| 5 | missing `const`-correctness on read-only pointers | 3 | mechanical; do alongside tests |
-| 6 | solver error/return-convention confusion (`err_code` out-param + ±k) | 3 | clarify the contract in tests; change carefully (golden-verified control flow) |
+| 4 | magic numbers: `RESCALE`, `MIN/MAX/ABS`, `BASE=1`, `8,8` trial limits | 3 | **done**: `RESCALE` removed, trial limits → `MAX_TRIAL_{A,B}_ITERATIONS` |
+| 5 | missing `const`-correctness on read-only pointers | 3 | **done** for the derivative operators |
+| 6 | solver error/return-convention confusion (`err_code` out-param + ±k) | 3 | documented; convention left stable (golden-verified control flow) |
 | 7 | generated code hygiene (unused params/vars in `csr_vars.c` etc.) | 4 | fixed by SymPy regeneration, not hand-editing |
 | 8 | ASCII `.asc` I/O baked in everywhere; no reader/writer abstraction | 5 | HDF5 + legacy exporter |
 | 9 | logging vs banner noise; `***` spam; no log level | 5 | alongside HDF5/CLI |
-| 10 | dead initializers / naming (`double w = m;`, reused `i,j,k,counter_i`) | 3 | trivial sweep |
+| 10 | dead initializers / naming (`double w = m;`, reused `i,j,k,counter_i`) | 3 | **done** for `w = m`; counter reuse left as harmless churn |
 | 11 | `io.c` commented-out `system("cp …")` block | 5 | remove when I/O is reworked |
 
 ### Phase 3 — Testing strategy (CTest + plain-C asserts)
@@ -267,6 +267,38 @@ catches off-axis / mutually-cancelling bugs.
 
 Phase 3 also retires backlog items #4–#6 and #10 above as the tests give a safe
 net for the mechanical cleanups.
+
+#### Phase 3 — OUTCOME (completed 2026-08-22)
+
+Phase 3 is **closed** on branch `phase3/testing`.
+
+- **Build:** `rotboson_core` static library (everything but `main.c`) + the
+  executable driver, so tests link the core directly. `enable_testing()` +
+  `tests/`; CI runs `ctest` in both build jobs before the smoke test.
+- **Framework:** CTest (already present, no new dependency) with a ~50-line
+  dependency-free harness (`tests/test.h`); Criterion rejected (would add a
+  system dep + sudo for little gain over the Python tooling).
+- **Unit — derivative operators** (`tests/test_derivatives.c`, 257 checks):
+  interior stencil weights vs an independent Fornberg generator
+  (`tests/fornberg.c`); one-sided edge weights (incl. second-to-last and
+  6th-order) vs Fornberg on one-sided node sets; the mixed derivative vs the
+  1D-weight outer product; the polar operators; ghost-zone symmetry reflection;
+  and convergence order on parity-consistent functions.
+- **Sanity** (`tests/test_residual.c`): the flat-Minkowski vacuum residual is
+  exactly 0 to machine precision, exercising the full `rhs` assembly.
+- **Findings (documented in `docs/code-critique.md` §16):**
+  - interior stencils converge at exactly their design order (2/4/6);
+  - boundary/axis points are ~3rd order (matches the paper's "3rd-order
+    boundary" claim);
+  - the 6th-order radial operator's axis stencils hard-code the even
+    reflection, so ODD is unsupported (latent; production uses EVEN only).
+- **Backlog retired:** #4 (magic numbers — `RESCALE` removed, `8,8` trial
+  limits named), #5 (`const`-correctness on the derivative operators),
+  #10 (`w = m` dead initializer). #6 (solver return convention) documented and
+  left stable — golden-verified control flow, low value to change.
+- **Integration/regression:** the l=1 w=0.95 smoke solve (CI) + the §4c golden
+  regeneration gate serve as the end-to-end anchor; bit-for-bit unchanged on
+  both PARDISO and UMFPACK after every Phase 3 step.
 
 ### Phase 4 — SymPy code generation
 

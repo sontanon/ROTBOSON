@@ -7,3 +7,8 @@ add_executable(test_derivatives
 target_link_libraries(test_derivatives PRIVATE rotboson_core)
 
 add_test(NAME derivatives COMMAND test_derivatives)
+
+add_executable(test_residual test_residual.c)
+target_link_libraries(test_residual PRIVATE rotboson_core)
+
+add_test(NAME residual COMMAND test_residual)
