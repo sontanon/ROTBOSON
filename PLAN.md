@@ -234,9 +234,38 @@ Layered suite:
 ## 4b. Branching & working conventions
 
 - One feature branch per phase, merged into `master` at completion and tagged:
-  `phase0/curation` (done) → `phase1/build-system` → `phase2/config-refactor` → ...
+  `phase0/curation` (done) → `phase1/build-system` (done) → `phase2/config-refactor` → ...
 - `master` is always green and reproducible; the golden suite must pass before a merge.
 - Renaming per-phase branches is unnecessary — they are short-lived and deleted after merge.
+
+## 4c. Regression gate (reference commands)
+
+The golden suite is the acceptance gate for every refactor step (Phase 2+). It
+**depends on untracked local data**: `data/golden/` (4.6 GB) and `data/seeds/`
+(57 MB), which are gitignored and absent on a fresh clone. If missing, restore
+them from the backup drive (see `data/golden/README.md` and `MANIFEST.sha256`).
+
+```bash
+# Build + smoke (l=1, w=0.95, N=256 from scratch)
+source /opt/intel/oneapi/setvars.sh        # sets MKLROOT (pardiso backend only)
+cmake --preset release && cmake --build --preset release -j
+uv sync --dev
+uv run tools/smoke.py out/l1_from_scratch.par --skip-build
+
+# Regenerate one golden solution and compare (par must run from out/).
+# Regeneration par files for l=1..6 live in data/params/regeneration/.
+cd out && ../build/release/ROTBOSON ../data/params/regeneration/l=1,validate.par
+cd .. && uv run tools/compare_solutions.py \
+    "data/golden/l=1,w=9.00000E-01,dr=8.00000E-02,N=0400" \
+    "out/l=1,w=9.00000E-01,dr=8.00000E-02,N=0400"
+
+# Cross-check M_Komar/J_Komar against the published tables
+uv run tools/check_against_summary.py out/l=1,w=9.00000E-01,dr=8.00000E-02,N=0400
+```
+
+Notes: l=2's template is one step of a fixedPhi ladder (produces w=8.74062E-01,
+validated against the drive's Catalogue2, not `data/golden/`); see `VALIDATION.md`.
+The UMFPACK backend is interchangeable: `cmake --preset umfpack` + the same smoke test.
 
 ## 5. Risks & notes
 
