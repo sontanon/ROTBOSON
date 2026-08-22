@@ -1,5 +1,5 @@
 #include "tools.h"
-#include "param.h"
+#include "context.h"
 
 #include "omega_calc.h"
 #include "initial_interpolation.h"
@@ -9,8 +9,11 @@
 #undef BDRY_DEBUG
 #undef I_DEBUG
 
-void initial_guess(double *u)
+void initial_guess(rb_context *ctx, double *u)
 {
+	// Local alias for the IDX macro, which indexes by row-major stride NzTotal.
+	const MKL_INT NzTotal = ctx->NzTotal;
+
 	// The main idea is to set:
 	// 1. Lapse alpha to one.
 	// 2. Shift beta to zero.
@@ -35,76 +38,76 @@ void initial_guess(double *u)
 	double r, z, rr;
 
 	// Set omega variable.
-	if (w_i)
+	if (ctx->w_i)
 	{
-		read_single_file_1d(&w0, w_i, 1, __FILE__, __LINE__);
+		read_single_file_1d(&ctx->w0, ctx->w_i, 1, __FILE__, __LINE__);
 		printf("***          Read omega initial data.       \n");
 	}
 
 	// Scale omega.
-	w0 *= scale_u6;
+	ctx->w0 *= ctx->scale_u6;
 
-	u[w_idx] = inverse_omega_calc(w0, m);
+	u[ctx->w_idx] = inverse_omega_calc(ctx->w0, ctx->m);
 
-	double m2 = m * m;
-	double w2 = w0 * w0;
+	double m2 = ctx->m * ctx->m;
+	double w2 = ctx->w0 * ctx->w0;
 	double chi = sqrt(m2 - w2);
 
-	if (readInitialData == 3)
+	if (ctx->readInitialData == 3)
 	{
 		// Allocate memory for initial data.
-		double *u_0 = (double *)SAFE_MALLOC((GNUM * NrTotalInitial * NzTotalInitial + 1) * sizeof(double));
+		double *u_0 = (double *)SAFE_MALLOC((GNUM * ctx->NrTotalInitial * ctx->NzTotalInitial + 1) * sizeof(double));
 
 		// Read initial data.
-		read_single_file_2d(u_0 + 0 * NrTotalInitial * NzTotalInitial, log_alpha_i	, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
-		read_single_file_2d(u_0 + 1 * NrTotalInitial * NzTotalInitial, beta_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
-		read_single_file_2d(u_0 + 2 * NrTotalInitial * NzTotalInitial, log_h_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
-		read_single_file_2d(u_0 + 3 * NrTotalInitial * NzTotalInitial, log_a_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
-		read_single_file_2d(u_0 + 4 * NrTotalInitial * NzTotalInitial, psi_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
-		if (lambda_i)
+		read_single_file_2d(u_0 + 0 * ctx->NrTotalInitial * ctx->NzTotalInitial, ctx->log_alpha_i	, ctx->NrTotalInitial, ctx->NzTotalInitial, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
+		read_single_file_2d(u_0 + 1 * ctx->NrTotalInitial * ctx->NzTotalInitial, ctx->beta_i		, ctx->NrTotalInitial, ctx->NzTotalInitial, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
+		read_single_file_2d(u_0 + 2 * ctx->NrTotalInitial * ctx->NzTotalInitial, ctx->log_h_i		, ctx->NrTotalInitial, ctx->NzTotalInitial, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
+		read_single_file_2d(u_0 + 3 * ctx->NrTotalInitial * ctx->NzTotalInitial, ctx->log_a_i		, ctx->NrTotalInitial, ctx->NzTotalInitial, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
+		read_single_file_2d(u_0 + 4 * ctx->NrTotalInitial * ctx->NzTotalInitial, ctx->psi_i		, ctx->NrTotalInitial, ctx->NzTotalInitial, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
+		if (ctx->lambda_i)
 		{
-			read_single_file_2d(u_0 + 5 * NrTotalInitial * NzTotalInitial, lambda_i		, NrTotalInitial, NzTotalInitial, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			read_single_file_2d(u_0 + 5 * ctx->NrTotalInitial * ctx->NzTotalInitial, ctx->lambda_i		, ctx->NrTotalInitial, ctx->NzTotalInitial, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
 		}
 		else
 		{
-			k = (MKL_INT)floor(0.5 / dr_i + ghost_i - 0.5);
+			k = (MKL_INT)floor(0.5 / ctx->dr_i + ctx->ghost_i - 0.5);
 			#pragma omp parallel shared(u) private(i, j, r) // rr.
 			{
 				#pragma omp for schedule(dynamic, 1)
-				for (i = k; i < NrTotalInitial; ++i)
+				for (i = k; i < ctx->NrTotalInitial; ++i)
 				{
-					r = dr_i * (i + 0.5 - ghost_i);
+					r = ctx->dr_i * (i + 0.5 - ctx->ghost_i);
 					//rl = pow(r, l);
 
-					for (j = ghost_i; j < NzTotalInitial; ++j)
+					for (j = ctx->ghost_i; j < ctx->NzTotalInitial; ++j)
 					{
-						u_0[5 * NrTotalInitial * NzTotalInitial + i * NzTotalInitial + j] = (exp(2.0 * u_0[3 * NrTotalInitial * NzTotalInitial + i * NzTotalInitial + j]) - exp(2.0 * u_0[2 * NrTotalInitial * NzTotalInitial + i * NzTotalInitial + j])) / (r * r);
+						u_0[5 * ctx->NrTotalInitial * ctx->NzTotalInitial + i * ctx->NzTotalInitial + j] = (exp(2.0 * u_0[3 * ctx->NrTotalInitial * ctx->NzTotalInitial + i * ctx->NzTotalInitial + j]) - exp(2.0 * u_0[2 * ctx->NrTotalInitial * ctx->NzTotalInitial + i * ctx->NzTotalInitial + j])) / (r * r);
 					}
 				}
 			}
 			for (i = 0; i < k; ++i)
 			{
-				for (j = ghost_i; j < NzTotalInitial; ++j)
+				for (j = ctx->ghost_i; j < ctx->NzTotalInitial; ++j)
 				{
-					u_0[5 * NrTotalInitial * NzTotalInitial + i * NzTotalInitial + j] = u_0[5 * NrTotalInitial * NzTotalInitial + k * NzTotalInitial + j];
+					u_0[5 * ctx->NrTotalInitial * ctx->NzTotalInitial + i * ctx->NzTotalInitial + j] = u_0[5 * ctx->NrTotalInitial * ctx->NzTotalInitial + k * ctx->NzTotalInitial + j];
 				}
 			}
 		}
-		u_0[GNUM * NrTotalInitial * NzTotalInitial] = u[w_idx];
+		u_0[GNUM * ctx->NrTotalInitial * ctx->NzTotalInitial] = u[ctx->w_idx];
 
 #ifdef I_DEBUG
 		//fprintf(stderr, "NrTotalInital = %lld, NzTotalInitial = %lld, ghost_i = %lld, order_i = %lld, dr_i = %E, dz_i = %E.\n", NrTotalInitial, NzTotalInitial, ghost_i, order_i, dr_i, dz_i);
-		write_single_file_2d(u_0 + 0 * NrTotalInitial * NzTotalInitial, "log_alpha_0.asc"	, NrTotalInitial, NzTotalInitial);
-		write_single_file_2d(u_0 + 1 * NrTotalInitial * NzTotalInitial, "beta_0.asc"		, NrTotalInitial, NzTotalInitial);
-		write_single_file_2d(u_0 + 2 * NrTotalInitial * NzTotalInitial, "log_h_0.asc"		, NrTotalInitial, NzTotalInitial);
-		write_single_file_2d(u_0 + 3 * NrTotalInitial * NzTotalInitial, "log_a_0.asc"		, NrTotalInitial, NzTotalInitial);
-		write_single_file_2d(u_0 + 4 * NrTotalInitial * NzTotalInitial, "psi_0.asc"		, NrTotalInitial, NzTotalInitial);
-		write_single_file_2d(u_0 + 5 * NrTotalInitial * NzTotalInitial, "lambda_0.asc"		, NrTotalInitial, NzTotalInitial);
+		write_single_file_2d(u_0 + 0 * ctx->NrTotalInitial * ctx->NzTotalInitial, "log_alpha_0.asc"	, ctx->NrTotalInitial, ctx->NzTotalInitial);
+		write_single_file_2d(u_0 + 1 * ctx->NrTotalInitial * ctx->NzTotalInitial, "beta_0.asc"		, ctx->NrTotalInitial, ctx->NzTotalInitial);
+		write_single_file_2d(u_0 + 2 * ctx->NrTotalInitial * ctx->NzTotalInitial, "log_h_0.asc"		, ctx->NrTotalInitial, ctx->NzTotalInitial);
+		write_single_file_2d(u_0 + 3 * ctx->NrTotalInitial * ctx->NzTotalInitial, "log_a_0.asc"		, ctx->NrTotalInitial, ctx->NzTotalInitial);
+		write_single_file_2d(u_0 + 4 * ctx->NrTotalInitial * ctx->NzTotalInitial, "psi_0.asc"		, ctx->NrTotalInitial, ctx->NzTotalInitial);
+		write_single_file_2d(u_0 + 5 * ctx->NrTotalInitial * ctx->NzTotalInitial, "lambda_0.asc"		, ctx->NrTotalInitial, ctx->NzTotalInitial);
 #endif
 
 		// Interpolate u0 into u.
-		initial_interpolator(u, u_0, NrTotalInitial - 2 * ghost_i, NzTotalInitial - 2 * ghost_i, ghost_i, order_i, dr_i, dz_i,
-			NrInterior, NzInterior, ghost, order, dr, dz, w0, m, l);
+		initial_interpolator(u, u_0, ctx->NrTotalInitial - 2 * ctx->ghost_i, ctx->NzTotalInitial - 2 * ctx->ghost_i, ctx->ghost_i, ctx->order_i, ctx->dr_i, ctx->dz_i,
+			ctx->NrInterior, ctx->NzInterior, ctx->ghost, ctx->order, ctx->dr, ctx->dz, ctx->w0, ctx->m, ctx->l);
 
 
 		// Free initial data.
@@ -118,12 +121,12 @@ void initial_guess(double *u)
 		// log(a)	= 0.0
 		// lambda	= 0.0
 
-		if (!log_alpha_i)
+		if (!ctx->log_alpha_i)
 		{
 			#pragma omp parallel shared(u)
 			{
 				#pragma omp for schedule(guided)
-				for (i = 0 * dim; i <  1 * dim; ++i)
+				for (i = 0 * ctx->dim; i <  1 * ctx->dim; ++i)
 				{
 					u[i] = 0.0;
 				}
@@ -131,16 +134,16 @@ void initial_guess(double *u)
 		}
 		else
 		{
-			read_single_file_2d(u + 0 * dim, log_alpha_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			read_single_file_2d(u + 0 * ctx->dim, ctx->log_alpha_i, ctx->NrTotal, ctx->NzTotal, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
 			printf("***           Read log_alpha initial data.        \n");
 		}
 
-		if (!beta_i)
+		if (!ctx->beta_i)
 		{
 			#pragma omp parallel shared(u)
 			{
 				#pragma omp for schedule(guided)
-				for (i = 1 * dim; i <  2 * dim; ++i)
+				for (i = 1 * ctx->dim; i <  2 * ctx->dim; ++i)
 				{
 					u[i] = 0.0;
 				}
@@ -148,16 +151,16 @@ void initial_guess(double *u)
 		}
 		else
 		{
-			read_single_file_2d(u + 1 * dim, beta_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			read_single_file_2d(u + 1 * ctx->dim, ctx->beta_i, ctx->NrTotal, ctx->NzTotal, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
 			printf("***           Read beta initial data.        \n");
 		}
 
-		if (!log_h_i)
+		if (!ctx->log_h_i)
 		{
 			#pragma omp parallel shared(u)
 			{
 				#pragma omp for schedule(guided)
-				for (i = 2 * dim; i <  3 * dim; ++i)
+				for (i = 2 * ctx->dim; i <  3 * ctx->dim; ++i)
 				{
 					u[i] = 0.0;
 				}
@@ -165,16 +168,16 @@ void initial_guess(double *u)
 		}
 		else
 		{
-			read_single_file_2d(u + 2 * dim, log_h_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			read_single_file_2d(u + 2 * ctx->dim, ctx->log_h_i, ctx->NrTotal, ctx->NzTotal, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
 			printf("***           Read log_h initial data.        \n");
 		}
 
-		if (!log_a_i)
+		if (!ctx->log_a_i)
 		{
 			#pragma omp parallel shared(u)
 			{
 				#pragma omp for schedule(guided)
-				for (i = 3 * dim; i <  4 * dim; ++i)
+				for (i = 3 * ctx->dim; i <  4 * ctx->dim; ++i)
 				{
 					u[i] = 0.0;
 				}
@@ -182,28 +185,28 @@ void initial_guess(double *u)
 		}
 		else
 		{
-			read_single_file_2d(u + 3 * dim, log_a_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			read_single_file_2d(u + 3 * ctx->dim, ctx->log_a_i, ctx->NrTotal, ctx->NzTotal, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
 			printf("***           Read log_a initial data.        \n");
 		}
 
-		if (!psi_i)
+		if (!ctx->psi_i)
 		{
 			// Now do initial guess for phi.
 			#pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
 			{
 				#pragma omp for schedule(dynamic, 1)
-				for (i = ghost; i < NrTotal; ++i)
+				for (i = ctx->ghost; i < ctx->NrTotal; ++i)
 				{
-					r = dr * (i + 0.5 - ghost);
+					r = ctx->dr * (i + 0.5 - ctx->ghost);
 					//rl = pow(r, l);
 
-					for (j = ghost; j < NzTotal; ++j)
+					for (j = ctx->ghost; j < ctx->NzTotal; ++j)
 					{
-					z = dz * (j + 0.5 - ghost);
+					z = ctx->dz * (j + 0.5 - ctx->ghost);
 					rr = sqrt(r * r + z * z);
 
-					u[4 * dim + IDX(i, j)] = psi0 * exp(-0.5 * r * r / (sigmaR * sigmaR)) * exp(-0.5 * z * z / (sigmaZ * sigmaZ))
-						+ (psi0 * exp(-chi * rr) / pow(rr, l + 1)) * (0.5 + 0.5 * erf(2.0 * (rr - rExt) / M_2_SQRTPI));	
+					u[4 * ctx->dim + IDX(i, j)] = ctx->psi0 * exp(-0.5 * r * r / (ctx->sigmaR * ctx->sigmaR)) * exp(-0.5 * z * z / (ctx->sigmaZ * ctx->sigmaZ))
+						+ (ctx->psi0 * exp(-chi * rr) / pow(rr, ctx->l + 1)) * (0.5 + 0.5 * erf(2.0 * (rr - ctx->rExt) / M_2_SQRTPI));	
 					}
 				}
 			}
@@ -211,11 +214,11 @@ void initial_guess(double *u)
 		else
 		{
 			// Rescale scalar field by constant psi0.
-			read_single_file_2d(u + 4 * dim, psi_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			read_single_file_2d(u + 4 * ctx->dim, ctx->psi_i, ctx->NrTotal, ctx->NzTotal, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
 			printf("***           Read psi initial data.        \n");
 		}
 
-		if (!lambda_i)
+		if (!ctx->lambda_i)
 		{
 			/*
 			#pragma omp parallel shared(u)
@@ -227,32 +230,32 @@ void initial_guess(double *u)
 				}
 			}
 			*/
-			k = (MKL_INT)floor(0.5 / dr + ghost - 0.5);
+			k = (MKL_INT)floor(0.5 / ctx->dr + ctx->ghost - 0.5);
 			#pragma omp parallel shared(u) private(i, j, r) // rr.
 			{
 				#pragma omp for schedule(dynamic, 1)
-				for (i = k; i < NrTotal; ++i)
+				for (i = k; i < ctx->NrTotal; ++i)
 				{
-					r = dr * (i + 0.5 - ghost);
+					r = ctx->dr * (i + 0.5 - ctx->ghost);
 					//rl = pow(r, l);
 
-					for (j = ghost; j < NzTotal; ++j)
+					for (j = ctx->ghost; j < ctx->NzTotal; ++j)
 					{
-						u[5 * dim + IDX(i, j)] = (exp(2.0 * u[3 * dim + IDX(i, j)]) - exp(2.0 * u[2 * dim + IDX(i, j)])) / (r * r);
+						u[5 * ctx->dim + IDX(i, j)] = (exp(2.0 * u[3 * ctx->dim + IDX(i, j)]) - exp(2.0 * u[2 * ctx->dim + IDX(i, j)])) / (r * r);
 					}
 				}
 			}
 			for (i = 0; i < k; ++i)
 			{
-				for (j = ghost; j < NzTotal; ++j)
+				for (j = ctx->ghost; j < ctx->NzTotal; ++j)
 				{
-					u[5 * dim + IDX(i, j)] = u[5 * dim + IDX(k, j)];
+					u[5 * ctx->dim + IDX(i, j)] = u[5 * ctx->dim + IDX(k, j)];
 				}
 			}
 		}
 		else
 		{
-			read_single_file_2d(u + 5 * dim, lambda_i, NrTotal, NzTotal, NrTotalInitial, NzTotalInitial, __FILE__, __LINE__);
+			read_single_file_2d(u + 5 * ctx->dim, ctx->lambda_i, ctx->NrTotal, ctx->NzTotal, ctx->NrTotalInitial, ctx->NzTotalInitial, __FILE__, __LINE__);
 			printf("***           Read lambda_i initial data.         \n");
 		}
 	}
@@ -260,32 +263,32 @@ void initial_guess(double *u)
 	// Assert symmetries since they might not be automatic.
 	// All functions are even with respect to the axis and equator.
 	// Corner.
-	for (i = 0; i < ghost; ++i)
+	for (i = 0; i < ctx->ghost; ++i)
 	{
-		for (j = 0; j < ghost; ++j)
+		for (j = 0; j < ctx->ghost; ++j)
 		{
-			u[0 * dim + IDX(i, j)] = u[0 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
-			u[1 * dim + IDX(i, j)] = u[1 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
-			u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
-			u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
-			u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
-			u[5 * dim + IDX(i, j)] = u[5 * dim + IDX(2 * ghost - (i + 1), 2 * ghost - (j + 1))];
+			u[0 * ctx->dim + IDX(i, j)] = u[0 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), 2 * ctx->ghost - (j + 1))];
+			u[1 * ctx->dim + IDX(i, j)] = u[1 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), 2 * ctx->ghost - (j + 1))];
+			u[2 * ctx->dim + IDX(i, j)] = u[2 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), 2 * ctx->ghost - (j + 1))];
+			u[3 * ctx->dim + IDX(i, j)] = u[3 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), 2 * ctx->ghost - (j + 1))];
+			u[4 * ctx->dim + IDX(i, j)] = u[4 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), 2 * ctx->ghost - (j + 1))];
+			u[5 * ctx->dim + IDX(i, j)] = u[5 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), 2 * ctx->ghost - (j + 1))];
 		}
 	}
 	// Axis.
 	#pragma omp parallel shared(u) private(i, j)
 	{
 		#pragma omp for schedule(dynamic, 1)
-		for (j = ghost; j < NzTotal; ++j)
+		for (j = ctx->ghost; j < ctx->NzTotal; ++j)
 		{
-			for (i = 0; i < ghost; ++i)
+			for (i = 0; i < ctx->ghost; ++i)
 			{
-				u[0 * dim + IDX(i, j)] = u[0 * dim + IDX(2 * ghost - (i + 1), j)];
-				u[1 * dim + IDX(i, j)] = u[1 * dim + IDX(2 * ghost - (i + 1), j)];
-				u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(2 * ghost - (i + 1), j)];
-				u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(2 * ghost - (i + 1), j)];
-				u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(2 * ghost - (i + 1), j)];
-				u[5 * dim + IDX(i, j)] = u[5 * dim + IDX(2 * ghost - (i + 1), j)];
+				u[0 * ctx->dim + IDX(i, j)] = u[0 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), j)];
+				u[1 * ctx->dim + IDX(i, j)] = u[1 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), j)];
+				u[2 * ctx->dim + IDX(i, j)] = u[2 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), j)];
+				u[3 * ctx->dim + IDX(i, j)] = u[3 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), j)];
+				u[4 * ctx->dim + IDX(i, j)] = u[4 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), j)];
+				u[5 * ctx->dim + IDX(i, j)] = u[5 * ctx->dim + IDX(2 * ctx->ghost - (i + 1), j)];
 			}
 		}
 	}
@@ -293,36 +296,36 @@ void initial_guess(double *u)
 	#pragma omp parallel shared(u) private(i, j)
 	{
 		#pragma omp for schedule(dynamic, 1)
-		for (i = ghost; i < NrTotal; ++i)
+		for (i = ctx->ghost; i < ctx->NrTotal; ++i)
 		{
-			for (j = 0; j < ghost; ++j)
+			for (j = 0; j < ctx->ghost; ++j)
 			{
-				u[0 * dim + IDX(i, j)] = u[0 * dim + IDX(i, 2 * ghost - (j + 1))];
-				u[1 * dim + IDX(i, j)] = u[1 * dim + IDX(i, 2 * ghost - (j + 1))];
-				u[2 * dim + IDX(i, j)] = u[2 * dim + IDX(i, 2 * ghost - (j + 1))];
-				u[3 * dim + IDX(i, j)] = u[3 * dim + IDX(i, 2 * ghost - (j + 1))];
-				u[4 * dim + IDX(i, j)] = u[4 * dim + IDX(i, 2 * ghost - (j + 1))];
-				u[5 * dim + IDX(i, j)] = u[5 * dim + IDX(i, 2 * ghost - (j + 1))];
+				u[0 * ctx->dim + IDX(i, j)] = u[0 * ctx->dim + IDX(i, 2 * ctx->ghost - (j + 1))];
+				u[1 * ctx->dim + IDX(i, j)] = u[1 * ctx->dim + IDX(i, 2 * ctx->ghost - (j + 1))];
+				u[2 * ctx->dim + IDX(i, j)] = u[2 * ctx->dim + IDX(i, 2 * ctx->ghost - (j + 1))];
+				u[3 * ctx->dim + IDX(i, j)] = u[3 * ctx->dim + IDX(i, 2 * ctx->ghost - (j + 1))];
+				u[4 * ctx->dim + IDX(i, j)] = u[4 * ctx->dim + IDX(i, 2 * ctx->ghost - (j + 1))];
+				u[5 * ctx->dim + IDX(i, j)] = u[5 * ctx->dim + IDX(i, 2 * ctx->ghost - (j + 1))];
 			}
 		}
 	}
 
 	// Before scaling, copy seed to u_seed.
-	memcpy(u_seed + 0 * dim, u + 0 * dim, dim * sizeof(double));
-	memcpy(u_seed + 1 * dim, u + 1 * dim, dim * sizeof(double));
-	memcpy(u_seed + 2 * dim, u + 2 * dim, dim * sizeof(double));
-	memcpy(u_seed + 3 * dim, u + 3 * dim, dim * sizeof(double));
-	memcpy(u_seed + 4 * dim, u + 4 * dim, dim * sizeof(double));
-	memcpy(u_seed + 5 * dim, u + 5 * dim, dim * sizeof(double));
-	memcpy(u_seed + 6 * dim, u + 6 * dim,   1 * sizeof(double));
+	memcpy(ctx->u_seed + 0 * ctx->dim, u + 0 * ctx->dim, ctx->dim * sizeof(double));
+	memcpy(ctx->u_seed + 1 * ctx->dim, u + 1 * ctx->dim, ctx->dim * sizeof(double));
+	memcpy(ctx->u_seed + 2 * ctx->dim, u + 2 * ctx->dim, ctx->dim * sizeof(double));
+	memcpy(ctx->u_seed + 3 * ctx->dim, u + 3 * ctx->dim, ctx->dim * sizeof(double));
+	memcpy(ctx->u_seed + 4 * ctx->dim, u + 4 * ctx->dim, ctx->dim * sizeof(double));
+	memcpy(ctx->u_seed + 5 * ctx->dim, u + 5 * ctx->dim, ctx->dim * sizeof(double));
+	memcpy(ctx->u_seed + 6 * ctx->dim, u + 6 * ctx->dim,   1 * sizeof(double));
 	
 	// Scale initial data.
-	cblas_dscal(dim, scale_u0, u + 0 * dim, 1);
-	cblas_dscal(dim, scale_u1, u + 1 * dim, 1);
-	cblas_dscal(dim, scale_u2, u + 2 * dim, 1);
-	cblas_dscal(dim, scale_u3, u + 3 * dim, 1);
-	cblas_dscal(dim, scale_u4, u + 4 * dim, 1);
-	cblas_dscal(dim, scale_u5, u + 5 * dim, 1);
+	cblas_dscal(ctx->dim, ctx->scale_u0, u + 0 * ctx->dim, 1);
+	cblas_dscal(ctx->dim, ctx->scale_u1, u + 1 * ctx->dim, 1);
+	cblas_dscal(ctx->dim, ctx->scale_u2, u + 2 * ctx->dim, 1);
+	cblas_dscal(ctx->dim, ctx->scale_u3, u + 3 * ctx->dim, 1);
+	cblas_dscal(ctx->dim, ctx->scale_u4, u + 4 * ctx->dim, 1);
+	cblas_dscal(ctx->dim, ctx->scale_u5, u + 5 * ctx->dim, 1);
 	// Omega has already been scaled.
 	//cblas_dscal(  1, scale_u6, u + 6 * dim, 1);
 

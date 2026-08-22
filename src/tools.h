@@ -1,12 +1,12 @@
 // ARCHITECTURE
+#ifndef ROTBOSON_TOOLS_H
+#define ROTBOSON_TOOLS_H
+
 #include "arch.h"
 
 // Standard headers.
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef WIN
-#define _USE_MATH_DEFINES
-#endif
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <time.h>
@@ -17,18 +17,10 @@
 // System headers.
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifdef WIN
-#include <io.h>
-#include <direct.h>
-#else
 #include <unistd.h>
-#endif
 
 // Intel MKL
 #include "mkl.h"
-
-// Libconfig for parameter parsing.
-#include <libconfig.h>
 
 // Indexing macro: requires that NzTotal be defined in scope.
 #define IDX(i, j) ((i) * NzTotal + (j))
@@ -51,9 +43,6 @@
 /* Macro for array sum z = alpha * x + beta * y: for alpha, beta scalars; z, x, y arrays. */
 #define ARRAY_SUM(Z, ALPHA, X, BETA, Y) array_sum((Z), (ALPHA), (X), (BETA), (Y), dim)
 void array_sum(double *z, const double alpha, double *x, const double beta, double *y, const MKL_INT dim);
-
-/* Macro for coupled array sum for regularization. */
-void coupled_du(double *du, double *u, const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT ghost, const double dr, const double mu);
 
 // Safe allocation macros.
 #define SAFE_MALLOC(n) safe_malloc((n), __FILE__, __LINE__)
@@ -98,3 +87,5 @@ void csr_allocate(csr_matrix *A, const MKL_INT nrows, const MKL_INT ncols, const
 void csr_deallocate(csr_matrix *A);
 // CSR matrix print.
 void csr_print(csr_matrix *A, const char *vA, const char *iA, const char *jA);
+
+#endif /* ROTBOSON_TOOLS_H */

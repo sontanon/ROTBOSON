@@ -22,7 +22,7 @@ from rotboson_io import find_solution_dirs, read_scalar
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "out"
 BIN = REPO / "ROTBOSON"
-TEMPLATE = REPO / "data/params/regeneration/l=2,validate.par"
+TEMPLATE = REPO / "data/params/regeneration/l=2,validate.toml"
 LOGFILE = OUT / "ladder.log"
 
 SEED_FILES = [
@@ -91,7 +91,7 @@ def main() -> int:
     log(f"# ladder continuation from {seed.name}")
 
     for step in range(1, args.max_steps + 1):
-        par = OUT / f"ladder_step{step}.par"
+        par = OUT / f"ladder_step{step}.toml"
         make_par(seed, par)
         log(f"step {step}: seeding from {seed.name} ...")
         new = run_step(par, step)

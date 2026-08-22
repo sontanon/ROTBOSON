@@ -1,7 +1,7 @@
 // Include headers.
 #include "tools.h"
+#include "context.h"
 #include "qnres.h"
-#include "regularization_coupling.h"
 
 // Debug print Jacobian CSR matrix.
 #define DEBUG_PRINT 0
@@ -21,7 +21,8 @@
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0) and ||F(u^0)||.
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
-MKL_INT nleq_res(	      
+MKL_INT nleq_res(
+		      rb_context 	*ctx,			// INPUT: Runtime context.	      
 		      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		      double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 		      					//            First entry contains initial guess.
@@ -43,12 +44,12 @@ MKL_INT nleq_res(
 		const MKL_INT	max_trial_B_iterations,	// INPUT: Maximum number of trial A iterations.
 		const double 	lambda_min,		// INPUT: Minimum damping factor.
 		const MKL_INT	qnres,			// INPUT: Boolean to indicate whether to use QNERR.
-		      void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
-		      void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(double *),					// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(double *, double *),				// INPUT: Dot product calculation subroutine.
-		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
-		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
+		      rb_rhs_fn	RHS_CALC,				// INPUT: RHS calculation subroutine.
+		      rb_jacobian_fn	JACOBIAN_CALC,	// INPUT: Jacobian calculation subroutine.
+		      rb_norm_fn	NORM,					// INPUT: Norm calculation subroutine.
+		      rb_dot_fn	DOT,				// INPUT: Dot product calculation subroutine.
+		      rb_linear_solve_fn	LINEAR_SOLVE_1,		// INPUT: Linear solver subroutine.
+		      rb_linear_solve_fn	LINEAR_SOLVE_2		// INPUT: Linear solver subroutine.
 	)
 {
 	// Print initial message.
@@ -128,14 +129,10 @@ MKL_INT nleq_res(
 		// Else: Evaluate Jacobian matrix J(u^k). Solve linear system J(u^k) du^k = -f(u^k).
 
 		/* Now calculate Jacobian matrix J(u^k) into matrix. */
-		JACOBIAN_CALC(*J, u[k], 0);
+		JACOBIAN_CALC(ctx, *J, u[k], 0);
 
 		/* Solve linear system. */
 		LINEAR_SOLVE_1(du[k], J, f[k]);
-
-#ifdef REGULARIZATION_COUPLING
-		coupled_du(du[k], u[k], solver_NrTotal, solver_NzTotal, solver_ghost, solver_dr, REG_MU);
-#endif
 
 		// For k > 0: compute a prediction value for the damping factor.
 		if (k > prediction_start)
@@ -172,8 +169,8 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 		// 2. Else: compute the trial iterate u^{k+1} = u^k + lambda_k du^k and evaluate
 		//          f(u^{k+1}) and its norm.
 TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
-		RHS_CALC(f[k + 1], u[k + 1]);
-		norm_f[k + 1] = NORM(f[k + 1]);
+		RHS_CALC(ctx, f[k + 1], u[k + 1]);
+		norm_f[k + 1] = NORM(ctx, f[k + 1]);
 
 		// 3. Compute the monitoring quantities.
 		//    Theta_k    = ||f(u^{k+1})|| / ||f(u^k)||.
@@ -181,7 +178,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		/* Auxiliary memory block. */
 		ARRAY_SUM(aux, 1.0, f[k + 1], (lambda[k] - 1.0), f[k]);
-		norm_f_minus_one_minus_lambda_f = NORM(aux);
+		norm_f_minus_one_minus_lambda_f = NORM(ctx, aux);
 
 		Theta[k]    = norm_f[k + 1] / norm_f[k];
 		mu_prime[k] = 0.5 * norm_f[k] * lambda[k] * lambda[k] / norm_f_minus_one_minus_lambda_f;
@@ -253,7 +250,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 				// Theta will remain the monitoring quantity, whereas mu is the gamma parameter inside QNERR.
 				// At this point we have done k + 1 iterations, so QNRES is called with that number less iterations.
 				// qnres_stop is the returned integer: it will be positive if QNRES succeeded, but negative otherwise.
-				qnres_stop = nleq_res_qnres(&qnres_code, u + k + 1, f + k + 1,
+				qnres_stop = nleq_res_qnres(ctx, &qnres_code, u + k + 1, f + k + 1,
 					du + k + 1, norm_f + k + 1, Theta + k + 1, mu + k + 1,
 					J, epsilon, max_newton_iterations - (k + 1),
 					RHS_CALC, JACOBIAN_CALC, NORM, DOT, LINEAR_SOLVE_1, LINEAR_SOLVE_2);

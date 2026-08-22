@@ -1,5 +1,6 @@
 // Include headers.
 #include "tools.h"
+#include "context.h"
 #include "qnerr.h"
 
 // Debug print Jacobian CSR matrix.
@@ -22,7 +23,8 @@
 // Set a required error accuracy epsilon sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0).
 // Set a damping factor either lambda_0 = 1 or lambda_0 << 1.
-MKL_INT nleq_err(	      
+MKL_INT nleq_err(
+		      rb_context 	*ctx,			// INPUT: Runtime context.	      
 		      MKL_INT 	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		      double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 		      					//            First entry contains initial guess.
@@ -45,12 +47,12 @@ MKL_INT nleq_err(
 		const MKL_INT	max_trial_B_iterations,	// INPUT: Maximum number of trial B iterations.
 		const double 	lambda_min,		// INPUT: Minimum damping factor.
 		const MKL_INT	qnerr,			// INPUT: Boolean to indicate whether to use QNERR.
-		      void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
-		      void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-		      double	(*NORM)(double *),					// INPUT: Norm calculation subroutine.
-		      double	(*DOT)(double *, double *),				// INPUT: Dot product calculation subroutine.
-		      void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
-		      void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
+		      rb_rhs_fn	RHS_CALC,				// INPUT: RHS calculation subroutine.
+		      rb_jacobian_fn	JACOBIAN_CALC,	// INPUT: Jacobian calculation subroutine.
+		      rb_norm_fn	NORM,					// INPUT: Norm calculation subroutine.
+		      rb_dot_fn	DOT,				// INPUT: Dot product calculation subroutine.
+		      rb_linear_solve_fn	LINEAR_SOLVE_1,		// INPUT: Linear solver subroutine.
+		      rb_linear_solve_fn	LINEAR_SOLVE_2		// INPUT: Linear solver subroutine.
 	)
 {
 	// Print initial message.
@@ -104,17 +106,17 @@ MKL_INT nleq_err(
 		//            J(u^k) du^k = -f(u^k).
 
 		/* Now calculate Jacobian matrix J(u^k) into matrix. */
-		JACOBIAN_CALC(*J, u[k], DEBUG_PRINT);
+		JACOBIAN_CALC(ctx, *J, u[k], DEBUG_PRINT);
 
 		/* Solve linear system. */
 		LINEAR_SOLVE_1(du[k], J, f[k]);
 
 		/* Calculate ||du^k||. */
-		norm_du[k] = NORM(du[k]);
+		norm_du[k] = NORM(ctx, du[k]);
 
 #ifdef NORMALIZED
 		/* Calculate solution norm. */
-		norm_u = NORM(u[k]);
+		norm_u = NORM(ctx, u[k]);
 #endif
 
 		/* Print table header every 50 iterations. */
@@ -159,7 +161,7 @@ MKL_INT nleq_err(
 		{
 			/* Auxiliary memory block calculation */
 			ARRAY_SUM(aux, 1.0, du_bar[k], -1.0, du[k]);
-			norm_du_bar_minus_du = NORM(aux);
+			norm_du_bar_minus_du = NORM(ctx, aux);
 
 			mu[k] = (norm_du[k - 1] * norm_du_bar[k] * lambda[k - 1]) / (norm_du_bar_minus_du * norm_du[k]);
 
@@ -203,13 +205,13 @@ REGULARITY_TEST:if (lambda[k] < lambda_min)
 		//          f(u^{k + 1}). Solve the linear system ('old' Jacobian, 'new' RHS):
 		//          J(u^k) du_bar^{k + 1} = -f(u^{k + 1}).
 TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
-		RHS_CALC(f[k + 1], u[k + 1]);
+		RHS_CALC(ctx, f[k + 1], u[k + 1]);
 		LINEAR_SOLVE_2(du_bar[k + 1], J, f[k + 1]);
 
-		norm_du_bar[k + 1] = NORM(du_bar[k + 1]);
+		norm_du_bar[k + 1] = NORM(ctx, du_bar[k + 1]);
 
 #ifdef NORMALIZED
-		norm_u = NORM(u[k + 1]);
+		norm_u = NORM(ctx, u[k + 1]);
 #endif
 
 		// 3. Compute the monitoring quantities
@@ -218,7 +220,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 
 		/* Auxiliary memory block. */
 		ARRAY_SUM(aux, 1.0, du_bar[k + 1], (lambda[k] - 1.0), du[k]);
-		norm_du_bar_minus_one_minus_lambda_du = NORM(aux);
+		norm_du_bar_minus_one_minus_lambda_du = NORM(ctx, aux);
 
 		Theta[k]    = norm_du_bar[k + 1] / norm_du[k];
 		mu_prime[k] = 0.5 * norm_du[k] * lambda[k] * lambda[k] / norm_du_bar_minus_one_minus_lambda_du;
@@ -323,7 +325,7 @@ TRIAL_ITERATE:	ARRAY_SUM(u[k + 1], 1.0, u[k], lambda[k], du[k]);
 					/* Theta will remain the monitoring quantity, whereas mu is the alpha parameter inside QNERR. */
 					/* At this point, we have done k + 1 iterations, so QNERR is called with that number less iterations. */
 					/* qnerr_stop is the returned integer: it will be positive if QNERR succeeded, but negative otherwise. */
-					qnerr_stop = nleq_err_qnerr(&qnerr_code, u + k + 1, f + k + 1, 
+					qnerr_stop = nleq_err_qnerr(ctx, &qnerr_code, u + k + 1, f + k + 1, 
 							du + k + 1, du_bar + k + 1,
 							norm_du + k + 1, norm_du_bar + k + 1, Theta + k + 1, mu + k + 1,
 							J, epsilon, max_newton_iterations - (k + 1), 

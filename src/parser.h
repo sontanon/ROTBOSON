@@ -1,1 +1,3 @@
-void parser(const char *fname);
+#include "context.h"
+
+void parser(rb_context *ctx, const char *fname);

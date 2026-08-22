@@ -163,17 +163,17 @@ void ex_analysis(
 	double *J_Komar2 = (double *)SAFE_MALLOC(sizeof(double) * NrrTotal);
 
 	// Calculate radial derivatives.
-	diff1rr(sph_Drr_log_alpha, 	sph_log_alpha, 	EVEN);
-	diff1rr(sph_Drr_beta, 		sph_beta, 	EVEN);
-	diff1rr(sph_Drr_log_h, 		sph_log_h, 	EVEN);
-	diff1rr(sph_Drr_log_a, 		sph_log_a, 	EVEN);
-	diff1rr(sph_Drr_psi, 		sph_psi, 	EVEN);
+	ex_diff1rr(sph_Drr_log_alpha, 	sph_log_alpha, 	EVEN, drr, NrrTotal, NthTotal, ghost, order);
+	ex_diff1rr(sph_Drr_beta, 		sph_beta, 	EVEN, drr, NrrTotal, NthTotal, ghost, order);
+	ex_diff1rr(sph_Drr_log_h, 		sph_log_h, 	EVEN, drr, NrrTotal, NthTotal, ghost, order);
+	ex_diff1rr(sph_Drr_log_a, 		sph_log_a, 	EVEN, drr, NrrTotal, NthTotal, ghost, order);
+	ex_diff1rr(sph_Drr_psi, 		sph_psi, 	EVEN, drr, NrrTotal, NthTotal, ghost, order);
 	// Calculate angular derivatives.
-	diff1th(sph_Dth_log_alpha, 	sph_log_alpha, 	EVEN, EVEN);
-	diff1th(sph_Dth_beta, 		sph_beta, 	EVEN, EVEN);
-	diff1th(sph_Dth_log_h, 		sph_log_h, 	EVEN, EVEN);
-	diff1th(sph_Dth_log_a, 		sph_log_a, 	EVEN, EVEN);
-	diff1th(sph_Dth_psi, 		sph_psi, 	EVEN, EVEN);
+	ex_diff1th(sph_Dth_log_alpha, 	sph_log_alpha, 	EVEN, EVEN, dth, NrrTotal, NthTotal, ghost, order);
+	ex_diff1th(sph_Dth_beta, 		sph_beta, 	EVEN, EVEN, dth, NrrTotal, NthTotal, ghost, order);
+	ex_diff1th(sph_Dth_log_h, 		sph_log_h, 	EVEN, EVEN, dth, NrrTotal, NthTotal, ghost, order);
+	ex_diff1th(sph_Dth_log_a, 		sph_log_a, 	EVEN, EVEN, dth, NrrTotal, NthTotal, ghost, order);
+	ex_diff1th(sph_Dth_psi, 		sph_psi, 	EVEN, EVEN, dth, NrrTotal, NthTotal, ghost, order);
 
 	// Schwarzschild Psuedomass.
 	// First compute integrands.

@@ -178,7 +178,8 @@ void solver_solve_low_rank(double *u, csr_matrix *A, double *f)
     solver_solve(u, A, f);
 }
 
-void solver_diff_gen(void)
+void solver_diff_gen(rb_context *ctx)
 {
     // No low-rank bookkeeping needed.
+    (void)ctx;
 }

@@ -188,6 +188,55 @@ reference; revisit before Phase 6.
   re-running the golden tests after each step.
 - Delete `deprecated/`, dead `regularization_coupling.h` code, unused ifdefs.
 
+#### Phase 2 — OUTCOME (completed 2026-08-22)
+
+Phase 2 is **closed** on branch `phase2/config-refactor`. Full write-up of the
+anti-patterns found and how each was fixed is in `docs/code-critique.md`.
+
+- **Config:** libconfig removed; a vendored `tomlc99` (`third_party/tomlc99/`,
+  MIT, commit `29076df`) parses flat TOML parameter files. `parser.c` shrunk
+  ~672 → ~470 lines behind a known-key schema: unknown keys are **rejected**
+  (libconfig silently ignored them — e.g. the dead `*BoundOrder`/`dirname` keys),
+  wrong-typed values are hard errors, and range checks are unchanged. All
+  tracked `.par` files ported to `.toml` via `tools/par_to_toml.py`.
+- **Global state:** `param.h`'s `#ifdef MAIN_FILE` + `extern` globals are gone;
+  an `rb_context` struct (`src/context.h`) is passed explicitly to `parser`,
+  `rhs`, `csr_gen_jacobian`, `initial_guess`, `solver_diff_gen`, the norm/dot
+  algebra, and the Newton/qn solver cores (callback typedefs `rb_rhs_fn` etc.).
+  The global-capturing convenience macros (`diff1r/...`, `cart_to_pol`,
+  `analysis`) were deleted in favour of explicit `ex_*` calls. `tools.h` gained
+  the include guards it had always been missing.
+- **Structure:** `main.c` (797 → ~760 lines, but now a thin driver) split into
+  `print_banner` / `print_parameters` / `configure_openmp` / `run_newton` /
+  `run_analysis` / `sweep_advance`.
+- **Dead code:** `src/deprecated/`, `regularization_coupling.h`, the
+  always-disabled `REGULARIZATION_COUPLING` blocks and `coupled_du`, `#ifdef WIN`
+  branches, and the `#undef`'d `PRINT_HISTORY` / unused `NEXT_SCALE_JUMP` are gone.
+- **Validation:** bit-for-bit unchanged on **both** backends. l=1 w=0.95 smoke
+  solve reproduces `w=9.49999...E-01` and every Komar/phi observable to the last
+  digit (PARDISO and UMFPACK). The l=1 N=400 golden regeneration matches
+  `data/golden/` to ~1e-13 (same as Phase 0), all fields + observables PASS.
+
+#### Deferred cleanup backlog (from the Phase 2 critique)
+
+The items below were catalogued in `docs/code-critique.md` but deliberately not
+fixed in Phase 2 (out of scope / risky to do without tests). They are queued
+against the phase that will actually address them, so nothing is lost:
+
+| # | Smell (critique §) | Target phase | Note |
+|---|---|---|---|
+| 1 | `pardiso_param.h` global state (`solver`/`pt[64]`/`iparm[64]`/`perm`/`diff`) | 6 | wrap in a `solver_backend` struct before the Rust port |
+| 2 | `MKL_INT` pervades non-MKL code | 6 | de-MKL-ification of types |
+| 3 | `tools.h` kitchen-sink header (MKL/OpenMP) | 6 (start in 3) | split while tests land |
+| 4 | magic numbers: `RESCALE`, `MIN/MAX/ABS`, `BASE=1`, `8,8` trial limits | 3 | named constants/removal as tests are written |
+| 5 | missing `const`-correctness on read-only pointers | 3 | mechanical; do alongside tests |
+| 6 | solver error/return-convention confusion (`err_code` out-param + ±k) | 3 | clarify the contract in tests; change carefully (golden-verified control flow) |
+| 7 | generated code hygiene (unused params/vars in `csr_vars.c` etc.) | 4 | fixed by SymPy regeneration, not hand-editing |
+| 8 | ASCII `.asc` I/O baked in everywhere; no reader/writer abstraction | 5 | HDF5 + legacy exporter |
+| 9 | logging vs banner noise; `***` spam; no log level | 5 | alongside HDF5/CLI |
+| 10 | dead initializers / naming (`double w = m;`, reused `i,j,k,counter_i`) | 3 | trivial sweep |
+| 11 | `io.c` commented-out `system("cp …")` block | 5 | remove when I/O is reworked |
+
 ### Phase 3 — Testing strategy (Criterion + CTest)
 
 Layered suite:
@@ -199,6 +248,9 @@ Layered suite:
 4. **Regression:** end-to-end par runs vs Phase 0 goldens (ω, masses, profiles),
    run on every refactor commit.
 
+Phase 3 also retires backlog items #4–#6 and #10 above as the tests give a safe
+net for the mechanical cleanups.
+
 ### Phase 4 — SymPy code generation
 
 - Re-derive the Einstein–Klein–Gordon system (axisymmetric, l≥1, regularization variable)
@@ -209,11 +261,17 @@ Layered suite:
   and Jacobian C code (plus stencil weights). Generated files are checked in; a test
   verifies "regenerated == checked-in".
 
+Phase 4 also retires backlog item #7 (generated-code hygiene), since the code is
+regenerated rather than hand-cleaned.
+
 ### Phase 5 — Output format: HDF5
 
 - HDF5 via CMake: one self-describing file per solution (fields, grids, attributes:
   params, git hash, solver settings). Keep a legacy `.asc` exporter during transition.
 - Python readers (`h5py`) in the `uv` project; golden `.asc` data provides migration fixtures.
+
+Phase 5 also retires backlog items #8, #9 and #11 (I/O abstraction, logging, and
+the stale commented-out copy block in `io.c`).
 
 ### Phase 6 — Rust migration (last, opportunistic)
 
@@ -223,6 +281,9 @@ Layered suite:
 - Candidate stack: `faer` or FFI to MKL/UMFPACK, `serde` + `toml`, `hdf5` crate, `ndarray`.
 - Before starting, revisit the deferred perturbation-solver patch on the drive
   (archive it; it may inform the stability/evolution features).
+
+Phase 6 also retires backlog items #1–#3 (the `solver_backend` struct, `MKL_INT`
+de-MKL-ification, and the `tools.h` split).
 
 ## 4. Dependencies between phases
 
@@ -250,11 +311,11 @@ them from the backup drive (see `data/golden/README.md` and `MANIFEST.sha256`).
 source /opt/intel/oneapi/setvars.sh        # sets MKLROOT (pardiso backend only)
 cmake --preset release && cmake --build --preset release -j
 uv sync --dev
-uv run tools/smoke.py out/l1_from_scratch.par --skip-build
+uv run tools/smoke.py out/l1_from_scratch.toml --skip-build
 
-# Regenerate one golden solution and compare (par must run from out/).
-# Regeneration par files for l=1..6 live in data/params/regeneration/.
-cd out && ../build/release/ROTBOSON ../data/params/regeneration/l=1,validate.par
+# Regenerate one golden solution and compare (config must run from out/).
+# Regeneration files for l=1..6 live in data/params/regeneration/.
+cd out && ../build/release/ROTBOSON ../data/params/regeneration/l=1,validate.toml
 cd .. && uv run tools/compare_solutions.py \
     "data/golden/l=1,w=9.00000E-01,dr=8.00000E-02,N=0400" \
     "out/l=1,w=9.00000E-01,dr=8.00000E-02,N=0400"

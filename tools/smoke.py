@@ -1,13 +1,13 @@
-"""Smoke test: build ROTBOSON, run a par file, and extract key observables.
+"""Smoke test: build ROTBOSON, run a parameter file, and extract key observables.
 
 Usage (run from repo root with a uv-managed environment):
-    uv run tools/smoke.py <parfile> [--skip-build] [--jobs N]
+    uv run tools/smoke.py <configfile> [--skip-build] [--jobs N]
 
-Requires MKLROOT and LIBCONFIGROOT (or an activated oneAPI environment) and
-the executables' runtime libs on the library path. On Fedora:
-    LIBCONFIGROOT=/usr  and  source /opt/intel/oneapi/setvars.sh
+Requires MKLROOT (or an activated oneAPI environment) and the executables'
+runtime libs on the library path. On Fedora:
+    source /opt/intel/oneapi/setvars.sh
 
-The par file must be run from out/ (ROTBOSON chdirs into the generated
+The parameter file must be run from out/ (ROTBOSON chdirs into the generated
 directory). Output is written to out/ as before.
 """
 

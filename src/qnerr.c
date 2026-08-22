@@ -1,4 +1,5 @@
 #include "tools.h"
+#include "context.h"
 
 // Error codes.
 #define ERROR_CODE_SUCCESS 				  0
@@ -10,6 +11,7 @@
 #define MIN_ITERATIONS 0
 
 MKL_INT nleq_err_qnerr(	
+	        rb_context	*ctx,		// INPUT: Runtime context.
 	        MKL_INT	*err_code,		// OUTPUT: Pointer to integer containing error code.
 		double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
 						//            First entry contains initial guess.
@@ -24,12 +26,12 @@ MKL_INT nleq_err_qnerr(
 	csr_matrix	*J,			// INPUT: Pointer to Jacobian matrix type.
 	const 	double	epsilon,		// INPUT: Exit tolerance.
 	const	MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.
-	      	void	(*RHS_CALC)(double *, double *),				// INPUT: RHS calculation subroutine.
-	      	void	(*JACOBIAN_CALC)(csr_matrix, double *, const MKL_INT),	// INPUT: Jacobian calculation subroutine.
-	      	double	(*NORM)(double *)	,					// INPUT: Norm calculation subroutine.
-	      	double	(*DOT)(double *, double *)	,			// INPUT: Dot product calculation subroutine.
-	      	void 	(*LINEAR_SOLVE_1)(double *, csr_matrix *, double *),		// INPUT: Linear solver subroutine.
-	      	void 	(*LINEAR_SOLVE_2)(double *, csr_matrix *, double *)		// INPUT: Linear solver subroutine.
+	      	rb_rhs_fn	RHS_CALC,				// INPUT: RHS calculation subroutine.
+	      	rb_jacobian_fn	JACOBIAN_CALC,	// INPUT: Jacobian calculation subroutine.
+	      	rb_norm_fn	NORM,					// INPUT: Norm calculation subroutine.
+	      	rb_dot_fn	DOT,			// INPUT: Dot product calculation subroutine.
+	      	rb_linear_solve_fn	LINEAR_SOLVE_1,		// INPUT: Linear solver subroutine.
+	      	rb_linear_solve_fn	LINEAR_SOLVE_2		// INPUT: Linear solver subroutine.
 	 )
 {
 	/* Iteration counters. */
@@ -45,13 +47,13 @@ MKL_INT nleq_err_qnerr(
 	double norm_u = 1.0;
 
 	/* Calculate Jacobian J(u^0). */
-	JACOBIAN_CALC(*J, u[l], 0);
+	JACOBIAN_CALC(ctx, *J, u[l], 0);
 
 	// Solve  linear system J(u^0) du^0 = -f(u^0).
 	LINEAR_SOLVE_1(du[l], J, f[l]);
 
 	// Calculate ||du^0||.
-	norm_du[l] = NORM(du[l]);
+	norm_du[l] = NORM(ctx, du[l]);
 
 	// 1. Step l.
 	for (l = 0; l < max_newton_iterations; ++l)
@@ -68,7 +70,7 @@ MKL_INT nleq_err_qnerr(
 		ARRAY_SUM(u[l + 1], 1.0, u[l], 1.0, du[l]);
 
 		// Evaluation f(u^{l+1}).
-		RHS_CALC(f[l + 1], u[l + 1]);
+		RHS_CALC(ctx, f[l + 1], u[l + 1]);
 
 		// Linear system solve J(u^0) du_bar^{l+1} = -f(u^{l+1}).
 		LINEAR_SOLVE_2(du_bar[l + 1], J, f[l + 1]);
@@ -79,7 +81,7 @@ MKL_INT nleq_err_qnerr(
 			for (i = 1; i < l + 1; ++i)
 			{
 				// alpha_bar = (du_bar^{l+1} . du^{i-1}) / ||du^{i-1}||^2.
-				alpha_bar = DOT(du_bar[l + 1], du[i - 1]) / (norm_du[i - 1] * norm_du[i - 1]);
+				alpha_bar = DOT(ctx, du_bar[l + 1], du[i - 1]) / (norm_du[i - 1] * norm_du[i - 1]);
 				// du_bar^{l+1} += alpha_bar * du^i.
 				ARRAY_SUM(du_bar[l + 1], 1.0, du_bar[l + 1], alpha_bar, du[i]);
 			}
@@ -87,9 +89,9 @@ MKL_INT nleq_err_qnerr(
 
 		// 3. Compute.
 		// alpha_{l+1} = (du_bar^{l+1} . du^l) / ||du^l||^2.
-		alpha[l + 1] = DOT(du_bar[l + 1], du[l]) / (norm_du[l] * norm_du[l]);
+		alpha[l + 1] = DOT(ctx, du_bar[l + 1], du[l]) / (norm_du[l] * norm_du[l]);
 
-		norm_du_bar[l + 1] = NORM(du_bar[l + 1]);
+		norm_du_bar[l + 1] = NORM(ctx, du_bar[l + 1]);
 
 		// Theta_l = ||du_bar^{l+1}|| / ||du^l||.
 		Theta[l] = norm_du_bar[l + 1] / norm_du[l];
@@ -112,8 +114,8 @@ MKL_INT nleq_err_qnerr(
 		// 4. Compute.
 		// du^{l+1} = du_bar^{l+1} / (1 - alpha_{l+1}).
 		ARRAY_SUM(du[l + 1], 1.0 / (1.0 - alpha[l + 1]), du_bar[l + 1], 0.0, du[l + 1]);
-		norm_du[l + 1] = NORM(du[l + 1]);
-		norm_u = NORM(u[l + 1]);
+		norm_du[l + 1] = NORM(ctx, du[l + 1]);
+		norm_u = NORM(ctx, u[l + 1]);
 
 		// Convergence test: If ||du^{l+1}|| < epsilon: stop. Solution found u* = u^{l+1} + du^{l+1}.
 #ifdef NORMALIZED
