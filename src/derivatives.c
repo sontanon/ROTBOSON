@@ -524,7 +524,7 @@ void ex_diff1th(double *dvar, const double *var, const MKL_INT symr, const MKL_I
 		#pragma omp parallel shared(dvar) private(i, j)
 		{
 			#pragma omp for schedule(dynamic, 1)
-			for (j = 1; j < NthTotal; ++j)
+			for (j = 1; j < NthTotal - 1; ++j)
 			{
 				for (i = 0; i < NrrTotal; ++i)
 				{
