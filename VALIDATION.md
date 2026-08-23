@@ -81,3 +81,20 @@ solution directory name and omega.
 - `tools/check_against_summary.py` — cross-check against data/summaries/l={1..6}.asc
 - `tools/reconstruct_grv.py` — recompute GRV2/GRV3 from saved spherical data
 - `tools/ladder_continue.py` — fixedPhi scale-ladder continuation (with logging)
+
+## 6. Phase 4 (SymPy code generation) validation
+
+Phase 4 re-derived the residual + Jacobian in SymPy and regenerated the C
+kernels.  Two independent checks, plus the fidelity anchor:
+
+- **Symbolic cross-check** (`tools/sympy_check.py`): the SymPy Jacobian matches
+  the Mathematica-pasted strings in the codegen notebook at all 6×31 entries
+  (hundreds of random points).
+- **MMS convergence** (`tools/mms_test.py`): the residual recovers a
+  manufactured solution at the design 4th order on the interior (observed
+  ~3.3 → ~3.8 on 64→256 grids).
+- **Golden gate (§4c):** with the regenerated `csr_vars.c` + `rhs_vars.c`, the
+  l=1 w=0.9 N=400 golden regeneration still matches `data/golden/` to ~1e-13
+  (fields + all observables PASS at rtol=1e-10), and the l=1 w=0.95
+  from-scratch smoke reproduces the expected ω.  Reproducibility is enforced
+  by `tools/generate_kernels.py --check` (byte-identical regeneration).
