@@ -88,6 +88,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+      - name: Install clang-format (codegen idempotency check needs it)
+        run: sudo apt-get update && sudo apt-get install -y clang-format
       - name: Sync Python tooling
         run: uv sync --dev
       - name: Cross-check SymPy Jacobian vs codegen notebook
