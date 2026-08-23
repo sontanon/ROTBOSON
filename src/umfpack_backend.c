@@ -17,11 +17,11 @@
 
 static MKL_INT sys_n = 0;
 
-static void *Sym = NULL;      // symbolic factorization
-static void *Num = NULL;      // numeric factorization
+static void *Sym = NULL; // symbolic factorization
+static void *Num = NULL; // numeric factorization
 static int64_t *CSC_Ap = NULL; // CSC column pointers (n+1)
 static int64_t *CSC_Ai = NULL; // CSC row indices (nnz)
-static double *CSC_Ax = NULL;  // CSC values (nnz)
+static double *CSC_Ax = NULL; // CSC values (nnz)
 static double Control[UMFPACK_CONTROL];
 static double Info[UMFPACK_INFO];
 

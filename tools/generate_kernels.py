@@ -20,6 +20,8 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -677,6 +679,26 @@ void rhs_bdry(double *f, double *u, double *Dr_u, double *Dz_u,
     )
 
 
+def _clang_format(content: str, filename: str, repo: Path) -> str:
+    """Pipe generated C through clang-format (repo .clang-format style).
+
+    The checked-in kernels are stored clang-format-clean; running the formatter
+    here keeps the generator idempotent with respect to a repo-wide
+    clang-format pass.  If clang-format is unavailable the raw text is returned
+    unchanged (the idempotency check will then simply compare raw text).
+    """
+    if shutil.which("clang-format") is None:
+        return content
+    proc = subprocess.run(
+        ["clang-format", "--style=file", f"--assume-filename={filename}"],
+        input=content,
+        text=True,
+        capture_output=True,
+        cwd=repo,
+    )
+    return proc.stdout if proc.returncode == 0 else content
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -688,6 +710,8 @@ def main() -> int:
     s, R, f, Jc = ss.build_c()
     jac_str = _expr_strings(Jc)
 
+    repo = Path(__file__).resolve().parent.parent
+
     files = {
         "src/csr_vars.c": emit_csr_vars_c(jac_str),
         "src/csr_vars.h": emit_csr_vars_h(),
@@ -695,9 +719,9 @@ def main() -> int:
         "src/rhs_vars.h": emit_rhs_vars_h(),
     }
 
-    repo = Path(__file__).resolve().parent.parent
     changed = False
     for rel, content in files.items():
+        content = _clang_format(content, rel, repo)
         target = repo / rel
         if args.check:
             if not target.exists() or target.read_text() != content:

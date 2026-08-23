@@ -13,159 +13,184 @@
 #define Q1 1.0
 #define Q2 1.0
 
-void rhs_vars(
-	double *f, double *u, double *Dr_u, double *Dz_u,
-	double *Drr_u, double *Dzz_u,
-	const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim, const MKL_INT ghost,
-	const MKL_INT i, const MKL_INT j, const double dr, const double dz,
-	const MKL_INT l, const double m, const double w, const double rescale,
-	double *u_aux, double *Dr_u_aux)
+void rhs_vars(double *f, double *u, double *Dr_u, double *Dz_u, double *Drr_u, double *Dzz_u,
+              const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim, const MKL_INT ghost,
+              const MKL_INT i, const MKL_INT j, const double dr, const double dz, const MKL_INT l,
+              const double m, const double w, const double rescale, double *u_aux, double *Dr_u_aux)
 {
-	(void)NrTotal; (void)u_aux;
+    (void)NrTotal;
+    (void)u_aux;
 
-	// Grid values (u0=log alpha, u1=beta, u2=log h, u3=log a, u4=psi, u5=lambda).
-	double l_alpha = u[0 * dim + IDX(i, j)];
-	double beta    = u[1 * dim + IDX(i, j)];
-	double l_h     = u[2 * dim + IDX(i, j)];
-	double l_a     = u[3 * dim + IDX(i, j)];
-	double psi     = u[4 * dim + IDX(i, j)];
-	double lambda  = u[5 * dim + IDX(i, j)];
+    // Grid values (u0=log alpha, u1=beta, u2=log h, u3=log a, u4=psi, u5=lambda).
+    double l_alpha = u[0 * dim + IDX(i, j)];
+    double beta = u[1 * dim + IDX(i, j)];
+    double l_h = u[2 * dim + IDX(i, j)];
+    double l_a = u[3 * dim + IDX(i, j)];
+    double psi = u[4 * dim + IDX(i, j)];
+    double lambda = u[5 * dim + IDX(i, j)];
 
-	// Physical derivatives (computed by rhs.c).
-	double Dr_u0 = Dr_u[0 * dim + IDX(i, j)];
-	double Dr_u1 = Dr_u[1 * dim + IDX(i, j)];
-	double Dr_u2 = Dr_u[2 * dim + IDX(i, j)];
-	double Dr_u4 = Dr_u[4 * dim + IDX(i, j)];
-	double Dr_u5 = Dr_u[5 * dim + IDX(i, j)];
-	double Dz_u0 = Dz_u[0 * dim + IDX(i, j)];
-	double Dz_u1 = Dz_u[1 * dim + IDX(i, j)];
-	double Dz_u2 = Dz_u[2 * dim + IDX(i, j)];
-	double Dz_u4 = Dz_u[4 * dim + IDX(i, j)];
-	double Dz_u5 = Dz_u[5 * dim + IDX(i, j)];
-	double Drr_u0 = Drr_u[0 * dim + IDX(i, j)];
-	double Drr_u1 = Drr_u[1 * dim + IDX(i, j)];
-	double Drr_u2 = Drr_u[2 * dim + IDX(i, j)];
-	double Drr_u3 = Drr_u[3 * dim + IDX(i, j)];
-	double Drr_u4 = Drr_u[4 * dim + IDX(i, j)];
-	double Drr_u5 = Drr_u[5 * dim + IDX(i, j)];
-	double Dzz_u0 = Dzz_u[0 * dim + IDX(i, j)];
-	double Dzz_u1 = Dzz_u[1 * dim + IDX(i, j)];
-	double Dzz_u2 = Dzz_u[2 * dim + IDX(i, j)];
-	double Dzz_u3 = Dzz_u[3 * dim + IDX(i, j)];
-	double Dzz_u4 = Dzz_u[4 * dim + IDX(i, j)];
-	double Dzz_u5 = Dzz_u[5 * dim + IDX(i, j)];
+    // Physical derivatives (computed by rhs.c).
+    double Dr_u0 = Dr_u[0 * dim + IDX(i, j)];
+    double Dr_u1 = Dr_u[1 * dim + IDX(i, j)];
+    double Dr_u2 = Dr_u[2 * dim + IDX(i, j)];
+    double Dr_u4 = Dr_u[4 * dim + IDX(i, j)];
+    double Dr_u5 = Dr_u[5 * dim + IDX(i, j)];
+    double Dz_u0 = Dz_u[0 * dim + IDX(i, j)];
+    double Dz_u1 = Dz_u[1 * dim + IDX(i, j)];
+    double Dz_u2 = Dz_u[2 * dim + IDX(i, j)];
+    double Dz_u4 = Dz_u[4 * dim + IDX(i, j)];
+    double Dz_u5 = Dz_u[5 * dim + IDX(i, j)];
+    double Drr_u0 = Drr_u[0 * dim + IDX(i, j)];
+    double Drr_u1 = Drr_u[1 * dim + IDX(i, j)];
+    double Drr_u2 = Drr_u[2 * dim + IDX(i, j)];
+    double Drr_u3 = Drr_u[3 * dim + IDX(i, j)];
+    double Drr_u4 = Drr_u[4 * dim + IDX(i, j)];
+    double Drr_u5 = Drr_u[5 * dim + IDX(i, j)];
+    double Dzz_u0 = Dzz_u[0 * dim + IDX(i, j)];
+    double Dzz_u1 = Dzz_u[1 * dim + IDX(i, j)];
+    double Dzz_u2 = Dzz_u[2 * dim + IDX(i, j)];
+    double Dzz_u3 = Dzz_u[3 * dim + IDX(i, j)];
+    double Dzz_u4 = Dzz_u[4 * dim + IDX(i, j)];
+    double Dzz_u5 = Dzz_u[5 * dim + IDX(i, j)];
 
-	// Regularization auxiliary radial derivatives.
-	double Dr_u6 = Dr_u_aux[0 * dim + IDX(i, j)];
-	double Dr_u7 = Dr_u_aux[1 * dim + IDX(i, j)];
+    // Regularization auxiliary radial derivatives.
+    double Dr_u6 = Dr_u_aux[0 * dim + IDX(i, j)];
+    double Dr_u7 = Dr_u_aux[1 * dim + IDX(i, j)];
 
-	// Coordinates.
-	double r = dr * (i + 0.5 - ghost);
-	double r2 = r * r;
-	double rlm1 = (l == 1) ? 1.0 : pow(r, l - 1);
-	double rl = rlm1 * r;
-	double dzodr = dz / dr;
+    // Coordinates.
+    double r = dr * (i + 0.5 - ghost);
+    double r2 = r * r;
+    double rlm1 = (l == 1) ? 1.0 : pow(r, l - 1);
+    double rl = rlm1 * r;
+    double dzodr = dz / dr;
 
-	// Physical short-hands.
-	double alpha = exp(l_alpha);
-	double alpha2 = alpha * alpha;
-	double h = exp(l_h);
-	double h2 = h * h;
-	double a = exp(l_a);
-	double a2 = a * a;
-	double m2 = m * m;
-	double wplOmega = w + l * beta;
-	double phi = rl * psi;
-	double phior = rlm1 * psi;
-	double phi2 = phi * phi;
-	double phi2or2 = phior * phior;
+    // Physical short-hands.
+    double alpha = exp(l_alpha);
+    double alpha2 = alpha * alpha;
+    double h = exp(l_h);
+    double h2 = h * h;
+    double a = exp(l_a);
+    double a2 = a * a;
+    double m2 = m * m;
+    double wplOmega = w + l * beta;
+    double phi = rl * psi;
+    double phior = rlm1 * psi;
+    double phi2 = phi * phi;
+    double phi2or2 = phior * phior;
 
-	// The lambda equation re-defines a2 in terms of the regularization variable.
-	double a2_r = h2 + r2 * lambda;
+    // The lambda equation re-defines a2 in terms of the regularization variable.
+    double a2_r = h2 + r2 * lambda;
 
-	// Residual brackets (rescale = -1 from the driver).
-	// u0 = log alpha.
-	f[0 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (pow(Dr_u0, 2) + Dr_u0*Dr_u2 + Dr_u0/r + Drr_u0 + pow(Dz_u0, 2) + Dz_u0*Dz_u2 + Dzz_u0 + 4*M_PI*a2*phi2*(m2 - 2*pow(wplOmega, 2)/alpha2) - 1.0/2.0*h2*r2*(pow(Dr_u1, 2) + pow(Dz_u1, 2))/alpha2));
-	// u1 = beta.
-	f[1 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (-Dr_u0*Dr_u1 + 3*Dr_u1*Dr_u2 + 3*Dr_u1/r + Drr_u1 - Dz_u0*Dz_u1 + 3*Dz_u1*Dz_u2 + Dzz_u1 - 16*M_PI*a2*l*phi2or2*wplOmega/h2));
-	// u2 = log h.
-	f[2 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Dr_u0*Dr_u2 + Dr_u0/r + pow(Dr_u2, 2) + 2*Dr_u2/r + Drr_u2 + Dz_u0*Dz_u2 + pow(Dz_u2, 2) + Dzz_u2 + 4*M_PI*a2*phi2or2*(m2*r2 + 2*pow(l, 2)/h2) + (1.0/2.0)*h2*r2*(pow(Dr_u1, 2) + pow(Dz_u1, 2))/alpha2));
-	// u3 = log a.
-	f[3 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (-Dr_u0*Dr_u2 - Dr_u0/r + Drr_u3 - Dz_u0*Dz_u2 + Dzz_u3 + 4*M_PI*(phi2or2*(a2*r2*pow(wplOmega, 2)/alpha2 + pow(l, 2)*(-a2/h2 + 1)) + pow(rlm1, 2)*(2*Dr_u4*l*psi*r + r2*(pow(Dr_u4, 2) + pow(Dz_u4, 2)))) - 1.0/4.0*h2*r2*(pow(Dr_u1, 2) + pow(Dz_u1, 2))/alpha2));
-	// u4 = psi.
-	f[4 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (Dr_u0*Dr_u4 + Dr_u2*Dr_u4 + Dr_u4*(2*l + 1)/r + Drr_u4 + Dz_u0*Dz_u4 + Dz_u2*Dz_u4 + Dzz_u4 + a2*psi*(-m2 + pow(wplOmega, 2)/alpha2) + l*psi*(Dr_u0/r + Dr_u2/r) - pow(l, 2)*lambda*psi/h2));
-	// u5 = lambda.
-	f[5 * dim + IDX(i, j)] = rescale * (dr * dr * dzodr * (-4*Dr_u0*Dr_u2*h2/pow(r, 2) - Dr_u0*Dr_u5 - 2*Dr_u0*lambda/r - pow(Dr_u1, 2)*a2_r*h2/alpha2 - 4*pow(Dr_u2, 2)*h2*(1.0/2.0 + h2/a2_r)/pow(r, 2) - 2*pow(Dr_u2, 2)*lambda - Dr_u2*Dr_u5 + 2*Dr_u2*lambda*(1 - 4*h2/a2_r)/r + 3*Dr_u5/r - 4*Dr_u5*lambda*r/a2_r + 2*Dr_u6*Q1*h2/(alpha*r) + Dr_u7*Q2/r + Drr_u5 + Dz_u0*Dz_u5 + 4*pow(Dz_u2, 2)*h2*lambda/a2_r + Dz_u2*Dz_u5 + Dzz_u5 + 8*M_PI*a2_r*(2*Dr_u4*pow(rlm1, 2)*(Dr_u4*r + 2*l*psi)/r + lambda*m2*phi2) + 2*lambda*(pow(Dr_u0, 2) + Drr_u0) + 2*lambda*(2*pow(Dr_u2, 2) + Drr_u2) - pow(h2, 2)*(pow(Dr_u1, 2) + pow(Dz_u1, 2))/alpha2 - 4*h2*(Dr_u2*Dr_u5 + Dz_u2*Dz_u5)/a2_r - 4*pow(lambda, 2)/a2_r - r2*(pow(Dr_u5, 2) + pow(Dz_u5, 2))/a2_r));
+    // Residual brackets (rescale = -1 from the driver).
+    // u0 = log alpha.
+    f[0 * dim + IDX(i, j)] =
+        rescale *
+        (dr * dr * dzodr *
+         (pow(Dr_u0, 2) + Dr_u0 * Dr_u2 + Dr_u0 / r + Drr_u0 + pow(Dz_u0, 2) + Dz_u0 * Dz_u2 +
+          Dzz_u0 + 4 * M_PI * a2 * phi2 * (m2 - 2 * pow(wplOmega, 2) / alpha2) -
+          1.0 / 2.0 * h2 * r2 * (pow(Dr_u1, 2) + pow(Dz_u1, 2)) / alpha2));
+    // u1 = beta.
+    f[1 * dim + IDX(i, j)] =
+        rescale * (dr * dr * dzodr *
+                   (-Dr_u0 * Dr_u1 + 3 * Dr_u1 * Dr_u2 + 3 * Dr_u1 / r + Drr_u1 - Dz_u0 * Dz_u1 +
+                    3 * Dz_u1 * Dz_u2 + Dzz_u1 - 16 * M_PI * a2 * l * phi2or2 * wplOmega / h2));
+    // u2 = log h.
+    f[2 * dim + IDX(i, j)] =
+        rescale *
+        (dr * dr * dzodr *
+         (Dr_u0 * Dr_u2 + Dr_u0 / r + pow(Dr_u2, 2) + 2 * Dr_u2 / r + Drr_u2 + Dz_u0 * Dz_u2 +
+          pow(Dz_u2, 2) + Dzz_u2 + 4 * M_PI * a2 * phi2or2 * (m2 * r2 + 2 * pow(l, 2) / h2) +
+          (1.0 / 2.0) * h2 * r2 * (pow(Dr_u1, 2) + pow(Dz_u1, 2)) / alpha2));
+    // u3 = log a.
+    f[3 * dim + IDX(i, j)] =
+        rescale *
+        (dr * dr * dzodr *
+         (-Dr_u0 * Dr_u2 - Dr_u0 / r + Drr_u3 - Dz_u0 * Dz_u2 + Dzz_u3 +
+          4 * M_PI *
+              (phi2or2 * (a2 * r2 * pow(wplOmega, 2) / alpha2 + pow(l, 2) * (-a2 / h2 + 1)) +
+               pow(rlm1, 2) * (2 * Dr_u4 * l * psi * r + r2 * (pow(Dr_u4, 2) + pow(Dz_u4, 2)))) -
+          1.0 / 4.0 * h2 * r2 * (pow(Dr_u1, 2) + pow(Dz_u1, 2)) / alpha2));
+    // u4 = psi.
+    f[4 * dim + IDX(i, j)] =
+        rescale *
+        (dr * dr * dzodr *
+         (Dr_u0 * Dr_u4 + Dr_u2 * Dr_u4 + Dr_u4 * (2 * l + 1) / r + Drr_u4 + Dz_u0 * Dz_u4 +
+          Dz_u2 * Dz_u4 + Dzz_u4 + a2 * psi * (-m2 + pow(wplOmega, 2) / alpha2) +
+          l * psi * (Dr_u0 / r + Dr_u2 / r) - pow(l, 2) * lambda * psi / h2));
+    // u5 = lambda.
+    f[5 * dim + IDX(i, j)] =
+        rescale *
+        (dr * dr * dzodr *
+         (-4 * Dr_u0 * Dr_u2 * h2 / pow(r, 2) - Dr_u0 * Dr_u5 - 2 * Dr_u0 * lambda / r -
+          pow(Dr_u1, 2) * a2_r * h2 / alpha2 -
+          4 * pow(Dr_u2, 2) * h2 * (1.0 / 2.0 + h2 / a2_r) / pow(r, 2) -
+          2 * pow(Dr_u2, 2) * lambda - Dr_u2 * Dr_u5 +
+          2 * Dr_u2 * lambda * (1 - 4 * h2 / a2_r) / r + 3 * Dr_u5 / r -
+          4 * Dr_u5 * lambda * r / a2_r + 2 * Dr_u6 * Q1 * h2 / (alpha * r) + Dr_u7 * Q2 / r +
+          Drr_u5 + Dz_u0 * Dz_u5 + 4 * pow(Dz_u2, 2) * h2 * lambda / a2_r + Dz_u2 * Dz_u5 + Dzz_u5 +
+          8 * M_PI * a2_r *
+              (2 * Dr_u4 * pow(rlm1, 2) * (Dr_u4 * r + 2 * l * psi) / r + lambda * m2 * phi2) +
+          2 * lambda * (pow(Dr_u0, 2) + Drr_u0) + 2 * lambda * (2 * pow(Dr_u2, 2) + Drr_u2) -
+          pow(h2, 2) * (pow(Dr_u1, 2) + pow(Dz_u1, 2)) / alpha2 -
+          4 * h2 * (Dr_u2 * Dr_u5 + Dz_u2 * Dz_u5) / a2_r - 4 * pow(lambda, 2) / a2_r -
+          r2 * (pow(Dr_u5, 2) + pow(Dz_u5, 2)) / a2_r));
 
-	return;
+    return;
 }
 
-void rhs_bdry(
-	double *f,
-	double *u,
-	double *Dr_u,
-	double *Dz_u,
-	const MKL_INT NrTotal,
-	const MKL_INT NzTotal,
-	const MKL_INT dim,
-	const MKL_INT ghost,
-	const MKL_INT i,
-	const MKL_INT j,
-	const double dr,
-	const double dz,
-	const MKL_INT l,
-	const double m,
-	const double w,
-	const double M,
-	const double J,
-	const double rescale
-)
+void rhs_bdry(double *f, double *u, double *Dr_u, double *Dz_u, const MKL_INT NrTotal,
+              const MKL_INT NzTotal, const MKL_INT dim, const MKL_INT ghost, const MKL_INT i,
+              const MKL_INT j, const double dr, const double dz, const MKL_INT l, const double m,
+              const double w, const double M, const double J, const double rescale)
 {
-	(void)NrTotal; (void)M; (void)J;
+    (void)NrTotal;
+    (void)M;
+    (void)J;
 
-	// Coordinates.
-	double r = dr * (i + 0.5 - ghost);
-	double z = dz * (j + 0.5 - ghost);
-	double rr2 = r * r + z * z;
-	double rr = sqrt(rr2);
-	double scale = dr * dz / rr2;
+    // Coordinates.
+    double r = dr * (i + 0.5 - ghost);
+    double z = dz * (j + 0.5 - ghost);
+    double rr2 = r * r + z * z;
+    double rr = sqrt(rr2);
+    double scale = dr * dz / rr2;
 
-	// Scalar field mass and decay constant.
-	double m2 = m * m;
-	double chi = sqrt(m2 - w * w);
+    // Scalar field mass and decay constant.
+    double m2 = m * m;
+    double chi = sqrt(m2 - w * w);
 
-	// Fetch values.
-	double l_alpha    = u[IDX(i, j)];
-	double Dr_l_alpha = Dr_u[IDX(i, j)];
-	double Dz_l_alpha = Dz_u[IDX(i, j)];
-	double beta       = u[dim + IDX(i, j)];
-	double Dr_beta    = Dr_u[dim + IDX(i, j)];
-	double Dz_beta    = Dz_u[dim + IDX(i, j)];
-	double l_h        = u[2 * dim + IDX(i, j)];
-	double Dr_l_h     = Dr_u[2 * dim + IDX(i, j)];
-	double Dz_l_h     = Dz_u[2 * dim + IDX(i, j)];
-	double l_a        = u[3 * dim + IDX(i, j)];
-	double Dr_l_a     = Dr_u[3 * dim + IDX(i, j)];
-	double Dz_l_a     = Dz_u[3 * dim + IDX(i, j)];
-	double psi        = u[4 * dim + IDX(i, j)];
-	double Dr_psi     = Dr_u[4 * dim + IDX(i, j)];
-	double Dz_psi     = Dz_u[4 * dim + IDX(i, j)];
-	double lambda     = u[5 * dim + IDX(i, j)];
-	double Dr_lambda  = Dr_u[5 * dim + IDX(i, j)];
-	double Dz_lambda  = Dz_u[5 * dim + IDX(i, j)];
+    // Fetch values.
+    double l_alpha = u[IDX(i, j)];
+    double Dr_l_alpha = Dr_u[IDX(i, j)];
+    double Dz_l_alpha = Dz_u[IDX(i, j)];
+    double beta = u[dim + IDX(i, j)];
+    double Dr_beta = Dr_u[dim + IDX(i, j)];
+    double Dz_beta = Dz_u[dim + IDX(i, j)];
+    double l_h = u[2 * dim + IDX(i, j)];
+    double Dr_l_h = Dr_u[2 * dim + IDX(i, j)];
+    double Dz_l_h = Dz_u[2 * dim + IDX(i, j)];
+    double l_a = u[3 * dim + IDX(i, j)];
+    double Dr_l_a = Dr_u[3 * dim + IDX(i, j)];
+    double Dz_l_a = Dz_u[3 * dim + IDX(i, j)];
+    double psi = u[4 * dim + IDX(i, j)];
+    double Dr_psi = Dr_u[4 * dim + IDX(i, j)];
+    double Dz_psi = Dz_u[4 * dim + IDX(i, j)];
+    double lambda = u[5 * dim + IDX(i, j)];
+    double Dr_lambda = Dr_u[5 * dim + IDX(i, j)];
+    double Dz_lambda = Dz_u[5 * dim + IDX(i, j)];
 
-	// Robin and exponential-decay boundary conditions.
-	f[IDX(i, j)] = rescale * scale * (r * Dr_l_alpha + z * Dz_l_alpha + l_alpha);
+    // Robin and exponential-decay boundary conditions.
+    f[IDX(i, j)] = rescale * scale * (r * Dr_l_alpha + z * Dz_l_alpha + l_alpha);
 
-	f[dim + IDX(i, j)] = rescale * scale * (r * Dr_beta + z * Dz_beta + 3.0 * beta);
+    f[dim + IDX(i, j)] = rescale * scale * (r * Dr_beta + z * Dz_beta + 3.0 * beta);
 
-	f[2 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_h + z * Dz_l_h + l_h);
+    f[2 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_h + z * Dz_l_h + l_h);
 
-	f[3 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_a + z * Dz_l_a + l_a);
+    f[3 * dim + IDX(i, j)] = rescale * scale * (r * Dr_l_a + z * Dz_l_a + l_a);
 
-	f[4 * dim + IDX(i, j)] = rescale * scale * (r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi);
+    f[4 * dim + IDX(i, j)] =
+        rescale * scale * (r * Dr_psi + z * Dz_psi + (rr * chi + l + 1.0) * psi);
 
-	f[5 * dim + IDX(i, j)] = rescale * scale * (r * Dr_lambda + z * Dz_lambda + 4.0 * lambda);
+    f[5 * dim + IDX(i, j)] = rescale * scale * (r * Dr_lambda + z * Dz_lambda + 4.0 * lambda);
 
-	return;
+    return;
 }

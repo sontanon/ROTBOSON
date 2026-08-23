@@ -23,107 +23,110 @@
 
 static void print_banner(void)
 {
-	printf("******************************************************\n");
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***                    ROTBOSON                    \n");
-	printf("***                                                \n");
-	printf("***          Global Newton Method Version          \n");
-	printf("***                                                \n");
-	printf("***        Author: Santiago Ontanon Sanchez        \n");
-	printf("***                                                \n");
-	printf("***              ICN UNAM, Mexico City             \n");
-	printf("***                                                \n");
-	printf("***                                                \n");
-	printf("***             First Revision: 01/08/2019         \n");
-	printf("***                                                \n");
-	printf("***             Last  Revision: 24/09/2020         \n");
-	printf("***                                                \n");
-	printf("******************************************************\n");
+    printf("******************************************************\n");
+    printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***                    ROTBOSON                    \n");
+    printf("***                                                \n");
+    printf("***          Global Newton Method Version          \n");
+    printf("***                                                \n");
+    printf("***        Author: Santiago Ontanon Sanchez        \n");
+    printf("***                                                \n");
+    printf("***              ICN UNAM, Mexico City             \n");
+    printf("***                                                \n");
+    printf("***                                                \n");
+    printf("***             First Revision: 01/08/2019         \n");
+    printf("***                                                \n");
+    printf("***             Last  Revision: 24/09/2020         \n");
+    printf("***                                                \n");
+    printf("******************************************************\n");
 }
 
 static void print_parameters(const rb_context *ctx)
 {
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***           Generating Rotating Boson           \n");
-	printf("***            Star Initial Data For NR.           \n");
-	printf("***                                                \n");
-	printf("***           GRID:                                \n");
-	printf("***            dr          = %-12.10E          \n", ctx->dr);
-	printf("***            dz          = %-12.10E          \n", ctx->dz);
-	printf("***            dim         = %-7lld               \n", ctx->dim);
-	printf("***            NrInterior  = %-7lld               \n", ctx->NrInterior);
-	printf("***            NzInterior  = %-7lld               \n", ctx->NzInterior);
-	printf("***            order       = %lld                     \n", ctx->order);
-	printf("***            ghost       = %lld                     \n", ctx->ghost);
-	printf("***                                                \n");
-	printf("***           SCALAR FIELD:                        \n");
-	printf("***            l           = %-7lld               \n", ctx->l);
-	printf("***            m           = %-12.10E          \n", ctx->m);
-	if (ctx->fixedPhi)
-	{
-		printf("***            Scalar Field is Fixed at:           \n");
-		printf("***            r(fixedPhi) = %-12.10E          \n", ctx->dr * (ctx->fixedPhiR - 0.5));
-		printf("***            z(fixedPhi) = %-12.10E          \n", ctx->dz * (ctx->fixedPhiZ - 0.5));
-	}
-	else if (ctx->fixedOmega)
-	{
-		printf("***            Initial Omega is Fixed.             \n");
-	}
-	printf("***                                                \n");
-	printf("***           INITIAL DATA:                        \n");
-	printf("***            readInitialData = %lld     \n", ctx->readInitialData);
-	if (ctx->readInitialData)
-	{
-		printf("***            log_alpha_i = %-18s     \n", ctx->log_alpha_i);
-		printf("***            beta_i      = %-18s     \n", ctx->beta_i);
-		printf("***            log_h_i     = %-18s     \n", ctx->log_h_i);
-		printf("***            log_a_i     = %-18s     \n", ctx->log_a_i);
-		printf("***            psi_i       = %-18s     \n", ctx->psi_i);
-		printf("***            lambda_i    = %-18s     \n", ctx->lambda_i);
-		printf("***            w_i         = %-18s     \n", ctx->w_i);
-	}
-	else
-	{
-		printf("***            psi0        = %-12.10E          \n", ctx->psi0);
-		printf("***            sigmaR      = %-12.10E          \n", ctx->sigmaR);
-		printf("***            sigmaZ      = %-12.10E          \n", ctx->sigmaZ);
-		printf("***            rExt        = %-12.10E          \n", ctx->rExt);
-	}
-	if (!ctx->w_i)
-	{
-		printf("***            w0          = %-12.10E          \n", ctx->w0);
-	}
-	printf("***                                                \n");
-	printf("***           SOLVER:                              \n");
-	printf("***            solverType    = %-18s  \n", (ctx->solverType == 1) ? "Error" : "Residual");
-	printf("***            epsilon       = %-12.10E        \n", ctx->epsilon);
-	printf("***            maxNewtonIter = %-4lld                \n", ctx->maxNewtonIter);
-	printf("***            lambda0       = %-12.10E        \n", ctx->lambda0);
-	printf("***            lambdaMin     = %-12.10E        \n", ctx->lambdaMin);
-	printf("***            useLowRank    = %lld       \n", ctx->useLowRank);
-	printf("***                                                \n");
-	printf("******************************************************\n");
+    printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***           Generating Rotating Boson           \n");
+    printf("***            Star Initial Data For NR.           \n");
+    printf("***                                                \n");
+    printf("***           GRID:                                \n");
+    printf("***            dr          = %-12.10E          \n", ctx->dr);
+    printf("***            dz          = %-12.10E          \n", ctx->dz);
+    printf("***            dim         = %-7lld               \n", ctx->dim);
+    printf("***            NrInterior  = %-7lld               \n", ctx->NrInterior);
+    printf("***            NzInterior  = %-7lld               \n", ctx->NzInterior);
+    printf("***            order       = %lld                     \n", ctx->order);
+    printf("***            ghost       = %lld                     \n", ctx->ghost);
+    printf("***                                                \n");
+    printf("***           SCALAR FIELD:                        \n");
+    printf("***            l           = %-7lld               \n", ctx->l);
+    printf("***            m           = %-12.10E          \n", ctx->m);
+    if (ctx->fixedPhi)
+    {
+        printf("***            Scalar Field is Fixed at:           \n");
+        printf("***            r(fixedPhi) = %-12.10E          \n",
+               ctx->dr * (ctx->fixedPhiR - 0.5));
+        printf("***            z(fixedPhi) = %-12.10E          \n",
+               ctx->dz * (ctx->fixedPhiZ - 0.5));
+    }
+    else if (ctx->fixedOmega)
+    {
+        printf("***            Initial Omega is Fixed.             \n");
+    }
+    printf("***                                                \n");
+    printf("***           INITIAL DATA:                        \n");
+    printf("***            readInitialData = %lld     \n", ctx->readInitialData);
+    if (ctx->readInitialData)
+    {
+        printf("***            log_alpha_i = %-18s     \n", ctx->log_alpha_i);
+        printf("***            beta_i      = %-18s     \n", ctx->beta_i);
+        printf("***            log_h_i     = %-18s     \n", ctx->log_h_i);
+        printf("***            log_a_i     = %-18s     \n", ctx->log_a_i);
+        printf("***            psi_i       = %-18s     \n", ctx->psi_i);
+        printf("***            lambda_i    = %-18s     \n", ctx->lambda_i);
+        printf("***            w_i         = %-18s     \n", ctx->w_i);
+    }
+    else
+    {
+        printf("***            psi0        = %-12.10E          \n", ctx->psi0);
+        printf("***            sigmaR      = %-12.10E          \n", ctx->sigmaR);
+        printf("***            sigmaZ      = %-12.10E          \n", ctx->sigmaZ);
+        printf("***            rExt        = %-12.10E          \n", ctx->rExt);
+    }
+    if (!ctx->w_i)
+    {
+        printf("***            w0          = %-12.10E          \n", ctx->w0);
+    }
+    printf("***                                                \n");
+    printf("***           SOLVER:                              \n");
+    printf("***            solverType    = %-18s  \n",
+           (ctx->solverType == 1) ? "Error" : "Residual");
+    printf("***            epsilon       = %-12.10E        \n", ctx->epsilon);
+    printf("***            maxNewtonIter = %-4lld                \n", ctx->maxNewtonIter);
+    printf("***            lambda0       = %-12.10E        \n", ctx->lambda0);
+    printf("***            lambdaMin     = %-12.10E        \n", ctx->lambdaMin);
+    printf("***            useLowRank    = %lld       \n", ctx->useLowRank);
+    printf("***                                                \n");
+    printf("******************************************************\n");
 }
 
 static void configure_openmp(void)
 {
 #pragma omp parallel
-	{
+    {
 #pragma omp master
-		{
-			// Determine OMP threads.
-			printf("******************************************************\n");
-			printf("***                                                \n");
-			printf("***            Maximum OMP threads = %d             \n", omp_get_max_threads());
-			printf("***            Currently running on %d              \n", omp_get_num_threads());
-			printf("***                                                \n");
-			printf("******************************************************\n");
-			mkl_set_dynamic(0);
-			mkl_set_num_threads(omp_get_num_threads());
-		}
-	}
+        {
+            // Determine OMP threads.
+            printf("******************************************************\n");
+            printf("***                                                \n");
+            printf("***            Maximum OMP threads = %d             \n", omp_get_max_threads());
+            printf("***            Currently running on %d              \n", omp_get_num_threads());
+            printf("***                                                \n");
+            printf("******************************************************\n");
+            mkl_set_dynamic(0);
+            mkl_set_num_threads(omp_get_num_threads());
+        }
+    }
 }
 
 // Newton orchestration: pick the error-/residual-/classic-Newton driver and
@@ -133,86 +136,74 @@ static void configure_openmp(void)
 // Trial-iteration caps for the nleq_err/nleq_res inner loops.
 #define MAX_TRIAL_A_ITERATIONS 8
 #define MAX_TRIAL_B_ITERATIONS 8
-static MKL_INT run_newton(
-	rb_context *ctx,
-	MKL_INT *errCode,
-	double **u, double **f, double **du, double **du_bar,
-	double *norm_f, double *norm_du, double *norm_du_bar,
-	double *lambda, double *Theta, double *mu,
-	double *lambda_prime, double *mu_prime,
-	csr_matrix *J,
-	rb_linear_solve_fn linear_solve_1, rb_linear_solve_fn linear_solve_2)
+static MKL_INT run_newton(rb_context *ctx, MKL_INT *errCode, double **u, double **f, double **du,
+                          double **du_bar, double *norm_f, double *norm_du, double *norm_du_bar,
+                          double *lambda, double *Theta, double *mu, double *lambda_prime,
+                          double *mu_prime, csr_matrix *J, rb_linear_solve_fn linear_solve_1,
+                          rb_linear_solve_fn linear_solve_2)
 {
-	MKL_INT k = 0;
+    MKL_INT k = 0;
 
-	// Set initial damping factor lambda[0].
-	lambda[0] = ctx->lambda0;
+    // Set initial damping factor lambda[0].
+    lambda[0] = ctx->lambda0;
 
-	/* MAIN ALGORITHM: NEWTON SOLVER */
-	if (ctx->maxNewtonIter > 0)
-	{
-		switch (ctx->solverType)
-		{
-		// Error-based algorithm.
-		case 1:
-			k = nleq_err(ctx, errCode, u, f, lambda,
-						 du, du_bar, norm_du, norm_du_bar,
-						 Theta, mu, lambda_prime, mu_prime,
-						 J, ctx->epsilon, ctx->maxNewtonIter, MAX_TRIAL_A_ITERATIONS, MAX_TRIAL_B_ITERATIONS,
-						 ctx->lambdaMin, ctx->localSolver,
-						 rhs, csr_gen_jacobian,
-						 norm2_all_variables, dot_all_variables,
-						 linear_solve_1, linear_solve_2);
-			break;
-		// Residual-based algorithm.
-		case 2:
-			norm_f[0] = norm2_interior_all_variables(ctx, u[0]);
-			k = nleq_res(ctx, errCode, u, f, lambda,
-						 du, norm_f, Theta, mu, lambda_prime, mu_prime,
-						 J, ctx->epsilon, ctx->maxNewtonIter, MAX_TRIAL_A_ITERATIONS, MAX_TRIAL_B_ITERATIONS,
-						 ctx->lambdaMin, ctx->localSolver,
-						 rhs, csr_gen_jacobian,
-						 norm2_all_variables, dot_all_variables,
-						 linear_solve_1, linear_solve_2);
-			break;
-		// Classic error-based Newton.
-		case 3:
-			norm_f[0] = norm2_interior_all_variables(ctx, u[0]);
-			k = newton(ctx, errCode, u, f, lambda,
-					   du, norm_du, Theta,
-					   J, ctx->epsilon, ctx->maxNewtonIter,
-					   rhs, csr_gen_jacobian,
-					   norm2_all_variables,
-					   linear_solve_1);
-			break;
-		}
+    /* MAIN ALGORITHM: NEWTON SOLVER */
+    if (ctx->maxNewtonIter > 0)
+    {
+        switch (ctx->solverType)
+        {
+        // Error-based algorithm.
+        case 1:
+            k = nleq_err(ctx, errCode, u, f, lambda, du, du_bar, norm_du, norm_du_bar, Theta, mu,
+                         lambda_prime, mu_prime, J, ctx->epsilon, ctx->maxNewtonIter,
+                         MAX_TRIAL_A_ITERATIONS, MAX_TRIAL_B_ITERATIONS, ctx->lambdaMin,
+                         ctx->localSolver, rhs, csr_gen_jacobian, norm2_all_variables,
+                         dot_all_variables, linear_solve_1, linear_solve_2);
+            break;
+        // Residual-based algorithm.
+        case 2:
+            norm_f[0] = norm2_interior_all_variables(ctx, u[0]);
+            k = nleq_res(ctx, errCode, u, f, lambda, du, norm_f, Theta, mu, lambda_prime, mu_prime,
+                         J, ctx->epsilon, ctx->maxNewtonIter, MAX_TRIAL_A_ITERATIONS,
+                         MAX_TRIAL_B_ITERATIONS, ctx->lambdaMin, ctx->localSolver, rhs,
+                         csr_gen_jacobian, norm2_all_variables, dot_all_variables, linear_solve_1,
+                         linear_solve_2);
+            break;
+        // Classic error-based Newton.
+        case 3:
+            norm_f[0] = norm2_interior_all_variables(ctx, u[0]);
+            k = newton(ctx, errCode, u, f, lambda, du, norm_du, Theta, J, ctx->epsilon,
+                       ctx->maxNewtonIter, rhs, csr_gen_jacobian, norm2_all_variables,
+                       linear_solve_1);
+            break;
+        }
 
-		// Write errCode to file.
-		write_single_integer_file_1d(errCode, "error_code.asc", 1);
+        // Write errCode to file.
+        write_single_integer_file_1d(errCode, "error_code.asc", 1);
 
-		// Check for convergence.
-		if (*errCode != 0)
-		{
-			printf("******************************************************\n");
-			printf("***                                                \n");
-			printf("***    Warning! Did not converge: Error Code = %lld  \n", *errCode);
-			printf("***    Will output anyway. Do not trust results!   \n");
-			printf("***                                                \n");
-			printf("******************************************************\n");
-			k = -k;
-		}
-	}
-	else
-	{
-		printf("******************************************************\n");
-		printf("***                                                \n");
-		printf("***    Warning! User did not specify any Newton Iterations.  \n");
-		printf("***                                                \n");
-		printf("******************************************************\n");
-		k = 0;
-	}
+        // Check for convergence.
+        if (*errCode != 0)
+        {
+            printf("******************************************************\n");
+            printf("***                                                \n");
+            printf("***    Warning! Did not converge: Error Code = %lld  \n", *errCode);
+            printf("***    Will output anyway. Do not trust results!   \n");
+            printf("***                                                \n");
+            printf("******************************************************\n");
+            k = -k;
+        }
+    }
+    else
+    {
+        printf("******************************************************\n");
+        printf("***                                                \n");
+        printf("***    Warning! User did not specify any Newton Iterations.  \n");
+        printf("***                                                \n");
+        printf("******************************************************\n");
+        k = 0;
+    }
 
-	return k;
+    return k;
 }
 
 // Analysis phase: interpolate to spherical coordinates, write polar fields,
@@ -220,545 +211,566 @@ static MKL_INT run_newton(
 // rr(phi_max).
 static void run_analysis(rb_context *ctx, double **u, double *r, double *z, MKL_INT k, double w)
 {
-	// Interpolate. Memory is allocated inside this subroutine.
-	ex_cart_to_pol(&ctx->i_u, &ctx->i_rr, &ctx->i_th, r, z, u[k], ctx->Dr_u, ctx->Dz_u, ctx->Drz_u, GNUM, ctx->dr, ctx->dz, ctx->NrInterior, ctx->NzInterior, ctx->ghost, &ctx->NrrTotal, &ctx->NthTotal, &ctx->p_dim, &ctx->drr, &ctx->dth, &ctx->rr_inf);
+    // Interpolate. Memory is allocated inside this subroutine.
+    ex_cart_to_pol(&ctx->i_u, &ctx->i_rr, &ctx->i_th, r, z, u[k], ctx->Dr_u, ctx->Dz_u, ctx->Drz_u,
+                   GNUM, ctx->dr, ctx->dz, ctx->NrInterior, ctx->NzInterior, ctx->ghost,
+                   &ctx->NrrTotal, &ctx->NthTotal, &ctx->p_dim, &ctx->drr, &ctx->dth, &ctx->rr_inf);
 
-	// Write spherical fields to file.
-	write_single_file_2d_polar(ctx->i_rr, "sph_rr.asc", ctx->NrrTotal, ctx->NthTotal);
-	write_single_file_2d_polar(ctx->i_th, "sph_th.asc", ctx->NrrTotal, ctx->NthTotal);
-	write_single_file_2d_polar(ctx->i_u, "sph_log_alpha_f.asc", ctx->NrrTotal, ctx->NthTotal);
-	write_single_file_2d_polar(ctx->i_u + ctx->p_dim, "sph_beta_f.asc", ctx->NrrTotal, ctx->NthTotal);
-	write_single_file_2d_polar(ctx->i_u + 2 * ctx->p_dim, "sph_log_h_f.asc", ctx->NrrTotal, ctx->NthTotal);
-	write_single_file_2d_polar(ctx->i_u + 3 * ctx->p_dim, "sph_log_a_f.asc", ctx->NrrTotal, ctx->NthTotal);
-	write_single_file_2d_polar(ctx->i_u + 4 * ctx->p_dim, "sph_psi_f.asc", ctx->NrrTotal, ctx->NthTotal);
-	write_single_file_2d_polar(ctx->i_u + 5 * ctx->p_dim, "sph_lambda_f.asc", ctx->NrrTotal, ctx->NthTotal);
+    // Write spherical fields to file.
+    write_single_file_2d_polar(ctx->i_rr, "sph_rr.asc", ctx->NrrTotal, ctx->NthTotal);
+    write_single_file_2d_polar(ctx->i_th, "sph_th.asc", ctx->NrrTotal, ctx->NthTotal);
+    write_single_file_2d_polar(ctx->i_u, "sph_log_alpha_f.asc", ctx->NrrTotal, ctx->NthTotal);
+    write_single_file_2d_polar(ctx->i_u + ctx->p_dim, "sph_beta_f.asc", ctx->NrrTotal,
+                               ctx->NthTotal);
+    write_single_file_2d_polar(ctx->i_u + 2 * ctx->p_dim, "sph_log_h_f.asc", ctx->NrrTotal,
+                               ctx->NthTotal);
+    write_single_file_2d_polar(ctx->i_u + 3 * ctx->p_dim, "sph_log_a_f.asc", ctx->NrrTotal,
+                               ctx->NthTotal);
+    write_single_file_2d_polar(ctx->i_u + 4 * ctx->p_dim, "sph_psi_f.asc", ctx->NrrTotal,
+                               ctx->NthTotal);
+    write_single_file_2d_polar(ctx->i_u + 5 * ctx->p_dim, "sph_lambda_f.asc", ctx->NrrTotal,
+                               ctx->NthTotal);
 
-	// Do analysis.
-	ex_analysis(1, &ctx->M_KOMAR, &ctx->J_KOMAR, &ctx->GRV2, &ctx->GRV3, ctx->i_u, ctx->i_rr, ctx->i_th, w, ctx->m, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal, ctx->NthTotal, ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
+    // Do analysis.
+    ex_analysis(1, &ctx->M_KOMAR, &ctx->J_KOMAR, &ctx->GRV2, &ctx->GRV3, ctx->i_u, ctx->i_rr,
+                ctx->i_th, w, ctx->m, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal, ctx->NthTotal,
+                ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
 
-	// Calculate rr(phi_max).
-	ex_phi_analysis(1, &ctx->phi_max, &ctx->rr_phi_max, &ctx->hwl_res, ctx->i_u, ctx->i_rr, ctx->i_th, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal, ctx->NthTotal, ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
+    // Calculate rr(phi_max).
+    ex_phi_analysis(1, &ctx->phi_max, &ctx->rr_phi_max, &ctx->hwl_res, ctx->i_u, ctx->i_rr,
+                    ctx->i_th, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal, ctx->NthTotal,
+                    ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
 
-	// Clean analysis spherical variables.
-	SAFE_FREE(ctx->i_rr);
-	SAFE_FREE(ctx->i_th);
-	SAFE_FREE(ctx->i_u);
+    // Clean analysis spherical variables.
+    SAFE_FREE(ctx->i_rr);
+    SAFE_FREE(ctx->i_th);
+    SAFE_FREE(ctx->i_u);
 }
 
 // Sweep/continuation: sanity-check the converged solution, then either stop
 // (return 0) or seed the next solve from the current solution with predicted
 // scale factors (return 1).
-static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_INT errCode, csr_matrix *J)
+static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_INT errCode,
+                         csr_matrix *J)
 {
-	MKL_INT counter_i = 0;
+    MKL_INT counter_i = 0;
 
-	// Peaks and predicted scale factors (recomputed each step).
-	double peak_next[GNUM + 1] = {0.0};
-	double peak_prev[GNUM + 1] = {0.0};
-	double next_scale[GNUM + 1] = {0.0};
+    // Peaks and predicted scale factors (recomputed each step).
+    double peak_next[GNUM + 1] = {0.0};
+    double peak_prev[GNUM + 1] = {0.0};
+    double next_scale[GNUM + 1] = {0.0};
 
-	if (!((errCode == 0) && (ctx->sweep > 0)))
-	{
-		if (ctx->sweep > 0)
-		{
-			printf("******************************************************\n");
-			printf("***                                                \n");
-			printf("***   Sweep cannot continue because errCode = %lld !\n", errCode);
-			printf("***                                                \n");
-			printf("******************************************************\n");
-		}
-		return 0;
-	}
+    if (!((errCode == 0) && (ctx->sweep > 0)))
+    {
+        if (ctx->sweep > 0)
+        {
+            printf("******************************************************\n");
+            printf("***                                                \n");
+            printf("***   Sweep cannot continue because errCode = %lld !\n", errCode);
+            printf("***                                                \n");
+            printf("******************************************************\n");
+        }
+        return 0;
+    }
 
-	// Sanity checks on this resolution.
-	if (w <= ctx->w_min || w >= ctx->w_max)
-	{
-		printf("******************************************************\n");
-		printf("***                                                \n");
-		printf("***   Sweep cannot continue because w is out of range (%.5E, %.5E) !\n", ctx->w_min, ctx->w_max);
-		printf("***                                                \n");
-		printf("******************************************************\n");
-		return 0;
-	}
-	if (ctx->rr_phi_max < ctx->rr_phi_max_minimum)
-	{
-		printf("******************************************************\n");
-		printf("***                                                \n");
-		printf("***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n", ctx->rr_phi_max_minimum);
-		printf("***                                                \n");
-		printf("******************************************************\n");
-		return 0;
-	}
-	if (ctx->rr_phi_max > ctx->rr_phi_max_maximum)
-	{
-		printf("******************************************************\n");
-		printf("***                                                \n");
-		printf("***   Sweep cannot continue because rr(max(phi)) > max(rr(max(phi))) = %.5E !\n", ctx->rr_phi_max_maximum);
-		printf("***                                                \n");
-		printf("******************************************************\n");
-		return 0;
-	}
-	if (ctx->hwl_res < ctx->hwl_min)
-	{
-		printf("******************************************************\n");
-		printf("***                                                \n");
-		printf("***   Sweep cannot continue because N(HWL) < MIN(N(HWL)) = %lld !\n", ctx->hwl_min);
-		printf("***   In other words, scalar field has not enough resolution. Try with more resolution or decrease hwl_min.\n");
-		printf("***                                                \n");
-		printf("******************************************************\n");
-		return 0;
-	}
-	if (ctx->hwl_res > ctx->hwl_max)
-	{
-		printf("******************************************************\n");
-		printf("***                                                \n");
-		printf("***   Sweep cannot continue because N(HWL) > MAX(N(HWL)) = %lld !\n", ctx->hwl_max);
-		printf("***   In other words, scalar field is too scattered. Try with less resolution or increase hwl_max.\n");
-		printf("***                                                \n");
-		printf("******************************************************\n");
-		return 0;
-	}
+    // Sanity checks on this resolution.
+    if (w <= ctx->w_min || w >= ctx->w_max)
+    {
+        printf("******************************************************\n");
+        printf("***                                                \n");
+        printf("***   Sweep cannot continue because w is out of range (%.5E, %.5E) !\n", ctx->w_min,
+               ctx->w_max);
+        printf("***                                                \n");
+        printf("******************************************************\n");
+        return 0;
+    }
+    if (ctx->rr_phi_max < ctx->rr_phi_max_minimum)
+    {
+        printf("******************************************************\n");
+        printf("***                                                \n");
+        printf("***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n",
+               ctx->rr_phi_max_minimum);
+        printf("***                                                \n");
+        printf("******************************************************\n");
+        return 0;
+    }
+    if (ctx->rr_phi_max > ctx->rr_phi_max_maximum)
+    {
+        printf("******************************************************\n");
+        printf("***                                                \n");
+        printf("***   Sweep cannot continue because rr(max(phi)) > max(rr(max(phi))) = %.5E !\n",
+               ctx->rr_phi_max_maximum);
+        printf("***                                                \n");
+        printf("******************************************************\n");
+        return 0;
+    }
+    if (ctx->hwl_res < ctx->hwl_min)
+    {
+        printf("******************************************************\n");
+        printf("***                                                \n");
+        printf("***   Sweep cannot continue because N(HWL) < MIN(N(HWL)) = %lld !\n", ctx->hwl_min);
+        printf("***   In other words, scalar field has not enough resolution. Try with more "
+               "resolution or decrease hwl_min.\n");
+        printf("***                                                \n");
+        printf("******************************************************\n");
+        return 0;
+    }
+    if (ctx->hwl_res > ctx->hwl_max)
+    {
+        printf("******************************************************\n");
+        printf("***                                                \n");
+        printf("***   Sweep cannot continue because N(HWL) > MAX(N(HWL)) = %lld !\n", ctx->hwl_max);
+        printf("***   In other words, scalar field is too scattered. Try with less resolution or "
+               "increase hwl_max.\n");
+        printf("***                                                \n");
+        printf("******************************************************\n");
+        return 0;
+    }
 
-	// Predict scale factors from the peak values.
-	for (counter_i = 0; counter_i < GNUM; ++counter_i)
-	{
-		peak_prev[counter_i] = ctx->u_seed[counter_i * ctx->dim + cblas_idamax(ctx->dim, u[k] + counter_i * ctx->dim, 1)];
-		peak_next[counter_i] = u[k][counter_i * ctx->dim + cblas_idamax(ctx->dim, u[k] + counter_i * ctx->dim, 1)];
-	}
-	next_scale[4] = peak_next[4] / peak_prev[4];
-	next_scale[0] = 1.0 + next_scale[4] * (1.0 - peak_prev[0] / peak_next[0]);
-	next_scale[1] = 1.0 + next_scale[4] * (1.0 - peak_prev[1] / peak_next[1]);
-	next_scale[2] = 1.0 + next_scale[4] * (1.0 - peak_prev[2] / peak_next[2]);
-	next_scale[3] = 1.0 + next_scale[4] * (1.0 - peak_prev[3] / peak_next[3]);
-	next_scale[5] = 1.0 + next_scale[4] * (1.0 - peak_prev[5] / peak_next[5]);
+    // Predict scale factors from the peak values.
+    for (counter_i = 0; counter_i < GNUM; ++counter_i)
+    {
+        peak_prev[counter_i] = ctx->u_seed[counter_i * ctx->dim +
+                                           cblas_idamax(ctx->dim, u[k] + counter_i * ctx->dim, 1)];
+        peak_next[counter_i] =
+            u[k][counter_i * ctx->dim + cblas_idamax(ctx->dim, u[k] + counter_i * ctx->dim, 1)];
+    }
+    next_scale[4] = peak_next[4] / peak_prev[4];
+    next_scale[0] = 1.0 + next_scale[4] * (1.0 - peak_prev[0] / peak_next[0]);
+    next_scale[1] = 1.0 + next_scale[4] * (1.0 - peak_prev[1] / peak_next[1]);
+    next_scale[2] = 1.0 + next_scale[4] * (1.0 - peak_prev[2] / peak_next[2]);
+    next_scale[3] = 1.0 + next_scale[4] * (1.0 - peak_prev[3] / peak_next[3]);
+    next_scale[5] = 1.0 + next_scale[4] * (1.0 - peak_prev[5] / peak_next[5]);
 
-	for (counter_i = 0; counter_i < GNUM; ++counter_i)
-		printf("**** Variable %lld peak = % -.5E, previous peak = % -.5E : predicted scale factor = %.5E\n", counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
+    for (counter_i = 0; counter_i < GNUM; ++counter_i)
+        printf("**** Variable %lld peak = % -.5E, previous peak = % -.5E : predicted scale factor "
+               "= %.5E\n",
+               counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
 
-	// Omega prediction.
-	peak_prev[GNUM] = omega_calc(ctx->u_seed[GNUM * ctx->dim], ctx->m);
-	peak_next[GNUM] = omega_calc(u[k][GNUM * ctx->dim], ctx->m);
+    // Omega prediction.
+    peak_prev[GNUM] = omega_calc(ctx->u_seed[GNUM * ctx->dim], ctx->m);
+    peak_next[GNUM] = omega_calc(u[k][GNUM * ctx->dim], ctx->m);
 
-	next_scale[GNUM] = 1.0 + next_scale[4] * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
+    next_scale[GNUM] = 1.0 + next_scale[4] * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
 
-	printf("**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w, next_scale[GNUM]);
+    printf("**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w,
+           next_scale[GNUM]);
 
-	// Transfer to initial data.
+    // Transfer to initial data.
 #pragma omp parallel shared(u)
-	{
+    {
 #pragma omp for schedule(dynamic, 1)
-		for (counter_i = 0; counter_i < GNUM * ctx->dim + 1; ++counter_i)
-		{
-			u[0][counter_i] = -ctx->scale_next * ctx->u_seed[counter_i];
-			u[0][counter_i] += (1.0 + ctx->scale_next) * u[k][counter_i];
-			ctx->u_seed[counter_i] = u[k][counter_i];
-		}
-	}
-	if (ctx->w_step != 0.0)
-	{
-		u[0][ctx->w_idx] = inverse_omega_calc(w + ctx->w_step, ctx->m);
-	}
-	// Set initial omega.
-	ctx->w0 = omega_calc(u[0][ctx->w_idx], ctx->m);
+        for (counter_i = 0; counter_i < GNUM * ctx->dim + 1; ++counter_i)
+        {
+            u[0][counter_i] = -ctx->scale_next * ctx->u_seed[counter_i];
+            u[0][counter_i] += (1.0 + ctx->scale_next) * u[k][counter_i];
+            ctx->u_seed[counter_i] = u[k][counter_i];
+        }
+    }
+    if (ctx->w_step != 0.0)
+    {
+        u[0][ctx->w_idx] = inverse_omega_calc(w + ctx->w_step, ctx->m);
+    }
+    // Set initial omega.
+    ctx->w0 = omega_calc(u[0][ctx->w_idx], ctx->m);
 
-	// Set analysis phase to 0 again.
-	J->analysis_phase = 0;
+    // Set analysis phase to 0 again.
+    J->analysis_phase = 0;
 
-	// Set new lambda0 to one since convergence has improved.
-	ctx->lambda0 = 1.0;
+    // Set new lambda0 to one since convergence has improved.
+    ctx->lambda0 = 1.0;
 
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***   Setting initial data to last solution, scaling, and continuing...\n");
-	printf("***                                                \n");
-	printf("***                                                \n");
-	printf("******************************************************\n");
+    printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***   Setting initial data to last solution, scaling, and continuing...\n");
+    printf("***                                                \n");
+    printf("***                                                \n");
+    printf("******************************************************\n");
 
-	return 1;
+    return 1;
 }
 
 int main(int argc, char *argv[])
 {
-	// Integer counter.
-	MKL_INT i = 0, j = 0;
+    // Integer counter.
+    MKL_INT i = 0, j = 0;
 
-	// Stop index.
-	MKL_INT k = 0;
+    // Stop index.
+    MKL_INT k = 0;
 
-	// Error code.
-	MKL_INT errCode = 1;
+    // Error code.
+    MKL_INT errCode = 1;
 
-	print_banner();
+    print_banner();
 
-	// File name is in argv[1]. Check that we have at least one argument.
-	if (argc < 2)
-	{
-		printf("***                                                \n");
-		printf("***           Usage: ./ROTBOSON file.par           \n");
-		printf("***                                                \n");
-		printf("***            Missing parameter file.             \n");
-		printf("***                                                \n");
-		printf("******************************************************\n");
-		printf("******************************************************\n");
-		return EXIT_FAILURE;
-	}
+    // File name is in argv[1]. Check that we have at least one argument.
+    if (argc < 2)
+    {
+        printf("***                                                \n");
+        printf("***           Usage: ./ROTBOSON file.par           \n");
+        printf("***                                                \n");
+        printf("***            Missing parameter file.             \n");
+        printf("***                                                \n");
+        printf("******************************************************\n");
+        printf("******************************************************\n");
+        return EXIT_FAILURE;
+    }
 
-	// Runtime context (replaces the old param.h globals).
-	rb_context ctx;
-	rb_context_init(&ctx);
+    // Runtime context (replaces the old param.h globals).
+    rb_context ctx;
+    rb_context_init(&ctx);
 
-	// Local alias for the IDX macro, which indexes by row-major stride NzTotal.
-	const MKL_INT NzTotal = ctx.NzTotal;
+    // Local alias for the IDX macro, which indexes by row-major stride NzTotal.
+    const MKL_INT NzTotal = ctx.NzTotal;
 
-	// Parse the parameter file into ctx.
-	parser(&ctx, argv[1]);
+    // Parse the parameter file into ctx.
+    parser(&ctx, argv[1]);
 
-	print_parameters(&ctx);
-	configure_openmp();
+    print_parameters(&ctx);
+    configure_openmp();
 
-	// Allocate memory.
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***               Allocating memory...             \n");
-	printf("***                                                \n");
+    // Allocate memory.
+    printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***               Allocating memory...             \n");
+    printf("***                                                \n");
 
-	// Allocate pointer to double pointers.
-	double **u = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
-	double **f = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
-	double **du = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
-	double **du_bar = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
+    // Allocate pointer to double pointers.
+    double **u = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
+    double **f = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
+    double **du = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
+    double **du_bar = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
 
-	// Allocate memory.
-	for (i = 0; i < ctx.maxNewtonIter + 1; i++)
-	{
-		u[i] = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
-		f[i] = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
-		du[i] = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
-		du_bar[i] = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
-	}
+    // Allocate memory.
+    for (i = 0; i < ctx.maxNewtonIter + 1; i++)
+    {
+        u[i] = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+        f[i] = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+        du[i] = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+        du_bar[i] = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+    }
 
-	// Also include grids.
-	double *r = (double *)SAFE_MALLOC(ctx.dim * sizeof(double));
-	double *z = (double *)SAFE_MALLOC(ctx.dim * sizeof(double));
+    // Also include grids.
+    double *r = (double *)SAFE_MALLOC(ctx.dim * sizeof(double));
+    double *z = (double *)SAFE_MALLOC(ctx.dim * sizeof(double));
 
-	// Initial data seed.
-	ctx.u_seed = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+    // Initial data seed.
+    ctx.u_seed = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
 
-	// Since these grids never change, fill them once and for all.
-	// Fill coordinate grids.
-	double aux_r;
+    // Since these grids never change, fill them once and for all.
+    // Fill coordinate grids.
+    double aux_r;
 #pragma omp parallel shared(r, z) private(i, j, aux_r)
-	{
+    {
 #pragma omp for schedule(dynamic, 1)
-		for (i = 0; i < ctx.NrTotal; i++)
-		{
-			// Calculate rho value.
-			aux_r = ((double)(i - ctx.ghost) + 0.5) * ctx.dr;
-			// Loop over z points.
-			for (j = 0; j < ctx.NzTotal; j++)
-			{
-				r[IDX(i, j)] = aux_r;
-				z[IDX(i, j)] = ((double)(j - ctx.ghost) + 0.5) * ctx.dz;
-			}
-		}
-	}
+        for (i = 0; i < ctx.NrTotal; i++)
+        {
+            // Calculate rho value.
+            aux_r = ((double)(i - ctx.ghost) + 0.5) * ctx.dr;
+            // Loop over z points.
+            for (j = 0; j < ctx.NzTotal; j++)
+            {
+                r[IDX(i, j)] = aux_r;
+                z[IDX(i, j)] = ((double)(j - ctx.ghost) + 0.5) * ctx.dz;
+            }
+        }
+    }
 
-	// Auxiliary derivative buffers.
-	ctx.Dr_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
-	ctx.Dz_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
-	ctx.Drr_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
-	ctx.Dzz_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
-	ctx.Drz_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+    // Auxiliary derivative buffers.
+    ctx.Dr_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+    ctx.Dz_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+    ctx.Drr_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+    ctx.Dzz_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
+    ctx.Drz_u = (double *)SAFE_MALLOC((GNUM * ctx.dim + 1) * sizeof(double));
 
-	// Auxiliary variables.
-	ctx.u_aux = (double *)SAFE_MALLOC(2 * ctx.dim * sizeof(double));
-	ctx.Dr_u_aux = (double *)SAFE_MALLOC(2 * ctx.dim * sizeof(double));
+    // Auxiliary variables.
+    ctx.u_aux = (double *)SAFE_MALLOC(2 * ctx.dim * sizeof(double));
+    ctx.Dr_u_aux = (double *)SAFE_MALLOC(2 * ctx.dim * sizeof(double));
 
-	// Newton output parameters.
-	double *norm_f = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
-	double *norm_du = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
-	double *norm_du_bar = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
-	double *lambda = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
-	double *Theta = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
-	double *mu = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
-	double *lambda_prime = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
-	double *mu_prime = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
+    // Newton output parameters.
+    double *norm_f = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
+    double *norm_du = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
+    double *norm_du_bar = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
+    double *lambda = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
+    double *Theta = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
+    double *mu = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
+    double *lambda_prime = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
+    double *mu_prime = (double *)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double));
 
-	// Initial guess norms.
-	double f_norms[GNUM];
+    // Initial guess norms.
+    double f_norms[GNUM];
 
-	// Final omega.
-	double w = 0.0;
+    // Final omega.
+    double w = 0.0;
 
-	printf("***               Finished allocation!             \n");
-	printf("***                                                \n");
-	printf("******************************************************\n");
+    printf("***               Finished allocation!             \n");
+    printf("***                                                \n");
+    printf("******************************************************\n");
 
-	// Allocate PARDISO memory.
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***           Allocating PARDISO memory...         \n");
-	printf("***                                                \n");
+    // Allocate PARDISO memory.
+    printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***           Allocating PARDISO memory...         \n");
+    printf("***                                                \n");
 
-	// Initialize PARDISO memory and parameters.
-	// Square matrix dimension is (GNUM * dim + 1).
-	solver_start(GNUM * ctx.dim + 1);
+    // Initialize PARDISO memory and parameters.
+    // Square matrix dimension is (GNUM * dim + 1).
+    solver_start(GNUM * ctx.dim + 1);
 
-	// Allocate CSR matrix.
-	csr_matrix J;
-	MKL_INT nnz = nnz_jacobian(&ctx);
-	csr_allocate(&J, GNUM * ctx.dim + 1, GNUM * ctx.dim + 1, nnz);
+    // Allocate CSR matrix.
+    csr_matrix J;
+    MKL_INT nnz = nnz_jacobian(&ctx);
+    csr_allocate(&J, GNUM * ctx.dim + 1, GNUM * ctx.dim + 1, nnz);
 
-	printf("***                                                \n");
-	printf("***            Allocated CSR matrix with:          \n");
-	printf("***             Rows      = %-6lld                 \n", J.nrows);
-	printf("***             Columns   = %-6lld                 \n", J.ncols);
-	printf("***             Non-zeros = %-12lld           \n", J.nnz);
-	printf("***                                                \n");
-	printf("***           Finished PARDISO allocation!         \n");
-	printf("***                                                \n");
-	printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***            Allocated CSR matrix with:          \n");
+    printf("***             Rows      = %-6lld                 \n", J.nrows);
+    printf("***             Columns   = %-6lld                 \n", J.ncols);
+    printf("***             Non-zeros = %-12lld           \n", J.nnz);
+    printf("***                                                \n");
+    printf("***           Finished PARDISO allocation!         \n");
+    printf("***                                                \n");
+    printf("******************************************************\n");
 
-	// LOW RANK UPDATE and linear solver subroutines.
-	rb_linear_solve_fn linear_solve_1;
-	if (ctx.useLowRank)
-	{
-		linear_solve_1 = solver_solve_low_rank;
-		solver_diff_gen(&ctx);
-	}
-	else
-		linear_solve_1 = solver_solve;
+    // LOW RANK UPDATE and linear solver subroutines.
+    rb_linear_solve_fn linear_solve_1;
+    if (ctx.useLowRank)
+    {
+        linear_solve_1 = solver_solve_low_rank;
+        solver_diff_gen(&ctx);
+    }
+    else
+        linear_solve_1 = solver_solve;
 
-	// Repeated solver.
-	rb_linear_solve_fn linear_solve_2 = solver_repeated_solve;
+    // Repeated solver.
+    rb_linear_solve_fn linear_solve_2 = solver_repeated_solve;
 
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***          Setting initial guess and RHS.        \n");
+    printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***          Setting initial guess and RHS.        \n");
 
-	// Set initial guess.
-	initial_guess(&ctx, u[0]);
+    // Set initial guess.
+    initial_guess(&ctx, u[0]);
 
-	// Loop over sweep.
-	do
-	{
-		// Do I/O: create output directory and change into it.
-		io(ctx.initial_dirname, argv[1]);
+    // Loop over sweep.
+    do
+    {
+        // Do I/O: create output directory and change into it.
+        io(ctx.initial_dirname, argv[1]);
 
-		// Print main variables.
-		write_single_file_2d(u[0], "log_alpha_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[0] + ctx.dim, "beta_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[0] + 2 * ctx.dim, "log_h_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[0] + 3 * ctx.dim, "log_a_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[0] + 4 * ctx.dim, "psi_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[0] + 5 * ctx.dim, "lambda_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_1d(&ctx.w0, "w_i.asc", 1);
+        // Print main variables.
+        write_single_file_2d(u[0], "log_alpha_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[0] + ctx.dim, "beta_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[0] + 2 * ctx.dim, "log_h_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[0] + 3 * ctx.dim, "log_a_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[0] + 4 * ctx.dim, "psi_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[0] + 5 * ctx.dim, "lambda_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_1d(&ctx.w0, "w_i.asc", 1);
 
-		// Also print r, z grids.
-		write_single_file_2d(r, "r.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(z, "z.asc", ctx.NrTotal, ctx.NzTotal);
+        // Also print r, z grids.
+        write_single_file_2d(r, "r.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(z, "z.asc", ctx.NrTotal, ctx.NzTotal);
 
-		// And initial "seed".
-		write_single_file_2d(ctx.u_seed, "log_alpha_seed.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(ctx.u_seed + ctx.dim, "beta_seed.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(ctx.u_seed + 2 * ctx.dim, "log_h_seed.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(ctx.u_seed + 3 * ctx.dim, "log_a_seed.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(ctx.u_seed + 4 * ctx.dim, "psi_seed.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(ctx.u_seed + 5 * ctx.dim, "lambda_seed.asc", ctx.NrTotal, ctx.NzTotal);
-		w = omega_calc(ctx.u_seed[GNUM * ctx.dim], ctx.m);
-		write_single_file_1d(&w, "w_seed.asc", 1);
+        // And initial "seed".
+        write_single_file_2d(ctx.u_seed, "log_alpha_seed.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(ctx.u_seed + ctx.dim, "beta_seed.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(ctx.u_seed + 2 * ctx.dim, "log_h_seed.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(ctx.u_seed + 3 * ctx.dim, "log_a_seed.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(ctx.u_seed + 4 * ctx.dim, "psi_seed.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(ctx.u_seed + 5 * ctx.dim, "lambda_seed.asc", ctx.NrTotal, ctx.NzTotal);
+        w = omega_calc(ctx.u_seed[GNUM * ctx.dim], ctx.m);
+        write_single_file_1d(&w, "w_seed.asc", 1);
 
-		// First calculate initial RHS.
-		rhs(&ctx, f[0], u[0]);
+        // First calculate initial RHS.
+        rhs(&ctx, f[0], u[0]);
 
-		// Print initial RHS.
-		write_single_file_2d(f[0], "f0_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[0] + ctx.dim, "f1_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[0] + 2 * ctx.dim, "f2_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[0] + 3 * ctx.dim, "f3_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[0] + 4 * ctx.dim, "f4_i.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[0] + 5 * ctx.dim, "f5_i.asc", ctx.NrTotal, ctx.NzTotal);
+        // Print initial RHS.
+        write_single_file_2d(f[0], "f0_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[0] + ctx.dim, "f1_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[0] + 2 * ctx.dim, "f2_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[0] + 3 * ctx.dim, "f3_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[0] + 4 * ctx.dim, "f4_i.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[0] + 5 * ctx.dim, "f5_i.asc", ctx.NrTotal, ctx.NzTotal);
 
-		// Calculate 2-norms.
-		f_norms[0] = norm2(&ctx, f[0]);
-		f_norms[1] = norm2(&ctx, f[0] + ctx.dim);
-		f_norms[2] = norm2(&ctx, f[0] + 2 * ctx.dim);
-		f_norms[3] = norm2(&ctx, f[0] + 3 * ctx.dim);
-		f_norms[4] = norm2(&ctx, f[0] + 4 * ctx.dim);
-		f_norms[5] = norm2(&ctx, f[0] + 5 * ctx.dim);
+        // Calculate 2-norms.
+        f_norms[0] = norm2(&ctx, f[0]);
+        f_norms[1] = norm2(&ctx, f[0] + ctx.dim);
+        f_norms[2] = norm2(&ctx, f[0] + 2 * ctx.dim);
+        f_norms[3] = norm2(&ctx, f[0] + 3 * ctx.dim);
+        f_norms[4] = norm2(&ctx, f[0] + 4 * ctx.dim);
+        f_norms[5] = norm2(&ctx, f[0] + 5 * ctx.dim);
 
-		printf("***                                                \n");
-		printf("***        INITIAL GUESS:                          \n");
-		printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-		printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-		printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-		printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-		printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-		printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
-		printf("***                                                \n");
-		printf("***                                                \n");
-		printf("******************************************************\n");
+        printf("***                                                \n");
+        printf("***        INITIAL GUESS:                          \n");
+        printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
+        printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
+        printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
+        printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
+        printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+        printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
+        printf("***                                                \n");
+        printf("***                                                \n");
+        printf("******************************************************\n");
 
-		// Newton solve.
-		k = run_newton(&ctx, &errCode, u, f, du, du_bar,
-					   norm_f, norm_du, norm_du_bar,
-					   lambda, Theta, mu, lambda_prime, mu_prime,
-					   &J, linear_solve_1, linear_solve_2);
+        // Newton solve.
+        k = run_newton(&ctx, &errCode, u, f, du, du_bar, norm_f, norm_du, norm_du_bar, lambda,
+                       Theta, mu, lambda_prime, mu_prime, &J, linear_solve_1, linear_solve_2);
 
-		// Get omega.
-		w = omega_calc(u[k][ctx.w_idx], ctx.m);
+        // Get omega.
+        w = omega_calc(u[k][ctx.w_idx], ctx.m);
 
-		// Print final solutions.
-		write_single_file_2d(u[k], "log_alpha_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[k] + ctx.dim, "beta_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[k] + 2 * ctx.dim, "log_h_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[k] + 3 * ctx.dim, "log_a_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[k] + 4 * ctx.dim, "psi_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(u[k] + 5 * ctx.dim, "lambda_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_1d(&w, "w_f.asc", 1);
+        // Print final solutions.
+        write_single_file_2d(u[k], "log_alpha_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[k] + ctx.dim, "beta_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[k] + 2 * ctx.dim, "log_h_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[k] + 3 * ctx.dim, "log_a_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[k] + 4 * ctx.dim, "psi_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(u[k] + 5 * ctx.dim, "lambda_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_1d(&w, "w_f.asc", 1);
 
-		// Print final update.
-		if (k > 0)
-		{
-			write_single_file_2d(du[k - 1], "du0_f.asc", ctx.NrTotal, ctx.NzTotal);
-			write_single_file_2d(du[k - 1] + ctx.dim, "du1_f.asc", ctx.NrTotal, ctx.NzTotal);
-			write_single_file_2d(du[k - 1] + 2 * ctx.dim, "du2_f.asc", ctx.NrTotal, ctx.NzTotal);
-			write_single_file_2d(du[k - 1] + 3 * ctx.dim, "du3_f.asc", ctx.NrTotal, ctx.NzTotal);
-			write_single_file_2d(du[k - 1] + 4 * ctx.dim, "du4_f.asc", ctx.NrTotal, ctx.NzTotal);
-			write_single_file_2d(du[k - 1] + 5 * ctx.dim, "du5_f.asc", ctx.NrTotal, ctx.NzTotal);
-		}
+        // Print final update.
+        if (k > 0)
+        {
+            write_single_file_2d(du[k - 1], "du0_f.asc", ctx.NrTotal, ctx.NzTotal);
+            write_single_file_2d(du[k - 1] + ctx.dim, "du1_f.asc", ctx.NrTotal, ctx.NzTotal);
+            write_single_file_2d(du[k - 1] + 2 * ctx.dim, "du2_f.asc", ctx.NrTotal, ctx.NzTotal);
+            write_single_file_2d(du[k - 1] + 3 * ctx.dim, "du3_f.asc", ctx.NrTotal, ctx.NzTotal);
+            write_single_file_2d(du[k - 1] + 4 * ctx.dim, "du4_f.asc", ctx.NrTotal, ctx.NzTotal);
+            write_single_file_2d(du[k - 1] + 5 * ctx.dim, "du5_f.asc", ctx.NrTotal, ctx.NzTotal);
+        }
 
-		// Print final RHS.
-		write_single_file_2d(f[k], "f0_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[k] + ctx.dim, "f1_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[k] + 2 * ctx.dim, "f2_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[k] + 3 * ctx.dim, "f3_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[k] + 4 * ctx.dim, "f4_f.asc", ctx.NrTotal, ctx.NzTotal);
-		write_single_file_2d(f[k] + 5 * ctx.dim, "f5_f.asc", ctx.NrTotal, ctx.NzTotal);
+        // Print final RHS.
+        write_single_file_2d(f[k], "f0_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[k] + ctx.dim, "f1_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[k] + 2 * ctx.dim, "f2_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[k] + 3 * ctx.dim, "f3_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[k] + 4 * ctx.dim, "f4_f.asc", ctx.NrTotal, ctx.NzTotal);
+        write_single_file_2d(f[k] + 5 * ctx.dim, "f5_f.asc", ctx.NrTotal, ctx.NzTotal);
 
-		// Also print Newton parameters.
-		switch (ctx.solverType)
-		{
-		case 1:
-			write_single_file_1d(norm_du, "norm_du.asc", k);
-			write_single_file_1d(norm_du_bar, "norm_du_bar.asc", k);
-			break;
-		case 2:
-			write_single_file_1d(norm_f, "norm_f.asc", k);
-			break;
-		}
+        // Also print Newton parameters.
+        switch (ctx.solverType)
+        {
+        case 1:
+            write_single_file_1d(norm_du, "norm_du.asc", k);
+            write_single_file_1d(norm_du_bar, "norm_du_bar.asc", k);
+            break;
+        case 2:
+            write_single_file_1d(norm_f, "norm_f.asc", k);
+            break;
+        }
 
-		write_single_file_1d(lambda, "lambda.asc", k);
-		write_single_file_1d(Theta, "Theta.asc", k);
-		write_single_file_1d(mu, "mu.asc", k);
-		write_single_file_1d(lambda_prime, "lambda_prime.asc", k);
-		write_single_file_1d(mu_prime, "mu_prime.asc", k);
+        write_single_file_1d(lambda, "lambda.asc", k);
+        write_single_file_1d(Theta, "Theta.asc", k);
+        write_single_file_1d(mu, "mu.asc", k);
+        write_single_file_1d(lambda_prime, "lambda_prime.asc", k);
+        write_single_file_1d(mu_prime, "mu_prime.asc", k);
 
-		// Print final iteration's RHS's norms.
-		f_norms[0] = norm2(&ctx, f[k]);
-		f_norms[1] = norm2(&ctx, f[k] + ctx.dim);
-		f_norms[2] = norm2(&ctx, f[k] + 2 * ctx.dim);
-		f_norms[3] = norm2(&ctx, f[k] + 3 * ctx.dim);
-		f_norms[4] = norm2(&ctx, f[k] + 4 * ctx.dim);
-		f_norms[5] = norm2(&ctx, f[k] + 5 * ctx.dim);
-		printf("***                                                \n");
-		printf("***        FINAL ITERATION:                        \n");
-		printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-		printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-		printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-		printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-		printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-		printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
-		printf("***                                                \n");
-		printf("***                                                \n");
-		printf("******************************************************\n");
+        // Print final iteration's RHS's norms.
+        f_norms[0] = norm2(&ctx, f[k]);
+        f_norms[1] = norm2(&ctx, f[k] + ctx.dim);
+        f_norms[2] = norm2(&ctx, f[k] + 2 * ctx.dim);
+        f_norms[3] = norm2(&ctx, f[k] + 3 * ctx.dim);
+        f_norms[4] = norm2(&ctx, f[k] + 4 * ctx.dim);
+        f_norms[5] = norm2(&ctx, f[k] + 5 * ctx.dim);
+        printf("***                                                \n");
+        printf("***        FINAL ITERATION:                        \n");
+        printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
+        printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
+        printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
+        printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
+        printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
+        printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
+        printf("***                                                \n");
+        printf("***                                                \n");
+        printf("******************************************************\n");
 
-		// Also print omega.
-		printf("******************************************************\n");
-		printf("***                                                \n");
-		printf("***           FINAL OMEGA:                         \n");
-		printf("***            w          = %-12.10E            \n", w);
-		printf("***                                                \n");
-		printf("******************************************************\n");
+        // Also print omega.
+        printf("******************************************************\n");
+        printf("***                                                \n");
+        printf("***           FINAL OMEGA:                         \n");
+        printf("***            w          = %-12.10E            \n", w);
+        printf("***                                                \n");
+        printf("******************************************************\n");
 
-		// ANALYSIS PHASE.
-		run_analysis(&ctx, u, r, z, k, w);
+        // ANALYSIS PHASE.
+        run_analysis(&ctx, u, r, z, k, w);
 
-		// Exit directory by going up one level (executable level).
-		chdir(ctx.work_dirname);
+        // Exit directory by going up one level (executable level).
+        chdir(ctx.work_dirname);
 
-		// Rename directory to include w.
-		snprintf(ctx.final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", ctx.l, w, ctx.dr, ctx.NrInterior);
-		rename(ctx.initial_dirname, ctx.final_dirname);
+        // Rename directory to include w.
+        snprintf(ctx.final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", ctx.l, w, ctx.dr,
+                 ctx.NrInterior);
+        rename(ctx.initial_dirname, ctx.final_dirname);
 
-		// Sweep continuation if sanity checks pass.
-		if (!sweep_advance(&ctx, u, k, w, errCode, &J))
-			break;
-	} while (ctx.sweep > 0);
+        // Sweep continuation if sanity checks pass.
+        if (!sweep_advance(&ctx, u, k, w, errCode, &J))
+            break;
+    } while (ctx.sweep > 0);
 
-	// Clear memory.
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***              Deallocating memory...            \n");
-	printf("***                                                \n");
+    // Clear memory.
+    printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***              Deallocating memory...            \n");
+    printf("***                                                \n");
 
-	solver_stop();
-	csr_deallocate(&J);
+    solver_stop();
+    csr_deallocate(&J);
 
-	// Free main variables with full maxNewtonIter size by looping inside them.
-	for (i = 0; i < ctx.maxNewtonIter + 1; i++)
-	{
-		SAFE_FREE(u[i]);
-		SAFE_FREE(f[i]);
-		SAFE_FREE(du[i]);
-		SAFE_FREE(du_bar[i]);
-	}
-	// Once all clear, free top pointer.
-	SAFE_FREE(u);
-	SAFE_FREE(f);
-	SAFE_FREE(du);
-	SAFE_FREE(du_bar);
+    // Free main variables with full maxNewtonIter size by looping inside them.
+    for (i = 0; i < ctx.maxNewtonIter + 1; i++)
+    {
+        SAFE_FREE(u[i]);
+        SAFE_FREE(f[i]);
+        SAFE_FREE(du[i]);
+        SAFE_FREE(du_bar[i]);
+    }
+    // Once all clear, free top pointer.
+    SAFE_FREE(u);
+    SAFE_FREE(f);
+    SAFE_FREE(du);
+    SAFE_FREE(du_bar);
 
-	// Coordinate grids.
-	SAFE_FREE(r);
-	SAFE_FREE(z);
+    // Coordinate grids.
+    SAFE_FREE(r);
+    SAFE_FREE(z);
 
-	// Derivatives.
-	SAFE_FREE(ctx.Dr_u);
-	SAFE_FREE(ctx.Dz_u);
-	SAFE_FREE(ctx.Drr_u);
-	SAFE_FREE(ctx.Dzz_u);
-	SAFE_FREE(ctx.Drz_u);
+    // Derivatives.
+    SAFE_FREE(ctx.Dr_u);
+    SAFE_FREE(ctx.Dz_u);
+    SAFE_FREE(ctx.Drr_u);
+    SAFE_FREE(ctx.Dzz_u);
+    SAFE_FREE(ctx.Drz_u);
 
-	// Auxiliary variables.
-	SAFE_FREE(ctx.u_aux);
-	SAFE_FREE(ctx.Dr_u_aux);
+    // Auxiliary variables.
+    SAFE_FREE(ctx.u_aux);
+    SAFE_FREE(ctx.Dr_u_aux);
 
-	// Newton variables.
-	SAFE_FREE(norm_f);
-	SAFE_FREE(norm_du);
-	SAFE_FREE(norm_du_bar);
-	SAFE_FREE(lambda);
-	SAFE_FREE(Theta);
-	SAFE_FREE(mu);
-	SAFE_FREE(lambda_prime);
-	SAFE_FREE(mu_prime);
+    // Newton variables.
+    SAFE_FREE(norm_f);
+    SAFE_FREE(norm_du);
+    SAFE_FREE(norm_du_bar);
+    SAFE_FREE(lambda);
+    SAFE_FREE(Theta);
+    SAFE_FREE(mu);
+    SAFE_FREE(lambda_prime);
+    SAFE_FREE(mu_prime);
 
-	// Initial data seed.
-	SAFE_FREE(ctx.u_seed);
+    // Initial data seed.
+    SAFE_FREE(ctx.u_seed);
 
-	printf("***              Finished deallocation!            \n");
-	printf("***                                                \n");
-	printf("******************************************************\n");
+    printf("***              Finished deallocation!            \n");
+    printf("***                                                \n");
+    printf("******************************************************\n");
 
-	// Print final message.
-	printf("******************************************************\n");
-	printf("***                                                \n");
-	printf("***           All done! Have a nice day!           \n");
-	printf("***                                                \n");
-	printf("******************************************************\n");
-	printf("******************************************************\n");
+    // Print final message.
+    printf("******************************************************\n");
+    printf("***                                                \n");
+    printf("***           All done! Have a nice day!           \n");
+    printf("***                                                \n");
+    printf("******************************************************\n");
+    printf("******************************************************\n");
 
-	// All done.
-	return 0;
+    // All done.
+    return 0;
 }

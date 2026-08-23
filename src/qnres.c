@@ -3,10 +3,10 @@
 #include "context.h"
 
 // Error codes.
-#define ERROR_CODE_SUCCESS 				  0
-#define ERROR_CODE_QNRES_THETA_INCREASE_EXIT 		- 2
-#define ERROR_CODE_EXCEEDED_MAX_ITERATIONS 		- 3
-#define ERROR_CODE_QNRES_ILL_CONDITIONED		- 4
+#define ERROR_CODE_SUCCESS 0
+#define ERROR_CODE_QNRES_THETA_INCREASE_EXIT -2
+#define ERROR_CODE_EXCEEDED_MAX_ITERATIONS -3
+#define ERROR_CODE_QNRES_ILL_CONDITIONED -4
 
 // Maximum expansion.
 #define THETA_MAX 0.5
@@ -16,179 +16,191 @@
 
 // Set a required residual error sufficiently above the machine precision.
 // Guess an initial iterate u^0. Evaluate F(u^0) and ||F(u^0)||.
-MKL_INT nleq_res_qnres(
-	        rb_context	*ctx,		// INPUT: Runtime context.
-	        MKL_INT	*err_code,		// OUTPUT: Pointer to integer containing error code.
-		double 	**u,			// IN-OUTPUT: Pointer to array of solution vectors.
-						//            First entry contains initial guess.
-		double 	**f,			// IN-OUTPUT: Pointer to array of RHS's.
-						//            First entry contains initial RHS.
-		double 	**du,			// OUTPUT: Pointer to array of updates.
-		double	*norm_f,		// OUTPUT: Pointer to array of RHS norms.
-		double	*Theta,			// OUTPUT: Pointer to array of monitoring quantity.
-	      	double	*gamma,			// OUTPUT: Pointer to array of gamma's.
-	csr_matrix	*J,			// INPUT: Pointer to Jacobian matrix type.
-	const 	double	epsilon,		// INPUT: Exit tolerance.
-	const	MKL_INT	max_newton_iterations,	// INPUT: Maximum number of Newton iterations.
-	      	rb_rhs_fn	RHS_CALC,				// INPUT: RHS calculation subroutine.
-	      	rb_jacobian_fn	JACOBIAN_CALC,	// INPUT: Jacobian calculation subroutine.
-	      	rb_norm_fn	NORM,					// INPUT: Norm calculation subroutine.
-	      	rb_dot_fn	DOT,			// INPUT: Dot product calculation subroutine.
-	      	rb_linear_solve_fn	LINEAR_SOLVE_1,		// INPUT: Linear solver subroutine.
-	      	rb_linear_solve_fn	LINEAR_SOLVE_2		// INPUT: Linear solver subroutine.
-		)
+MKL_INT
+nleq_res_qnres(rb_context *ctx, // INPUT: Runtime context.
+               MKL_INT *err_code, // OUTPUT: Pointer to integer containing error code.
+               double **u, // IN-OUTPUT: Pointer to array of solution vectors.
+                           //            First entry contains initial guess.
+               double **f, // IN-OUTPUT: Pointer to array of RHS's.
+                           //            First entry contains initial RHS.
+               double **du, // OUTPUT: Pointer to array of updates.
+               double *norm_f, // OUTPUT: Pointer to array of RHS norms.
+               double *Theta, // OUTPUT: Pointer to array of monitoring quantity.
+               double *gamma, // OUTPUT: Pointer to array of gamma's.
+               csr_matrix *J, // INPUT: Pointer to Jacobian matrix type.
+               const double epsilon, // INPUT: Exit tolerance.
+               const MKL_INT max_newton_iterations, // INPUT: Maximum number of Newton iterations.
+               rb_rhs_fn RHS_CALC, // INPUT: RHS calculation subroutine.
+               rb_jacobian_fn JACOBIAN_CALC, // INPUT: Jacobian calculation subroutine.
+               rb_norm_fn NORM, // INPUT: Norm calculation subroutine.
+               rb_dot_fn DOT, // INPUT: Dot product calculation subroutine.
+               rb_linear_solve_fn LINEAR_SOLVE_1, // INPUT: Linear solver subroutine.
+               rb_linear_solve_fn LINEAR_SOLVE_2 // INPUT: Linear solver subroutine.
+)
 {
-	// Remeber:
-	// Intial RHS is stored in f[0].
-	// Inital ||f[0]|| is also stored already in norm_f[0].
+    // Remeber:
+    // Intial RHS is stored in f[0].
+    // Inital ||f[0]|| is also stored already in norm_f[0].
 
-	// Iteration counters.
-	MKL_INT l = 0, i = 0;
+    // Iteration counters.
+    MKL_INT l = 0, i = 0;
 
-	// Get matrix dimension.
-	MKL_INT dim = J->nrows;
+    // Get matrix dimension.
+    MKL_INT dim = J->nrows;
 
-	// Auxiliary memory blocks.
-	double *v = (double *)SAFE_MALLOC(sizeof(double) * dim);
-	double *w = (double *)SAFE_MALLOC(sizeof(double) * dim);
+    // Auxiliary memory blocks.
+    double *v = (double *)SAFE_MALLOC(sizeof(double) * dim);
+    double *w = (double *)SAFE_MALLOC(sizeof(double) * dim);
 
-	// Auxiliary doubles.
-	double beta = 0.0;
-	double z = 0.0;
+    // Auxiliary doubles.
+    double beta = 0.0;
+    double z = 0.0;
 
-	// Preconditioner monitor.
-	double kappa = 1.0;
+    // Preconditioner monitor.
+    double kappa = 1.0;
 
-	// Unique Jacobian.
-	// Calculate Jacobian J(u^0).
-	JACOBIAN_CALC(ctx, *J, u[l], 0);
+    // Unique Jacobian.
+    // Calculate Jacobian J(u^0).
+    JACOBIAN_CALC(ctx, *J, u[l], 0);
 
-	// First linear solve.
-	// Solve linear system J(u^0) du^0 = -f(u^0).
-	LINEAR_SOLVE_1(du[l], J, f[l]);
+    // First linear solve.
+    // Solve linear system J(u^0) du^0 = -f(u^0).
+    LINEAR_SOLVE_1(du[l], J, f[l]);
 
-	// Step l.
-	for (l = 0; l < max_newton_iterations; ++l)
-	{
-		/* Print table header every 50 iterations. */
-		if (l % 50 == 0)
-		{
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n"
-		"***** | QNRES ITER | ||df[l+1]||  | gamma[l]    | Theta[l]     | kappa       | STATUS      |\n"
-		"***** |------------|--------------|-------------|--------------|-------------|-------------|\n");
-		}
+    // Step l.
+    for (l = 0; l < max_newton_iterations; ++l)
+    {
+        /* Print table header every 50 iterations. */
+        if (l % 50 == 0)
+        {
+            printf("*****  ------------ -------------- ------------- -------------- ------------- "
+                   "------------- \n"
+                   "***** | QNRES ITER | ||df[l+1]||  | gamma[l]    | Theta[l]     | kappa       | "
+                   "STATUS      |\n"
+                   "***** "
+                   "|------------|--------------|-------------|--------------|-------------|-------"
+                   "------|\n");
+        }
 
-		// New iterate u^{l+1} = u^l + du^l.
-		ARRAY_SUM(u[l + 1], 1.0, u[l], 1.0, du[l]);
+        // New iterate u^{l+1} = u^l + du^l.
+        ARRAY_SUM(u[l + 1], 1.0, u[l], 1.0, du[l]);
 
-		// Evaluation f(u^{l+1}).
-		RHS_CALC(ctx, f[l + 1], u[l + 1]);
+        // Evaluation f(u^{l+1}).
+        RHS_CALC(ctx, f[l + 1], u[l + 1]);
 
-		// RHS norm.
-		norm_f[l + 1] = NORM(ctx, f[l + 1]);
+        // RHS norm.
+        norm_f[l + 1] = NORM(ctx, f[l + 1]);
 
-		// Theta.
-		Theta[l] = norm_f[l + 1] / norm_f[l];
+        // Theta.
+        Theta[l] = norm_f[l + 1] / norm_f[l];
 
-		// Preconditioner monitor kappa.
-		kappa /= (1.0 - 2.0 * Theta[l]);
+        // Preconditioner monitor kappa.
+        kappa /= (1.0 - 2.0 * Theta[l]);
 
-		// Calculate w = dF[l+1] = F[l+1] - F[l].
-		ARRAY_SUM(w, 1.0, f[l + 1], -1.0, f[l]);
+        // Calculate w = dF[l+1] = F[l+1] - F[l].
+        ARRAY_SUM(w, 1.0, f[l + 1], -1.0, f[l]);
 
-		// gamma[l] = <dF[l+1], dF[l+1]> = ||dF[l+1]||**2.
-		gamma[l] = DOT(ctx, w, w);
+        // gamma[l] = <dF[l+1], dF[l+1]> = ||dF[l+1]||**2.
+        gamma[l] = DOT(ctx, w, w);
 
-		// Convergence test: If ||F(u^{l+1})|| < epsilon: stop. Solution found u* = u^{l+1}.
-		if (norm_f[l + 1] < epsilon)
-		{
-			/* Print message */
-	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "CONVERGED C");
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
+        // Convergence test: If ||F(u^{l+1})|| < epsilon: stop. Solution found u* = u^{l+1}.
+        if (norm_f[l + 1] < epsilon)
+        {
+            /* Print message */
+            printf("***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l,
+                   norm_f[l + 1], gamma[l], Theta[l], kappa, "CONVERGED C");
+            printf("*****  ------------ -------------- ------------- -------------- ------------- "
+                   "------------- \n");
 
-			/* No error code. */
-			*err_code = ERROR_CODE_SUCCESS;
+            /* No error code. */
+            *err_code = ERROR_CODE_SUCCESS;
 
-			/* Clean-up.*/
-			SAFE_FREE(v);
-			SAFE_FREE(w);
-	
-			/* Return positive index where solution is stored. */
-			return l + 1;
-		}
+            /* Clean-up.*/
+            SAFE_FREE(v);
+            SAFE_FREE(w);
 
-		// Sanity tests.
-		// First expansion.
-		// If Theta_l > 1/4: stop, no convergence.
-		if (Theta[l] > THETA_MAX)
-		{
-			/* Print message */
-	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
+            /* Return positive index where solution is stored. */
+            return l + 1;
+        }
 
-			/* Error code -2: Theta increases beyond 0.25. */
-			*err_code = ERROR_CODE_QNRES_THETA_INCREASE_EXIT;
+        // Sanity tests.
+        // First expansion.
+        // If Theta_l > 1/4: stop, no convergence.
+        if (Theta[l] > THETA_MAX)
+        {
+            /* Print message */
+            printf("***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l,
+                   norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
+            printf("*****  ------------ -------------- ------------- -------------- ------------- "
+                   "------------- \n");
 
-			/* Clean-up. */
-			SAFE_FREE(v);
-			SAFE_FREE(w);
+            /* Error code -2: Theta increases beyond 0.25. */
+            *err_code = ERROR_CODE_QNRES_THETA_INCREASE_EXIT;
 
-			/* Return negative index: last update at u[l + 1]. */
-			return -(l + 1);
-		}
+            /* Clean-up. */
+            SAFE_FREE(v);
+            SAFE_FREE(w);
 
-		// Second, preconditioner.
-		if (kappa > KAPPA_MAX)
-		{
-			/* Print message */
-	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
+            /* Return negative index: last update at u[l + 1]. */
+            return -(l + 1);
+        }
 
-			/* Error code -2: Theta increases beyond 0.25. */
-			*err_code = ERROR_CODE_QNRES_ILL_CONDITIONED;
+        // Second, preconditioner.
+        if (kappa > KAPPA_MAX)
+        {
+            /* Print message */
+            printf("***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l,
+                   norm_f[l + 1], gamma[l], Theta[l], kappa, "EXIT QNRES");
+            printf("*****  ------------ -------------- ------------- -------------- ------------- "
+                   "------------- \n");
 
-			/* Clean-up. */
-			SAFE_FREE(v);
-			SAFE_FREE(w);
+            /* Error code -2: Theta increases beyond 0.25. */
+            *err_code = ERROR_CODE_QNRES_ILL_CONDITIONED;
 
-			/* Return negative index: last update at u[l + 1]. */
-			return -(l + 1);
-		}
+            /* Clean-up. */
+            SAFE_FREE(v);
+            SAFE_FREE(w);
 
-		// If sanity tests are passed, we can calculate RHS.
-		// v = (1 - <w,F[l+1]>/gamma[l]) * F[l+1].
-		z = DOT(ctx, w, f[l + 1]);
-		ARRAY_SUM(v, (1.0 - z / gamma[l]), f[l + 1], 0.0, v);
+            /* Return negative index: last update at u[l + 1]. */
+            return -(l + 1);
+        }
 
-		// Recursive update.
-		for (i = l - 1; i >= 0; --i)
-		{
-			// beta = <dF[i+1], v> / gammma[i].
-			beta = (DOT(ctx, f[i + 1], v) - DOT(ctx, f[i], v)) / gamma[i];
-			// v = v - beta * F[i+1].
-			ARRAY_SUM(v, 1.0, v, -beta, f[i + 1]);
-		}
+        // If sanity tests are passed, we can calculate RHS.
+        // v = (1 - <w,F[l+1]>/gamma[l]) * F[l+1].
+        z = DOT(ctx, w, f[l + 1]);
+        ARRAY_SUM(v, (1.0 - z / gamma[l]), f[l + 1], 0.0, v);
 
-		// Linear solve.
-		// Notice that we are actually solving J(u^0) du^{l+1} = -v.
-		// The minus signs work out in the end and there is no need to change v.
-		LINEAR_SOLVE_2(du[l + 1], J, v);
+        // Recursive update.
+        for (i = l - 1; i >= 0; --i)
+        {
+            // beta = <dF[i+1], v> / gammma[i].
+            beta = (DOT(ctx, f[i + 1], v) - DOT(ctx, f[i], v)) / gamma[i];
+            // v = v - beta * F[i+1].
+            ARRAY_SUM(v, 1.0, v, -beta, f[i + 1]);
+        }
 
-		// Print message before continuing.
-	printf(	"***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l, norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");
-		continue;
-	}
+        // Linear solve.
+        // Notice that we are actually solving J(u^0) du^{l+1} = -v.
+        // The minus signs work out in the end and there is no need to change v.
+        LINEAR_SOLVE_2(du[l + 1], J, v);
 
-	/* If we reach this point we did not converge after the maximum iterations. */
-	printf(	"*****  ------------ -------------- ------------- -------------- ------------- ------------- \n");
+        // Print message before continuing.
+        printf("***** | %-10lld | %11.5E  |% -11.5E | %9.5E  |% -11.5E | %-11s |\n", l,
+               norm_f[l + 1], gamma[l], Theta[l], kappa, "ACCEPT");
+        continue;
+    }
 
-	/* Error code -3: Reached maximum number of iterations. */
-	*err_code = ERROR_CODE_EXCEEDED_MAX_ITERATIONS;
+    /* If we reach this point we did not converge after the maximum iterations. */
+    printf("*****  ------------ -------------- ------------- -------------- ------------- "
+           "------------- \n");
 
-	/* Clean-up.*/
-	SAFE_FREE(v);
-	SAFE_FREE(w);
+    /* Error code -3: Reached maximum number of iterations. */
+    *err_code = ERROR_CODE_EXCEEDED_MAX_ITERATIONS;
 
-	/* Return negative index to last filled entry. */
-	return -max_newton_iterations;
+    /* Clean-up.*/
+    SAFE_FREE(v);
+    SAFE_FREE(w);
+
+    /* Return negative index to last filled entry. */
+    return -max_newton_iterations;
 }

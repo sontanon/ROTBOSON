@@ -1,12 +1,14 @@
 # clang-format configuration for ROTBOSON.
-# Mass reformatting of the legacy sources happens in Phase 2; this file is the
-# agreed style from that point onward (and is what the CI format-check uses).
+# Applied repo-wide in Phase 4; this file is the agreed style from that point
+# onward, and tools/generate_kernels.py pipes its generated kernels through it
+# so the "regenerated == checked-in" check stays idempotent.
 BasedOnStyle: LLVM
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 ColumnLimit: 100
 SortIncludes: Never
+AlignTrailingComments: false
 AllowShortFunctionsOnASingleLine: Empty
 BreakBeforeBraces: Allman
 PointerAlignment: Right

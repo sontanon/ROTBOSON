@@ -6,15 +6,13 @@
 // re-derived in SymPy (tools/sympy_system.py) and cross-checked against the
 // original Mathematica codegen notebook.
 
-void rhs_vars(double *f, double *u, double *Dr_u, double *Dz_u,
-	double *Drr_u, double *Dzz_u,
-	const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
-	const MKL_INT ghost, const MKL_INT i, const MKL_INT j,
-	const double dr, const double dz, const MKL_INT l, const double m,
-	const double w, const double rescale, double *u_aux, double *Dr_u_aux);
+void rhs_vars(double *f, double *u, double *Dr_u, double *Dz_u, double *Drr_u, double *Dzz_u,
+              const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim, const MKL_INT ghost,
+              const MKL_INT i, const MKL_INT j, const double dr, const double dz, const MKL_INT l,
+              const double m, const double w, const double rescale, double *u_aux,
+              double *Dr_u_aux);
 
-void rhs_bdry(double *f, double *u, double *Dr_u, double *Dz_u,
-	const MKL_INT NrTotal, const MKL_INT NzTotal, const MKL_INT dim,
-	const MKL_INT ghost, const MKL_INT i, const MKL_INT j,
-	const double dr, const double dz, const MKL_INT l, const double m,
-	const double w, const double M, const double J, const double rescale);
+void rhs_bdry(double *f, double *u, double *Dr_u, double *Dz_u, const MKL_INT NrTotal,
+              const MKL_INT NzTotal, const MKL_INT dim, const MKL_INT ghost, const MKL_INT i,
+              const MKL_INT j, const double dr, const double dz, const MKL_INT l, const double m,
+              const double w, const double M, const double J, const double rescale);

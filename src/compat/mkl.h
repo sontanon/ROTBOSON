@@ -27,8 +27,7 @@ static inline double cblas_ddot(const MKL_INT n, const double *x, const MKL_INT 
     return sum;
 }
 
-static inline void cblas_dscal(const MKL_INT n, const double alpha, double *x,
-                               const MKL_INT incx)
+static inline void cblas_dscal(const MKL_INT n, const double alpha, double *x, const MKL_INT incx)
 {
     MKL_INT i, ix = 0;
     for (i = 0; i < n; ++i, ix += incx)
@@ -93,8 +92,14 @@ static inline MKL_INT cblas_idamin(const MKL_INT n, const double *x, const MKL_I
 }
 
 // Thread control: the OSS backend has no internal thread pool to configure.
-static inline void mkl_set_dynamic(int enable) { (void)enable; }
+static inline void mkl_set_dynamic(int enable)
+{
+    (void)enable;
+}
 
-static inline void mkl_set_num_threads(int num) { (void)num; }
+static inline void mkl_set_num_threads(int num)
+{
+    (void)num;
+}
 
 #endif /* ROTBOSON_MKL_COMPAT_H */
