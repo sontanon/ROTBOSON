@@ -383,6 +383,11 @@ Phase 4 is **closed** on branch `phase4/sympy`.
   design order (observed ~3.3 → ~3.8 on 64→256 grids).
 - **Reproducibility**: `tools/generate_kernels.py --check` asserts the
   regenerated kernels are byte-identical to the checked-in files (CI).
+- **Formatting:** the checked-in `.clang-format` (LLVM base, 4-space, no tabs,
+  `AlignTrailingComments: false`) was finally applied repo-wide (the Phase 1
+  plan had deferred it to "Phase 2" but it never ran).  `generate_kernels.py`
+  pipes its output through `clang-format` so the idempotency check survives the
+  reformat.  Purely cosmetic (verified against the smoke/golden results).
 - **Validation:** the regenerated `csr_vars.c` + `rhs_vars.c` rebuild cleanly
   and the §4c gate passes — l=1 w=0.9 N=400 golden regeneration matches
   `data/golden/` to ~1e-13 (all fields + observables), and the l=1 w=0.95
