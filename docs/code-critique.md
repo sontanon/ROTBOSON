@@ -205,12 +205,20 @@ mechanical follow-up.
 
 ---
 
-## 13. Generated code with unused parameters  [documented]
+## 13. Generated code with unused parameters  [fixed]
 
 `csr_vars.c`, `csr_exp_decay.c`, `rhs_vars.c` etc. are machine-generated Jacobian
 code and carry many unused parameters and unused variables (the compiler warns
 about them today). They should be regenerated cleanly in Phase 4 (SymPy) rather
 than hand-edited.
+
+**Fix (Phase 4):** `csr_vars.c`/`rhs_vars.c` are now regenerated from the
+SymPy system (`tools/generate_kernels.py`).  Unused grid-value parameters are
+declared anonymous (no name), the redundant `NrTotal`/`u_aux`/`M`/`J`
+parameters are `(void)`-cast, and the dead commented-out blocks (Kerr
+matching, `ANALYTIC`, the `dRu4`/`dZu4` derivatives of log a, which the
+residual never uses) are gone.  The generated kernels build `-Wall -Wextra`
+clean.
 
 ---
 
@@ -266,4 +274,5 @@ configuration strict (TOML + unknown-key rejection), and the structure legible
 bit-for-bit on both solver backends and against the published golden data.
 
 The remaining items (PARDISO's own globals, `MKL_INT` everywhere, the
-`tools.h` kitchen sink, generated-code hygiene, HDF5) are queued for Phases 4-6.
+`tools.h` kitchen sink, HDF5) are queued for Phases 5-6.  (Generated-code
+hygiene, #13, was retired in Phase 4 by the SymPy regeneration.)

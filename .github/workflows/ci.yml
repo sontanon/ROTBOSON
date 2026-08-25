@@ -81,3 +81,20 @@ jobs:
         run: uv run ruff check tools/
       - name: Ruff format check
         run: uv run ruff format --check tools/
+
+  python-sympy:
+    name: SymPy derivation + codegen checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install clang-format (codegen idempotency check needs it)
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Sync Python tooling
+        run: uv sync --dev
+      - name: Cross-check SymPy Jacobian vs codegen notebook
+        run: uv run tools/sympy_check.py
+      - name: MMS convergence test (4th-order interior)
+        run: uv run tools/mms_test.py
+      - name: Regenerated kernels == checked-in
+        run: uv run tools/generate_kernels.py --check

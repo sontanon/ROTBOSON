@@ -354,6 +354,51 @@ Note: `data/golden/` and `data/seeds/` are gitignored (restore from the backup
 drive, §4c) — not needed for the SymPy cross-check itself, but required for the
 full regression gate and any MMS-against-binary checks.
 
+#### Phase 4 — OUTCOME (completed 2026-08-22)
+
+Phase 4 is **closed** on branch `phase4/sympy`.
+
+- **SymPy re-derivation** (`tools/sympy_system.py`): the six EKG residuals
+  `R_0..R_5` (lapse, shift, log h, log a, rescaled scalar field, and the
+  regularization variable λ) are written symbolically from the equations in
+  `rhs_vars.c`, including the `a2 → h2 + r²λ` regularization re-definition and
+  the `Dr(α)/r`, `Dr(H)/r` auxiliary terms.  The Jacobian is the exact
+  `d f_i / d(subtype)` (6×6 grid functions × {value, ∂r, ∂z, ∂rr, ∂zz} + ω),
+  with the ω chain rule `dw_du(xi, m)` applied at run time.
+- **Cross-check** (`tools/sympy_check.py`): the SymPy Jacobian is compared
+  term-for-term against the Mathematica-pasted strings in
+  `derivations/notebooks/Mathematica CSR Code Generation.ipynb` — **all 6×31
+  entries agree** at hundreds of random points.  The residual is additionally
+  pinned by the golden gate below.
+- **Code generation** (`tools/generate_kernels.py`): regenerates
+  `src/rhs_vars.c`, `src/rhs_vars.h`, `src/csr_vars.c`, `src/csr_vars.h`
+  from the SymPy system.  The old hand-pasted Mathematica strings and the
+  hand-written 2nd-order Jacobian are gone; all five stencil kernels
+  (`cc`/`cs`/`sc`/`ss` 4th order + 2nd order `cc`) are emitted from the same
+  SymPy Jacobian and the Fornberg stencil tables.  Backlog item #7 is retired
+  (no unused parameters/variables; `-Wall -Wextra` clean for the kernels).
+- **MMS test** (`tools/mms_test.py`): a manufactured even solution is fed
+  through the residual with 4th-order Fornberg stencils and compared to the
+  analytic source `S = L[u_man]`; the interior residual converges at the
+  design order (observed ~3.3 → ~3.8 on 64→256 grids).
+- **Reproducibility**: `tools/generate_kernels.py --check` asserts the
+  regenerated kernels are byte-identical to the checked-in files (CI).
+- **Formatting:** the checked-in `.clang-format` (LLVM base, 4-space, no tabs,
+  `AlignTrailingComments: false`) was finally applied repo-wide (the Phase 1
+  plan had deferred it to "Phase 2" but it never ran).  `generate_kernels.py`
+  pipes its output through `clang-format` so the idempotency check survives the
+  reformat.  Purely cosmetic (verified against the smoke/golden results).
+- **Validation:** the regenerated `csr_vars.c` + `rhs_vars.c` rebuild cleanly
+  and the §4c gate passes — l=1 w=0.9 N=400 golden regeneration matches
+  `data/golden/` to ~1e-13 (all fields + observables), and the l=1 w=0.95
+  from-scratch smoke reproduces the expected ω.
+
+Not done (deferred, tracked for Phase 5/6): the order-6 radial operator's
+parity-correct axis stencils (`docs/code-critique.md` §16) — the Jacobian
+regeneration uses the same parity behaviour as the checked-in operators, so
+the odd-input limitation is unchanged and remains latent (production uses
+EVEN only).
+
 ### Phase 5 — Output format: HDF5
 
 - HDF5 via CMake: one self-describing file per solution (fields, grids, attributes:

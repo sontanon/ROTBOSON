@@ -26,118 +26,118 @@
 
 typedef struct rb_context
 {
-	// -- GRID ---------------------------------------------------------------
-	double dr;
-	double dz;
-	MKL_INT NrInterior;
-	MKL_INT NzInterior;
-	MKL_INT NrTotal;
-	MKL_INT NzTotal;
-	MKL_INT dim;
-	MKL_INT ghost;
-	MKL_INT order;
+    // -- GRID ---------------------------------------------------------------
+    double dr;
+    double dz;
+    MKL_INT NrInterior;
+    MKL_INT NzInterior;
+    MKL_INT NrTotal;
+    MKL_INT NzTotal;
+    MKL_INT dim;
+    MKL_INT ghost;
+    MKL_INT order;
 
-	// -- SCALAR FIELD -------------------------------------------------------
-	MKL_INT l;
-	double m;
-	double psi0;
-	double sigmaR;
-	double sigmaZ;
-	double rExt;
-	double w0;
-	MKL_INT w_idx;
-	MKL_INT fixedPhi;
-	MKL_INT fixedPhiR;
-	MKL_INT fixedPhiZ;
-	MKL_INT fixedOmega;
+    // -- SCALAR FIELD -------------------------------------------------------
+    MKL_INT l;
+    double m;
+    double psi0;
+    double sigmaR;
+    double sigmaZ;
+    double rExt;
+    double w0;
+    MKL_INT w_idx;
+    MKL_INT fixedPhi;
+    MKL_INT fixedPhiR;
+    MKL_INT fixedPhiZ;
+    MKL_INT fixedOmega;
 
-	// -- INITIAL DATA -------------------------------------------------------
-	MKL_INT readInitialData;
-	char *log_alpha_i;
-	char *beta_i;
-	char *log_h_i;
-	char *log_a_i;
-	char *psi_i;
-	char *lambda_i;
-	char *w_i;
-	MKL_INT NrTotalInitial;
-	MKL_INT NzTotalInitial;
-	MKL_INT ghost_i;
-	MKL_INT order_i;
-	double dr_i;
-	double dz_i;
+    // -- INITIAL DATA -------------------------------------------------------
+    MKL_INT readInitialData;
+    char *log_alpha_i;
+    char *beta_i;
+    char *log_h_i;
+    char *log_a_i;
+    char *psi_i;
+    char *lambda_i;
+    char *w_i;
+    MKL_INT NrTotalInitial;
+    MKL_INT NzTotalInitial;
+    MKL_INT ghost_i;
+    MKL_INT order_i;
+    double dr_i;
+    double dz_i;
 
-	// -- SCALE INITIAL DATA -------------------------------------------------
-	double scale_u0;
-	double scale_u1;
-	double scale_u2;
-	double scale_u3;
-	double scale_u4;
-	double scale_u5;
-	double scale_u6;
-	double *u_seed;
+    // -- SCALE INITIAL DATA -------------------------------------------------
+    double scale_u0;
+    double scale_u1;
+    double scale_u2;
+    double scale_u3;
+    double scale_u4;
+    double scale_u5;
+    double scale_u6;
+    double *u_seed;
 
-	// -- NEXT SCALE ADVANCE -------------------------------------------------
-	double scale_next;
+    // -- NEXT SCALE ADVANCE -------------------------------------------------
+    double scale_next;
 
-	// -- SOLVER PARAMETERS --------------------------------------------------
-	MKL_INT solverType;
-	MKL_INT localSolver;
-	double epsilon;
-	MKL_INT maxNewtonIter;
-	double lambda0;
-	double lambdaMin;
-	MKL_INT useLowRank;
+    // -- SOLVER PARAMETERS --------------------------------------------------
+    MKL_INT solverType;
+    MKL_INT localSolver;
+    double epsilon;
+    MKL_INT maxNewtonIter;
+    double lambda0;
+    double lambdaMin;
+    MKL_INT useLowRank;
 
-	// -- INITIAL GUESS CHECK ------------------------------------------------
-	MKL_INT max_initial_guess_checks;
-	double norm_f0_target;
+    // -- INITIAL GUESS CHECK ------------------------------------------------
+    MKL_INT max_initial_guess_checks;
+    double norm_f0_target;
 
-	// -- AUXILIARY ARRAYS FOR DERIVATIVES -----------------------------------
-	double *Dr_u;
-	double *Dz_u;
-	double *Drr_u;
-	double *Dzz_u;
-	double *Drz_u;
+    // -- AUXILIARY ARRAYS FOR DERIVATIVES -----------------------------------
+    double *Dr_u;
+    double *Dz_u;
+    double *Drr_u;
+    double *Dzz_u;
+    double *Drz_u;
 
-	// -- AUXILIARY VARIABLES -------------------------------------------------
-	double *u_aux;
-	double *Dr_u_aux;
+    // -- AUXILIARY VARIABLES -------------------------------------------------
+    double *u_aux;
+    double *Dr_u_aux;
 
-	// -- SPHERICAL PARAMETERS FOR ANALYSIS ----------------------------------
-	MKL_INT NrrTotal;
-	MKL_INT NthTotal;
-	MKL_INT p_dim;
-	double drr;
-	double dth;
-	double rr_inf;
+    // -- SPHERICAL PARAMETERS FOR ANALYSIS ----------------------------------
+    MKL_INT NrrTotal;
+    MKL_INT NthTotal;
+    MKL_INT p_dim;
+    double drr;
+    double dth;
+    double rr_inf;
 
-	// -- OUTPUT --------------------------------------------------------------
-	char work_dirname[MAX_STR_LEN];
-	char initial_dirname[MAX_STR_LEN];
-	char final_dirname[MAX_STR_LEN];
+    // -- OUTPUT --------------------------------------------------------------
+    char work_dirname[MAX_STR_LEN];
+    char initial_dirname[MAX_STR_LEN];
+    char final_dirname[MAX_STR_LEN];
 
-	// -- SWEEP CONTROL -------------------------------------------------------
-	MKL_INT sweep;
-	double rr_phi_max_minimum;
-	double rr_phi_max_maximum;
-	MKL_INT hwl_min;
-	MKL_INT hwl_max;
-	double w_max;
-	double w_min;
-	double w_step;
+    // -- SWEEP CONTROL -------------------------------------------------------
+    MKL_INT sweep;
+    double rr_phi_max_minimum;
+    double rr_phi_max_maximum;
+    MKL_INT hwl_min;
+    MKL_INT hwl_max;
+    double w_max;
+    double w_min;
+    double w_step;
 
-	// -- ANALYSIS ------------------------------------------------------------
-	double *i_rr;
-	double *i_th;
-	double *i_u;
-	double M_KOMAR;
-	double J_KOMAR;
-	double GRV2;
-	double GRV3;
-	double phi_max;
-	double rr_phi_max;
-	MKL_INT hwl_res;
+    // -- ANALYSIS ------------------------------------------------------------
+    double *i_rr;
+    double *i_th;
+    double *i_u;
+    double M_KOMAR;
+    double J_KOMAR;
+    double GRV2;
+    double GRV3;
+    double phi_max;
+    double rr_phi_max;
+    MKL_INT hwl_res;
 } rb_context;
 
 // Set every field to its pre-parse default (the values param.h used to

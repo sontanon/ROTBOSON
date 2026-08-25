@@ -7,18 +7,18 @@
 
 double omega_calc(const double u, const double m)
 {
-	//return u;
-	return 0.5 * m * (1.0 + tanh(u));
+    // return u;
+    return 0.5 * m * (1.0 + tanh(u));
 }
 
 double inverse_omega_calc(const double w, const double m)
 {
-	//return w;
-	return atanh(2.0 * w / m - 1.0);
+    // return w;
+    return atanh(2.0 * w / m - 1.0);
 }
 
 double dw_du(const double u, const double m)
 {
-	// return 1.0;
-	return 0.5 * m * sech(u) * sech(u);
+    // return 1.0;
+    return 0.5 * m * sech(u) * sech(u);
 }
