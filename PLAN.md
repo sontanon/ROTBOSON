@@ -408,6 +408,50 @@ EVEN only).
 Phase 5 also retires backlog items #8, #9 and #11 (I/O abstraction, logging, and
 the stale commented-out copy block in `io.c`).
 
+#### Phase 5 — INPUTS & starting point (handover)
+
+Everything is on `master` (tag `phase4-complete`); start a `phase5/hdf5` branch
+and build/test as in §4c. The full golden suite (l=1..6) was re-run and PASSES
+on master. The I/O you will refactor:
+
+- **Writers live in `src/tools.c` (the kitchen-sink, see backlog #3), not in a
+  dedicated module.** `write_single_file_1d` / `write_single_integer_file_1d` /
+  `write_single_file_2d` / `write_single_file_2d_polar` (declared in
+  `tools.h`). All emit the same ASCII format: `%9.18E`, tab-separated, one file
+  per field. This is the §14 "I/O baked into the numerics" problem.
+- **Callers of the writers:** `analysis.c` (all `M_*`, `J_*`, `GRV*`, `r99`,
+  `rr_phi_max`, `phi_max`, `ergoregion_flag` and the `sph_*` interpolations),
+  `initial.c` (`*_0.asc` initial data), `initial_interpolation.c` (`r_0.asc`,
+  `z_0.asc`, `sph_*_0.asc`), `main.c` (`run_analysis` orchestrates), and
+  `rhs.c` (only under `DERIVATIVE_DEBUG`, which is `#undef`'d — dead path).
+- **`src/io.c`** is a single `io(dirname, parfile)` that `mkdir`s, prompts if
+  the dir exists, and then `chdir(dirname)` — so *every* subsequent write is
+  relative to the process cwd. That is the design to replace with an explicit
+  `solution_writer`/path-aware API (no global cwd). The ~35-line commented-out
+  `system("cp …")` block is backlog #11.
+- **`.asc` readers already exist in Python:** `tools/rotboson_io.py`
+  (`extract_scalars`, `find_solution_dirs`, `compare_fields`, `compare_scalars`)
+  back `compare_solutions.py` / `smoke.py` / `check_against_summary.py`. They
+  are the reference for what HDF5 must reproduce.
+- **Tooling:** `h5py>=3.16.0` is already a `uv` dev dependency. CMake HDF5 is
+  the only new build dependency (`find_package(HDF5)`); keep the UMFPACK and
+  ASan presets working.
+- **Backlog retired here:** #8 (I/O abstraction), #9 (logging vs `***` banner
+  spam — introduce a log level / structured output alongside the new writer),
+  #11 (dead `cp` block). Also carry over, if convenient, the order-6 radial
+  operator parity fix (`docs/code-critique.md` §16), which Phase 4 explicitly
+  deferred to "Phase 5/6".
+- **Validation:** the golden `.asc` files in `data/golden/` are the migration
+  fixtures. The transition should be two separable steps: (1) introduce the
+  writer abstraction behind the *existing* `.asc` format and prove bit-parity
+  with `compare_solutions.py` (the §4c gate), then (2) add HDF5 as a second
+  backend and round-trip `h5py` → `.asc` → golden. Do not land HDF5 until the
+  `.asc` refactor is golden-clean.
+
+Note: `data/golden/` and `data/seeds/` are gitignored (restore from the backup
+drive, §4c) — required for the full regression gate, not for the I/O refactor
+itself.
+
 ### Phase 6 — Rust migration (last, opportunistic)
 
 - Prerequisites: validated golden suite, clean C reference, HDF5 I/O, stable config.
@@ -430,7 +474,8 @@ de-MKL-ification, and the `tools.h` split).
 ## 4b. Branching & working conventions
 
 - One feature branch per phase, merged into `master` at completion and tagged:
-  `phase0/curation` (done) → `phase1/build-system` (done) → `phase2/config-refactor` → ...
+  `phase0/curation` → `phase1/build-system` → `phase2/config-refactor` →
+  `phase3/testing` → `phase4/sympy` → `phase5/hdf5` (all but the last done).
 - `master` is always green and reproducible; the golden suite must pass before a merge.
 - Renaming per-phase branches is unnecessary — they are short-lived and deleted after merge.
 
