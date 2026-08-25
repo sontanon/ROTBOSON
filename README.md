@@ -50,11 +50,30 @@ runtime library path) before configuring/building:
 source /opt/intel/oneapi/setvars.sh
 ```
 
-### libconfig
+### Configuration (TOML)
 
-Parameter files are now TOML (parsed by a vendored `tomlc99`, see
-`third_party/tomlc99/`); libconfig is no longer a dependency. Legacy `.par`
-files can be converted with `uv run tools/par_to_toml.py`.
+Parameter files are TOML, parsed by a vendored `tomlc99` (see
+`third_party/tomlc99/`); libconfig is no longer a dependency. Unknown keys are
+rejected and wrong types are hard errors. Legacy `.par` files can be converted
+with `uv run tools/par_to_toml.py`.
+
+Two extra keys control output:
+- `outputFormat = "ascii"` (default) writes the legacy one-file-per-field
+  `.asc` layout; `outputFormat = "hdf5"` writes a single self-describing
+  `solution.h5` per solution.
+- `loglevel = "error" | "warn" | "info" (default) | "debug"` sets the
+  verbosity of the progress/banner output.
+
+### HDF5 (optional, for `outputFormat = "hdf5"`)
+
+The HDF5 backend needs the HDF5 C library:
+
+Fedora: `sudo dnf install hdf5-devel`
+Ubuntu/Debian: `sudo apt-get install libhdf5-dev`
+macOS: `brew install hdf5`
+
+If HDF5 is not found at configure time the build continues without it and
+`outputFormat = "hdf5"` fails at runtime with a clear message.
 
 ### MKL-free fallback (SuiteSparse/UMFPACK)
 
@@ -94,13 +113,19 @@ uv run tools/smoke.py out/l1_from_scratch.toml
 
 # Generating l=1 data
 
-Two parameter files generate $l=1$ data in `out`. Run from `out/` (ROTBOSON
-changes into the output directory it creates):
+Two parameter files generate $l=1$ data in `out`. Run from `out/` (output
+directories are created under the process working directory; ROTBOSON no
+longer `chdir`s into them):
 
 ```bash
 cd out
 ../build/release/ROTBOSON l1_from_scratch.toml
 ```
+
+For the single-file HDF5 output, run the `l1_from_scratch_hdf5.toml` variant
+from a scratch directory and inspect `solution.h5` with
+`uv run tools/hdf5_roundtrip.py` (exports back to `.asc` and/or compares
+against a legacy `.asc` reference).
 
 This generates initial data for $l=1$, $m=1$, $\omega=0.95$ in a directory named
 `l=1,w=9.50000E-01,dr=6.25000E-02,N=0256` (parameters unchanged).

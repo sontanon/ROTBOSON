@@ -92,11 +92,6 @@ void initial_interpolator(double *u_1, double *u_0, const MKL_INT NrInterior_0,
             }
         }
     }
-#ifdef DEBUG
-    write_single_file_2d(r_0, "r_0.asc", NrTotal_0, NzTotal_0);
-    write_single_file_2d(z_0, "z_0.asc", NrTotal_0, NzTotal_0);
-#endif
-
     // Differentiate at the 0 level.
     for (k = 0; k < GNUMI; ++k)
     {
@@ -205,19 +200,8 @@ void initial_interpolator(double *u_1, double *u_0, const MKL_INT NrInterior_0,
                        dr_0, dz_0, NrInterior_0, NzInterior_0, ghost_0, &NrrTotal_0, &NthTotal_0,
                        &p_dim_0, &drr_0, &dth_0, &rr_inf_0);
 
-#ifdef DEBUG
-        write_single_file_2d_polar(i_rr_0, "sph_rr_0.asc", NrrTotal_0, NthTotal_0);
-        write_single_file_2d_polar(i_th_0, "sph_th_0.asc", NrrTotal_0, NthTotal_0);
-        write_single_file_2d_polar(i_u_0, "sph_log_alpha_0.asc", NrrTotal_0, NthTotal_0);
-        write_single_file_2d_polar(i_u_0 + p_dim_0, "sph_beta_0.asc", NrrTotal_0, NthTotal_0);
-        write_single_file_2d_polar(i_u_0 + 2 * p_dim_0, "sph_log_h_0.asc", NrrTotal_0, NthTotal_0);
-        write_single_file_2d_polar(i_u_0 + 3 * p_dim_0, "sph_log_a_0.asc", NrrTotal_0, NthTotal_0);
-        write_single_file_2d_polar(i_u_0 + 4 * p_dim_0, "sph_psi_0.asc", NrrTotal_0, NthTotal_0);
-        write_single_file_2d_polar(i_u_0 + 5 * p_dim_0, "sph_lambda_0.asc", NrrTotal_0, NthTotal_0);
-#endif
-
         // Extract global quantities.
-        ex_analysis(0, &M_0, &J_0, &GRV2_0, &GRV3_0, i_u_0, i_rr_0, i_th_0, w, m, l, ghost_0,
+        ex_analysis(NULL, &M_0, &J_0, &GRV2_0, &GRV3_0, i_u_0, i_rr_0, i_th_0, w, m, l, ghost_0,
                     order_0, NrrTotal_0, NthTotal_0, p_dim_0, drr_0, dth_0, rr_inf_0);
 
         // Print output message.

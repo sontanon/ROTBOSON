@@ -65,6 +65,122 @@ def read_scalar(path: str | Path) -> float:
     return float(np.ravel(data)[0])
 
 
+# ---------------------------------------------------------------------------
+# HDF5 (Phase 5). The single-file backend stores one dataset per legacy
+# ".asc" file, named "<field>.asc", plus scalar attributes (params, solver
+# settings, git hash, analysis results).
+# ---------------------------------------------------------------------------
+
+HDF5_FILENAME = "solution.h5"
+
+
+def read_hdf5(path: str | Path) -> tuple[dict[str, np.ndarray], dict[str, object]]:
+    """Read a solution.h5 into (datasets, attributes).
+
+    Dataset keys are the legacy file names (e.g. "w_f.asc"); attribute values
+    are decoded from bytes to str where applicable.
+    """
+    import h5py
+
+    path = Path(path)
+    datasets: dict[str, np.ndarray] = {}
+    attrs: dict[str, object] = {}
+    with h5py.File(path, "r") as f:
+        for key in f.keys():
+            datasets[key] = np.asarray(f[key][...])
+        for key, val in f.attrs.items():
+            attrs[key] = val.decode() if isinstance(val, bytes) else val
+    return datasets, attrs
+
+
+def hdf5_to_asc(h5_path: str | Path, out_dir: str | Path) -> list[Path]:
+    """Export a solution.h5 back to the legacy .asc file layout.
+
+    Returns the list of written files. Doubles are written with the same
+    %9.18E format the C ASCII backend uses (round-trips exactly); integer
+    fields as one %lld per line.
+    """
+    datasets, _ = read_hdf5(h5_path)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    for name, arr in datasets.items():
+        arr = np.asarray(arr)
+        path = out_dir / name
+        if arr.dtype.kind in "iu":
+            with path.open("w") as fh:
+                fh.write("\n".join(str(int(v)) for v in arr.reshape(-1)) + "\n")
+        else:
+            kwargs = {"fmt": "%9.18E"}
+            if arr.ndim > 1:
+                kwargs["delimiter"] = "\t"
+            np.savetxt(path, arr, **kwargs)
+        written.append(path)
+    return written
+
+
+def extract_scalars_from_hdf5(sol_dir: str | Path) -> dict[str, float | int]:
+    """Scalar observables from a solution.h5, mirroring extract_scalars()."""
+    datasets, _ = read_hdf5(Path(sol_dir) / HDF5_FILENAME)
+    out: dict[str, float | int] = {}
+    for fname in SCALAR_FILES:
+        if fname in datasets:
+            out[fname] = float(np.ravel(datasets[fname])[0])
+    for fname in PROFILE_FILES:
+        if fname in datasets:
+            out[fname] = float(np.ravel(datasets[fname])[-1])
+    if "error_code.asc" in datasets:
+        out["error_code.asc"] = int(np.ravel(datasets["error_code.asc"])[0])
+    return out
+
+
+def compare_hdf5_to_ascii(
+    hdf5_dir: str | Path, ascii_dir: str | Path, rtol: float = 1e-10, atol: float = 1e-12
+) -> tuple[bool, list[str]]:
+    """Compare a solution.h5 against a legacy .asc directory (field + scalars)."""
+    hdf5_dir, ascii_dir = Path(hdf5_dir), Path(ascii_dir)
+    datasets, _ = read_hdf5(hdf5_dir / HDF5_FILENAME)
+    ok = True
+    lines: list[str] = []
+
+    for fname in SCALAR_FILES + PROFILE_FILES + FIELD_FILES:
+        asc = ascii_dir / fname
+        if not asc.exists():
+            lines.append(f"  {fname:22s} missing .asc reference")
+            ok = False
+            continue
+        ref = read_1d(asc) if fname in SCALAR_FILES + PROFILE_FILES else read_2d(asc)
+        if fname not in datasets:
+            lines.append(f"  {fname:22s} missing in solution.h5")
+            ok = False
+            continue
+        new = np.asarray(datasets[fname])
+        if fname in PROFILE_FILES:
+            ref = np.atleast_1d(ref)[-1]
+            new = np.ravel(new)[-1]
+        if np.shape(ref) != np.shape(new):
+            lines.append(f"  {fname:22s} SHAPE MISMATCH ref={np.shape(ref)} new={np.shape(new)}")
+            ok = False
+            continue
+        diff = np.abs(ref - new)
+        max_abs = float(diff.max()) if diff.size else 0.0
+        max_rel = float((diff / np.maximum(np.abs(ref), 1e-300)).max()) if diff.size else 0.0
+        status = "PASS" if (max_abs <= atol or max_rel <= rtol) else "FAIL"
+        ok &= status == "PASS"
+        lines.append(f"  {fname:22s} max_abs={max_abs:.3e} max_rel={max_rel:.3e} {status}")
+
+    # error_code integer field.
+    ec = ascii_dir / "error_code.asc"
+    if ec.exists() and "error_code.asc" in datasets:
+        ref = int(np.ravel(read_1d(ec))[0])
+        new = int(np.ravel(datasets["error_code.asc"])[0])
+        status = "PASS" if ref == new else "FAIL"
+        ok &= status == "PASS"
+        lines.append(f"  error_code.asc      ref={ref} new={new} {status}")
+
+    return ok, lines
+
+
 def is_solution_dir(name: str) -> bool:
     return bool(SOLUTION_DIR_RE.match(name))
 

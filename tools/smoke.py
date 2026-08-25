@@ -7,8 +7,9 @@ Requires MKLROOT (or an activated oneAPI environment) and the executables'
 runtime libs on the library path. On Fedora:
     source /opt/intel/oneapi/setvars.sh
 
-The parameter file must be run from out/ (ROTBOSON chdirs into the generated
-directory). Output is written to out/ as before.
+The parameter file must be run from out/ (ROTBOSON writes the solution
+directory under the process working directory). Output is written to out/ as
+before.
 """
 
 from __future__ import annotations

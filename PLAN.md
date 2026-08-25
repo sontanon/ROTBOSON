@@ -227,15 +227,15 @@ against the phase that will actually address them, so nothing is lost:
 |---|---|---|---|
 | 1 | `pardiso_param.h` global state (`solver`/`pt[64]`/`iparm[64]`/`perm`/`diff`) | 6 | wrap in a `solver_backend` struct before the Rust port |
 | 2 | `MKL_INT` pervades non-MKL code | 6 | de-MKL-ification of types |
-| 3 | `tools.h` kitchen-sink header (MKL/OpenMP) | 6 (start in 3) | split while tests land |
+| 3 | `tools.h` kitchen-sink header (MKL/OpenMP) | 6 (start in 5) | writers moved out in 5; CSR/mem/read helpers remain |
 | 4 | magic numbers: `RESCALE`, `MIN/MAX/ABS`, `BASE=1`, `8,8` trial limits | 3 | **done**: `RESCALE` removed, trial limits → `MAX_TRIAL_{A,B}_ITERATIONS` |
 | 5 | missing `const`-correctness on read-only pointers | 3 | **done** for the derivative operators |
 | 6 | solver error/return-convention confusion (`err_code` out-param + ±k) | 3 | documented; convention left stable (golden-verified control flow) |
 | 7 | generated code hygiene (unused params/vars in `csr_vars.c` etc.) | 4 | fixed by SymPy regeneration, not hand-editing |
-| 8 | ASCII `.asc` I/O baked in everywhere; no reader/writer abstraction | 5 | HDF5 + legacy exporter |
-| 9 | logging vs banner noise; `***` spam; no log level | 5 | alongside HDF5/CLI |
+| 8 | ASCII `.asc` I/O baked in everywhere; no reader/writer abstraction | 5 | **done**: `solution_writer` abstraction + ASCII/HDF5 backends |
+| 9 | logging vs banner noise; `***` spam; no log level | 5 | **done**: level-gated `log.{h,c}` + `loglevel` key |
 | 10 | dead initializers / naming (`double w = m;`, reused `i,j,k,counter_i`) | 3 | **done** for `w = m`; counter reuse left as harmless churn |
-| 11 | `io.c` commented-out `system("cp …")` block | 5 | remove when I/O is reworked |
+| 11 | `io.c` commented-out `system("cp …")` block | 5 | **done**: `io.c`/`io.h` deleted; writer is path-aware |
 
 ### Phase 3 — Testing strategy (CTest + plain-C asserts)
 
@@ -451,6 +451,52 @@ on master. The I/O you will refactor:
 Note: `data/golden/` and `data/seeds/` are gitignored (restore from the backup
 drive, §4c) — required for the full regression gate, not for the I/O refactor
 itself.
+
+#### Phase 5 — OUTCOME (completed 2026-08-24)
+
+Phase 5 is **closed** on branch `phase5/hdf5`.
+
+- **Writer abstraction (`src/output.{h,c}`, `src/output_internal.h`):** a
+  path-aware `solution_writer` replaces the `write_single_file_*` writers that
+  lived in `tools.c` and the global-`chdir` `io()`. Two backends:
+  - **ASCII** (default): the legacy `%9.18E` tab-separated, one-file-per-field
+    layout, byte-identical to the pre-Phase-5 output. `src/io.{c,h}` (including
+    the dead `system("cp …")` block, backlog #11) is deleted.
+  - **HDF5**: a single `solution.h5` per solution. Datasets are named
+    `<field>.asc` (1:1 with the ASCII files) and parameters, solver settings,
+    the build git hash (`ROTBOSON_GIT_HASH` from CMake) and the computed
+    analysis results are stored as root-group attributes. The backend is
+    optional (`ROTBOSON_HDF5` CMake option, `find_package(HDF5)`); without it
+    `outputFormat = "hdf5"` fails with a clear runtime message.
+- **Config:** new keys `outputFormat` (`"ascii"` | `"hdf5"`) and `loglevel`
+  (`"error"`/`"warn"`/`"info"`/`"debug"`), both strictly validated by the
+  parser. `outputFormat` defaults to ascii so the golden gate is untouched.
+- **Logging (`src/log.{h,c}`):** level-gated `rb_log()`, default INFO to
+  preserve pre-Phase-5 stdout. The `***` banner/status/warning blocks in
+  `main.c` now go through it (WARN→stderr, INFO→stdout); the analysis report
+  tables remain plain `printf` (they are results, not banner noise). Backlog
+  #9 retired.
+- **Callers refactored:** `main.c`, `analysis.c` (`ex_analysis`/
+  `ex_phi_analysis` now take a writer instead of a `print` flag),
+  `initial_interpolation.c`; the dead `DERIVATIVE_DEBUG`/`I_DEBUG`/`DEBUG`
+  write blocks in `rhs.c`, `initial.c`, `initial_interpolation.c` and
+  `low_rank.c` were removed. Backlog #8 retired.
+- **Python tooling:** `rotboson_io.py` gained `read_hdf5`, `hdf5_to_asc`,
+  `extract_scalars_from_hdf5`, `compare_hdf5_to_ascii`; new
+  `tools/hdf5_roundtrip.py` exports `solution.h5` back to `.asc` and/or
+  compares it against a legacy `.asc` directory.
+- **Test:** `tests/test_output.c` (CTest) asserts the ASCII writer's byte
+  output for 1D/2D/polar/int fields and its path-awareness (no chdir).
+- **Validation:** (1) the `.asc` refactor passes the §4c golden gate — the
+  l=1 N=400 regeneration matches `data/golden/` to ~1e-13 (all fields +
+  observables), identical to Phase 0/4; (2) the HDF5 smoke run round-trips
+  `solution.h5` → `.asc` → reference `.asc` with PASS on every field/scalar
+  (`tools/hdf5_roundtrip.py`), and the exporter is lossless (bit-identical
+  after `.asc` re-parse). All three presets (release, umfpack, asan-ubsan)
+  build and pass CTest.
+- **Deferred (unchanged):** the order-6 radial operator parity fix
+  (`docs/code-critique.md` §16) — left for Phase 6 as "if convenient" was
+  exercised and deprioritized in favour of the core I/O work.
 
 ### Phase 6 — Rust migration (last, opportunistic)
 

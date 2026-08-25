@@ -1,10 +1,11 @@
 #include "tools.h"
+#include "output.h"
 #include "derivatives.h"
 #include "simpson.h"
 
 #define EVEN 1
 
-void ex_phi_analysis(const MKL_INT print, double *phi_max, double *rr_phi_max, MKL_INT *f_res,
+void ex_phi_analysis(solution_writer *sw, double *phi_max, double *rr_phi_max, MKL_INT *f_res,
                      double *sph_u, double *sph_rr, double *sph_th, const MKL_INT l,
                      const MKL_INT ghost, const MKL_INT order, const MKL_INT NrrTotal,
                      const MKL_INT NthTotal, const MKL_INT p_dim, const double drr,
@@ -79,12 +80,12 @@ void ex_phi_analysis(const MKL_INT print, double *phi_max, double *rr_phi_max, M
 
     *f_res = l_res + r_res;
 
-    if (print)
+    if (sw)
     {
         // Write files.
-        write_single_file_1d(phi_max, "phi_max.asc", 1);
-        write_single_file_1d(rr_phi_max, "rr_phi_max.asc", 1);
-        write_single_integer_file_1d(f_res, "hwl_resolution.asc", 1);
+        solution_writer_write_1d(sw, "phi_max", phi_max, 1);
+        solution_writer_write_1d(sw, "rr_phi_max", rr_phi_max, 1);
+        solution_writer_write_int_1d(sw, "hwl_resolution", f_res, 1);
         printf("***\n");
         printf("*** Scalar Field Analysis: Maximum coordinates k = %lld, i = %lld, j = %lld .\n", k,
                i, j);
@@ -120,7 +121,7 @@ void ex_phi_analysis(const MKL_INT print, double *phi_max, double *rr_phi_max, M
     return;
 }
 
-void ex_analysis(const MKL_INT print, double *M, double *J, double *GRV2, double *GRV3,
+void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double *GRV3,
                  double *sph_u, double *sph_rr, double *sph_th, const double w, const double m,
                  const MKL_INT l, const MKL_INT ghost, const MKL_INT order, const MKL_INT NrrTotal,
                  const MKL_INT NthTotal, const MKL_INT p_dim, const double drr, const double dth,
@@ -489,7 +490,7 @@ void ex_analysis(const MKL_INT print, double *M, double *J, double *GRV2, double
         }
     }
 
-    if (print)
+    if (sw)
     {
         // Print information to screen.
         printf("*** \n");
@@ -550,16 +551,16 @@ void ex_analysis(const MKL_INT print, double *M, double *J, double *GRV2, double
         *GRV2 += GRV2_c;
         *GRV3 += GRV3_c;
 
-        write_single_file_1d(M_Schwarz, "M_Schwarz.asc", NrrTotal);
-        write_single_file_1d(M_Komar1, "M_Komar1.asc", NrrTotal);
-        write_single_file_1d(M_Komar2, "M_Komar2.asc", NrrTotal);
-        write_single_file_1d(M_ADM, "M_ADM.asc", NrrTotal);
-        write_single_file_1d(J_Komar1, "J_Komar1.asc", NrrTotal);
-        write_single_file_1d(J_Komar2, "J_Komar2.asc", NrrTotal);
-        write_single_file_1d(GRV2, "GRV2.asc", 1);
-        write_single_file_1d(GRV3, "GRV3.asc", 1);
-        write_single_file_1d(&r99, "r99.asc", 1);
-        write_single_integer_file_1d(&ergoregion_flag, "ergoregion_flag.asc", 1);
+        solution_writer_write_1d(sw, "M_Schwarz", M_Schwarz, NrrTotal);
+        solution_writer_write_1d(sw, "M_Komar1", M_Komar1, NrrTotal);
+        solution_writer_write_1d(sw, "M_Komar2", M_Komar2, NrrTotal);
+        solution_writer_write_1d(sw, "M_ADM", M_ADM, NrrTotal);
+        solution_writer_write_1d(sw, "J_Komar1", J_Komar1, NrrTotal);
+        solution_writer_write_1d(sw, "J_Komar2", J_Komar2, NrrTotal);
+        solution_writer_write_1d(sw, "GRV2", GRV2, 1);
+        solution_writer_write_1d(sw, "GRV3", GRV3, 1);
+        solution_writer_write_1d(sw, "r99", &r99, 1);
+        solution_writer_write_int_1d(sw, "ergoregion_flag", &ergoregion_flag, 1);
     }
     // Free memory.
     SAFE_FREE(sph_Drr_log_alpha);

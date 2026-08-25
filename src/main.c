@@ -2,7 +2,8 @@
 #include "context.h"
 
 #include "parser.h"
-#include "io.h"
+#include "log.h"
+#include "output.h"
 #include "initial.h"
 #include "rhs.h"
 #include "solver.h"
@@ -23,91 +24,104 @@
 
 static void print_banner(void)
 {
-    printf("******************************************************\n");
-    printf("******************************************************\n");
-    printf("***                                                \n");
-    printf("***                    ROTBOSON                    \n");
-    printf("***                                                \n");
-    printf("***          Global Newton Method Version          \n");
-    printf("***                                                \n");
-    printf("***        Author: Santiago Ontanon Sanchez        \n");
-    printf("***                                                \n");
-    printf("***              ICN UNAM, Mexico City             \n");
-    printf("***                                                \n");
-    printf("***                                                \n");
-    printf("***             First Revision: 01/08/2019         \n");
-    printf("***                                                \n");
-    printf("***             Last  Revision: 24/09/2020         \n");
-    printf("***                                                \n");
-    printf("******************************************************\n");
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "******************************************************\n"
+           "***                                                \n"
+           "***                    ROTBOSON                    \n"
+           "***                                                \n"
+           "***          Global Newton Method Version          \n"
+           "***                                                \n"
+           "***        Author: Santiago Ontanon Sanchez        \n"
+           "***                                                \n"
+           "***              ICN UNAM, Mexico City             \n"
+           "***                                                \n"
+           "***                                                \n"
+           "***             First Revision: 01/08/2019         \n"
+           "***                                                \n"
+           "***             Last  Revision: 24/09/2020         \n"
+           "***                                                \n"
+           "******************************************************\n");
 }
 
 static void print_parameters(const rb_context *ctx)
 {
-    printf("******************************************************\n");
-    printf("***                                                \n");
-    printf("***           Generating Rotating Boson           \n");
-    printf("***            Star Initial Data For NR.           \n");
-    printf("***                                                \n");
-    printf("***           GRID:                                \n");
-    printf("***            dr          = %-12.10E          \n", ctx->dr);
-    printf("***            dz          = %-12.10E          \n", ctx->dz);
-    printf("***            dim         = %-7lld               \n", ctx->dim);
-    printf("***            NrInterior  = %-7lld               \n", ctx->NrInterior);
-    printf("***            NzInterior  = %-7lld               \n", ctx->NzInterior);
-    printf("***            order       = %lld                     \n", ctx->order);
-    printf("***            ghost       = %lld                     \n", ctx->ghost);
-    printf("***                                                \n");
-    printf("***           SCALAR FIELD:                        \n");
-    printf("***            l           = %-7lld               \n", ctx->l);
-    printf("***            m           = %-12.10E          \n", ctx->m);
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "***                                                \n"
+           "***           Generating Rotating Boson           \n"
+           "***            Star Initial Data For NR.           \n"
+           "***                                                \n"
+           "***           GRID:                                \n"
+           "***            dr          = %-12.10E          \n"
+           "***            dz          = %-12.10E          \n"
+           "***            dim         = %-7lld               \n"
+           "***            NrInterior  = %-7lld               \n"
+           "***            NzInterior  = %-7lld               \n"
+           "***            order       = %lld                     \n"
+           "***            ghost       = %lld                     \n"
+           "***                                                \n"
+           "***           SCALAR FIELD:                        \n"
+           "***            l           = %-7lld               \n"
+           "***            m           = %-12.10E          \n",
+           ctx->dr, ctx->dz, ctx->dim, ctx->NrInterior, ctx->NzInterior, ctx->order, ctx->ghost,
+           ctx->l, ctx->m);
     if (ctx->fixedPhi)
     {
-        printf("***            Scalar Field is Fixed at:           \n");
-        printf("***            r(fixedPhi) = %-12.10E          \n",
-               ctx->dr * (ctx->fixedPhiR - 0.5));
-        printf("***            z(fixedPhi) = %-12.10E          \n",
-               ctx->dz * (ctx->fixedPhiZ - 0.5));
+        rb_log(RB_LOG_INFO,
+               "***            Scalar Field is Fixed at:           \n"
+               "***            r(fixedPhi) = %-12.10E          \n"
+               "***            z(fixedPhi) = %-12.10E          \n",
+               ctx->dr * (ctx->fixedPhiR - 0.5), ctx->dz * (ctx->fixedPhiZ - 0.5));
     }
     else if (ctx->fixedOmega)
     {
-        printf("***            Initial Omega is Fixed.             \n");
+        rb_log(RB_LOG_INFO, "***            Initial Omega is Fixed.             \n");
     }
-    printf("***                                                \n");
-    printf("***           INITIAL DATA:                        \n");
-    printf("***            readInitialData = %lld     \n", ctx->readInitialData);
+    rb_log(RB_LOG_INFO,
+           "***                                                \n"
+           "***           INITIAL DATA:                        \n"
+           "***            readInitialData = %lld     \n",
+           ctx->readInitialData);
     if (ctx->readInitialData)
     {
-        printf("***            log_alpha_i = %-18s     \n", ctx->log_alpha_i);
-        printf("***            beta_i      = %-18s     \n", ctx->beta_i);
-        printf("***            log_h_i     = %-18s     \n", ctx->log_h_i);
-        printf("***            log_a_i     = %-18s     \n", ctx->log_a_i);
-        printf("***            psi_i       = %-18s     \n", ctx->psi_i);
-        printf("***            lambda_i    = %-18s     \n", ctx->lambda_i);
-        printf("***            w_i         = %-18s     \n", ctx->w_i);
+        rb_log(RB_LOG_INFO,
+               "***            log_alpha_i = %-18s     \n"
+               "***            beta_i      = %-18s     \n"
+               "***            log_h_i     = %-18s     \n"
+               "***            log_a_i     = %-18s     \n"
+               "***            psi_i       = %-18s     \n"
+               "***            lambda_i    = %-18s     \n"
+               "***            w_i         = %-18s     \n",
+               ctx->log_alpha_i, ctx->beta_i, ctx->log_h_i, ctx->log_a_i, ctx->psi_i,
+               ctx->lambda_i, ctx->w_i);
     }
     else
     {
-        printf("***            psi0        = %-12.10E          \n", ctx->psi0);
-        printf("***            sigmaR      = %-12.10E          \n", ctx->sigmaR);
-        printf("***            sigmaZ      = %-12.10E          \n", ctx->sigmaZ);
-        printf("***            rExt        = %-12.10E          \n", ctx->rExt);
+        rb_log(RB_LOG_INFO,
+               "***            psi0        = %-12.10E          \n"
+               "***            sigmaR      = %-12.10E          \n"
+               "***            sigmaZ      = %-12.10E          \n"
+               "***            rExt        = %-12.10E          \n",
+               ctx->psi0, ctx->sigmaR, ctx->sigmaZ, ctx->rExt);
     }
     if (!ctx->w_i)
     {
-        printf("***            w0          = %-12.10E          \n", ctx->w0);
+        rb_log(RB_LOG_INFO, "***            w0          = %-12.10E          \n", ctx->w0);
     }
-    printf("***                                                \n");
-    printf("***           SOLVER:                              \n");
-    printf("***            solverType    = %-18s  \n",
-           (ctx->solverType == 1) ? "Error" : "Residual");
-    printf("***            epsilon       = %-12.10E        \n", ctx->epsilon);
-    printf("***            maxNewtonIter = %-4lld                \n", ctx->maxNewtonIter);
-    printf("***            lambda0       = %-12.10E        \n", ctx->lambda0);
-    printf("***            lambdaMin     = %-12.10E        \n", ctx->lambdaMin);
-    printf("***            useLowRank    = %lld       \n", ctx->useLowRank);
-    printf("***                                                \n");
-    printf("******************************************************\n");
+    rb_log(RB_LOG_INFO,
+           "***                                                \n"
+           "***           SOLVER:                              \n"
+           "***            solverType    = %-18s  \n"
+           "***            epsilon       = %-12.10E        \n"
+           "***            maxNewtonIter = %-4lld                \n"
+           "***            lambda0       = %-12.10E        \n"
+           "***            lambdaMin     = %-12.10E        \n"
+           "***            useLowRank    = %lld       \n"
+           "***                                                \n"
+           "******************************************************\n",
+           (ctx->solverType == 1) ? "Error" : "Residual", ctx->epsilon, ctx->maxNewtonIter,
+           ctx->lambda0, ctx->lambdaMin, ctx->useLowRank);
 }
 
 static void configure_openmp(void)
@@ -117,12 +131,14 @@ static void configure_openmp(void)
 #pragma omp master
         {
             // Determine OMP threads.
-            printf("******************************************************\n");
-            printf("***                                                \n");
-            printf("***            Maximum OMP threads = %d             \n", omp_get_max_threads());
-            printf("***            Currently running on %d              \n", omp_get_num_threads());
-            printf("***                                                \n");
-            printf("******************************************************\n");
+            rb_log(RB_LOG_INFO,
+                   "******************************************************\n"
+                   "***                                                \n"
+                   "***            Maximum OMP threads = %d             \n"
+                   "***            Currently running on %d              \n"
+                   "***                                                \n"
+                   "******************************************************\n",
+                   omp_get_max_threads(), omp_get_num_threads());
             mkl_set_dynamic(0);
             mkl_set_num_threads(omp_get_num_threads());
         }
@@ -136,11 +152,11 @@ static void configure_openmp(void)
 // Trial-iteration caps for the nleq_err/nleq_res inner loops.
 #define MAX_TRIAL_A_ITERATIONS 8
 #define MAX_TRIAL_B_ITERATIONS 8
-static MKL_INT run_newton(rb_context *ctx, MKL_INT *errCode, double **u, double **f, double **du,
-                          double **du_bar, double *norm_f, double *norm_du, double *norm_du_bar,
-                          double *lambda, double *Theta, double *mu, double *lambda_prime,
-                          double *mu_prime, csr_matrix *J, rb_linear_solve_fn linear_solve_1,
-                          rb_linear_solve_fn linear_solve_2)
+static MKL_INT run_newton(rb_context *ctx, solution_writer *w, MKL_INT *errCode, double **u,
+                          double **f, double **du, double **du_bar, double *norm_f,
+                          double *norm_du, double *norm_du_bar, double *lambda, double *Theta,
+                          double *mu, double *lambda_prime, double *mu_prime, csr_matrix *J,
+                          rb_linear_solve_fn linear_solve_1, rb_linear_solve_fn linear_solve_2)
 {
     MKL_INT k = 0;
 
@@ -179,27 +195,30 @@ static MKL_INT run_newton(rb_context *ctx, MKL_INT *errCode, double **u, double 
         }
 
         // Write errCode to file.
-        write_single_integer_file_1d(errCode, "error_code.asc", 1);
+        solution_writer_write_int_1d(w, "error_code", errCode, 1);
 
         // Check for convergence.
         if (*errCode != 0)
         {
-            printf("******************************************************\n");
-            printf("***                                                \n");
-            printf("***    Warning! Did not converge: Error Code = %lld  \n", *errCode);
-            printf("***    Will output anyway. Do not trust results!   \n");
-            printf("***                                                \n");
-            printf("******************************************************\n");
+            rb_log(RB_LOG_WARN,
+                   "******************************************************\n"
+                   "***                                                \n"
+                   "***    Warning! Did not converge: Error Code = %lld  \n"
+                   "***    Will output anyway. Do not trust results!   \n"
+                   "***                                                \n"
+                   "******************************************************\n",
+                   *errCode);
             k = -k;
         }
     }
     else
     {
-        printf("******************************************************\n");
-        printf("***                                                \n");
-        printf("***    Warning! User did not specify any Newton Iterations.  \n");
-        printf("***                                                \n");
-        printf("******************************************************\n");
+        rb_log(RB_LOG_WARN,
+               "******************************************************\n"
+               "***                                                \n"
+               "***    Warning! User did not specify any Newton Iterations.  \n"
+               "***                                                \n"
+               "******************************************************\n");
         k = 0;
     }
 
@@ -209,7 +228,8 @@ static MKL_INT run_newton(rb_context *ctx, MKL_INT *errCode, double **u, double 
 // Analysis phase: interpolate to spherical coordinates, write polar fields,
 // and compute Komar masses / angular momenta / virial identities plus
 // rr(phi_max).
-static void run_analysis(rb_context *ctx, double **u, double *r, double *z, MKL_INT k, double w)
+static void run_analysis(rb_context *ctx, solution_writer *w, double **u, double *r, double *z,
+                         MKL_INT k, double w_val)
 {
     // Interpolate. Memory is allocated inside this subroutine.
     ex_cart_to_pol(&ctx->i_u, &ctx->i_rr, &ctx->i_th, r, z, u[k], ctx->Dr_u, ctx->Dz_u, ctx->Drz_u,
@@ -217,27 +237,28 @@ static void run_analysis(rb_context *ctx, double **u, double *r, double *z, MKL_
                    &ctx->NrrTotal, &ctx->NthTotal, &ctx->p_dim, &ctx->drr, &ctx->dth, &ctx->rr_inf);
 
     // Write spherical fields to file.
-    write_single_file_2d_polar(ctx->i_rr, "sph_rr.asc", ctx->NrrTotal, ctx->NthTotal);
-    write_single_file_2d_polar(ctx->i_th, "sph_th.asc", ctx->NrrTotal, ctx->NthTotal);
-    write_single_file_2d_polar(ctx->i_u, "sph_log_alpha_f.asc", ctx->NrrTotal, ctx->NthTotal);
-    write_single_file_2d_polar(ctx->i_u + ctx->p_dim, "sph_beta_f.asc", ctx->NrrTotal,
-                               ctx->NthTotal);
-    write_single_file_2d_polar(ctx->i_u + 2 * ctx->p_dim, "sph_log_h_f.asc", ctx->NrrTotal,
-                               ctx->NthTotal);
-    write_single_file_2d_polar(ctx->i_u + 3 * ctx->p_dim, "sph_log_a_f.asc", ctx->NrrTotal,
-                               ctx->NthTotal);
-    write_single_file_2d_polar(ctx->i_u + 4 * ctx->p_dim, "sph_psi_f.asc", ctx->NrrTotal,
-                               ctx->NthTotal);
-    write_single_file_2d_polar(ctx->i_u + 5 * ctx->p_dim, "sph_lambda_f.asc", ctx->NrrTotal,
-                               ctx->NthTotal);
+    solution_writer_write_2d_polar(w, "sph_rr", ctx->i_rr, ctx->NrrTotal, ctx->NthTotal);
+    solution_writer_write_2d_polar(w, "sph_th", ctx->i_th, ctx->NrrTotal, ctx->NthTotal);
+    solution_writer_write_2d_polar(w, "sph_log_alpha_f", ctx->i_u, ctx->NrrTotal,
+                                   ctx->NthTotal);
+    solution_writer_write_2d_polar(w, "sph_beta_f", ctx->i_u + ctx->p_dim, ctx->NrrTotal,
+                                   ctx->NthTotal);
+    solution_writer_write_2d_polar(w, "sph_log_h_f", ctx->i_u + 2 * ctx->p_dim, ctx->NrrTotal,
+                                   ctx->NthTotal);
+    solution_writer_write_2d_polar(w, "sph_log_a_f", ctx->i_u + 3 * ctx->p_dim, ctx->NrrTotal,
+                                   ctx->NthTotal);
+    solution_writer_write_2d_polar(w, "sph_psi_f", ctx->i_u + 4 * ctx->p_dim, ctx->NrrTotal,
+                                   ctx->NthTotal);
+    solution_writer_write_2d_polar(w, "sph_lambda_f", ctx->i_u + 5 * ctx->p_dim, ctx->NrrTotal,
+                                   ctx->NthTotal);
 
     // Do analysis.
-    ex_analysis(1, &ctx->M_KOMAR, &ctx->J_KOMAR, &ctx->GRV2, &ctx->GRV3, ctx->i_u, ctx->i_rr,
-                ctx->i_th, w, ctx->m, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal, ctx->NthTotal,
-                ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
+    ex_analysis(w, &ctx->M_KOMAR, &ctx->J_KOMAR, &ctx->GRV2, &ctx->GRV3, ctx->i_u, ctx->i_rr,
+                ctx->i_th, w_val, ctx->m, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal,
+                ctx->NthTotal, ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
 
     // Calculate rr(phi_max).
-    ex_phi_analysis(1, &ctx->phi_max, &ctx->rr_phi_max, &ctx->hwl_res, ctx->i_u, ctx->i_rr,
+    ex_phi_analysis(w, &ctx->phi_max, &ctx->rr_phi_max, &ctx->hwl_res, ctx->i_u, ctx->i_rr,
                     ctx->i_th, ctx->l, ctx->ghost, ctx->order, ctx->NrrTotal, ctx->NthTotal,
                     ctx->p_dim, ctx->drr, ctx->dth, ctx->rr_inf);
 
@@ -264,11 +285,13 @@ static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_I
     {
         if (ctx->sweep > 0)
         {
-            printf("******************************************************\n");
-            printf("***                                                \n");
-            printf("***   Sweep cannot continue because errCode = %lld !\n", errCode);
-            printf("***                                                \n");
-            printf("******************************************************\n");
+            rb_log(RB_LOG_WARN,
+                   "******************************************************\n"
+                   "***                                                \n"
+                   "***   Sweep cannot continue because errCode = %lld !\n"
+                   "***                                                \n"
+                   "******************************************************\n",
+                   errCode);
         }
         return 0;
     }
@@ -276,54 +299,61 @@ static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_I
     // Sanity checks on this resolution.
     if (w <= ctx->w_min || w >= ctx->w_max)
     {
-        printf("******************************************************\n");
-        printf("***                                                \n");
-        printf("***   Sweep cannot continue because w is out of range (%.5E, %.5E) !\n", ctx->w_min,
-               ctx->w_max);
-        printf("***                                                \n");
-        printf("******************************************************\n");
+        rb_log(RB_LOG_WARN,
+               "******************************************************\n"
+               "***                                                \n"
+               "***   Sweep cannot continue because w is out of range (%.5E, %.5E) !\n"
+               "***                                                \n"
+               "******************************************************\n",
+               ctx->w_min, ctx->w_max);
         return 0;
     }
     if (ctx->rr_phi_max < ctx->rr_phi_max_minimum)
     {
-        printf("******************************************************\n");
-        printf("***                                                \n");
-        printf("***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n",
+        rb_log(RB_LOG_WARN,
+               "******************************************************\n"
+               "***                                                \n"
+               "***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n"
+               "***                                                \n"
+               "******************************************************\n",
                ctx->rr_phi_max_minimum);
-        printf("***                                                \n");
-        printf("******************************************************\n");
         return 0;
     }
     if (ctx->rr_phi_max > ctx->rr_phi_max_maximum)
     {
-        printf("******************************************************\n");
-        printf("***                                                \n");
-        printf("***   Sweep cannot continue because rr(max(phi)) > max(rr(max(phi))) = %.5E !\n",
+        rb_log(RB_LOG_WARN,
+               "******************************************************\n"
+               "***                                                \n"
+               "***   Sweep cannot continue because rr(max(phi)) > max(rr(max(phi))) = %.5E !\n"
+               "***                                                \n"
+               "******************************************************\n",
                ctx->rr_phi_max_maximum);
-        printf("***                                                \n");
-        printf("******************************************************\n");
         return 0;
     }
     if (ctx->hwl_res < ctx->hwl_min)
     {
-        printf("******************************************************\n");
-        printf("***                                                \n");
-        printf("***   Sweep cannot continue because N(HWL) < MIN(N(HWL)) = %lld !\n", ctx->hwl_min);
-        printf("***   In other words, scalar field has not enough resolution. Try with more "
-               "resolution or decrease hwl_min.\n");
-        printf("***                                                \n");
-        printf("******************************************************\n");
+        rb_log(RB_LOG_WARN,
+               "******************************************************\n"
+               "***                                                \n"
+               "***   Sweep cannot continue because N(HWL) < MIN(N(HWL)) = %lld !\n"
+               "***   In other words, scalar field has not enough resolution. Try with more "
+               "resolution or decrease hwl_min.\n"
+               "***                                                \n"
+               "******************************************************\n",
+               ctx->hwl_min);
         return 0;
     }
     if (ctx->hwl_res > ctx->hwl_max)
     {
-        printf("******************************************************\n");
-        printf("***                                                \n");
-        printf("***   Sweep cannot continue because N(HWL) > MAX(N(HWL)) = %lld !\n", ctx->hwl_max);
-        printf("***   In other words, scalar field is too scattered. Try with less resolution or "
-               "increase hwl_max.\n");
-        printf("***                                                \n");
-        printf("******************************************************\n");
+        rb_log(RB_LOG_WARN,
+               "******************************************************\n"
+               "***                                                \n"
+               "***   Sweep cannot continue because N(HWL) > MAX(N(HWL)) = %lld !\n"
+               "***   In other words, scalar field is too scattered. Try with less resolution or "
+               "increase hwl_max.\n"
+               "***                                                \n"
+               "******************************************************\n",
+               ctx->hwl_max);
         return 0;
     }
 
@@ -343,7 +373,8 @@ static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_I
     next_scale[5] = 1.0 + next_scale[4] * (1.0 - peak_prev[5] / peak_next[5]);
 
     for (counter_i = 0; counter_i < GNUM; ++counter_i)
-        printf("**** Variable %lld peak = % -.5E, previous peak = % -.5E : predicted scale factor "
+        rb_log(RB_LOG_INFO,
+               "**** Variable %lld peak = % -.5E, previous peak = % -.5E : predicted scale factor "
                "= %.5E\n",
                counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
 
@@ -353,7 +384,7 @@ static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_I
 
     next_scale[GNUM] = 1.0 + next_scale[4] * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
 
-    printf("**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w,
+    rb_log(RB_LOG_INFO, "**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w,
            next_scale[GNUM]);
 
     // Transfer to initial data.
@@ -380,12 +411,13 @@ static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_I
     // Set new lambda0 to one since convergence has improved.
     ctx->lambda0 = 1.0;
 
-    printf("******************************************************\n");
-    printf("***                                                \n");
-    printf("***   Setting initial data to last solution, scaling, and continuing...\n");
-    printf("***                                                \n");
-    printf("***                                                \n");
-    printf("******************************************************\n");
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "***                                                \n"
+           "***   Setting initial data to last solution, scaling, and continuing...\n"
+           "***                                                \n"
+           "***                                                \n"
+           "******************************************************\n");
 
     return 1;
 }
@@ -406,13 +438,14 @@ int main(int argc, char *argv[])
     // File name is in argv[1]. Check that we have at least one argument.
     if (argc < 2)
     {
-        printf("***                                                \n");
-        printf("***           Usage: ./ROTBOSON file.par           \n");
-        printf("***                                                \n");
-        printf("***            Missing parameter file.             \n");
-        printf("***                                                \n");
-        printf("******************************************************\n");
-        printf("******************************************************\n");
+        rb_log(RB_LOG_ERROR,
+               "***                                                \n"
+               "***           Usage: ./ROTBOSON file.toml          \n"
+               "***                                                \n"
+               "***            Missing parameter file.             \n"
+               "***                                                \n"
+               "******************************************************\n"
+               "******************************************************\n");
         return EXIT_FAILURE;
     }
 
@@ -430,10 +463,11 @@ int main(int argc, char *argv[])
     configure_openmp();
 
     // Allocate memory.
-    printf("******************************************************\n");
-    printf("***                                                \n");
-    printf("***               Allocating memory...             \n");
-    printf("***                                                \n");
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "***                                                \n"
+           "***               Allocating memory...             \n"
+           "***                                                \n");
 
     // Allocate pointer to double pointers.
     double **u = (double **)SAFE_MALLOC((ctx.maxNewtonIter + 1) * sizeof(double *));
@@ -503,15 +537,17 @@ int main(int argc, char *argv[])
     // Final omega.
     double w = 0.0;
 
-    printf("***               Finished allocation!             \n");
-    printf("***                                                \n");
-    printf("******************************************************\n");
+    rb_log(RB_LOG_INFO,
+           "***               Finished allocation!             \n"
+           "***                                                \n"
+           "******************************************************\n");
 
     // Allocate PARDISO memory.
-    printf("******************************************************\n");
-    printf("***                                                \n");
-    printf("***           Allocating PARDISO memory...         \n");
-    printf("***                                                \n");
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "***                                                \n"
+           "***           Allocating PARDISO memory...         \n"
+           "***                                                \n");
 
     // Initialize PARDISO memory and parameters.
     // Square matrix dimension is (GNUM * dim + 1).
@@ -522,15 +558,17 @@ int main(int argc, char *argv[])
     MKL_INT nnz = nnz_jacobian(&ctx);
     csr_allocate(&J, GNUM * ctx.dim + 1, GNUM * ctx.dim + 1, nnz);
 
-    printf("***                                                \n");
-    printf("***            Allocated CSR matrix with:          \n");
-    printf("***             Rows      = %-6lld                 \n", J.nrows);
-    printf("***             Columns   = %-6lld                 \n", J.ncols);
-    printf("***             Non-zeros = %-12lld           \n", J.nnz);
-    printf("***                                                \n");
-    printf("***           Finished PARDISO allocation!         \n");
-    printf("***                                                \n");
-    printf("******************************************************\n");
+    rb_log(RB_LOG_INFO,
+           "***                                                \n"
+           "***            Allocated CSR matrix with:          \n"
+           "***             Rows      = %-6lld                 \n"
+           "***             Columns   = %-6lld                 \n"
+           "***             Non-zeros = %-12lld           \n"
+           "***                                                \n"
+           "***           Finished PARDISO allocation!         \n"
+           "***                                                \n"
+           "******************************************************\n",
+           J.nrows, J.ncols, J.nnz);
 
     // LOW RANK UPDATE and linear solver subroutines.
     rb_linear_solve_fn linear_solve_1;
@@ -545,9 +583,10 @@ int main(int argc, char *argv[])
     // Repeated solver.
     rb_linear_solve_fn linear_solve_2 = solver_repeated_solve;
 
-    printf("******************************************************\n");
-    printf("***                                                \n");
-    printf("***          Setting initial guess and RHS.        \n");
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "***                                                \n"
+           "***          Setting initial guess and RHS.        \n");
 
     // Set initial guess.
     initial_guess(&ctx, u[0]);
@@ -555,42 +594,53 @@ int main(int argc, char *argv[])
     // Loop over sweep.
     do
     {
-        // Do I/O: create output directory and change into it.
-        io(ctx.initial_dirname, argv[1]);
+        // Open the solution writer for this sweep step (path-aware; no chdir).
+        solution_writer *sw = solution_writer_open(ctx.initial_dirname, &ctx, argv[1]);
+        if (!sw)
+        {
+            rb_log(RB_LOG_ERROR, "OUTPUT: cannot open solution writer for \"%s\".\n",
+                   ctx.initial_dirname);
+            return EXIT_FAILURE;
+        }
 
         // Print main variables.
-        write_single_file_2d(u[0], "log_alpha_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[0] + ctx.dim, "beta_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[0] + 2 * ctx.dim, "log_h_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[0] + 3 * ctx.dim, "log_a_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[0] + 4 * ctx.dim, "psi_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[0] + 5 * ctx.dim, "lambda_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_1d(&ctx.w0, "w_i.asc", 1);
+        solution_writer_write_2d(sw, "log_alpha_i", u[0], ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "beta_i", u[0] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "log_h_i", u[0] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "log_a_i", u[0] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "psi_i", u[0] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "lambda_i", u[0] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_1d(sw, "w_i", &ctx.w0, 1);
 
         // Also print r, z grids.
-        write_single_file_2d(r, "r.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(z, "z.asc", ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "r", r, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "z", z, ctx.NrTotal, ctx.NzTotal);
 
         // And initial "seed".
-        write_single_file_2d(ctx.u_seed, "log_alpha_seed.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(ctx.u_seed + ctx.dim, "beta_seed.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(ctx.u_seed + 2 * ctx.dim, "log_h_seed.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(ctx.u_seed + 3 * ctx.dim, "log_a_seed.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(ctx.u_seed + 4 * ctx.dim, "psi_seed.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(ctx.u_seed + 5 * ctx.dim, "lambda_seed.asc", ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "log_alpha_seed", ctx.u_seed, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "beta_seed", ctx.u_seed + ctx.dim, ctx.NrTotal,
+                                 ctx.NzTotal);
+        solution_writer_write_2d(sw, "log_h_seed", ctx.u_seed + 2 * ctx.dim, ctx.NrTotal,
+                                 ctx.NzTotal);
+        solution_writer_write_2d(sw, "log_a_seed", ctx.u_seed + 3 * ctx.dim, ctx.NrTotal,
+                                 ctx.NzTotal);
+        solution_writer_write_2d(sw, "psi_seed", ctx.u_seed + 4 * ctx.dim, ctx.NrTotal,
+                                 ctx.NzTotal);
+        solution_writer_write_2d(sw, "lambda_seed", ctx.u_seed + 5 * ctx.dim, ctx.NrTotal,
+                                 ctx.NzTotal);
         w = omega_calc(ctx.u_seed[GNUM * ctx.dim], ctx.m);
-        write_single_file_1d(&w, "w_seed.asc", 1);
+        solution_writer_write_1d(sw, "w_seed", &w, 1);
 
         // First calculate initial RHS.
         rhs(&ctx, f[0], u[0]);
 
         // Print initial RHS.
-        write_single_file_2d(f[0], "f0_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[0] + ctx.dim, "f1_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[0] + 2 * ctx.dim, "f2_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[0] + 3 * ctx.dim, "f3_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[0] + 4 * ctx.dim, "f4_i.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[0] + 5 * ctx.dim, "f5_i.asc", ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f0_i", f[0], ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f1_i", f[0] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f2_i", f[0] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f3_i", f[0] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f4_i", f[0] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f5_i", f[0] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
 
         // Calculate 2-norms.
         f_norms[0] = norm2(&ctx, f[0]);
@@ -600,70 +650,76 @@ int main(int argc, char *argv[])
         f_norms[4] = norm2(&ctx, f[0] + 4 * ctx.dim);
         f_norms[5] = norm2(&ctx, f[0] + 5 * ctx.dim);
 
-        printf("***                                                \n");
-        printf("***        INITIAL GUESS:                          \n");
-        printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-        printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-        printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-        printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-        printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-        printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
-        printf("***                                                \n");
-        printf("***                                                \n");
-        printf("******************************************************\n");
+        rb_log(RB_LOG_INFO,
+               "***                                                \n"
+               "***        INITIAL GUESS:                          \n"
+               "***           || f0 ||   = %-12.10E           \n"
+               "***           || f1 ||   = %-12.10E           \n"
+               "***           || f2 ||   = %-12.10E           \n"
+               "***           || f3 ||   = %-12.10E           \n"
+               "***           || f4 ||   = %-12.10E           \n"
+               "***           || f5 ||   = %-12.10E           \n"
+               "***                                                \n"
+               "***                                                \n"
+               "******************************************************\n",
+               f_norms[0], f_norms[1], f_norms[2], f_norms[3], f_norms[4], f_norms[5]);
 
         // Newton solve.
-        k = run_newton(&ctx, &errCode, u, f, du, du_bar, norm_f, norm_du, norm_du_bar, lambda,
+        k = run_newton(&ctx, sw, &errCode, u, f, du, du_bar, norm_f, norm_du, norm_du_bar, lambda,
                        Theta, mu, lambda_prime, mu_prime, &J, linear_solve_1, linear_solve_2);
 
         // Get omega.
         w = omega_calc(u[k][ctx.w_idx], ctx.m);
 
         // Print final solutions.
-        write_single_file_2d(u[k], "log_alpha_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[k] + ctx.dim, "beta_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[k] + 2 * ctx.dim, "log_h_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[k] + 3 * ctx.dim, "log_a_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[k] + 4 * ctx.dim, "psi_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(u[k] + 5 * ctx.dim, "lambda_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_1d(&w, "w_f.asc", 1);
+        solution_writer_write_2d(sw, "log_alpha_f", u[k], ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "beta_f", u[k] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "log_h_f", u[k] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "log_a_f", u[k] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "psi_f", u[k] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "lambda_f", u[k] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_1d(sw, "w_f", &w, 1);
 
         // Print final update.
         if (k > 0)
         {
-            write_single_file_2d(du[k - 1], "du0_f.asc", ctx.NrTotal, ctx.NzTotal);
-            write_single_file_2d(du[k - 1] + ctx.dim, "du1_f.asc", ctx.NrTotal, ctx.NzTotal);
-            write_single_file_2d(du[k - 1] + 2 * ctx.dim, "du2_f.asc", ctx.NrTotal, ctx.NzTotal);
-            write_single_file_2d(du[k - 1] + 3 * ctx.dim, "du3_f.asc", ctx.NrTotal, ctx.NzTotal);
-            write_single_file_2d(du[k - 1] + 4 * ctx.dim, "du4_f.asc", ctx.NrTotal, ctx.NzTotal);
-            write_single_file_2d(du[k - 1] + 5 * ctx.dim, "du5_f.asc", ctx.NrTotal, ctx.NzTotal);
+            solution_writer_write_2d(sw, "du0_f", du[k - 1], ctx.NrTotal, ctx.NzTotal);
+            solution_writer_write_2d(sw, "du1_f", du[k - 1] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+            solution_writer_write_2d(sw, "du2_f", du[k - 1] + 2 * ctx.dim, ctx.NrTotal,
+                                     ctx.NzTotal);
+            solution_writer_write_2d(sw, "du3_f", du[k - 1] + 3 * ctx.dim, ctx.NrTotal,
+                                     ctx.NzTotal);
+            solution_writer_write_2d(sw, "du4_f", du[k - 1] + 4 * ctx.dim, ctx.NrTotal,
+                                     ctx.NzTotal);
+            solution_writer_write_2d(sw, "du5_f", du[k - 1] + 5 * ctx.dim, ctx.NrTotal,
+                                     ctx.NzTotal);
         }
 
         // Print final RHS.
-        write_single_file_2d(f[k], "f0_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[k] + ctx.dim, "f1_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[k] + 2 * ctx.dim, "f2_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[k] + 3 * ctx.dim, "f3_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[k] + 4 * ctx.dim, "f4_f.asc", ctx.NrTotal, ctx.NzTotal);
-        write_single_file_2d(f[k] + 5 * ctx.dim, "f5_f.asc", ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f0_f", f[k], ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f1_f", f[k] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f2_f", f[k] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f3_f", f[k] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f4_f", f[k] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "f5_f", f[k] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
 
         // Also print Newton parameters.
         switch (ctx.solverType)
         {
         case 1:
-            write_single_file_1d(norm_du, "norm_du.asc", k);
-            write_single_file_1d(norm_du_bar, "norm_du_bar.asc", k);
+            solution_writer_write_1d(sw, "norm_du", norm_du, k);
+            solution_writer_write_1d(sw, "norm_du_bar", norm_du_bar, k);
             break;
         case 2:
-            write_single_file_1d(norm_f, "norm_f.asc", k);
+            solution_writer_write_1d(sw, "norm_f", norm_f, k);
             break;
         }
 
-        write_single_file_1d(lambda, "lambda.asc", k);
-        write_single_file_1d(Theta, "Theta.asc", k);
-        write_single_file_1d(mu, "mu.asc", k);
-        write_single_file_1d(lambda_prime, "lambda_prime.asc", k);
-        write_single_file_1d(mu_prime, "mu_prime.asc", k);
+        solution_writer_write_1d(sw, "lambda", lambda, k);
+        solution_writer_write_1d(sw, "Theta", Theta, k);
+        solution_writer_write_1d(sw, "mu", mu, k);
+        solution_writer_write_1d(sw, "lambda_prime", lambda_prime, k);
+        solution_writer_write_1d(sw, "mu_prime", mu_prime, k);
 
         // Print final iteration's RHS's norms.
         f_norms[0] = norm2(&ctx, f[k]);
@@ -672,31 +728,35 @@ int main(int argc, char *argv[])
         f_norms[3] = norm2(&ctx, f[k] + 3 * ctx.dim);
         f_norms[4] = norm2(&ctx, f[k] + 4 * ctx.dim);
         f_norms[5] = norm2(&ctx, f[k] + 5 * ctx.dim);
-        printf("***                                                \n");
-        printf("***        FINAL ITERATION:                        \n");
-        printf("***           || f0 ||   = %-12.10E           \n", f_norms[0]);
-        printf("***           || f1 ||   = %-12.10E           \n", f_norms[1]);
-        printf("***           || f2 ||   = %-12.10E           \n", f_norms[2]);
-        printf("***           || f3 ||   = %-12.10E           \n", f_norms[3]);
-        printf("***           || f4 ||   = %-12.10E           \n", f_norms[4]);
-        printf("***           || f5 ||   = %-12.10E           \n", f_norms[5]);
-        printf("***                                                \n");
-        printf("***                                                \n");
-        printf("******************************************************\n");
+        rb_log(RB_LOG_INFO,
+               "***                                                \n"
+               "***        FINAL ITERATION:                        \n"
+               "***           || f0 ||   = %-12.10E           \n"
+               "***           || f1 ||   = %-12.10E           \n"
+               "***           || f2 ||   = %-12.10E           \n"
+               "***           || f3 ||   = %-12.10E           \n"
+               "***           || f4 ||   = %-12.10E           \n"
+               "***           || f5 ||   = %-12.10E           \n"
+               "***                                                \n"
+               "***                                                \n"
+               "******************************************************\n",
+               f_norms[0], f_norms[1], f_norms[2], f_norms[3], f_norms[4], f_norms[5]);
 
         // Also print omega.
-        printf("******************************************************\n");
-        printf("***                                                \n");
-        printf("***           FINAL OMEGA:                         \n");
-        printf("***            w          = %-12.10E            \n", w);
-        printf("***                                                \n");
-        printf("******************************************************\n");
+        rb_log(RB_LOG_INFO,
+               "******************************************************\n"
+               "***                                                \n"
+               "***           FINAL OMEGA:                         \n"
+               "***            w          = %-12.10E            \n"
+               "***                                                \n"
+               "******************************************************\n",
+               w);
 
         // ANALYSIS PHASE.
-        run_analysis(&ctx, u, r, z, k, w);
+        run_analysis(&ctx, sw, u, r, z, k, w);
 
-        // Exit directory by going up one level (executable level).
-        chdir(ctx.work_dirname);
+        // Close the writer (flushes HDF5 attributes and closes the file).
+        solution_writer_close(sw);
 
         // Rename directory to include w.
         snprintf(ctx.final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", ctx.l, w, ctx.dr,
@@ -709,10 +769,11 @@ int main(int argc, char *argv[])
     } while (ctx.sweep > 0);
 
     // Clear memory.
-    printf("******************************************************\n");
-    printf("***                                                \n");
-    printf("***              Deallocating memory...            \n");
-    printf("***                                                \n");
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "***                                                \n"
+           "***              Deallocating memory...            \n"
+           "***                                                \n");
 
     solver_stop();
     csr_deallocate(&J);
@@ -759,17 +820,19 @@ int main(int argc, char *argv[])
     // Initial data seed.
     SAFE_FREE(ctx.u_seed);
 
-    printf("***              Finished deallocation!            \n");
-    printf("***                                                \n");
-    printf("******************************************************\n");
+    rb_log(RB_LOG_INFO,
+           "***              Finished deallocation!            \n"
+           "***                                                \n"
+           "******************************************************\n");
 
     // Print final message.
-    printf("******************************************************\n");
-    printf("***                                                \n");
-    printf("***           All done! Have a nice day!           \n");
-    printf("***                                                \n");
-    printf("******************************************************\n");
-    printf("******************************************************\n");
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "***                                                \n"
+           "***           All done! Have a nice day!           \n"
+           "***                                                \n"
+           "******************************************************\n"
+           "******************************************************\n");
 
     // All done.
     return 0;

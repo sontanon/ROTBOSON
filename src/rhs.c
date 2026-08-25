@@ -116,32 +116,6 @@ void rhs(rb_context *ctx, double *f, double *u)
     }
 #endif
 
-#ifdef DERIVATIVE_DEBUG
-    write_single_file_2d(ctx->Dr_u, "Dr_log_alpha.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dr_u + ctx->dim, "Dr_beta.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dr_u + 2 * ctx->dim, "Dr_log_h.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dr_u + 3 * ctx->dim, "Dr_log_a.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dr_u + 4 * ctx->dim, "Dr_psi.asc", ctx->NrTotal, ctx->NzTotal);
-
-    write_single_file_2d(ctx->Dz_u, "Dz_log_alpha.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dz_u + ctx->dim, "Dz_beta.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dz_u + 2 * ctx->dim, "Dz_log_h.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dz_u + 3 * ctx->dim, "Dz_log_a.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dz_u + 4 * ctx->dim, "Dz_psi.asc", ctx->NrTotal, ctx->NzTotal);
-
-    write_single_file_2d(ctx->Drr_u, "Drr_log_alpha.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Drr_u + ctx->dim, "Drr_beta.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Drr_u + 2 * ctx->dim, "Drr_log_h.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Drr_u + 3 * ctx->dim, "Drr_log_a.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Drr_u + 4 * ctx->dim, "Drr_psi.asc", ctx->NrTotal, ctx->NzTotal);
-
-    write_single_file_2d(ctx->Dzz_u, "Dzz_log_alpha.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dzz_u + ctx->dim, "Dzz_beta.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dzz_u + 2 * ctx->dim, "Dzz_log_h.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dzz_u + 3 * ctx->dim, "Dzz_log_a.asc", ctx->NrTotal, ctx->NzTotal);
-    write_single_file_2d(ctx->Dzz_u + 4 * ctx->dim, "Dzz_psi.asc", ctx->NrTotal, ctx->NzTotal);
-#endif
-
     // Lower-left corner with parity.
     for (i = 0; i < ctx->ghost; ++i)
     {

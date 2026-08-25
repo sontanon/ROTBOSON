@@ -81,6 +81,7 @@ solution directory name and omega.
 - `tools/check_against_summary.py` — cross-check against data/summaries/l={1..6}.asc
 - `tools/reconstruct_grv.py` — recompute GRV2/GRV3 from saved spherical data
 - `tools/ladder_continue.py` — fixedPhi scale-ladder continuation (with logging)
+- `tools/hdf5_roundtrip.py` — export/compare a `solution.h5` against legacy `.asc`
 
 ## 6. Phase 4 (SymPy code generation) validation
 
@@ -98,3 +99,26 @@ kernels.  Two independent checks, plus the fidelity anchor:
   (fields + all observables PASS at rtol=1e-10), and the l=1 w=0.95
   from-scratch smoke reproduces the expected ω.  Reproducibility is enforced
   by `tools/generate_kernels.py --check` (byte-identical regeneration).
+
+## 7. Phase 5 (HDF5 output) validation
+
+Phase 5 introduced the `solution_writer` I/O abstraction (ASCII + HDF5
+backends) and a level-gated logger. Two acceptance checks:
+
+- **ASCII bit-parity (golden gate, step 1):** with the refactored writer, the
+  l=1 w=0.9 N=400 regeneration (`data/params/regeneration/l=1,validate.toml`)
+  matches `data/golden/` to ~1e-13 on every field and observable
+  (`tools/compare_solutions.py`, rtol=1e-10 / atol=1e-12) — identical to the
+  Phase 0/4 result, confirming the `.asc` format is unchanged.
+- **HDF5 round-trip (step 2):** an `outputFormat="hdf5"` run of the l=1 w=0.95
+  smoke produces `solution.h5` with 70 datasets (named `<field>.asc`) and 70
+  attributes (params, solver settings, git hash, analysis results).
+  `tools/hdf5_roundtrip.py --ref <ascii_solution>` compares `solution.h5`
+  against the ASCII solve with PASS on every field/scalar (field diffs ~1e-15,
+  the solver's own run-to-run OpenMP reduction noise).  The `--out` exporter is
+  lossless: exporting `solution.h5` back to `.asc` and re-parsing recovers the
+  datasets bit-for-bit (the `%9.18E` format round-trips doubles exactly).
+
+Also: `tests/test_output.c` (CTest) pins the ASCII writer's byte output and
+path-awareness; all three presets (release, umfpack, asan-ubsan) build and
+pass CTest.

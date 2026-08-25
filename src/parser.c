@@ -1,8 +1,10 @@
 #include "tools.h"
 #include "context.h"
+#include "log.h"
 #include "toml.h"
 
 #include <stdarg.h>
+#include <string.h>
 
 // Parameter range bounds. Kept at the top so they are easy to audit and extend.
 #define MAX_DR 1.0
@@ -86,7 +88,9 @@ static const char *const KNOWN_KEYS[] = {
     "rr_phi_max_minimum", "rr_phi_max_maximum", "sweep", "hwl_min", "hwl_max", "w_max", "w_min",
     "w_step",
     // Next-scale advancement.
-    "scale_next", NULL};
+    "scale_next",
+    // Output.
+    "outputFormat", "loglevel", NULL};
 
 static int is_known_key(const char *key)
 {
@@ -513,7 +517,34 @@ void parser(rb_context *ctx, const char *fname)
     lookup_double(tab, "scale_next", &ctx->scale_next);
 
     // -- OUTPUT ------------------------------------------------------------
-    getcwd(ctx->work_dirname, MAX_STR_LEN);
+    // Backend selection: "ascii" (default) or "hdf5".
+    char *output_format = NULL;
+    if (lookup_string(tab, "outputFormat", &output_format))
+    {
+        if (strcmp(output_format, "ascii") == 0)
+            ctx->output_format = 0;
+        else if (strcmp(output_format, "hdf5") == 0)
+            ctx->output_format = 1;
+        else
+            die("outputFormat = \"%s\" is not supported. Allowed values are \"ascii\" or "
+                "\"hdf5\".\n",
+                output_format);
+        free(output_format);
+    }
+
+    // Log verbosity: "error", "warn", "info" (default), "debug".
+    char *loglevel = NULL;
+    if (lookup_string(tab, "loglevel", &loglevel))
+    {
+        int lv = rb_log_level_from_string(loglevel);
+        if (lv < 0)
+            die("loglevel = \"%s\" is not supported. Allowed values are \"error\", \"warn\", "
+                "\"info\" or \"debug\".\n",
+                loglevel);
+        ctx->log_level = lv;
+        free(loglevel);
+    }
+    rb_log_set_level(ctx->log_level);
 
     // Set initial directory name (w is unknown until the solve completes).
     snprintf(ctx->initial_dirname, MAX_STR_LEN, "l=%lld,w=X.XXXXXE-01,dr=%.5E,N=%04lld", ctx->l,

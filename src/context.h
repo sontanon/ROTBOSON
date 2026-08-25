@@ -113,7 +113,10 @@ typedef struct rb_context
     double rr_inf;
 
     // -- OUTPUT --------------------------------------------------------------
-    char work_dirname[MAX_STR_LEN];
+    // 0 = ASCII (.asc files), 1 = HDF5 (single solution.h5). See output.h.
+    MKL_INT output_format;
+    // RB_LOG_* level; parsed from the "loglevel" key (default INFO).
+    MKL_INT log_level;
     char initial_dirname[MAX_STR_LEN];
     char final_dirname[MAX_STR_LEN];
 
