@@ -34,7 +34,9 @@ jobs:
           cmake --build --preset release -j2
 
       - name: Unit tests (CTest)
-        run: ctest --test-dir build/release --output-on-failure
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          ctest --test-dir build/release --output-on-failure
 
       - name: Sync Python tooling
         run: uv sync --dev
