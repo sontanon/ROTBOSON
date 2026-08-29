@@ -222,11 +222,18 @@ clean.
 
 ---
 
-## 14. I/O baked into the numerical code  [deferred]
+## 14. I/O baked into the numerical code  [fixed]
 
-The `.asc` ASCII format (`%9.18E`, tab-separated, one file per field) is written
-directly from everywhere via `write_single_file_2d`. No reader/writer
-abstraction, no metadata, no versioning. Phase 5 (HDF5) addresses this.
+The `.asc` ASCII format (`%9.18E`, tab-separated, one file per field) was
+written directly from everywhere via `write_single_file_2d` with no
+reader/writer abstraction, no metadata and no versioning, and the process
+`chdir`'d into the output directory.
+
+**Fix (Phase 5):** a path-aware `solution_writer` (`src/output.{h,c}`) replaces
+all of that. The ASCII backend emits the legacy `.asc` layout byte-identically
+(verified against the golden gate); the HDF5 backend emits one self-describing
+`solution.h5` (datasets named `<field>.asc`, parameters/solver settings/git
+hash as attributes). No global cwd juggling remains.
 
 ---
 
@@ -238,8 +245,11 @@ abstraction, no metadata, no versioning. Phase 5 (HDF5) addresses this.
 - The `***` banner spam mixes logging with the actual output; there is no log
   level or structured output.
 
-**Fix:** the `w = m` dead initializer is now `double w = 0.0;` (Phase 3); the
-banner/logging question is worth revisiting in Phase 5 alongside HDF5 output.
+**Fix:** the `w = m` dead initializer is now `double w = 0.0;` (Phase 3).
+Phase 5 adds a level-gated logger (`src/log.{h,c}`, config key `loglevel`) and
+routes the banner/status/warning blocks in `main.c` through it (INFO/WARN to
+stdout/stderr, suppressed by `loglevel`). The analysis result tables remain as
+plain `printf` — they are the report, not banner noise.
 
 ---
 

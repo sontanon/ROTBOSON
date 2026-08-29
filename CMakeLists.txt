@@ -29,6 +29,39 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(TOMLC99_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/tomlc99")
 
 # ---------------------------------------------------------------------------
+# HDF5 output backend (Phase 5)
+# ---------------------------------------------------------------------------
+option(ROTBOSON_HDF5 "Enable the HDF5 output backend" ON)
+if(ROTBOSON_HDF5)
+  find_package(HDF5 COMPONENTS C QUIET)
+  if(HDF5_FOUND)
+    message(STATUS "HDF5 found: ${HDF5_VERSION}")
+  else()
+    message(WARNING
+      "HDF5 not found; building without the HDF5 output backend "
+      "(outputFormat=\"hdf5\" will fail at runtime).")
+    set(ROTBOSON_HDF5 OFF)
+  endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# Build provenance: record the git hash for the HDF5 attributes.
+# ---------------------------------------------------------------------------
+find_package(Git QUIET)
+if(GIT_FOUND)
+  execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE ROTBOSON_GIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET)
+endif()
+if(NOT ROTBOSON_GIT_HASH)
+  set(ROTBOSON_GIT_HASH "unknown")
+endif()
+message(STATUS "ROTBOSON git hash: ${ROTBOSON_GIT_HASH}")
+
+# ---------------------------------------------------------------------------
 # Solver backend
 # ---------------------------------------------------------------------------
 set(ROTBOSON_PARDISO_SOURCES
@@ -97,6 +130,13 @@ target_link_libraries(rotboson_core PUBLIC
   ${ROTBOSON_BACKEND_LIBS}
   OpenMP::OpenMP_C
 )
+
+if(ROTBOSON_HDF5)
+  target_compile_definitions(rotboson_core PUBLIC ROTBOSON_HDF5=1)
+  target_link_libraries(rotboson_core PUBLIC HDF5::HDF5)
+endif()
+
+target_compile_definitions(rotboson_core PUBLIC ROTBOSON_GIT_HASH="${ROTBOSON_GIT_HASH}")
 
 # gnu_threaded MKL needs --no-as-needed so its dependencies are not dropped.
 target_link_options(rotboson_core PUBLIC "LINKER:--no-as-needed")

@@ -50,11 +50,30 @@ runtime library path) before configuring/building:
 source /opt/intel/oneapi/setvars.sh
 ```
 
-### libconfig
+### Configuration (TOML)
 
-Parameter files are now TOML (parsed by a vendored `tomlc99`, see
-`third_party/tomlc99/`); libconfig is no longer a dependency. Legacy `.par`
-files can be converted with `uv run tools/par_to_toml.py`.
+Parameter files are TOML, parsed by a vendored `tomlc99` (see
+`third_party/tomlc99/`); libconfig is no longer a dependency. Unknown keys are
+rejected and wrong types are hard errors. Legacy `.par` files can be converted
+with `uv run tools/par_to_toml.py`.
+
+Two extra keys control output:
+- `outputFormat = "ascii"` (default) writes the legacy one-file-per-field
+  `.asc` layout; `outputFormat = "hdf5"` writes a single self-describing
+  `solution.h5` per solution.
+- `loglevel = "error" | "warn" | "info" (default) | "debug"` sets the
+  verbosity of the progress/banner output.
+
+### HDF5 (optional, for `outputFormat = "hdf5"`)
+
+The HDF5 backend needs the HDF5 C library:
+
+Fedora: `sudo dnf install hdf5-devel`
+Ubuntu/Debian: `sudo apt-get install libhdf5-dev`
+macOS: `brew install hdf5`
+
+If HDF5 is not found at configure time the build continues without it and
+`outputFormat = "hdf5"` fails at runtime with a clear message.
 
 ### MKL-free fallback (SuiteSparse/UMFPACK)
 
@@ -92,15 +111,49 @@ uv sync --dev
 uv run tools/smoke.py out/l1_from_scratch.toml
 ```
 
+## What a fresh clone gets you
+
+Everything needed to build, run and test works out of the box after installing
+the packages above -- no curated data required:
+
+- the full source tree, CMake presets, vendored `tomlc99`, tests and CI config;
+- the from-scratch smoke config (`out/l1_from_scratch.toml`) and its HDF5
+  variant (`out/l1_from_scratch_hdf5.toml`), plus the continuation config
+  (`out/l1_from_initial_data.toml`);
+- all catalogue/convergence/stability parameter templates and the published
+  summary tables (`data/summaries/`, `data/params/`, `data/convergence/`,
+  `data/paper/`);
+- the derivation notebooks (`derivations/`) and all Python tooling.
+
+Two things are **not** in the repo (gitignored; 4.7 GB, restored from the
+backup drive -- see `data/golden/README.md` for provenance and
+`data/golden/MANIFEST.sha256` for checksums):
+
+- `data/golden/` -- the archived publication solutions (the §4c regression
+  gate compares against them);
+- `data/seeds/` -- the interpolation seeds referenced by
+  `data/params/regeneration/*.toml` (which use paths relative to `out/`).
+
+Without them you can still build, run CTest, solve from scratch, and use HDF5
+output; you only cannot re-run the golden-regeneration validation chain.
+`tools/smoke.py` and `tools/hdf5_roundtrip.py` work on freshly generated
+solutions alone.
+
 # Generating l=1 data
 
-Two parameter files generate $l=1$ data in `out`. Run from `out/` (ROTBOSON
-changes into the output directory it creates):
+Two parameter files generate $l=1$ data in `out`. Run from `out/` (output
+directories are created under the process working directory; ROTBOSON no
+longer `chdir`s into them):
 
 ```bash
 cd out
 ../build/release/ROTBOSON l1_from_scratch.toml
 ```
+
+For the single-file HDF5 output, run the `l1_from_scratch_hdf5.toml` variant
+from a scratch directory and inspect `solution.h5` with
+`uv run tools/hdf5_roundtrip.py` (exports back to `.asc` and/or compares
+against a legacy `.asc` reference).
 
 This generates initial data for $l=1$, $m=1$, $\omega=0.95$ in a directory named
 `l=1,w=9.50000E-01,dr=6.25000E-02,N=0256` (parameters unchanged).

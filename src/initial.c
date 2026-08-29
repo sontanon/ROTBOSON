@@ -116,24 +116,6 @@ void initial_guess(rb_context *ctx, double *u)
         }
         u_0[GNUM * ctx->NrTotalInitial * ctx->NzTotalInitial] = u[ctx->w_idx];
 
-#ifdef I_DEBUG
-        // fprintf(stderr, "NrTotalInital = %lld, NzTotalInitial = %lld, ghost_i = %lld, order_i =
-        // %lld, dr_i = %E, dz_i = %E.\n", NrTotalInitial, NzTotalInitial, ghost_i, order_i, dr_i,
-        // dz_i);
-        write_single_file_2d(u_0 + 0 * ctx->NrTotalInitial * ctx->NzTotalInitial, "log_alpha_0.asc",
-                             ctx->NrTotalInitial, ctx->NzTotalInitial);
-        write_single_file_2d(u_0 + 1 * ctx->NrTotalInitial * ctx->NzTotalInitial, "beta_0.asc",
-                             ctx->NrTotalInitial, ctx->NzTotalInitial);
-        write_single_file_2d(u_0 + 2 * ctx->NrTotalInitial * ctx->NzTotalInitial, "log_h_0.asc",
-                             ctx->NrTotalInitial, ctx->NzTotalInitial);
-        write_single_file_2d(u_0 + 3 * ctx->NrTotalInitial * ctx->NzTotalInitial, "log_a_0.asc",
-                             ctx->NrTotalInitial, ctx->NzTotalInitial);
-        write_single_file_2d(u_0 + 4 * ctx->NrTotalInitial * ctx->NzTotalInitial, "psi_0.asc",
-                             ctx->NrTotalInitial, ctx->NzTotalInitial);
-        write_single_file_2d(u_0 + 5 * ctx->NrTotalInitial * ctx->NzTotalInitial, "lambda_0.asc",
-                             ctx->NrTotalInitial, ctx->NzTotalInitial);
-#endif
-
         // Interpolate u0 into u.
         initial_interpolator(u, u_0, ctx->NrTotalInitial - 2 * ctx->ghost_i,
                              ctx->NzTotalInitial - 2 * ctx->ghost_i, ctx->ghost_i, ctx->order_i,

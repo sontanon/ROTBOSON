@@ -19,7 +19,7 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/intel-oneapi.gpg] https://apt.repos.intel.com/oneapi all main" \
             | sudo tee /etc/apt/sources.list.d/intel-oneapi.list
           sudo apt-get update
-          sudo apt-get install -y intel-oneapi-mkl-devel
+          sudo apt-get install -y intel-oneapi-mkl-devel libhdf5-dev
 
       - uses: astral-sh/setup-uv@v5
 
@@ -32,6 +32,9 @@ jobs:
         run: |
           source /opt/intel/oneapi/setvars.sh
           cmake --build --preset release -j2
+
+      - name: Unit tests (CTest)
+        run: ctest --test-dir build/release --output-on-failure
 
       - name: Sync Python tooling
         run: uv sync --dev
@@ -50,7 +53,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libsuitesparse-dev
+          sudo apt-get install -y libsuitesparse-dev libhdf5-dev
 
       - uses: astral-sh/setup-uv@v5
 

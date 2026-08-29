@@ -1,4 +1,5 @@
 #include "context.h"
+#include "log.h"
 
 #include <string.h>
 
@@ -77,6 +78,10 @@ void rb_context_init(rb_context *ctx)
 
     // ANALYSIS.
     ctx->phi_max = 1.0;
+
+    // OUTPUT.
+    ctx->output_format = 0;      // ASCII (legacy .asc files)
+    ctx->log_level = RB_LOG_INFO;
 
     // All pointer fields and dirname buffers are zeroed by memset above.
 }

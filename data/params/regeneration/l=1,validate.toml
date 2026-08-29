@@ -20,13 +20,13 @@ dr_i = 3.12500E-02
 dz_i = 3.12500E-02
 ghost_i = 2
 order_i = 4
-log_alpha_i = "/home/santiago/Code/rotboson/data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/log_alpha_f.asc"
-beta_i = "/home/santiago/Code/rotboson/data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/beta_f.asc"
-log_h_i = "/home/santiago/Code/rotboson/data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/log_h_f.asc"
-log_a_i = "/home/santiago/Code/rotboson/data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/log_a_f.asc"
-psi_i = "/home/santiago/Code/rotboson/data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/psi_f.asc"
-#lambda_i	= "/home/santiago/Code/rotboson/data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/lambda_f.asc"
-#w_i		= "/home/santiago/Code/rotboson/data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/w_f.asc"
+log_alpha_i = "../data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/log_alpha_f.asc"
+beta_i = "../data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/beta_f.asc"
+log_h_i = "../data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/log_h_f.asc"
+log_a_i = "../data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/log_a_f.asc"
+psi_i = "../data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/psi_f.asc"
+#lambda_i	= "../data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/lambda_f.asc"
+#w_i		= "../data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/w_f.asc"
 
 # SCALE INITIAL DATA.
 scale_u4 = 1.000

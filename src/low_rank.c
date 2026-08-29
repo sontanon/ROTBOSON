@@ -1551,10 +1551,6 @@ void solver_diff_gen(rb_context *ctx)
         }
     }
 
-#ifdef DEBUG
-    write_single_integer_file_1d(diff, "diff.asc", 2 * ndiff + 1);
-#endif
-
     // All done.
     return;
 }
