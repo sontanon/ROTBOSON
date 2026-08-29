@@ -497,6 +497,16 @@ Phase 5 is **closed** on branch `phase5/hdf5`.
 - **Deferred (unchanged):** the order-6 radial operator parity fix
   (`docs/code-critique.md` §16) — left for Phase 6 as "if convenient" was
   exercised and deprioritized in favour of the core I/O work.
+- **Fresh-clone portability (follow-up to the outcome):** removing the
+  process `chdir` made relative seed paths work, so the §4c regeneration
+  configs (`data/params/regeneration/*.toml`) now reference
+  `../data/seeds/...` / `../data/golden/...` instead of machine-specific
+  absolute paths (verified: the l=1 golden gate + summary cross-check still
+  PASS). The golden provenance README and SHA-256 manifest are now tracked
+  (force-added past the `data/golden/` ignore) so a fresh clone carries the
+  restore instructions and checksums even though the 4.7 GB of gitignored
+  data does not travel with it. CI installs `libhdf5-dev` in both build jobs
+  and the oneMKL job now runs CTest.
 
 ### Phase 6 — Rust migration (last, opportunistic)
 

@@ -20,13 +20,13 @@ dr_i = 0.8000E-01
 dz_i = 0.8000E-01
 ghost_i = 2
 order_i = 4
-log_alpha_i = "/home/santiago/Code/rotboson/data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/log_alpha_f.asc"
-beta_i = "/home/santiago/Code/rotboson/data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/beta_f.asc"
-log_h_i = "/home/santiago/Code/rotboson/data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/log_h_f.asc"
-log_a_i = "/home/santiago/Code/rotboson/data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/log_a_f.asc"
-psi_i = "/home/santiago/Code/rotboson/data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/psi_f.asc"
-lambda_i = "/home/santiago/Code/rotboson/data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/lambda_f.asc"
-#w_i	 	= "/home/santiago/Code/rotboson/data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/w_f.asc"
+log_alpha_i = "../data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/log_alpha_f.asc"
+beta_i = "../data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/beta_f.asc"
+log_h_i = "../data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/log_h_f.asc"
+log_a_i = "../data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/log_a_f.asc"
+psi_i = "../data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/psi_f.asc"
+lambda_i = "../data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/lambda_f.asc"
+#w_i	 	= "../data/golden/l=6,w=7.99914E-01,dr=8.00000E-02,N=0400/w_f.asc"
 
 # SCALE INITIAL DATA.
 scale_u4 = 1.00000

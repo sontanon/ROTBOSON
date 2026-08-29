@@ -111,6 +111,34 @@ uv sync --dev
 uv run tools/smoke.py out/l1_from_scratch.toml
 ```
 
+## What a fresh clone gets you
+
+Everything needed to build, run and test works out of the box after installing
+the packages above -- no curated data required:
+
+- the full source tree, CMake presets, vendored `tomlc99`, tests and CI config;
+- the from-scratch smoke config (`out/l1_from_scratch.toml`) and its HDF5
+  variant (`out/l1_from_scratch_hdf5.toml`), plus the continuation config
+  (`out/l1_from_initial_data.toml`);
+- all catalogue/convergence/stability parameter templates and the published
+  summary tables (`data/summaries/`, `data/params/`, `data/convergence/`,
+  `data/paper/`);
+- the derivation notebooks (`derivations/`) and all Python tooling.
+
+Two things are **not** in the repo (gitignored; 4.7 GB, restored from the
+backup drive -- see `data/golden/README.md` for provenance and
+`data/golden/MANIFEST.sha256` for checksums):
+
+- `data/golden/` -- the archived publication solutions (the §4c regression
+  gate compares against them);
+- `data/seeds/` -- the interpolation seeds referenced by
+  `data/params/regeneration/*.toml` (which use paths relative to `out/`).
+
+Without them you can still build, run CTest, solve from scratch, and use HDF5
+output; you only cannot re-run the golden-regeneration validation chain.
+`tools/smoke.py` and `tools/hdf5_roundtrip.py` work on freshly generated
+solutions alone.
+
 # Generating l=1 data
 
 Two parameter files generate $l=1$ data in `out`. Run from `out/` (output

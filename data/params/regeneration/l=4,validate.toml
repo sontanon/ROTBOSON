@@ -27,13 +27,13 @@ order_i = 4
 #psi_i	 	= "/mnt/e/RBS/HolyGrails/HolyGrail,l=4,w=0.73847/psi_f.asc"
 #lambda_i 	= "/mnt/e/RBS/HolyGrails/HolyGrail,l=4,w=0.73847/lambda_f.asc"
 #w_i	 	= "/mnt/e/RBS/HolyGrails/HolyGrail,l=4,w=0.73847/w_f.asc"
-log_alpha_i = "/home/santiago/Code/rotboson/data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/log_alpha_f.asc"
-beta_i = "/home/santiago/Code/rotboson/data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/beta_f.asc"
-log_h_i = "/home/santiago/Code/rotboson/data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/log_h_f.asc"
-log_a_i = "/home/santiago/Code/rotboson/data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/log_a_f.asc"
-psi_i = "/home/santiago/Code/rotboson/data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/psi_f.asc"
-lambda_i = "/home/santiago/Code/rotboson/data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/lambda_f.asc"
-#w_i	 	= "/home/santiago/Code/rotboson/data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/w_f.asc"
+log_alpha_i = "../data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/log_alpha_f.asc"
+beta_i = "../data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/beta_f.asc"
+log_h_i = "../data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/log_h_f.asc"
+log_a_i = "../data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/log_a_f.asc"
+psi_i = "../data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/psi_f.asc"
+lambda_i = "../data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/lambda_f.asc"
+#w_i	 	= "../data/golden/l=4,w=9.02996E-01,dr=1.60000E-01,N=0200/w_f.asc"
 
 # SCALE INITIAL DATA.
 scale_u4 = 1.0000

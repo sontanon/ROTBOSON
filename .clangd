@@ -1,0 +1,10 @@
+# clangd configuration for rotboson.
+#
+# The CMake-generated compile_commands.json can be regenerated without the
+# MKL include path (FindMKL.cmake only reads MKLROOT from the environment, and
+# the MKL_ROOT cache var is empty), which makes clangd emit a fatal cascade of
+# "mkl.h file not found" errors. This guarantees clangd always finds the real
+# Intel oneMKL headers regardless of the state of the compile database.
+CompileFlags:
+  Add:
+    - "-isystem/opt/intel/oneapi/mkl/2026.1/include"
