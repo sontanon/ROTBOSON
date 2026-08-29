@@ -309,7 +309,7 @@ static void check_conv_1d(const char *name, op1d_t fn, MKL_INT deriv, MKL_INT sy
     measure_1d(fn, deriv, sym, 0.05, &ei2, &eg2);
     oi = log2(ei1 / ei2);
     og = log2(eg1 / eg2);
-    printf("  %-18s sym=%+d: interior order %.3f, global order %.3f\n", name, sym, oi, og);
+    printf("  %-18s sym=%+d: interior order %.3f, global order %.3f\n", name, (int)sym, oi, og);
     CHECK(fabs(oi - 4.0) < 0.15); // interior: exact design order
     CHECK(og > 2.5); // boundary/axis: >= ~3rd order (paper)
 }
@@ -322,8 +322,8 @@ static void check_conv_2d(const char *name, op2d_t fn, MKL_INT deriv, MKL_INT sy
     measure(fn, deriv, sym, order, 0.05, &ei2, &eg2);
     oi = log2(ei1 / ei2);
     og = log2(eg1 / eg2);
-    printf("  %-18s sym=%+d o=%lld: interior order %.3f, global order %.3f\n", name, sym, order, oi,
-           og);
+    printf("  %-18s sym=%+d o=%d: interior order %.3f, global order %.3f\n", name, (int)sym,
+           (int)order, oi, og);
     CHECK(fabs(oi - (double)order) < 0.15); // interior: exact design order
     if (order == 2)
         CHECK(fabs(og - 2.0) < 0.3); // 2nd-order boundary is clean 2nd order

@@ -117,7 +117,9 @@ Everything needed to build, run and test works out of the box after installing
 the packages above -- no curated data required:
 
 - the full source tree, CMake presets, vendored `tomlc99`, tests and CI config;
-- the from-scratch smoke config (`out/l1_from_scratch.toml`) and its HDF5
+- the from-scratch smoke config (`out/l1_from_scratch.toml`), its coarse-grid
+  CI variant (`out/l1_smoke_ci.toml`, used by `.github/workflows/ci.yml` so the
+  UMFPACK fallback smoke runs in seconds) and its HDF5
   variant (`out/l1_from_scratch_hdf5.toml`), plus the continuation config
   (`out/l1_from_initial_data.toml`);
 - all catalogue/convergence/stability parameter templates and the published
