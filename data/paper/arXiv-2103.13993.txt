@@ -1,0 +1,2417 @@
+IOP/CQG
+
+Rotating Boson Stars Using Finite Differences
+and Global Newton Methods
+Santiago Ontañón1, ∗ and Miguel Alcubierre1, †
+1
+
+Instituto de Ciencias Nucleares, Universidad Nacional Autónoma de México,
+A.P. 70-543, México D.F. 04510, México.
+
+arXiv:2103.13993v1 [gr-qc] 25 Mar 2021
+
+(Dated: March 26, 2021)
+
+Abstract
+We study Rotating Boson Star initial data for Numerical Relativity as previously considered by Yoshida
+and Eriguchi [1], Lai [2], and Grandclement, Somé and Gourgoulhon [3]. We use a 3 + 1 decomposition as
+presented by Gourgoulhon [4] and Alcubierre [5], adapted to an axisymmetric quasi-isotropic spacetime
+with added regularization at the axis following work by Ruı́z, Alcubierre and Núñez [6] and Torres [7].
+The Einstein-Klein-Gordon equations result in a system of six coupled, elliptic, nonlinear equations with
+an added unknown for the scalar field’s frequency ω. Utilizing a Cartesian two-dimensional grid, finite
+differences, Global Newton Methods adapted from Deuflhard [8], the sparse direct linear solver PARDISO
+[9, 10], and properly constraining all variables generates data sets for rotation azimuthal integers l ∈ [0, 6].
+Our numerical implementation, published in GitHub [11], is shown to correctly converge both with respect
+to the resolution size and boundary extension (fourth order and third order, respectively). Thus, global
+parameters such as the Komar masses and angular momenta can be precisely calculated to characterize
+these spacetimes. Furthermore, analyzing the full family at fixed rotation integer produces maximum
+masses and minimum frequencies. These coincide with previous results in literature for l ∈ [0, 2] as in
+[1–3, 12] and are new for l > 2. In particular, the study of high-amplitude and localized scalar fields in
+axial symmetry is revealed to be only possible by adding the sixth regularization variable.
+PACS numbers: 04.20.Ex, 04.25.Dm, 95.30.Sf
+
+∗
+
+santiago.ontanon@correo.nucleares.unam.mx
+
+†
+
+malcubi@nucleares.unam.mx
+
+1
+
+I.
+
+INTRODUCTION
+
+Boson stars are localized configurations of scalar fields first studied by Kaup [13], and Ruffini
+and Bonazzola [14]. They arise as a natural coupling of a smooth classical complex scalar field with
+Einstein’s theory of general relativity [15]. Whereas Wheeler’s original idea for a “gravitational
+atom”, the geon [16], was proven to be unstable, for a scalar field the gravitational collapse can
+be avoided by the dispersive nature of the Klein-Gordon equation. Although Derrick’s theorem
+[17, 18] shows that no regular, static, and localized scalar fields are stable in three-dimensional
+space, boson stars solve this conundrum by demoting staticity to stationarity, and assuming a
+harmonic time behavior for the complex scalar field of the form
+Φ(r, t) = φ(r) e−iωt ,
+
+(I.1)
+
+where ω is called the scalar field’s frequency that arises as an eigenvalue when impossing the
+stationarity condition. Thus, boson stars are stationary and compact bundles of a complex scalar
+field, and given some hypothetical scalar field they may serve different astrophysical purposes, for
+example as mimics of neutron stars. Boson stars have also been used to model dark matter halos
+by Schunck and Torres [19] and Ureña-López and Bernal [20], and also as black-hole mimickers by
+Guzmán and Rueda-Becerril [21] and Barranco and Bernal [22]. On the question of their actual
+astrophysical existence, one must first consider the type of scalar field one has in mind. Indeed, for
+a free Klein-Gordon field a simple application of the uncertainty principle states that for a boson
+star with constituents of mass m and localized within a Schwarzschild radius, the maximum mass
+must be of the order of
+m2P
+~c
+=
+,
+Mmax ∼
+2Gm
+2m
+where mP ≡
+
+(I.2)
+
+p
+~c/m is the Planck mass. For a scalar such as the Higgs boson, the resulting
+
+star mass is only 2 × 109 kg, which is a tiny fraction of a Solar Mass. On the other hand, for an
+interacting field, such as the quartic interaction studied by Colpi et al. [23], it has been shown
+that this limit can be increased almost arbitrarily to astronomically expected scales. However,
+throughout this paper we will only consider the case of a free Klein-Gordon field.
+The simplest solution for a boson star is a spherical boson star that considers a spherically
+symmetric spacetime and scalar field such that φ(r) = φ(r). This problem is then one-dimensional
+and has been studied in the literature multiple times, including numerical results by Kaup [13]
+and Friedberg et al. [24], using a shooting method that solves for an appropriate frequency such
+2
+
+that the field and metric quantities decay correctly at spatial infinity. This solution is constrained
+by setting the field’s value at the origin, φ0 ≡ φ(r = 0), and solving the eigenvalue problem in
+order to find the frequency ω, which results in a family of solutions parametrized by the value
+of φ0 . These solutions have been shown to have a maximum mass of (as reported by Lai [2] and
+Grandclement et al. [3])
+l=0
+Mmax
+≈ 0.633
+
+m2P
+,
+m
+
+(I.3)
+
+in agreement with the uncertainty principle limit mentioned above (equation (I.2)).
+Here we will consider the case of rotating boson stars which are a natural extension of the problem into an axisymmetric spacetime. These objects consider an additional harmonic decomposition
+in the rotation angle ϕ,
+Φ(r, t) = φ(r) e−i(ωt−lϕ) ,
+
+(I.4)
+
+where l is an integer known as the azimuthal rotation number. As expected, rotating boson stars
+have non-zero angular momentum and greater complexities than their spherical siblings (notice
+that this is quite different from the `-boson stars recently studied by Alcubierre et al. [25], which
+are particular combinations of several scalar fields that result in spherical objects with non-zero
+total angular momentum).
+Rotating boson stars were first studied by Silveira and Sousa in Newtonian theory [26]. The
+first general relativity numerical results were obtained by Yoshida and Eriguchi for the l = 1 case
+l=1
+≈ 1.31 m2P /m. Further analysis was done by
+[1], for which they found a maximum mass of Mmax
+
+Lai in his PhD thesis [2] where he extended results to the l = 2 case, and also found a maximum
+mass for l = 1, although it differed from the result obtained by Yoshida and Eriguchi. Mielke
+and Schunck [19] found solutions all throughout l ∈ [1, 10] (and also for l = 500), however their
+results were limited to extremely small amplitude near-Newtonian cases. Finally, Grandclement,
+Somé and Gourgoulhon [3] found rotating boson stars for l ∈ [1, 4] which confirmed Yoshida and
+Eriguchi’s l = 1 results, and also estimated the maximum mass for l = 2. More background and
+information on boson stars can be found in Liebling and Palenzuela’s review [12], which covers the
+widest breadth of topics (whereas Mielke’s review considers rotating boson stars exclusively [27]).
+For this paper we have considered free-field boson stars with rotation azimuthal number l ∈
+[1, 6]. Differing from Lai’s and Grandclement et al.’s approach, we have chosen to use a noncompactified spacetime where the grid is a simple uniform grid with finite difference discretization.
+However, in reading both aforementioned works, the issue of the field’s regularity at the axis was
+posited as a reason for numerical failure at high amplitudes. Thus, by looking into previous works
+3
+
+by Ruı́z, Alcubierre, and Núñez [6], the regularization of the axis has been a major component in
+our analysis.
+This article is the organized as follows. In Section II we present the field equations and the
+deduction of the system of five nonlinear elliptic equations that describe rotating boson stars.
+Section III is key in presenting our boundary conditions, since an inadequate constraint will lead
+to trivial Minkowski spacetime or excited boson stars states. Section IV introduces a sixth variable
+that guarantees regularity at the axis even for high amplitudes, and will prove critical for extending
+previous results. Section V details how masses and angular momenta were calculated given our
+grid limitations. Section VI presents our numerical algorithm for obtaining initial data for a highly
+nonlinear problem where initial guesses are hard to construct. Having presented both the theory
+and numerical algorithms, Section VII gives and explanation and overview of the numerical code,
+ROTBSON specially written for rotating boson star initial data generation. Section VIII presents
+ROTBOSON ’s expected fourth-order convergence and gives estimates for relative errors in global
+quantities. Finally, our results are presented in Section IX, and Section X gives some concluding
+remarks on these results.
+A final comment on conventions and units. Throughout this work we use geometrized units
+where c = G = ~ = 1, unless stated otherwise. In these units, the Planck mass is given by
+p
+mP = ~c/G = 1. This implies that our coordinate lengths will have dimensions directly inverse
+to the field’s mass, (1/m). In the results section we recover Planck’s reduced constant to present
+them as is usual in the literature, such as in [3]. Lastly, although all calculations are invariant to
+this, our metric signature is the usual convention for general relativity (−, +, +, +).
+
+II.
+
+FIELD EQUATIONS
+
+We use the 3+1 general relativity formalism as presented by York [28], Alcubierre [5], and
+Gourgoulhon [4], where the spacetime metric is written as
+ds2 = gµν dxµ dxν = (−α2 + γij β i β j ) dt2 + 2γij β j dt dxi + γij dxi dxj .
+
+(II.1)
+
+Here α is the lapse function, β i is the shift vector, and γij is the spatial metric induced on hypersurfaces of constant coordinate time Σt . Furthermore, we consider a stationary and axisymmetric
+spacetime. In an adapted coordinate system, we can generate these symmetries with the stationary
+generator (∂/∂t )µ = α nµ + β µ (where nµ is the normal vector to the spatial hypersurfaces Σt )
+4
+
+and the axisymmetric generator ( ∂/∂ϕ )µ . An extensive study of these symmetries and formalism
+can be found in [4]. From this same reference, we use quasi-isotropic coordinates (t, ρ, z, ϕ), also
+called Lewis-Papapetrou coordinates [29, 30]. Notice that we are using cylindrical coordinates
+(ρ, z) instead of polar (r, θ). However, this is perfectly equivalent with the usual transformation
+ρ = r sin θ and z = r cos θ. In this adapted coordinate system the shift vector can be written as
+β i = Ω(ρ, z) (∂/∂ϕ )i ,
+
+(II.2)
+
+whereas the spatial metric takes the simple form
+dl2 = γij dxi dxj = A(ρ, z) (dρ2 + dz 2 ) + ρ2 H(ρ, z) dϕ2 .
+
+(II.3)
+
+Thus, the spacetime geometry is reduced to four functions (α, Ω, A, H) of the two coordinates
+(ρ, z). This is not all, since the Einstein equation will couple geometry to matter via the stressenergy tensor Tµν . Our scalar field will be written as the standard ansatz with harmonic time and
+angular dependence [2, 27]
+Φ(t, ρ, z, ϕ) = φ(ρ, z) e−i(ωt−lϕ) .
+
+(II.4)
+
+Above, l must be an integer for single-valuedness at ϕ = 0, 2π, and is known as the azimuthal
+rotational number (sometimes referred to as k or m in other works).
+Thus, we need five equations for the five unknown variables {α, Ω, A, H, φ}. These are given
+via:
+1. The Lewis-Papapetrou or quasi-isotropic coordinates imply that K, the trace of the extrinsic
+curvature Kij = − 21 £n γij , is zero, which results in the maximal slicing condition,
+
+D2 α − α 4π (u + S) + Kij K ij = 0 ,
+
+(II.5)
+
+2. The Hamiltonian constraint,
+H = (3) R + K 2 − Kij − 16π u = 0 ,
+
+(II.6)
+
+3. The momentum constraint for i = ϕ,
+Mi = Dj K ij − Di K − 8π j i = 0 ,
+5
+
+(II.7)
+
+4. The stationarity condition ∂t Kij = 0 for i = j = ϕ,
+∂Kij
+= £β Kij − Di Dj α + α
+∂t
+
+(3)
+
+
+Rij + K Kij − 2Kik K k j + 4π ((S − u) γij − 2Sij ) = 0 ,
+(II.8)
+
+5. The Klein-Gordon equation
+
+∇2 − m2 Φ = 0 .
+
+(II.9)
+
+Above, Di is the covariant derivative associated to the spatial metric γij , (3) Rij its Ricci tensor,
+and u, j i , Sij are respectively the energy density, momentum density and stress tensor as seen by
+the Eulerian observers, defined as the following projections of Tµν [5]
+u = nµ nν Tµν ,
+
+(II.10)
+
+j i = − γ iµ nν Tµν ,
+
+(II.11)
+
+Sij = γ µ i γ ν j Tµν ,
+
+(II.12)
+
+S = γ ij Sij ,
+
+(II.13)
+
+and m is the scalar field’s mass parameter.
+
+To obtain the final equations as presented below, linear combinations of these five equations
+6
+
+must be taken. The resulting system of equations is
+
+1
+ρ2 H
+∂2
+∂2
+1 ∂
+α
++
+∂α
+·
+∂H
+−
+∂Ω · ∂Ω
+fα ≡
++
++
+∂ρ2 ∂z 2 ρ ∂ρ
+2H
+2α
+
+
+(II.14)
+2(ω + lΩ)2
+2
+2
+− 4π A
+− m α φ = 0,
+α
+ 2
+
+ 2
+∂
+3
+1
+A
+φ
+∂2
+3 ∂
+fΩ ≡
+Ω+
+∂Ω · ∂H − ∂Ω · ∂α − 16π l (ω + lΩ)
+= 0,
++ 2+
+2
+∂ρ
+∂z
+ρ ∂ρ
+2H
+α
+H
+ρ
+
+
+(II.15)
+
+
+2
+
+2
+
+
+
+2
+
+
+
+∂
+1
+1
+ρH
+∂
+2
+A
+−
+∂A
+·
+∂A
++
+−
+∂H
+·
+∂α
+−
+∂ρ α
++
+∂Ω
+·
+∂Ω
+−
+∂ρ2 ∂z 2
+A
+αH
+2α2
+ρα
+)#
+(  
+
+2
+2
+(ω + lΩ)
+H
+φ
+ρ2
++ ∂φ · ∂φ
+A = 0,
++8π
+A − l2
+2
+ρ
+α
+A
+ 2
+
+∂
+∂2
+2 ∂
+1
+1
+fH ≡
++ 2+
+∂H · ∂H + ∂H · ∂α
+H−
+2
+∂ρ
+∂z
+ρ ∂ρ
+2H
+α
+
+
+
+!
+2
+ρ2 H
+2
+φ
+2l2
+2 2
++
+∂Ω · ∂Ω +
+∂ρ α + 8π A
+H = 0,
+ρm +
+α2
+ρα
+ρ
+H
+ 2
+
+∂
+∂2
+1 ∂
+l2
+1
+1
+fφ ≡
++ 2+
+− 2 φ + ∂α · ∂φ +
+∂H · ∂φ
+2
+∂ρ
+∂z
+ρ ∂ρ ρ
+α
+2H
+ 
+
+
+
+(ω + lΩ)2
+l2 A − H
+2
+−m −
++ A
+φ = 0.
+α2
+H
+ρ2
+fA ≡
+
+(II.16)
+
+(II.17)
+
+(II.18)
+
+These equations use the short-hand defined in [3, 4]:
+∂u · ∂v ≡
+
+∂u ∂v ∂u ∂v
++
+.
+∂ρ ∂ρ ∂z ∂z
+
+Equations (II.14) - (II.18) are not quite the final equations we will be using.
+
+(II.19)
+
+In fact,
+
+{α, Ω, A, H, φ} are also not the actual variables used in our work. Instead we will work with
+ℵ ≡ log α ,
+1
+log A ,
+2
+1
+h ≡ log H ,
+2
+φ
+ψ≡ l.
+ρ
+a≡
+
+(II.20)
+(II.21)
+(II.22)
+(II.23)
+
+The first three variables are introduced to guarantee that α, H, A > 0 (as should be from
+metric-positivity). The final variable comes from examining regularity conditions in Eq. (II.18).
+7
+
+More precisely, the first four terms that make up the elliptic operator in this equation imply that,
+if everything else in the equation is regular at the rotation axis ρ = 0, φ must then vanish as ρl on
+this same axis. This might not seem true, considering the term (A − H)/ρ2 , however, this term is
+shown to be regular at the axis via local-flatness, as will be further discussed in Section IV below.
+The immediate implication of this decomposition is that the term φ/ρ = ρl−1 ψ is regular for l ≥ 1,
+which is true for all rotating boson stars. Using this new ψ variable, its resulting equation is
+
+1
+1
+∂2
+(2l + 1) ∂
+∂2
+ψ + ∂α · ∂ψ +
+∂H · ∂ψ
++ 2+
+fψ ≡
+2
+∂ρ
+∂z
+ρ
+∂ρ
+α
+2H
+ 
+
+
+
+
+
+l ∂ρ α ∂ρ H
+(ω + lΩ)2
+l2 A − H
+2
++
++
++A
+−m −
+ψ = 0.
+ρ
+α
+2H
+α2
+H
+ρ2
+
+
+(II.24)
+
+Notice also that using ψ is convenient since otherwise the field’s first l derivatives on the ρ direction
+would need to vanish, something very difficult to guarantee numerically. This was reported to be
+an issue in Yoshida and Eriguchi’s first work [1].
+We will not rewrite equations (II.14) - (II.17) and (II.24) in terms of {ℵ, Ω, a, h, ψ} since the
+change of variables is quite simple. Thus, we have a set of five nonlinear elliptic equations to solve
+for the initial data. Unfortunately, this system has a trivial solution given by α = A = H = 1,
+Ω = φ = 0, which corresponds to Minkowski spacetime. We obviously do not wish to obtain this
+spacetime configuration, so a first step is to constrain solutions to have |φ| > 0, or, equivalently
+|ψ| > 0. In fact, we can be more specific, since we are searching for ground-state solutions where
+the scalar field has no “nodes” (save at the rotation axis) and thus we will ask for ψ > 0. This
+constraint will be further developed in the next section.
+
+III.
+
+BOUNDARY CONDITIONS
+
+First a comment on our grid structure: we will be solving this system of equations with a twodimensional cartesian (ρ, z) uniform grid. We could use a more complex non-uniform or adaptive
+grid, but for simplicity’s sake, we have opted to use the easier approach where the grid spaces
+are constant and given by ∆ρ and ∆z in their respective directions. As is common for Numerical
+Relativity, a staggered grid is used with the goal of avoiding possible problematic divisions by zero
+on the ρ axis, and also to allow us to impose equatorial symmetry in a simple way. Thus, our
+discrete coordinates are given by
+
+(ρi , zj ) = ∆ρ (i − g + 12 ), ∆z (j − g + 21 ) ,
+8
+
+(III.1)
+
+where g is the number of ghost zones necessary for finite differences, and i, j are integers in the
+intervals:
+i ∈ [0, Nρ + 2g − 1] ,
+
+j ∈ [0, Nz + 2g − 1] .
+
+(III.2)
+
+This means that Nρ , Nz are the number of interior points in each respective direction, and we
+have two ghost zones boundary bands with the first interior point being (i, j) = (g, g) and the
+last interior point corresponding to (i, j) = (g + Nρ − 1, g + Nz − 1).
+Notice that our system of equations also has equatorial symmetry. Thus, the most optimal
+solution algorithm only solves for a single quadrant of the (ρ, z) coordinates, namely, the positive
+quadrant. The remaining quadrants can be obtained by parity transformations. It is easy to
+see that invariance under the independent symmetries ρ → −ρ and z → −z implies that all
+our functions are even functions of both variables. This is a boundary condition for our grid,
+specifically for our left and bottom strips. The mathematical expression is
+u(i, j) = u(2g − 1 − i, j) , i ∈ [0, g − 1] ,
+
+u(i, j) = u(i, 2g − 1 − j) , j ∈ [0, g − 1] ,
+
+(III.3)
+
+for u ∈ {ℵ, Ω, a, h, ψ}.
+We also need boundary conditions for the external boundaries i ≥ Nρ + g, j ≥ Nz + g. Asymptotic flatness has the simple condition α, A, H = 1 and Ω = ψ = 0 at spatial infinity. However,
+we do not have a compactified spacetime and must use another condition instead. Enforcing the
+previous condition as a Dirichlet approximation at finite distance is not ideal, rather we use the
+Robin boundary conditions [31, 32] that come from expanding a grid variable u asymptotically for
+large r as:
+u(r, θ) = u∞ +
+
+Cn
++ O(r−(n+1) , θ) ,
+rn
+
+(III.4)
+
+where u∞ is the value or limit of u at spatial infinity, Cn is a constant independent of the direction
+θ, n a positive integer, and further terms can depend on the direction θ but are of order r−(n+1)
+or greater.
+The actual Robin boundary condition is written as a mix of Dirichlet and Neumann conditions
+which is a natural consequence of the above Equation (III.4):
+rbdy
+
+∂u
+−(n+1)
+(rbdy , θ) + n (u(rbdy , θ) − u∞ ) = O(rbdy , θ) .
+∂r
+
+(III.5)
+
+Above, rbdy stands for an external boundary point such that rbdy  1. The numerical imple9
+
+mentation sets the right-hand side of (III.5) to zero and, for our two dimensional grid, we have
+r ∂u/∂r = ρ ∂u/∂ρ + z ∂u/∂z .
+
+Notice that the unknown constant Cn has dropped out from our boundary condition. This is not
+so for the integer n, which must be known a priori. This integer can be calculated from expanding
+the system of equations around spatial infinity and determining the first nonzero power of 1/r for
+each variable. This is tedious since we first have to rewrite the equations in (r, θ) coordinates, but
+quite straightforward. In this way we find that n = 1 for ℵ, a, h, and n = 3 for Ω. In fact, it can
+also be shown that the constant Cn must have the same value for a and h, and minus this value for
+ℵ. This will be no surprise when we talk about global quantities in Section V. Also, the Dirichlet
+condition at spatial infinity means that all variables {ℵ, Ω, a, h} have u∞ = 0.
+
+We have yet to deal with the scalar field. Its decay is in fact not a power of 1/r, but instead
+exponential. This can be seen by expanding equation (II.18) at spatial infinity and keeping only
+the lowest order in 1/r, i.e. α = A = H = 1 and Ω = 0. This leads to
+
+
+2 ∂
+1 ∂2
+1
+∂
+l2
+∂2
++
++
++
+−
+− (m2 − ω 2 )
+∂r2 r ∂r r2 ∂θ2 r2 tan θ ∂θ r2 sin2 θ
+
+
+φ ≈ 0.
+
+(III.6)
+
+We recognize the Laplacian operator in cylindrical coordinates above. By separation of variables,
+one can show that the appropriate solution of (III.6) is
+√
+φ = C Pll (cos θ) kl ( m2 − ω 2 r) ,
+
+(III.7)
+
+√
+where Pll (cos θ) is the associated Legendre polynomial, kl ( m2 − ω 2 r) is the modified spherical
+Bessel function, and C is a constant. This solution is the appropriate one since it goes to zero at
+spatial infinity, and vanishes as sinl θ on the rotation axis. Indeed, from [33], given the asymptotic
+form of the Bessel function kl (x) ∼ e−x /x, and a direct calculation of Pll (cos θ) ∼ sinl θ, one finds,
+√
+
+2
+
+2
+
+e− m −ω r
+φ → C sin θ
+,
+r
+l
+
+(III.8)
+
+or, in terms of our variable ψ = ρ−l φ,
+√
+
+2
+
+2
+
+e− m −ω r
+ψ→C
+.
+rl+1
+10
+
+(III.9)
+
+Observe that this asymptotic behavior requires that (reinserting Planck’s Constant)
+0<ω<
+
+m
+,
+~
+
+(III.10)
+
+as otherwise there would not be an appropriate exponential decay of the scalar field. Thus, the
+differential equation for the boundary condition for ψ is
+
+
+√
+∂ψ
+−(l+2)
+2
+2
+rbdy
+(rbdy , θ) + (l + 1) + rbdy m − ω ψ(rbdy , θ) = O(rbdy , θ) .
+∂r
+
+(III.11)
+
+In conclusion, the above boundary conditions have given us a full list of the constraints our
+variables must satisfy:
+1. The metric requires α, A, H positive, and decaying as 1/r asymptotically.
+2. Gourgoulhon [4] shows that in terms of our notation we must have Ω < 0. Also, Ω decays
+as 1/r3 .
+3. The scalar field auxiliary variable ψ must always be positive to guarantee that we have
+√
+
+2
+
+2
+
+the ground-state, and must decay as e− m −ω r /rl+1 . Nevertheless, to avoid the trivial
+Minkowski solution, ψ must still be nonzero at the boundary, however small.
+4. Finally, the field’s frequency is bounded by the scalar field mass parameter.
+Condition 1 is satisfied by taking logarithmic variables as previously mentioned. Conditions
+ √
+
+m2 −ω 2 r
+2 and 3 could be guaranteed by taking another variable such as log(−Ω) and log ψ e
+.
+However, this leads to Robin boundary conditions where the value at spatial infinity is infinite.
+Therefore, we do not constrain these variables in practice, but violations of the aforementioned
+constraints would show that we are solving the wrong problem. Lastly, Condition 4 is affirmed by
+working with a new sigmoid variable that guarantees it
+ ω
+
+ξ ≡ tanh−1 2 − 1
+m
+IV.
+
+⇒
+
+ω=
+
+m
+(1 + tanh(ξ)) .
+2
+
+(III.12)
+
+REGULARIZATION
+
+Before proceeding with technical and algorithmic details, we should carefully examine that all
+terms in our equations are not only analytically regular at both axes, but also, that we can write
+11
+
+them in a fashion that is less likely to cause numerical problems. Terms such as (1/ρ) ∂u/∂ρ
+(for a given u ∈ {ℵ, Ω, a, h, ψ}) are regular since all grid functions are even about the rotation
+axis. Therefore, ∂u/∂ρ behaves as O(ρ) at this same axis, and its combined division by ρ is an
+even function. Nevertheless, it is recommended to write these terms with the order of operations
+explicit in numerical code, i.e., instead of writing in source code
+l
+ρ
+
+
+
+∂ℵ ∂h
++
+∂ρ ∂ρ
+
+
+ψ,
+
+write
+
+l
+
+1 ∂ℵ
+ρ ∂ρ
+
+
+
+
++
+
+1 ∂h
+ρ ∂ρ
+
+
+ψ.
+
+As previously stated, terms such as φ/ρ are regular since the scalar field vanishes at least as ρ
+on the axis. With this in mind, it is easy to verify that all terms in our equations are regular, with
+the possible exception of a single term in Equation (II.24) proportional to:
+λ≡
+
+A−H
+.
+ρ2
+
+(IV.1)
+
+An initial approximation might seem to indicate that this should not be an issue, given that
+we are using a staggered grid. Thus, no actual division by zero is ever done. Indeed, the smallest
+value of the ρ coordinate is, from (III.1), ρ = ρg = ∆ρ/2. Thus, we should not see regularization
+problems for low resolutions, i.e., for ∆ρ relatively big (empirically, ∆ρ & 0.1). However, as almost
+all problems in this field, a greater resolution is best to reduce truncation errors, and it is also
+necessary to closely examine small regions of spacetime, specially as the scalar field amplitude is
+increased.
+Furthermore, as will be seen in Section IX, as we consider scalar fields with greater amplitude,
+the field concentrates closer to the rotation axis and develops a sharp maximum, i.e., the ρ coordinate location of the field’s maximum becomes smaller and smaller. Thus, we need greater resolution
+to properly resolve and characterize this spike. As we increase the resolution, ∆ρ decreases and
+we start seeing regularization problems in equation (II.24) coming from the term (IV.1).
+It is worthwhile to point out that these regularization issues come from our curvilinear coordinates. In a full 3D Cartesian scheme, 1/ρ or 1/r terms are absent. However, curvilinear coordinates
+have an obvious advantage when dealing with symmetric spacetimes such as axisymmetry where
+the Killing vectors are fully adapted. This means that a 3D calculation is reduced to 2D (for our
+axysimmetric work), making it far less computationally expensive.
+12
+
+For an exact solution the term (IV.1) is in fact perfectly regular. Indeed, a simple argument of
+local flatness shows that near the rotation axis, we can expand A and H as
+A(ρ, z) = γρρ = C(0, z) +
+
+ρ2
+A2 (0, z) + O(ρ4 ) ,
+2
+
+H(ρ, z) =
+
+γϕϕ
+ρ2
+H2 (0, z) + O(ρ4 ) ,
+=
+C(0,
+z)
++
+ρ2
+2
+(IV.2)
+
+i.e., from local flatness the value at the rotation axis, C(0, z) must be equal for both metric
+functions, and thus λ is a regular and even function at the rotation axis,
+(A2 (0, z) − H2 (0, z)) ρ2
++ λ2 (0, z) + O(ρ4 ) .
+λ(ρ, z) =
+2
+2
+
+(IV.3)
+
+This clearly implies that the term in (II.24), −(l2 λ/H) ψ, is analytically regular at the axis.
+But, unfortunately, numerical methods introduce truncation and round-off errors that may cause
+that this exact cancellation will not hold numerically, and an increase in resolution will introduce
+loss of significance if we divide (A − H) by a small quantity. To deal with this potential catastrophe, we follow previous work by Milton, Alcubierre and Núñez [6], and Torres [7], whence the
+quantity λ is promoted to a new independent variable. This is expensive in terms of computational
+resources since we are introducing, intuitively, at least 20% more work. Also, λ must have its own
+elliptic equation and boundary conditions, otherwise the problem is indeterminate. Obtaining this
+equation is tedious work and nontrivial. A first guess is to take equations fA and fH , (II.16) and
+(II.17), subtract them and divide them by ρ2 . Afterwards, we construct an elliptic operator for
+λ, i.e., ∂ 2 λ/∂ρ2 + ∂ 2 λ/∂z 2 , and regularize all terms. For example, terms that initially appear
+irregular can be combined into a regular expressions,
+1
+ρ2
+
+ 2
+
+
+
+∂ ℵ 1 ∂ℵ
+1 ∂
+1 ∂ℵ
+−
+=
+.
+∂ρ2
+ρ ∂ρ
+ρ ∂ρ ρ ∂ρ
+
+(IV.4)
+
+Above we have the derivative of an even function, since we previously noted that (1/ρ) ∂ℵ/∂ρ was
+regular and even. Therefore, its derivative is odd, and its division by ρ turns out to be an overall
+regular expression.
+Unfortunately, the combination (fA − fH )/ρ2 turns out to be inappropriate to reduce via this
+procedure in order to generate a regular equation. Happily, however, we have a large amount of
+equations to work with. Previously we specified the five equations that give rise to our system of
+equations. But there are in fact many more equations. Some are trivial, such as the momentum
+constraints M i for i = ρ, z, but stationarity ∂t Kij = 0 yields more equations for i, j 6= ϕ. The
+13
+
+proper combination to obtain a regular equation for λ turns out to be:
+2A
+fλ ≡ − 2
+ρα
+
+
+
+1
+∂ 2 λ ∂ 2 λ 3 ∂λ
+∂t Kρρ − 2 ∂t Kϕϕ = 2 + 2 +
++ ... = 0.
+ρ
+∂ρ
+∂z
+ρ ∂ρ
+
+(IV.5)
+
+This is a rather large equation so we will not write it explicitly here (the full equation is given in
+Appendix A, Equation (A.1)). For our discussion, we only want to notice the elliptic operator in
+Equation (IV.5).
+Before continuing, we must specify boundary conditions for λ. We have already determined
+that λ is an even function of ρ. By examining the full equation (A.1), we can also deduce that it is
+even about the z axis, which is fortunate since otherwise we would need to solve another quadrant
+of (ρ, z) space. For its external boundary condition, now that we have the asymptotic behavior of
+the other variables, a similar expansion at spatial infinity shows that λ must decay as 1/r4 , i.e.
+rbdy
+
+V.
+
+∂λ
+−5
+(rbdy , θ) + 4λ(rbdy , θ) = O(rbdy
+, θ) .
+∂r
+
+(IV.6)
+
+GLOBAL QUANTITIES
+
+It is of great interest to characterize our solutions with a set of parameters that globally describe
+the spacetime. This can be done via conserved quantities which for General Relativity are associated with spacetime symmetries. Possibly the most general concept is the Arnowitt-Deser-Misner
+(ADM) mass which only requires that the spacetime be asymptotically flat. From Wald [34], this
+mass is defined as
+1
+MADM = lim
+S →∞ 16π
+
+I
+S
+
+ √
+Dj γij − Di (f kl γkl ) si q dθ dϕ ,
+
+(V.1)
+
+where a fiducial metric fij is introduced on Σt which must be Euclidian, i.e. flat. Since the
+integral must be calculated over 2-spheres S , the obvious choice is fij = diag(1, r2 , r2 sin2 θ). In
+the above expression furthermore Di is fij ’s Levi-Civita connection, si the normal vector induced
+√
+on the 2-spheres, and q the volume element with respect to the physical metric γij . Thus, one
+√
+must take special care to distiguish the quantities that depend on the physical metric, si and q,
+from those that depend on the flat fiducial metric, f ij and Di . With this in mind, the resulting
+14
+
+expression for our particular metric (II.3) is [4]
+1
+MADM = lim −
+rbdy →∞
+8
+
+Zπ
+
+
+dθ
+
+∂
+H −A
+(A + H) +
+∂r
+r
+
+
+
+r2 sin θ .
+
+(V.2)
+
+0
+
+It is well known that the ADM mass converges very slowly with radius. Even for a Schwarzschild
+black-hole with mass parameter M (in isotropic coordinates so that A = H = (1 + M/2r)4 ) the
+expression turns out to be
+3
+
+M
+= M + O(r−1 ) .
+MADM = lim M 1 +
+r→∞
+2r
+
+(V.3)
+
+In fact, to have a relative error of less than 1% in this expression, we must have the external
+boundary at r∞ > 150M , which can be very computationally expensive. Fortunately, alternatives
+have been derived. In Schwarzschild’s case, a pseudo-mass has been introduced by Alcubierre et
+al. [35]
+MPS =
+
+Ã
+16π
+
+!1/2
+
+. 2 
+dÃ dr 
+
+1 −
+,
+16π γ̃rr Ã
+
+
+
+
+(V.4)
+
+where Ã is the area of a 2-sphere, r is the radial coordinate, and γ̃rr is the average of γrr over the
+2-sphere. This expression is ideal for the case of an areal radial coordinate, where Ã = 4π r2 , so
+that
+r
+MPS =
+2
+
+
+
+1
+1−
+.
+γrr
+
+(V.5)
+
+For Schwarzschild’s case in the areal coordinates we have γrr = (1 − 2M/r)−1 , and thus we can
+easily see that the pseudo-Schwarzschild mass gives an exact expression, MPS = M , independent of
+our radial coordinate r. This certainly is an improvement from the O(1/r) convergence in the ADM
+case. However, notice that it will not always be possible to work with an areal radial coordinate,
+especially for spacetimes that are not spherically-symmetric. This is certainly not possible in our
+case, since A 6= H for rotating boson stars. But even so, we will later show that in the limit in
+which A ≈ H this expression yields a better result than the ADM mass at finite radius.
+
+Better suited to our problem is the Komar mass [34]. Here the only added assumptions are that
+the spacetime has a Killing vector ξ µ associated to stationary symmetry, and that the Ricci tensor
+15
+
+Rµν = 8π (Tµν − gµν T /2) is zero beyond a 2-sphere S . The expression for the Komar mass is
+1
+MKomar =
+8π
+
+I
+S
+
+∇µ ξ ν dSµν ,
+
+(V.6)
+
+where dSµν is the 2-form normal to the surface S , i.e. induced by nµ and sµ , the normal vector
+√
+to the hypersurface Σt and the normal vector to S , so that dSµν = (sµ nν − sν nµ ) q dθ dϕ.
+
+Our problem does not actually satisfy the fact that Tµν = 0 beyond any 2-sphere S . However,
+this necessity can be relaxed as long as this tensor goes sufficiently rapid to zero at spatial infinity
+[34]. Indeed, the stress energy tensor is quadratic in the scalar field, and we determined previously
+that the scalar must decay exponentially, so that at sufficiently large r, the field is dominated by
+this decay,
+√
+
+2
+
+Tµν → e−2 m −ω r .
+
+(V.7)
+
+Therefore, an expression can be calculated in terms of our metric variables as long as we take the
+limit at spatial infinity, rbdy → ∞. We find:
+1
+MKomar = lim
+rbdy →∞ 2
+
+Zπ
+
+
+dθ
+
+∂α Hr2 sin2 θ ∂Ω
+−
+Ω
+∂r
+2α
+∂r
+
+
+
+√
+H r2 sin θ .
+
+(V.8)
+
+0
+
+In addition, another expression can be obtained by using Stokes’ theorem and Einstein’s equations to convert the surface integral into a volume integral.
+Z 
+MKomar = 2
+Σ
+
+T
+Tµν − gµν
+2
+
+
+
+nµ ξ ν dV .
+
+(V.9)
+
+Above, Σ is a spatial hypersurface such that its boundary is the 2-sphere S . Like in the previous
+case, even though Rµν 6= 0, if we take the limit at spatial infinity, the expression can hold. In this
+case, we just integrate over the complete hypersurface Σt . There is, however, another caveat to
+this expression: it is clear that for a black-hole like Schwarzschild’s, Rµν = Tµν = 0, yet the mass is
+certainly not zero. The issue here is the presence of a spacetime singularity which does not allow
+an application of Stokes’ theorem. Thus, (V.9) must not be used in the presence of singularities.
+However, all our functions are regular and smooth at all our hypersurfaces by construction, so we
+16
+
+can use the Komar mass in terms of a volume integral [4], which in our case reduces to:
+rbdy
+Z
+
+MKomar = lim
+
+rbdy →∞
+
+2π
+
+Zπ
+dr
+
+0
+
+
+dθ
+
+2ω
+(ω + lΩ) − α m2
+α
+
+
+
+√
+φ2 A H r2 sin θ .
+
+(V.10)
+
+0
+
+This last expression makes explicit the fact that the integral must converge exponentially, since all
+terms are quadratic in the scalar field. This certainly is a very different behavior than that of the
+ADM mass. Also, having two expressions for the same quantity can be very useful for numerical
+convergence-monitoring.
+Nevertheless, a priori there is no connection between the ADM mass and the Komar mass, but
+it has been shown that they are identical if the Killing vector ξ µ is orthogonal to Σt at spatial
+infinity. This is true in our case since, as we approach spatial infinity we have
+nµ =
+
+1
+((∂/∂t )µ − β µ ) → (∂/∂t )µ = ξ µ .
+α
+
+(V.11)
+
+In conclusion, if we obtain a rapidly convergent Komar mass, this is equivalent to calculating
+the ADM mass. The clear advantage is that the Komar mass may be calculated within a smaller
+computational domain, which is ideal for our numerical implementation. In other words, as long
+as the scalar field is appropriately confined within our computational domain, we will be able to
+calculate spacetime’s global mass parameter.
+Our spacetime possesses another symmetry, namely axisymmetry under the Killing vector χµ =
+(∂/∂ϕ )µ . An ADM and Komar analogue quantity may be derived: the angular momentum. Once
+again, the ADM formalism converges too slowly and a Komar expression is preferred [4, 34]. For
+our metric the final expression becomes:
+1
+JKomar = lim
+S →∞ 16π
+
+I
+
+H r2 sin2 θ ∂Ω
+1
+√
+dA = lim
+r
+→∞
+∂r
+8
+bdy
+α A
+
+Z
+=l
+
+(ω + l Ω) 2
+φ dV = lim 2π l
+rbdy →∞
+α
+Σt
+
+rbdy
+Z
+
+H 3/2 r4 sin3 θ ∂Ω
+dθ
+,
+α
+∂r
+
+(V.12)
+
+(ω + lΩ) 2 √
+φ A H r2 sin θ ,
+α
+
+(V.13)
+
+0
+
+Zπ
+dr
+
+0
+
+Zπ
+
+dθ
+0
+
+where we have written both expressions in terms of surface and volume integrals. Analogously to
+the previous expression (V.10), the volume integral makes explicit the fact that the integral will
+converge exponentially as rbdy → ∞.
+17
+
+VI.
+
+GLOBAL NEWTON METHODS
+
+Initially, our system of equations for {fℵ , fΩ , fa , fh , fψ , fλ } appears to consist of six elliptic,
+nonlinear, coupled equations. However, this can be misleading. When we discretize each variable
+{ℵ, Ω, a, h, ψ, λ} on our grid (ρi , zj ) we obtain six equations for each grid point. For example,
+for an illustrative 800 interior points in each direction, we have 6 × 800 × 800 ≈ 4 × 106 equations,
+and each function {ℵ(ρi , zj ), Ω(ρi , zj ), a(ρi , zj ), h(ρi , zj ), ψ(ρi , zj ), λ(ρi , zj )} is a true variable
+we must solve for. Adding to the complexity is that we also must calculate the field’s frequency,
+ω, as a sort of eigenvalue. It is easy to see that we do not have enough equations by adding
+ω (actually ξ as defined in Equation (III.12) above) as an unknown. The solution is to remove
+another variable, i.e., constrain the value of ψ at a certain grid point, which also solves the previous
+requirement that ψ > 0 in order to avoid the trivial Minkowski solution. Of course, we can fix ψ at
+any point in theory, however, it is best to constrain it near the axis and origin, i.e., the first interior
+point ψ(∆ρ/2, ∆z/2). Otherwise, we might be constraining it at a point where it is already too
+small given its exponential decay. Due to the axial and equatorial symmetries, this is equivalent
+to constraining the field’s value at the origin:
+ψ0 ≡ ψ(0, 0) .
+
+(VI.1)
+
+Now, suppose that for each ψ0 (and each rotation number l) there exists a unique ω for the groundstate (the converse is not true, i.e., for a single ω there can be multiple ψ0 ’s, as will be seen later
+in Section IX), then the system can be solved with ω as an unknown and the above constraint
+ψ(0, 0) = ψ0 .
+This is can be done by a Newton-Raphson method [36, 37]. The following discussion on Newton
+methods and their globalization closely follows Deuflhard [8]; other globalization strategies have
+also been developed, for example, by Bank and Rose [38]. Specifically, we will use a finite difference
+discretization [39] and calculate the Jacobian matrix with respect to the discrete variables and ω
+(since it is also an unknown variable). Newton’s method is a very powerful tool used to solve
+nonlinear equations, specifically when we have a system of equations from a domain D ⊂ Rn into
+a codomain space U ⊂ Rn , i.e., for x ∈ Rn , we seek the solution of the n equations represented as
+a vector in Rn
+F (x) = 0 .
+18
+
+(VI.2)
+
+The standard Newton method relies on an initial guess x0 and a basic linearization of the equation:
+F (xk + ∆xk ) = F (xk ) + F 0 (xk ) ∆xk + O((∆xk )2 ) ,
+
+(VI.3)
+
+where F 0 (xk ) is the n × n Jacobian matrix at xk . Thus, Newton affirms that a “better” estimate
+is constructed iteratively as
+xk+1 ≡ xk + ∆xk ,
+
+∆xk = −F 0 (xk )−1 F (xk ) .
+
+(VI.4)
+
+The (famous) advantage of this method is that it converges quadratically [40], however it can
+be very sensitive to the initial guess x0 . The “more nonlinear” the problem, this sensitivity is
+exacerbated. Unfortunately, for a general problem, we might really have no idea as to what is a
+“good initial guess”. Therefore, we would like to globalize Newton’s method, so that in the best
+case scenario any type of initial guess leads to the true solution. This is immediately limited by
+the fact that a system of equations might have multiple (or none at all) solutions. However, if we
+constrain our solution appropriately via boundary conditions, we may recover uniqueness. Thus,
+although a formal proof can be very cumbersome, uniqueness is critical and we will normally “buildin” constraints into the very same variables. For example, in our problem we have guaranteed
+m2 > ω 2 by introducing the variable ξ (III.12), and we are also constraining the metric variables
+to be positive by taking their logarithms. Also, as previously discussed, in looking for the scalar
+field’s ground state, we should enforce ψ > 0.
+
+Our first step in this discussion is having the means to determine if a problem requires a
+globalization, or if the classical Newton algorithm will suffice. In other words, we must determine
+if a problem is “highly nonlinear”. First, we notice that the classical existence, uniqueness and
+convergence theorems [40, 41] for Newton’s method rely on having a priori that F 0 (x)−1 exists
+and is bounded across the domain D,
+F 0 (x)−1 ≤ β < ∞ ,
+
+x ∈ D.
+
+(VI.5)
+
+However, this is computationally problematic. First of all, notice that this norm is taken over
+matrices. Also, β is realistically near impossible to calculate for nontrivial problems. The best we
+19
+
+can do is to sample across the domain
+F 0 (x0 )−1 ≤ β0 ,
+
+x0 ∈ D .
+
+(VI.6)
+
+But even this is still expensive as we have to explicitly calculate the inverse F 0 (x0 )−1 which can
+be numerically very expensive. The solution is to use another condition instead of (VI.5), namely
+a Lipschitz condition
+kF 0 (x) − F 0 (y)k ≤ γ kx − yk ,
+
+x, y ∈ D .
+
+(VI.7)
+
+This leads to the Newton-Kantorovich theorem [40] that asserts existence and uniqueness of a
+solution x∗ , and quadratic convergence for initial guess x0 that is in a neighborhood characterized
+by the Kantorovich quantity
+h0 ≡ x∗ − x0 β0 γ <
+
+1
+,
+2
+
+(VI.8)
+
+where β0 and γ were defined in (VI.6) and (VI.7), respectively. However, this does not seem to
+solve the problem, since we must still somehow calculate the Lipschitz quantity, γ, and this again
+implies norms over matrices. Fortunately, a reformulation of the Newton-Kantorovich theorem [8]
+exists which only requires vector norms and another Lipschitz constant, :
+F 0 (x)−1 (F 0 (x) − F 0 (y)) (x − y) ≤  kx − yk2 ,
+
+x, y ∈ D .
+
+(VI.9)
+
+Furthermore, with this condition, the Kantorovich quantity is written simply as
+h0 ≡ x∗ − x0  < 2 .
+
+(VI.10)
+
+In other words, we have unique quadratic convergence for a neighborhood of radius [8]
+ρ0 ≡ x∗ − x0 =
+
+2
+.
+
+
+(VI.11)
+
+As previously stated, we now have only vector norms in both sides of (VI.9), which is computationally advantageous. Still, calculating the Lipschitz constant  seems to be a hopeless task
+based on random sampling. However, condition (VI.9) has an enormous structural advantage in
+that it is affine covariant, i.e., it is invariant under the transformation of the original system of n
+equations, F (x) = 0 into
+G(x) = A F (x) = 0 ,
+20
+
+(VI.12)
+
+where A ∈ GL(n) is a nonsingular n × n matrix. This unique property allows a clever construction
+of a scalar function g(x, y, z) such that
+ = sup g(x, y, z) ,
+
+x, y, z ∈ D .
+
+(VI.13)
+
+Once this function, g, is obtained, we can calculate a computational local estimate
+[0 ] = g(x1 , x0 , x0 ) ≤  .
+
+(VI.14)
+
+A straightforward example (although not the actual estimate used in algorithms) is [8]
+[0 ] =
+
+kF 0 (x0 )−1 (F 0 (x1 ) − F 0 (x0 ))k
+.
+kx1 − x0 k
+
+(VI.15)
+
+There will obviously be an error  − [0 ], however an efficient adaptive Newton algorithm can be
+constructed in such a way that successive iterations catch more binary digits of the true , via the
+bit counting lemmas as presented by Deuflhard [8, 42]. In summary, Newton’s method, the vector
+norm Lipschitz condition (VI.9), and affine covariance gives us a way to calculate an approximate
+[]. Via the convergence radius (VI.11), we can now estimate whether we have an initial guess
+“sufficiently close” to the solution, x∗ , i.e., we characterize a problem as highly nonlinear [8] if the
+Newton update is such that
+∆x0 = x1 − x0 
+
+2
+.
+[0 ]
+
+(VI.16)
+
+In such a case, Newton’s method will not have guaranteed convergence and requires a globalization. This can only be constructed using additional structure on the equations F (x). A globalization of Newton’s method should deal with (within reason) “bad” initial guesses and should
+merge with the classical Newton method when sufficiently near to the solution x∗ as determined
+via Equation (VI.11) since we wish to make use of Newton method’s quadratic convergence.
+There exists multiple globalization strategies, however the most intuitive is probably that of
+steepest descent [43] where the iterates xk successively approach the solution point whose direction
+is calculated via the gradient of the residual level function
+T (x) ≡
+
+1
+1
+kF (x)k2 = F (x)T F (x) .
+2
+2
+
+(VI.17)
+
+This is a concave function, since T (x) = 0 if and only if x = x∗ and T (x) > 0 if and only if x 6= x∗ .
+21
+
+Thus, a global solution can easily be found via a monotonicity criterion
+T (xk+1 ) < T (xk )
+
+xk+1 − x∗ < xk − x∗ .
+
+⇐⇒
+
+(VI.18)
+
+A formal iterative method is thus
+∆xk ≡ ∇T (xk ) = −F 0 (xk )T F (xk ) ,
+
+(VI.19)
+
+xk+1 ≡ xk + sk ∆xk ,
+
+(VI.20)
+
+sk > 0 ,
+
+(VI.21)
+
+where sk is a steplength parameter, which is chosen to satisfy the monotonicity criterion (VI.18)
+by taking the successive steps i = 0, 1, . . . until it is true that
+T (xk + sik ∆xk ) < T (xk ) ,
+
+(VI.22)
+
+via a steplength strategy
+si+1
+≡ κ sik ,
+k
+
+κ < 1,
+
+s0k = 1 ,
+
+(VI.23)
+
+where κ is usually chosen to be 12 . This method can be shown to have linear convergence [8]
+for arbitrarily “bad” initial guesses x0 and it is also clear that as the steplength goes to one,
+we recover Newton’s classical method. However, this convergence, although linear, can be also
+arbitrarily slow. Worse still is the fact that we can find “pseudo-convergence” characterized by
+small
+F 0 (x)T F (x)  1 .
+
+(VI.24)
+
+This discussion on the method of steepest descent is not fruitless since it serves to introduce
+the analogous and more powerful extensions where we do not utilize the level function (VI.17) but
+a general level function to fully utilize affine covariance [8]
+T (x |A) ≡
+
+1
+kA F (x)k2 ,
+2
+
+A ∈ GL(n) .
+
+(VI.25)
+
+Using this general level function, it is easily shown that its minimization still points “downhill”
+independently of the matrix A (notice that A = I gives the steepest descent method).
+Several choices of matrices are possible to implement different methods, including the trust22
+
+region models of Levenberg-Marquardt [44, 45]. The choice of A = F 0 (xk )−1 gives the error oriented
+descent where the iterates now are required to satisfy the natural monotonicity test [8, 42]
+∆x
+
+k+1
+
+< ∆xk ,
+
+(VI.26)
+
+where we introduce the simplified Newton correction
+∆x
+
+k+1
+
+≡ F 0 (xk )−1 F (xk+1 ) .
+
+(VI.27)
+
+Furthermore, we now interpret sk as a damping factor
+xk+1 = xk + sk ∆xk+1 ,
+
+(VI.28)
+
+that must be chosen via a damping strategy that obeys the criteria (VI.26) and goes to one once
+we are within the local convergence radius (VI.11). This damping strategy is given by Theorem
+3.12 of Deuflhard [8] and states that given a Lipschitz condition (VI.9) and a Kantorovich quantity
+hk ≡ ∆xk  ,
+
+(VI.29)
+
+the natural monotonicity criteria (VI.26) is satisfied and the optimal choice is
+sk ≡ min(1, 1/hk ) .
+
+(VI.30)
+
+Deulfhard also gives a proof for global convergence in Theorem 3.14 of his book [8]. Our only
+remaining limitation is that this theoretical damping strategy cannot be implemented directly and
+only via the computational available estimates [k ] introduced in Equation (VI.14) and [hk ] =
+[k ] ∆xk . The supremum property implies that
+[sk ] ≡ min(1, 1/[hk ]) ≥ sk ,
+
+(VI.31)
+
+so that the estimated damping factor may be “too large”. This conundrum is addressed with a
+prediction and correction strategies. In essence, these strategies use trial iterates and a user-input
+of an initial damping factor s0 to guarantee the monotonicity criteria. These are also termination
+criteria in the algorithm since the damping factor may become arbitrarily small for singular prob23
+
+lems. More details on these criteria and their optimization is presented in Deuflhard [8] where the
+complete implementation of these concepts results in the error oriented global Newton method,
+called NLEQ-ERR [8, 46], that serves as our solution algorithm presented in Appendix B.
+
+VII.
+
+CODE OVERVIEW
+
+All previous functionalities are implemented in a numerical code specially tailored to this problem, ROTBOSON, openly available at a GitHub repository [11]. ROTBOSON is a finite difference discretization code spanning over 20,000 lines of C++ OpenMP [47] code influenced by other
+cousins OllinAxis [48] and OllinBrill [49] developed at the ICN, UNAM. Its design philosophy
+centers on being able to run on personal or professional-grade machines and as such it is scalable
+and optimized. Its main usage is detailed in the GitHub repository but is briefly summarized in
+the interest of the following discussion.
+First, the user must compile the code with either the GNU or Intel C++ compiler. An installation of the freely available Intel Math Kernel Library software [50] is also necessary since it used
+for the sparse direct solver and other vector operations. Once compiled, the user must provide a
+parameter file with a list of relevant parameters such as the grid resolutions ∆ρ, ∆z; the number of
+interior points Nρ , Nz ; the finite differentiation order (2 or 4); the scalar field’s rotation number l,
+an initial guess for the scalar frequency ω0 ; and other I/O options to read or interpolate previously
+obtained datasets. A selection of parameters inside a typical parameter file is presented below.
+1
+
+# GRID
+
+2
+
+dr
+
+= 0.015625 # Step size in rho ( r ) direction .
+
+3
+
+dz
+
+= 0.015625 # Step size in z direction .
+
+4
+
+NrInterior = 512
+
+# Number of interior points in r direction .
+
+5
+
+NzInterior = 512
+
+# Number of interior points in z direction .
+
+6
+
+order
+
+# Finite difference discretization order 2|4.
+
+= 4
+
+7
+
+8
+
+# SCALAR FIELD PROPERTIES
+
+9
+
+l = 4
+
+10
+
+m = 1.0 # Field mass parameter .
+
+# Rotation number .
+
+11
+
+12
+
+# INITIAL DATA I / O .
+
+24
+
+13
+
+readInitialData = 2 # Select no initial data 0 , direct read 1 , interpolation 2.
+
+14
+
+# File names for variables .
+
+15
+
+log_alpha_i = " ./ log_alpha_i . asc "
+
+16
+
+beta_i
+
+= " ./ beta_i . asc "
+
+17
+
+log_h_i
+
+= " ./ log_h_i . asc "
+
+18
+
+log_a_i
+
+= " ./ log_a_i . asc "
+
+19
+
+psi_i
+
+= " ./ psi_i . asc "
+
+20
+
+lambda_i
+
+= " ./ lambda_i . asc "
+
+21
+
+w_i
+
+= " ./ w_i . asc "
+
+22
+
+23
+
+# FIXED VARIABLE .
+
+24
+
+fixedPhi
+
+25
+
+fixedPhiR = 2
+
+26
+
+fixedPhiZ = 2
+
+= 1 # Select if scalar field is fixed and if so , where .
+
+27
+
+28
+
+# SOLVER PARAMETERS
+
+29
+
+solverType
+
+= 1
+
+# Select Newton solver : 0 classical , 1 NLEQ - ERR , 2 NLEQ
+
+# Enable local solver .
+
+- RES .
+30
+
+localSolver
+
+= 1
+
+31
+
+epsilon
+
+= 1.0 E -10 # Convergence exit tolerance .
+
+32
+
+maxNewtonIter = 20
+
+33
+
+lambda0
+
+= 1.0 E -03 # Initial damping factor .
+
+34
+
+lambdaMin
+
+= 1.0 E -06 # Minimum damping factor .
+
+35
+
+useLowRank
+
+= 1
+
+# Maximum number of iterations .
+
+# Use Low - Rank optimization 1 , otherwise use CGS
+
+preconditioning .
+36
+
+37
+
+# Parameter file continues ...
+
+A critical element of this code is its sparse direct solver (the theory behind these solvers is
+beyond the scope of this work but may be consulted in Tewarson [51], and Gupta and Kumar
+[52], among others). Indeed, about 50% of its lines consist of generating Jacobian matrices at
+different discretization orders (this was done automatically via Python and Mathematica [53]
+25
+
+scripts). Once the matrices are written in sparse CSR format they are used in Intel MKL’s
+included software, PARDISO [9, 10, 54]. Since Newton’s method solves iteratively, the solver can
+be optimized greatly given the fact that succesive Jacobians have the same sparse structure, thus
+an LU sparse factorization scheme only requires a single analysis phase which can then be saved
+for other executions with entirely different parameters (such as rotation number and step size) but
+identical sparse structure. For more details on PARDISO’s optimization for problems in Numerical
+Relativity, see Ontanon [49].
+In terms of memory use and scalability, ROTBOSON has been tested succesfully at a cluster
+node running on up to 54 processing units and with a grid size of approximately 1000 × 1000
+points, ROTBOSON uses about 120 Gb of memory. For a personal machine, adequate results can
+be obtained over 4 processing units and a grid of 400 × 400 which uses instead 12 Gb of RAM
+memory. For now, execution is limited to a single node since the sparse solver loses significant
+speed when forced to run under a message passing interface, such as MPI [55], over multiple nodes.
+
+VIII.
+
+ERROR INDICATORS
+
+Before reporting any results, we must verify that our numerical implementation converges appropriately. Since we are using finite differences, we should expect that they introduce truncation
+errors. For all the following results, finite differences were implemented to fourth order (although
+second order is also supported for faster performance and testing). Furthermore, the exit tolerance
+for Newton’s algorithm is always set to a relative error  < 10−10 , i.e., in terms of the language
+of Section VI, by taking 2-norms, one of these conditions must be true to exit and guarantee a
+solution x∗
+∆xk
+< 10−10 ,
+kxk k
+
+∆xk
+or
+
+kxk k
+
+< 10−10 ,
+
+To check for fourth order convergence we vary the resolutions ∆ρ = ∆z, but we must fix the
+external boundary rbdy in all solutions. For example, we consider eight different configurations
+with interior points
+Nρ = Nz ∈ {128, 256, 384, 512, 640, 768, 896, 1024} ,
+and ∆ρ = ∆z chosen such that in all cases we have rbdy = 128 (~/m) according to Equation (III.1).
+Furthermore, since we are fixing the position of the boundary, this is equivalent to constricting
+26
+
+Figure VIII.2: Scalar field value at origin
+ψ0 difference between resolutions as error
+indicator for l = 6, ω = 0.7 (m/~), at
+fixed rbdy = 128 (~/m) and varying
+resolution ∆ρ.
+
+Figure VIII.1: Komar mass and angular
+momentum differences between
+resolutions as error indicators for l = 6,
+ω = 0.7 (m/~), at fixed rbdy = 128 (~/m)
+and varying resolution ∆ρ.
+
+ω, and in our tests we take ω = 0.7 (m/~). Now, given these eight solutions, we must compare
+quantities to test for fourth order convergence. A possibility is to interpolate the coarse resolutions
+into the finest and make a point-wise comparison. However, to avoid compounding interpolation
+errors and to simplify, we can make convergence tests with global quantities, namely MKomar and
+JKomar in their surface and volume integral expressions (Equations (V.8), (V.10), (V.12), (V.13)).
+Another error indicator is the scalar field’s value at the origin ψ0 , obtained by interpolation at
+each solution.
+Using these indicators and varying resolutions, we compare, i.e. subtract in absolute value,
+two quantities at neighboring resolutions. For example, for two resolutions ∆ρ0 > ∆ρ1 and their
+reported masses M (∆ρ0 ), M (∆ρ1 ) we define the relative error as
+(∆ρ1 ) ≡ (M, ∆ρ0 , ∆ρ1 ) = |M (∆ρ1 ) − M (∆ρ0 )| ,
+
+(VIII.1)
+
+Our convergence results are shown as log10 -log10 plots in Figures VIII.1 and VIII.2. In Figure
+VIII.1 an “S” or “V” denotes whether the expression was calculated as a surface or a volume
+integral. Both Figures include a reference straight line for O((∆ρ)4 ) fourth order convergence.
+From the Figures it is clear that we have the expected fourth order convergence. In the case of
+ψ0 , the error stagnates at about ε ∼ 10−11 , which serves to indicate that point-wise it has reached
+a limit due to machine round-off error instead.
+27
+
+Figure VIII.3: Komar mass and angular momentum as error
+indicators for l = 6, ω = 0.7 (m/~), for fixed resolution
+∆ρ = 0.125 (~/m) and varying boundary position rbdy .
+
+Now that we have determined fourth-order convergence, we can find an error approximation
+via Richardson extrapolation [56] or our global quantities. Thus, at the finest resolution with
+∆ρ = 0.125 (~/m) and Nρ = 1024, we find for this example
+MKomar = (5.550074 ± 0.000002) (m2P /m)
+
+and JKomar = (37.1475 ± 0.0001) (m2P /m)2 ,
+
+which correspond to relative errors of 4 × 10−5 % and 3 × 10−4 %, respectively.
+Further analysis and testing is prudent, specifically with respect to varying the position of the
+boundary. In this case, we expect that error arises from the Robin-type boundary conditions such
+−(n+1)
+
+as Equation (III.5) where the right-hand side was not zero, but rather O(rbdy
+
+) for an n-type
+
+decay. Since the lapse and metrics have n = 1, an initial estimate might lead us to expect that
+there is second order convergence with respect to rbdy . To verify this, other convergence tests are
+done now with fixed resolution ∆ρ = ∆z = 0.125 (~/m) and varying rbdy (which is equivalent to
+varying the number of interior points). Once again, global quantities are used as error monitors
+and are presented in Figure VIII.3 as log10 -log10 plots.
+In this case, we can conclude that the errors due to the boundary still converge. By adding the
+−3
+O(rbdy
+), the results indicate that we have third order convergence instead of the initially expected
+
+28
+
+second order. However, given the complexities of this analysis, it would be best to not read too
+much into these results and instead just conclude that the error is indeed decreasing as we place
+the boundary further away, even though the magnitude of the boundary error is at least an order
+of magnitude greater than the resolution error (in this example, the boundary error is about 30
+times greater than the resolution error). It is clear that further analysis and studies are necessary
+for boundary problems and approximations in Numerical Relativity, but this is outside our current
+scope.
+
+IX.
+
+RESULTS FOR l ∈ [0, 6]
+
+Having verified that the numerical implementation converges correctly, we now present our
+results for l ∈ [0, 6], which are summarized in Figure IX.1. All solutions therein have a maximum
+ω = 0.9 (m/~). Most solutions are done with grids of 800 × 800 interior points and ∆ρ = ∆z =
+0.04 (~/m). However, for l = 1, 2 a finer resolution of ∆ρ = ∆z = 0.02 (~/m) is necessary to
+examine the high-amplitude behavior. Conversely, for l = 5, 6 a coarser resolution of ∆ρ = ∆z =
+0.08 (~/m) is required at low amplitudes ω > 0.8 (m/~) for which the field’s width increases, and
+in order to properly fit it in our computational domain (given our computational resources) the
+boundary is placed farther away and the resolution is decreased. The changes in resolution have
+been done seamlessly, i.e. where the difference between the global parameters is less than the
+truncation error.
+Notice that the spherically symmetric case is also included for reference as l = 0. In this case
+the solution is found using an analogous method, but it is worth pointing out that they are not
+simply obtained by setting l = 0 in our elliptic equations. For more information on our results for
+spherical boson stars see [57]. Spherical boson stars [12] trivially have zero angular momentum,
+J = 0, and the field’s maximum is always located at the origin [3].
+Some important maximums and minimums are presented in Table IX.1. Given our error analysis, and considering the worst-case scenario where the error’s main contributors are the boundary
+conditions, we can still report five significant figures for masses and frequencies, and four significant
+figures for angular momenta. These critical points were obtained by interpolating a fourth-degree
+spline into the data points and calculating the derivative’s zeros. These results are in agreement for
+l = 0, 1, 2 with those given in references [2, 3, 12, 19, 27]. From Table IX.1 we also can report new
+“turning-points” (i.e. the minimum value of ω) and maximum masses which, to our knowledge,
+are not yet present in the literature.
+29
+
+Figure IX.1: Rotating boson stars’ characterization for l ∈ [0, 6]. Included global
+parameters are the Komar mass, the Komar angular momentum, the field’s frequency ω, the
+field’s maximum max(φ), and the radial coordinate of this maximum.
+Boson Star l Maximum M (m2P /m) Maximum J (m2P /m)2 Minimum ω (m/~)
+0
+1
+2
+3
+4
+5
+6
+
+0.63300
+1.3155
+2.2159
+3.5287
+5.0590
+6.6681
+8.2824
+
+0
+1.382
+4.810
+12.49
+25.83
+44.63
+69.02
+
+0.76754
+0.64561
+0.51657
+0.44339
+0.40756
+0.38819
+0.37391
+
+Table IX.1: Critical points for boson stars l ∈ [0, 6].
+
+Out of the hundreds of computed data sets, we turn now to examine a couple of illustrative
+examples for the l = 6 case at three different frequencies ω ≈ {0.8 (m/~), 0.6 (m/~), 0.37 (m/~)}.
+30
+
+These correspond, respectively, to “low”, “medium”, and “high” scalar field amplitudes. The
+latter case is at the turning point for l = 6 reported in Table IX.1. These results are presented as
+contour plots for the physical variables {α, Ω, H, A, φ, λ} in Figures IX.2, IX.3, IX.4. Although,
+as previously stated, equatorial and axial symmetry imply that our computational domain can be
+restricted to the quadrant ρ, z > 0, the figures are plotted in the full space by reflecting about the
+corresponding axes. A three-dimensional picture can be obtained or imagined by rotating the z
+axis. Notice that the color bar scale is not equal between figures.
+The contours show that, as we decrease ω, the field’s spatial extension shrinks and at the same
+time that its amplitude grows. This behavior is also manifest in the physical variables, namely the
+metric coefficients Ω, H, A, λ, with an opposite behavior for the lapse (i.e. the lapse decreases as
+the other metric functions grow). Notice that in the “high-amplitude” case the central value of
+the lapse is below 3 × 10−2 .
+Considering our three bosons stars with different amplitudes, the results might seem to indicate
+variable trends as a function of decreasing ω. However, caution is necessary since ω is not monotonic
+as a function of ψ0 . Rather, as previously discussed the solutions are obtained by varying ψ0 .
+Therefore, an improved picture is obtained in Figure IX.5 that shows how the variables behave
+as we vary this parameter (which has dimensions (~/m)l given that φ is dimensionless). This
+behavior is also studied for the l = 1 case in Figure IX.6. These two figures show the true trends of
+the physical variables. As ψ0 increases, the lapse’s minimum decreases, whereas (−Ω), A, H, (−λ)
+increase. The field’s frequency behavior is not monotonic, and its critical points lead to the turning
+points in the M vs. ω diagrams.
+The field’s localization behavior is also examined for fixed ω = 0.8 (m/~) and varying rotation
+number l in Figure IX.7. Clearly, only at l = 0 the maximum may be present at the origin. This
+figure also shows that an increase in rotation number brings a decrease in the field’s amplitude
+and another increase in terms of the field’s extension.
+As previously discussed, we prefer the Komar mass instead of the ADM mass because of the
+latter’s slow convergence. Indeed, Figure IX.8 shows how the ADM mass from Equation (V.1)
+converges too slowly at rbdy = 32 (~/m). This is heavily contrasted with the Komar equivalents
+which converge exponentially. Notice that the difference between the ADM and Komar masses is
+about 50% at rbdy , making the former useless for our results. An analogous results is presented in
+Figure IX.9 for angular momenta where the Komar expressions Equations (V.12) and (V.13) are
+31
+
+compared to the asymptotic form
+1
+JAsymptotic = lim
+rbdy →∞ 8
+
+Zπ
+
+dθ r4 sin3 θ
+
+∂Ω
+.
+∂r
+
+(IX.1)
+
+0
+
+The final result of this section is Figure IX.10, which demonstrates the importance of regularization for a “high-amplitude” case such as l = 6, ω = 0.37 (m/~). The yellow curve represents the
+regularization variable λ, whereas the blue curve is the expression (A − H)/ρ2 calculated using the
+two other variables A, H. Notice that the vertical scale is logarithmic so that at the origin we have
+λ ≈ 2 × 102 (m/~)2 , whereas (A − H)/ρ2 , though indeterminate at the origin, at the first interior
+point is about 8 × 104 (m/~)2 which is an enormous difference of two orders of magnitude. Beyond
+r & 1 (~/m) both expressions match and can be used interchangeably. However, r  1 (~/m) is
+precisely the region where the scalar field is localized and of non-negligible amplitude. Thus, due
+to the −l2 λ ψ/H term in Equation (II.24), it is clear that a solution scheme with regularization
+will have substantial advantages over one without regularization. In our experience, we found that
+without regularization our solver cannot converge at high amplitudes precisely for this reason.
+Therefore, thanks to regularization, it has been possible to further explore rotating boson stars
+solutions at higher amplitudes.
+32
+
+Figure IX.2: Rotating boson star with l = 6 for “low-amplitude” ω ≈ 0.8 (m/~).
+
+33
+
+Figure IX.3: Rotating boson star with l = 6 for “medium-amplitude” ω ≈ 0.6 (m/~).
+
+34
+
+Figure IX.4: Rotating boson star with l = 6 for “high-amplitude” ω ≈ 0.4 (m/~).
+
+35
+
+Figure IX.5: Rotating boson stars with l = 6. We show the behaviour of the physical
+variables as functions of ψ0 for the range ψ0 ∈ [1.0 × 10−8 , 3 × 10−3 ] (~/m)6 , at resolutions
+∆ρ = ∆z = 0.04 (~/m) and rbdy = 32 (~/m).
+
+36
+
+Figure IX.6: Rotating boson stars with l = 1. We show the bahavious of the physical
+variables as functions of ψ0 for the range ψ0 ∈ [1.0 × 10−2 , 2.0] (~/m), at resolutions ∆ρ =
+∆z = {0.02, 0.04} (~/m) and rbdy = 32 (~/m).
+
+37
+
+Figure IX.7: Boson stars’ scalar field profiles at
+the equator for fixed ω = 0.8 (m/~) and l ∈ [0, 6].
+
+Figure IX.8: Masses comparison and convergence along radial coordinate r for Komar surface, Komar volume, ADM and
+pseudo-Schwarzschild expressions.
+
+Figure IX.9: Angular momenta comparison and convergence along radial coordinate r for Komar surface, Komar volume
+and the asymptotic expression.
+38
+
+Figure IX.10: Comparison between the regularization variable λ
+and its expression in terms of metric variables (A−H)/ρ2 . Both
+expressions are plotted in absolute value using a logarithmic
+scale. Notice the considerable differences near the origin, and
+how they match beyond r  1 (~/m).
+
+X.
+
+SUMMARY AND CONCLUSIONS
+
+In this paper we have studied solutions for rotating boon stars, i.e. a stationary and axisymmetric ground-state of the Klein-Gordon complex scalar field coupled to Einstein’s equations. The
+ADM equations initially result in a system of five coupled and highly-nonlinear equations with
+an added eigenvalue problem for the field’s time frequency, ω. Guided by boundary conditions
+at both spatial infinity and the ρ, z axes, we propose variables that mostly automatically satisfy
+the system’s physical constraints. Given the curvilinear formulation of our variables, terms with
+powers of 1/ρ appear throughout the equations. While most these terms are regular under parity
+conditions, a single term in the scalar field’s equations proportional to λ = (A − H)/r2 is not
+immediately regular. Using local flatness this term is shown analytically regular, but λ must be
+promoted numerically to a new independent variable to guarantee regularity at the rotation axis:
+thus a sixth elliptic equation is introduced in conjunction with its proper boundary conditions.
+For solving our system of equations we have developed an open-source numerical code, ROTBOSON, based on finite difference fourth-order discretization and a Cartesian grid in the cylindrical
+39
+
+coordinates (ρ, z). This set up is deal for curvilinear axisymmetric spacetimes where the Killing
+vectors ξ a = (∂/∂t )a and χa = (∂/∂ϕ )a are adapted to the coordinates. Due to the high nonlinearity and lack of simple initial guesses to input into a regular Newton-Raphson method, an
+alternative Global Newton Method using error oriented affine covariant Lipschitz conditions is
+implemented to solve for an initial seed for each family of rotating boson stars. From this seed,
+the entire branch is computed by varying the scalar field’s value at the origin ψ0 .
+We present data sets for rotation numbers l ∈ [0, 6]. These families are characterized and studied
+using global parameters such as Komar masses and angular momenta. The Komar quantities are
+chosen instead of the ADM alternatives because of their exponential convergence, which makes
+them ideal for a non-compactified grid where spatial infinity is an approximation at rbdy . Analyzing
+the results at fixed rotation integer we determine maximum masses and minimum frequencies. In
+l=2
+l=1
+l=0
+= 2.216 m2P /m. These latter masses
+= 1.316 m2P /m; Mmax
+= 0.633 m2P /m; Mmax
+particular, Mmax
+
+coincide with previous results in literature found by Yoshida and Eriguchi [1], and Grandclement,
+Somé and Gourgoulhon [3]. Most notably, we also obtain maximum masses and turning-point
+frequencies for l > 4 which are new results in the literature to our knowledge. Given the fact
+that as the scalar field’s amplitude increases, it also approaches the rotation axis, high resolutions
+are needed to properly resolve and study the field. The new maximum masses for l > 2 directly
+correspond to these limit cases, and their proper study is revealed to be only possible by adding
+the sixth regularization variable, thus proving again the necessity of adequate regularization in
+curvilinear formulations at high resolution.
+Future work will concentrate in studying these datasets (including the new high-amplitude
+regularized members) regarding their stability properties both under 3D and 2D axisymmetric
+perturbations. Also, given the high versatility of Global Newton Methods, an extension to neighboring problems such as interacting scalar fields and scalar hair is also possible.
+
+ACKNOWLEDGMENTS
+
+This work was partially supported by CONACyT Network Projects No. 376127 “Sombras,
+lentes y ondas gravitatorias generadas por objetos compactos astrofı́sicos”, and No. 304001 “Estudio de campos escalares con aplicaciones en cosmologı́a y astrofı́sica”, and by a CONACyT
+National Graduate Grant.
+40
+
+APPENDIXES
+
+Appendix A: Complete Regularization Equation
+
+Here we present the full equation for the regularization variable λ that was obtained following
+the discussion in Section IV:
+fλ ≡ ∂ρ2 λ + ∂z2 λ +
+
+3
+∂ρ λ
+ρ
+
+1
+2
+ρ2
+1
+(∂z H ∂z λ − ∂ρ H ∂ρ λ) − ∂λ · ∂H − ∂λ · ∂λ + (∂z α ∂λ − ∂ρ α ∂ρ λ)
+2H
+A
+A
+α
+
+ 
+
+
+
+2 
+
+2
+4λ ρ
+2λ ∂ρ α
+1
+1
+4λ
+∂ρ H
+4
+∂ρ H
+1
+−
+∂ρ λ −
++
+−
++
+− +
+λ−
+A
+A
+α
+ρ
+ρ
+A H
+ρ
+A 2H
+
+
+
+(A.1)
+(∂z H)2
+(∂ρ H)2
+2 ∂ρ H
+AH
+∂ρ α
+H2
+2
++
+λ+
+λ
+−
+∂Ω
+·
+∂Ω
+−
+(∂
+Ω)
+−
+ρ
+AH
+2H 2
+α
+ρ
+ρ
+α2
+α2
+
+
+
+
+
+
+λ
+1
+2λ 2
+∂ρ H
+2H 1
+∂ρ α
++
+∂ρ α + ∂ρ2 H +
+∂ρ
++
+∂ρ
+α
+H
+ρ
+ρ
+α ρ
+ρ
+
+
+
+
+∂ρ ψ
++ 8π (ρl−1 )2 A ρ2 m2 λ + 2
+(2l ψ + ρ ∂ρ ψ) = 0 .
+ρ
++
+
+Notice how all terms are written in a regularized manner. For example, parentheses explicitly
+contain the overall-even terms (1/ρ) ∂ρ u, and the combination
+1
+ρ2
+
+
+
+∂ρ u
+∂ρ2 −
+ρ
+
+
+
+
+
+1
+=
+∂ρ
+ρ
+
+
+
+∂ρ u
+ρ
+
+
+,
+
+(A.2)
+
+is also regular by differentiating the even function ((1/ρ) ∂ρ u) and then dividing by ρ: thus resulting
+in an even and regular expansion.
+41
+
+Appendix B: NLEQ-ERR Algorithm
+
+The Global Newton Method, NLEQ-ERR, is taken from Defulhard [8].
+Algorithm 1: NLEQ-ERR
+Inputs: Error accuracy  sufficiently above machine precision, initial iterate x0 , right-hand
+side F (x0 ), and damping factor s0 .
+Output: Newton solution x∗ for a convergent algorithm.
+for k = 0, 1, . . . do
+1. Step k: Evaluate Jacobian matrix F 0 (xk ). Solve linear system
+F 0 (xk ) ∆xk = −F (xk ) .
+Convergence test: if ∆xk <  then
+Stop. Solution found x? = xk + ∆xk .
+end
+for k > 0 do
+Compute a prediction value for the damping factor
+∆xk−1 · ∆xk
+· sk−1 ,
+
+µk =
+
+sk = min (1, µk ) .
+
+∆xk − ∆xk · k∆xk k
+end
+Regularity test: if sk < smin then
+Stop. Convergence failure.
+end
+2. Compute the trial iterate xk+1 = xk + sk ∆xk and evaluate F (xk+1 ). Solve the linear
+system (“old” Jacobian, “new” right-hand side):
+F 0 (xk ) ∆xk+1 = −F (xk+1 ) .
+3. Compute the monitoring quantities
+∆xk+1
+Θk =
+
+k∆xk k
+
+,
+
+µ0k =
+
+1
+2
+
+∆xk · s2k
+
+∆xk+1 − (1 − sk ) ∆xk
+
+if Θk ≥ 1 then
+
+Replace sk by s0k = min µ0k , 21 sk . Go to Regularity test.
+else
+Let s0k = min(1, µ0k ).
+end
+if s0k = sk = 1 then
+if ∆xk+1 <  then
+Stop. Solution found u∗ = uk+1 + ∆xk+1
+else if s0k > 4 sk then
+Replace sk by s0k and go to 2.
+else
+Accept xk+1 as new iterate. Continue loop with k = k + 1
+end
+42
+end
+
+.
+
+The algorithm as written in our numerical code ROTBOSON has additional features to avoid
+getting stuck within infinite non-convergent iterations and also uses a local solver, QNERR [8],
+once the current iteration is determined to be sufficiently close to the final solution, as was detailed
+in Section VI.
+
+[1] S. Yoshida and Y. Eriguchi, Phys. Rev. D (1997).
+[2] C. Lai, A numerical study of boson stars, Ph.D. thesis, The University of British Columbia (2004).
+[3] P. Grandclément, C. Somé, and E. Gourgoulhon, Physical Review D (2014).
+[4] E. Gourgoulhon, An introduction to the theory of rotating relativistic stars (2010), arXiv:1003.5015.
+[5] M. Alcubierre, Introduction to 3 + 1 numerical relativity (Oxford University Press, 2012).
+[6] M. Ruiz, M. Alcubierre, and D. Núñez, General Relativity and Gravitation (2008).
+[7] J. M. Torres, AIP Conference Proceedings (2012).
+[8] P. Deuflhard, Newton methods for nonlinear problems affine invariance and adaptive algorithms
+(Springer, 2011).
+[9] C. G. Petra, O. Schenk, and M. Anitescu, Computing in Science Engineering (2014).
+[10] C. G. Petra, O. Schenk, M. Lubin, and K. Gäertner, SIAM Journal on Scientific Computing (2014).
+[11] S. Ontanon, ROTBOSON: Rotating boson stars initial data for numerical relativity, https://
+github.com/sontanon/ROTBOSON (2021).
+[12] S. L. Liebling and C. Palenzuela, Living Reviews in Relativity (2017).
+[13] D. J. Kaup, Phys. Rev. (1968).
+[14] R. Ruffini and S. Bonzzola, Phys. Rev. (1969).
+[15] A. Einstein, Sitzungsberichte der Königlich Preußischen Akademie der Wissenschaften (Berlin), Seite
+844-847. (1915).
+[16] J. A. Wheeler, Phys. Rev. (1955).
+[17] G. H. Derrick, Journal of Mathematical Physics (1964).
+[18] A. Diez-Tejedor and A. X. Gonzalez-Morales, Phys. Rev. D (2013).
+[19] F. E. Schunck and E. W. Mielke, Classical and Quantum Gravity (2003).
+[20] L. A. Ureña-López and A. Bernal, Phys. Rev. D (2010).
+[21] F. S. Guzmán and J. M. Rueda-Becerril, Phys. Rev. D (2009).
+[22] J. Barranco and A. Bernal, AIP Conference Proceedings (2011).
+
+43
+
+[23] M. Colpi, S. L. Shapiro, and I. Wasserman, Phys. Rev. Lett. (1986).
+[24] R. Friedberg, T. D. Lee, and Y. Pang, Phys. Rev. D (1987).
+[25] M. Alcubierre, J. Barranco, A. Bernal, J. C. Degollado, A. Diez-Tejedor, M. Megevand, D. Núñez,
+and O. Sarbach, Classical and Quantum Gravity (2018).
+[26] V. Silveira and C. M. G. de Sousa, Phys. Rev. D (1995).
+[27] E. W. Mielke, Rotating boson stars, in At the Frontier of Spacetime: Scalar-Tensor Theory, Bells
+Inequality, Machs Principle, Exotic Smoothness, edited by T. Asselmeyer-Maluga (Springer International Publishing, 2016) pp. 115–131.
+[28] L. Smarr and J. W. York, Phys. Rev. D (1978).
+[29] T. Lewis, Proceedings of the Royal Society A (1932).
+[30] A. Papapetrou, Proceedings of the Roya Irish Academy. Section A: Mathematical and Physical
+Sciences (1945).
+[31] K. Gustafson, Contemporary Mathematics (1998).
+[32] N. Lüthen, M. Juntunen, and R. Stenberg, Numerische Mathematik (2018).
+[33] G. Arfken and H. Weber, Mathematical Methods for Physicists, Mathematical Methods for Physicists
+(Elsevier, 2005).
+[34] R. M. Wald, General relativity (Chicago Univ. Press, Chicago, IL, 1984).
+[35] M. Alcubierre, S. Brandt, B. Brügmann, C. Gundlach, J. Massó, E. Seidel, and P. Walker, Classical
+and Quantum Gravity (2000).
+[36] N. Kollerstrom, The British Journal for the History of Science (1992).
+[37] T. J. Ypma, SIAM Journal on Numerical Analysis (1984).
+[38] R. E. Bank and D. J. Rose, Numerische Mathematik (1981).
+[39] R. LeVeque, Finite Difference Methods for Ordinary and Partial Differential Equations: SteadyState and Time-Dependent Problems, Other Titles in Applied Mathematics (Society for Industrial
+and Applied Mathematics, 2007).
+[40] L. V. Kantorovich and G. P. Akilov, Functional analysis (Pergamon, 1982).
+[41] J. M. Ortega and W. C. Rheinboldt, Iterative solution of nonlinear equations in several variables
+(Society for Industrial and Applied Mathematics, 2000).
+[42] P. Deuflhard, Lecture Notes in Mathematics Optimization and Optimal Control (1975).
+[43] A.-L. Cauchy, Oeuvres complètes (1847).
+[44] K. Levenberg, Quarterly of Applied Mathematics (1944).
+
+44
+
+[45] D. W. Marquardt, Journal of the Society for Industrial and Applied Mathematics (1963).
+[46] U. Nowak and L. Weimann, A Family of Newton Codes for Systems of Highly Nonlinear Equations,
+Tech. Rep. (Zuse Institute Berlin, 1991).
+[47] L. Dagum and R. Menon, IEEE Comput. Sci. Eng. (1998).
+[48] J. M. Torres, Dinámica de materia cargada en relatividad general, Ph.D. thesis, Universidad Nacional
+Autónoma de México, Instituto de Ciencias Nucleares (2016).
+[49] S. Ontanon, Resolvedor elı́ptico para relatividad numérica y su aplicación en ondas de Brill, Bachelor’s
+Thesis (2018).
+[50] I. Corporation, Intel mkl pardiso - parallel direct sparse solver interface (2018), online.
+[51] R. P. Tewarson, ed., Sparse Matrices, Mathematics in Science and Engineering (Elsevier Science,
+1973).
+[52] A. Gupta and V. Kumar, in Proceedings of the IEEE/ACM SC95 Conference (1995).
+[53] W. R. Inc., Mathematica, Version 12.2 (2020), champaign, IL, 2020.
+[54] O. Schenk and K. Gärtner, PARDISO User Guide, PARDISO Project (2020).
+[55] M. P. Forum, MPI: A Message-Passing Interface Standard , Tech. Rep. (University of Tennessee,
+Knoxville, TN, USA, 1994).
+[56] L. F. Richardson, Philosophical Transactions of the Royal Society of London. Series A, Containing
+Papers of a Mathematical or Physical Character (1911).
+[57] S. Ontanon, SPHBOSON: Spherical boson stars initial data for numerical relativity, https://
+github.com/sontanon/SPHBOSON (2021).
+
+45
+
+
