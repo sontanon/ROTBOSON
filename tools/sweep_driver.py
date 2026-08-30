@@ -26,6 +26,7 @@ import argparse
 import hashlib
 import json
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -564,6 +565,10 @@ def finished(state: dict, spec: dict) -> str | None:
         return "done:max_steps"
     if state["steps"][-1]["exit_code"] not in (0, None):
         code = state["steps"][-1]["exit_code"]
+        if code < 0:
+            # Killed by a signal (e.g. -11 = SIGSEGV). Rare, pre-existing C
+            # backend flakiness (SAN-19); recorded distinctly from exit codes.
+            return f"failed:sig{signal.Signals(-code).name.removeprefix('SIG').lower()}"
         reason = {1: "failed:newton", 2: "failed:solver", 3: "failed:config", 4: "failed:io"}
         return reason.get(code, f"failed:exit{code}")
     return None
@@ -692,7 +697,10 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
 
         # Retry loop (decision-table rules 2-3, core subset): on Newton
         # non-convergence (exit 1) shrink the step and retry from the last
-        # good solution. Solver/config/I-O errors are not retryable.
+        # good solution. A step killed by a signal (code < 0, e.g. SIGSEGV —
+        # SAN-19 backend flakiness) is retried at the same step size: unlike
+        # a Newton failure, the step size is not the cause. Solver/config/
+        # I-O errors are not retryable.
         base_psi0 = psi0_of_last(state)
         factor = 1.0
         attempts = 0
@@ -719,17 +727,26 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             if code == 0 and sol is not None and last.get("psi0") is not None:
                 break
 
-            if code == 1 and attempts < c["max_retries"] and psi0_target != base_psi0:
-                attempts += 1
-                factor /= 2.0
-                # Drop the failed attempt from the step history (keep the log).
-                state["steps"].pop()
-                save_state(spec, state)
-                print(
-                    f"[driver] step {step_no} attempt {attempts} did not converge; "
-                    f"shrinking step (factor {factor:.3f}), log: {log}"
-                )
-                continue
+            if code in (1,) or code < 0:
+                if attempts >= c["max_retries"] or psi0_target == base_psi0:
+                    pass  # fall through to the failure handler below
+                else:
+                    attempts += 1
+                    if code == 1:
+                        factor /= 2.0  # Newton failure: shrink the step
+                    # Drop the failed attempt from the step history (keep the log).
+                    state["steps"].pop()
+                    save_state(spec, state)
+                    cause = (
+                        "did not converge"
+                        if code == 1
+                        else f"killed by signal {signal.Signals(-code).name}"
+                    )
+                    print(
+                        f"[driver] step {step_no} attempt {attempts} {cause}; "
+                        f"retrying (factor {factor:.3f}), log: {log}"
+                    )
+                    continue
 
             state["status"] = "failed"
             state["stop_reason"] = finished(state, spec) or f"failed:exit{code}"
