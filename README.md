@@ -130,6 +130,52 @@ uv sync --dev
 uv run tools/smoke.py out/l1_from_scratch.toml
 ```
 
+### Sweep driver (SAN-17)
+
+`tools/sweep_driver.py` runs continuation campaigns: the C binary solves one
+solution per step, Python orchestrates. The continuation parameter is **ψ₀**
+(the field value at the fixedPhi grid point); Newton solves ω as an eigenvalue
+each step, so the branch crosses the minimum-ω turning point naturally (design:
+`docs/sweep-driver-design.md`).
+
+```toml
+# campaign spec (TOML; unknown keys rejected)
+[campaign]
+l = 1
+direction = "up"          # amplitude growing (ω → ω_min) or "down" (ψ₀ → 0)
+psi0_target = 0.008       # stop when ψ₀ crosses this
+omega_target = 0.85       # optional ω stop
+psi0_step = 0.03          # per-step ratio, ψ₀ → ψ₀·(1 ± psi0_step) — the
+                          # default mode (golden-ladder-like, scale-free);
+                          # psi0_step_mode = "absolute" switches to fixed Δψ₀
+max_retries = 3           # on Newton failure the step shrinks ×½ and retries
+max_steps = 20
+
+[seed]
+policy = "from_scratch"   # analytic-guess seed solve at fixed ω...
+w0 = 0.95                 # ...or policy = "solution" with source = <solution dir>
+
+[grid]
+dr = 0.25
+N = 64
+
+[output]
+root = "out/campaigns/l1-up"
+format = "hdf5"
+```
+
+```bash
+uv run tools/sweep_driver.py <campaign.toml>            # runs the campaign
+uv run tools/sweep_driver.py <campaign.toml> --fresh    # discard state, start over
+```
+
+Each step writes `stepNNNN.toml` + `logs/stepNNNN.log` under the campaign
+root; `state.json` is updated atomically after every step, so an interrupted
+campaign resumes from the last completed step on the next invocation (a
+changed spec aborts resume). Solutions are read back via `tools/rotboson_io.py`
+(HDF5 preferred), and each step records ψ₀, ω, Komar mass/angular momentum,
+`rr_phi_max`, `r99` and the Newton iteration count.
+
 ## What a fresh clone gets you
 
 Everything needed to build, run and test works out of the box after installing
