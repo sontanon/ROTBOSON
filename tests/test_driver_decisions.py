@@ -132,9 +132,7 @@ class TestDetectTurningPoint:
         assert not detect_turning_point([step(0.1, 0.9)])
         assert not detect_turning_point([step(0.1, 0.9), step(0.2, 0.8)])
         # a seed step IS a branch point and counts toward the three
-        assert detect_turning_point(
-            [step(0.1, 0.9, mode="seed"), step(0.2, 0.8), step(0.3, 0.81)]
-        )
+        assert detect_turning_point([step(0.1, 0.9, mode="seed"), step(0.2, 0.8), step(0.3, 0.81)])
 
     def test_decreasing_then_increasing_fires(self):
         steps = [step(0.10, 0.70), step(0.11, 0.66), step(0.12, 0.65), step(0.13, 0.66)]

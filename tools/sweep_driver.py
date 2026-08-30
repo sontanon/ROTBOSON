@@ -640,8 +640,14 @@ def do_regrid(
                 f"would not fit in the {new_domain:.3g} domain"
             )
             state.setdefault("rejected_regrids", []).append(
-                {"i": step_no, "mode": "regrid-probe", "exit_code": None,
-                 "skipped": "support would not fit", "from_dr": src_dr, "to_dr": new_dr}
+                {
+                    "i": step_no,
+                    "mode": "regrid-probe",
+                    "exit_code": None,
+                    "skipped": "support would not fit",
+                    "from_dr": src_dr,
+                    "to_dr": new_dr,
+                }
             )
             save_state(spec, state)
             return False, {}
@@ -681,11 +687,20 @@ def do_regrid(
             shutil.rmtree(stale)
         before = set(find_solution_dirs(root))
         code, log = run_binary(
-            binary, params, root, step_no, label=f"{step_no:04d}_probe{attempt}" if attempt else None
+            binary,
+            params,
+            root,
+            step_no,
+            label=f"{step_no:04d}_probe{attempt}" if attempt else None,
         )
         sol = new_solution_dir(root, before, spec2, step_no)
-        probe: dict = {"i": step_no, "mode": "regrid-probe", "exit_code": code,
-                       "scale_u4": scale_u4, "log": str(log)}
+        probe: dict = {
+            "i": step_no,
+            "mode": "regrid-probe",
+            "exit_code": code,
+            "scale_u4": scale_u4,
+            "log": str(log),
+        }
         if sol is not None:
             probe["sol_dir"] = str(sol)
             probe["scalars"] = solution_scalars(sol)
@@ -718,8 +733,11 @@ def do_regrid(
     if rec and rec.get("exit_code") == 0 and rec.get("psi0") is not None:
         rtol = spec["adaptivity"]["regrid_rtol"]
         rel = {}
-        for key, fname in (("omega", "w_f.asc"), ("M_Komar", "M_Komar1.asc"),
-                           ("J_Komar", "J_Komar1.asc")):
+        for key, fname in (
+            ("omega", "w_f.asc"),
+            ("M_Komar", "M_Komar1.asc"),
+            ("J_Komar", "J_Komar1.asc"),
+        ):
             old, new = src.get(key), rec.get("scalars", {}).get(fname)
             if old is None or new is None or abs(old) == 0:
                 rel = {}
@@ -742,7 +760,9 @@ def do_regrid(
         save_state(spec, state)
         diffs = ", ".join(f"{k}={v:.2e}" for k, v in rel.items())
         kind = "coarser (within truncation proxy)" if strict else "finer (old-grid error recorded)"
-        print(f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} accepted: {kind} ({diffs})")
+        print(
+            f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} accepted: {kind} ({diffs})"
+        )
     else:
         if rec:
             state.setdefault("rejected_regrids", []).append(rec)
