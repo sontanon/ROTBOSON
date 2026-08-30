@@ -1353,8 +1353,17 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
 
         if action == "grow":  # rule 1: fast, healthy convergence → grow Δψ₀
             state["step_factor"] = min(factor * a["grow_factor"], a["factor_max"])
+            state["ok_streak"] = 0
         elif action == "shrink":  # rule 2: converged, but only just — ease off
             state["step_factor"] = max(factor * a["shrink_factor"], 1.0 / 64.0)
+            state["ok_streak"] = 0
+        elif action == "ok":
+            # A run of unremarkable-but-fine steps gently regrows a factor
+            # that earlier (re)tries shrank — otherwise it never recovers.
+            state["ok_streak"] = state.get("ok_streak", 0) + 1
+            if state["ok_streak"] >= 5:
+                state["step_factor"] = min(factor * a["grow_factor"], a["factor_max"])
+                state["ok_streak"] = 0
         save_state(spec, state)
 
         if action == "stop:domain_budget":
@@ -1406,10 +1415,14 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                 step_no += 1  # failed attempt consumed its slot; try the next dr
             if accepted:
                 continue  # re-check exit conditions on the new grid
-            # Regrid ladder exhausted: stay on the old grid, ease the step
+            # Regrid ladder exhausted. For a REQUIRED regrid, ease the step
             # (design §4: "fall back to stepping on the old grid with a
-            # smaller Δψ₀").
-            state["step_factor"] = max(factor * a["shrink_factor"], 1.0 / 64.0)
+            # smaller Δψ₀"). An optional rejection says nothing about the
+            # step size — shrinking it there just stalls the campaign
+            # (SAN-20 sweep finding: factor shrunk to ~1/3 and never
+            # recovered).
+            if required:
+                state["step_factor"] = max(factor * a["shrink_factor"], 1.0 / 64.0)
             if required:
                 state["regrid_failures"] = state.get("regrid_failures", 0) + 1
             save_state(spec, state)
