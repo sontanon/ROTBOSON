@@ -5,6 +5,7 @@
 // separators and row/column loops are unchanged so the output is byte-identical
 // to the pre-Phase-5 `.asc` files.
 #include "output_internal.h"
+#include "exit_codes.h"
 
 #include "log.h"
 
@@ -36,7 +37,7 @@ static void ascii_write_1d(solution_writer *w, const char *name, const double *u
     if (!fp)
     {
         rb_log(RB_LOG_ERROR, "OUTPUT: cannot open \"%s\" for writing.\n", path);
-        exit(EXIT_FAILURE);
+        exit(RB_EXIT_IO);
     }
 
     for (MKL_INT i = 0; i < dim; ++i)
@@ -54,7 +55,7 @@ static void ascii_write_int_1d(solution_writer *w, const char *name, const MKL_I
     if (!fp)
     {
         rb_log(RB_LOG_ERROR, "OUTPUT: cannot open \"%s\" for writing.\n", path);
-        exit(EXIT_FAILURE);
+        exit(RB_EXIT_IO);
     }
 
     for (MKL_INT i = 0; i < dim; ++i)
@@ -73,7 +74,7 @@ static void ascii_write_2d(solution_writer *w, const char *name, const double *u
     if (!fp)
     {
         rb_log(RB_LOG_ERROR, "OUTPUT: cannot open \"%s\" for writing.\n", path);
-        exit(EXIT_FAILURE);
+        exit(RB_EXIT_IO);
     }
 
     for (MKL_INT i = 0; i < nr; ++i)
@@ -97,7 +98,7 @@ static void ascii_write_2d_polar(solution_writer *w, const char *name, const dou
     if (!fp)
     {
         rb_log(RB_LOG_ERROR, "OUTPUT: cannot open \"%s\" for writing.\n", path);
-        exit(EXIT_FAILURE);
+        exit(RB_EXIT_IO);
     }
 
     for (MKL_INT i = 0; i < nr; ++i)

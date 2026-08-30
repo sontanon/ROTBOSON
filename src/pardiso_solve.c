@@ -1,6 +1,7 @@
 #include "tools.h"
 #include "pardiso_param.h"
 #include "pardiso.h"
+#include "exit_codes.h"
 
 void solver_solve(double *u, // Solution array.
                   csr_matrix *A, // Matrix system to solve: Au = f.
@@ -18,7 +19,7 @@ void solver_solve(double *u, // Solution array.
             printf("ERROR during symbolic factorization: %lld.\n", error);
             for (MKL_INT k = 0; k < 64; ++k)
                 printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
-            exit(1);
+            exit(RB_EXIT_SOLVER);
         }
 
         printf("PARDISO MEMORY DIAGNOSTICS\n");
@@ -59,7 +60,7 @@ void solver_solve(double *u, // Solution array.
         printf("ERROR during numerical factorization: %lld.\n", error);
         for (MKL_INT k = 0; k < 64; ++k)
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
-        exit(2);
+        exit(RB_EXIT_SOLVER);
     }
 
 #ifdef VERBOSE
@@ -76,7 +77,7 @@ void solver_solve(double *u, // Solution array.
         printf("ERROR during solution: %lld,\n", error);
         for (MKL_INT k = 0; k < 64; ++k)
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
-        exit(3);
+        exit(RB_EXIT_SOLVER);
     }
 
     // Return.
@@ -118,7 +119,7 @@ void solver_solve_low_rank(double *u, // Solution array.
             printf("ERROR during symbolic factorization: %lld.\n", error);
             for (MKL_INT k = 0; k < 64; ++k)
                 printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
-            exit(1);
+            exit(RB_EXIT_SOLVER);
         }
 
         printf("PARDISO MEMORY DIAGNOSTICS\n");
@@ -156,7 +157,7 @@ void solver_solve_low_rank(double *u, // Solution array.
         printf("ERROR during numerical factorization: %lld.\n", error);
         for (MKL_INT k = 0; k < 64; ++k)
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
-        exit(2);
+        exit(RB_EXIT_SOLVER);
     }
 
 #ifdef VERBOSE
@@ -173,7 +174,7 @@ void solver_solve_low_rank(double *u, // Solution array.
         printf("ERROR during solution: %lld,\n", error);
         for (MKL_INT k = 0; k < 64; ++k)
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
-        exit(3);
+        exit(RB_EXIT_SOLVER);
     }
 
     // Turn Low-Rank for future updates.
@@ -197,7 +198,7 @@ void solver_repeated_solve(double *u, // Solution array.
     if (error != 0)
     {
         printf("ERROR during numerical factorization: %lld.\n", error);
-        exit(2);
+        exit(RB_EXIT_SOLVER);
     }
 
 #ifdef VERBOSE
@@ -215,7 +216,7 @@ void solver_repeated_solve(double *u, // Solution array.
         printf("ERROR during solution: %lld,\n", error);
         for (MKL_INT k = 0; k < 64; ++k)
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
-        exit(3);
+        exit(RB_EXIT_SOLVER);
     }
 
     // Return.

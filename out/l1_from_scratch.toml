@@ -70,9 +70,7 @@ lambda0 = 1.0E-03
 lambdaMin = 1.0E-05
 useLowRank = 0
 
-# NEXT SOLUTION.
 # Do not attempt to try to solve any more solutions.
-sweep = 0
 
 # BOUNDARY TYPES.
 # Radiative boundaries.

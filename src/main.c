@@ -1,5 +1,6 @@
 #include "tools.h"
 #include "context.h"
+#include "exit_codes.h"
 
 #include "parser.h"
 #include "log.h"
@@ -18,8 +19,8 @@
 
 // ---------------------------------------------------------------------------
 // Driver helpers. main() below is a thin driver; each stage is a named unit
-// so the responsibilities are visible (banner / params / solver / analysis /
-// sweep) instead of one ~700-line function.
+// so the responsibilities are visible (banner / params / solver / analysis)
+// instead of one ~700-line function.
 // ---------------------------------------------------------------------------
 
 static void print_banner(void)
@@ -268,160 +269,6 @@ static void run_analysis(rb_context *ctx, solution_writer *w, double **u, double
     SAFE_FREE(ctx->i_u);
 }
 
-// Sweep/continuation: sanity-check the converged solution, then either stop
-// (return 0) or seed the next solve from the current solution with predicted
-// scale factors (return 1).
-static int sweep_advance(rb_context *ctx, double **u, MKL_INT k, double w, MKL_INT errCode,
-                         csr_matrix *J)
-{
-    MKL_INT counter_i = 0;
-
-    // Peaks and predicted scale factors (recomputed each step).
-    double peak_next[GNUM + 1] = {0.0};
-    double peak_prev[GNUM + 1] = {0.0};
-    double next_scale[GNUM + 1] = {0.0};
-
-    if (!((errCode == 0) && (ctx->sweep > 0)))
-    {
-        if (ctx->sweep > 0)
-        {
-            rb_log(RB_LOG_WARN,
-                   "******************************************************\n"
-                   "***                                                \n"
-                   "***   Sweep cannot continue because errCode = %lld !\n"
-                   "***                                                \n"
-                   "******************************************************\n",
-                   errCode);
-        }
-        return 0;
-    }
-
-    // Sanity checks on this resolution.
-    if (w <= ctx->w_min || w >= ctx->w_max)
-    {
-        rb_log(RB_LOG_WARN,
-               "******************************************************\n"
-               "***                                                \n"
-               "***   Sweep cannot continue because w is out of range (%.5E, %.5E) !\n"
-               "***                                                \n"
-               "******************************************************\n",
-               ctx->w_min, ctx->w_max);
-        return 0;
-    }
-    if (ctx->rr_phi_max < ctx->rr_phi_max_minimum)
-    {
-        rb_log(RB_LOG_WARN,
-               "******************************************************\n"
-               "***                                                \n"
-               "***   Sweep cannot continue because rr(max(phi)) < min(rr(max(phi))) = %.5E !\n"
-               "***                                                \n"
-               "******************************************************\n",
-               ctx->rr_phi_max_minimum);
-        return 0;
-    }
-    if (ctx->rr_phi_max > ctx->rr_phi_max_maximum)
-    {
-        rb_log(RB_LOG_WARN,
-               "******************************************************\n"
-               "***                                                \n"
-               "***   Sweep cannot continue because rr(max(phi)) > max(rr(max(phi))) = %.5E !\n"
-               "***                                                \n"
-               "******************************************************\n",
-               ctx->rr_phi_max_maximum);
-        return 0;
-    }
-    if (ctx->hwl_res < ctx->hwl_min)
-    {
-        rb_log(RB_LOG_WARN,
-               "******************************************************\n"
-               "***                                                \n"
-               "***   Sweep cannot continue because N(HWL) < MIN(N(HWL)) = %lld !\n"
-               "***   In other words, scalar field has not enough resolution. Try with more "
-               "resolution or decrease hwl_min.\n"
-               "***                                                \n"
-               "******************************************************\n",
-               ctx->hwl_min);
-        return 0;
-    }
-    if (ctx->hwl_res > ctx->hwl_max)
-    {
-        rb_log(RB_LOG_WARN,
-               "******************************************************\n"
-               "***                                                \n"
-               "***   Sweep cannot continue because N(HWL) > MAX(N(HWL)) = %lld !\n"
-               "***   In other words, scalar field is too scattered. Try with less resolution or "
-               "increase hwl_max.\n"
-               "***                                                \n"
-               "******************************************************\n",
-               ctx->hwl_max);
-        return 0;
-    }
-
-    // Predict scale factors from the peak values.
-    for (counter_i = 0; counter_i < GNUM; ++counter_i)
-    {
-        peak_prev[counter_i] = ctx->u_seed[counter_i * ctx->dim +
-                                           cblas_idamax(ctx->dim, u[k] + counter_i * ctx->dim, 1)];
-        peak_next[counter_i] =
-            u[k][counter_i * ctx->dim + cblas_idamax(ctx->dim, u[k] + counter_i * ctx->dim, 1)];
-    }
-    next_scale[4] = peak_next[4] / peak_prev[4];
-    next_scale[0] = 1.0 + next_scale[4] * (1.0 - peak_prev[0] / peak_next[0]);
-    next_scale[1] = 1.0 + next_scale[4] * (1.0 - peak_prev[1] / peak_next[1]);
-    next_scale[2] = 1.0 + next_scale[4] * (1.0 - peak_prev[2] / peak_next[2]);
-    next_scale[3] = 1.0 + next_scale[4] * (1.0 - peak_prev[3] / peak_next[3]);
-    next_scale[5] = 1.0 + next_scale[4] * (1.0 - peak_prev[5] / peak_next[5]);
-
-    for (counter_i = 0; counter_i < GNUM; ++counter_i)
-        rb_log(RB_LOG_INFO,
-               "**** Variable %lld peak = % -.5E, previous peak = % -.5E : predicted scale factor "
-               "= %.5E\n",
-               counter_i, peak_next[counter_i], peak_prev[counter_i], next_scale[counter_i]);
-
-    // Omega prediction.
-    peak_prev[GNUM] = omega_calc(ctx->u_seed[GNUM * ctx->dim], ctx->m);
-    peak_next[GNUM] = omega_calc(u[k][GNUM * ctx->dim], ctx->m);
-
-    next_scale[GNUM] = 1.0 + next_scale[4] * (1.0 - peak_prev[GNUM] / peak_next[GNUM]);
-
-    rb_log(RB_LOG_INFO, "**** scaled w = %.5E, w = %.5E, scale_u6 = %.5E\n", next_scale[GNUM] * w, w,
-           next_scale[GNUM]);
-
-    // Transfer to initial data.
-#pragma omp parallel shared(u)
-    {
-#pragma omp for schedule(dynamic, 1)
-        for (counter_i = 0; counter_i < GNUM * ctx->dim + 1; ++counter_i)
-        {
-            u[0][counter_i] = -ctx->scale_next * ctx->u_seed[counter_i];
-            u[0][counter_i] += (1.0 + ctx->scale_next) * u[k][counter_i];
-            ctx->u_seed[counter_i] = u[k][counter_i];
-        }
-    }
-    if (ctx->w_step != 0.0)
-    {
-        u[0][ctx->w_idx] = inverse_omega_calc(w + ctx->w_step, ctx->m);
-    }
-    // Set initial omega.
-    ctx->w0 = omega_calc(u[0][ctx->w_idx], ctx->m);
-
-    // Set analysis phase to 0 again.
-    J->analysis_phase = 0;
-
-    // Set new lambda0 to one since convergence has improved.
-    ctx->lambda0 = 1.0;
-
-    rb_log(RB_LOG_INFO,
-           "******************************************************\n"
-           "***                                                \n"
-           "***   Setting initial data to last solution, scaling, and continuing...\n"
-           "***                                                \n"
-           "***                                                \n"
-           "******************************************************\n");
-
-    return 1;
-}
-
 int main(int argc, char *argv[])
 {
     // Integer counter.
@@ -446,7 +293,7 @@ int main(int argc, char *argv[])
                "***                                                \n"
                "******************************************************\n"
                "******************************************************\n");
-        return EXIT_FAILURE;
+        return RB_EXIT_CONFIG;
     }
 
     // Runtime context (replaces the old param.h globals).
@@ -591,182 +438,180 @@ int main(int argc, char *argv[])
     // Set initial guess.
     initial_guess(&ctx, u[0]);
 
-    // Loop over sweep.
-    do
+    // Single solve: one invocation = one Newton solve = one solution
+    // directory. Sweep/continuation orchestration lives in the Python driver
+    // (docs/sweep-driver-design.md).
     {
-        // Open the solution writer for this sweep step (path-aware; no chdir).
-        solution_writer *sw = solution_writer_open(ctx.initial_dirname, &ctx, argv[1]);
-        if (!sw)
-        {
-            rb_log(RB_LOG_ERROR, "OUTPUT: cannot open solution writer for \"%s\".\n",
-                   ctx.initial_dirname);
-            return EXIT_FAILURE;
-        }
 
-        // Print main variables.
-        solution_writer_write_2d(sw, "log_alpha_i", u[0], ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "beta_i", u[0] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "log_h_i", u[0] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "log_a_i", u[0] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "psi_i", u[0] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "lambda_i", u[0] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_1d(sw, "w_i", &ctx.w0, 1);
+    // Open the solution writer (path-aware; no chdir).
+    solution_writer *sw = solution_writer_open(ctx.initial_dirname, &ctx, argv[1]);
+    if (!sw)
+    {
+        rb_log(RB_LOG_ERROR, "OUTPUT: cannot open solution writer for \"%s\".\n",
+               ctx.initial_dirname);
+        return RB_EXIT_IO;
+    }
 
-        // Also print r, z grids.
-        solution_writer_write_2d(sw, "r", r, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "z", z, ctx.NrTotal, ctx.NzTotal);
+    // Print main variables.
+    solution_writer_write_2d(sw, "log_alpha_i", u[0], ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "beta_i", u[0] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "log_h_i", u[0] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "log_a_i", u[0] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "psi_i", u[0] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "lambda_i", u[0] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_1d(sw, "w_i", &ctx.w0, 1);
 
-        // And initial "seed".
-        solution_writer_write_2d(sw, "log_alpha_seed", ctx.u_seed, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "beta_seed", ctx.u_seed + ctx.dim, ctx.NrTotal,
+    // Also print r, z grids.
+    solution_writer_write_2d(sw, "r", r, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "z", z, ctx.NrTotal, ctx.NzTotal);
+
+    // And initial "seed".
+    solution_writer_write_2d(sw, "log_alpha_seed", ctx.u_seed, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "beta_seed", ctx.u_seed + ctx.dim, ctx.NrTotal,
+                             ctx.NzTotal);
+    solution_writer_write_2d(sw, "log_h_seed", ctx.u_seed + 2 * ctx.dim, ctx.NrTotal,
+                             ctx.NzTotal);
+    solution_writer_write_2d(sw, "log_a_seed", ctx.u_seed + 3 * ctx.dim, ctx.NrTotal,
+                             ctx.NzTotal);
+    solution_writer_write_2d(sw, "psi_seed", ctx.u_seed + 4 * ctx.dim, ctx.NrTotal,
+                             ctx.NzTotal);
+    solution_writer_write_2d(sw, "lambda_seed", ctx.u_seed + 5 * ctx.dim, ctx.NrTotal,
+                             ctx.NzTotal);
+    w = omega_calc(ctx.u_seed[GNUM * ctx.dim], ctx.m);
+    solution_writer_write_1d(sw, "w_seed", &w, 1);
+
+    // First calculate initial RHS.
+    rhs(&ctx, f[0], u[0]);
+
+    // Print initial RHS.
+    solution_writer_write_2d(sw, "f0_i", f[0], ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f1_i", f[0] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f2_i", f[0] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f3_i", f[0] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f4_i", f[0] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f5_i", f[0] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+
+    // Calculate 2-norms.
+    f_norms[0] = norm2(&ctx, f[0]);
+    f_norms[1] = norm2(&ctx, f[0] + ctx.dim);
+    f_norms[2] = norm2(&ctx, f[0] + 2 * ctx.dim);
+    f_norms[3] = norm2(&ctx, f[0] + 3 * ctx.dim);
+    f_norms[4] = norm2(&ctx, f[0] + 4 * ctx.dim);
+    f_norms[5] = norm2(&ctx, f[0] + 5 * ctx.dim);
+
+    rb_log(RB_LOG_INFO,
+           "***                                                \n"
+           "***        INITIAL GUESS:                          \n"
+           "***           || f0 ||   = %-12.10E           \n"
+           "***           || f1 ||   = %-12.10E           \n"
+           "***           || f2 ||   = %-12.10E           \n"
+           "***           || f3 ||   = %-12.10E           \n"
+           "***           || f4 ||   = %-12.10E           \n"
+           "***           || f5 ||   = %-12.10E           \n"
+           "***                                                \n"
+           "***                                                \n"
+           "******************************************************\n",
+           f_norms[0], f_norms[1], f_norms[2], f_norms[3], f_norms[4], f_norms[5]);
+
+    // Newton solve.
+    k = run_newton(&ctx, sw, &errCode, u, f, du, du_bar, norm_f, norm_du, norm_du_bar, lambda,
+                   Theta, mu, lambda_prime, mu_prime, &J, linear_solve_1, linear_solve_2);
+
+    // Get omega.
+    w = omega_calc(u[k][ctx.w_idx], ctx.m);
+
+    // Print final solutions.
+    solution_writer_write_2d(sw, "log_alpha_f", u[k], ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "beta_f", u[k] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "log_h_f", u[k] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "log_a_f", u[k] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "psi_f", u[k] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "lambda_f", u[k] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_1d(sw, "w_f", &w, 1);
+
+    // Print final update.
+    if (k > 0)
+    {
+        solution_writer_write_2d(sw, "du0_f", du[k - 1], ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "du1_f", du[k - 1] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+        solution_writer_write_2d(sw, "du2_f", du[k - 1] + 2 * ctx.dim, ctx.NrTotal,
                                  ctx.NzTotal);
-        solution_writer_write_2d(sw, "log_h_seed", ctx.u_seed + 2 * ctx.dim, ctx.NrTotal,
+        solution_writer_write_2d(sw, "du3_f", du[k - 1] + 3 * ctx.dim, ctx.NrTotal,
                                  ctx.NzTotal);
-        solution_writer_write_2d(sw, "log_a_seed", ctx.u_seed + 3 * ctx.dim, ctx.NrTotal,
+        solution_writer_write_2d(sw, "du4_f", du[k - 1] + 4 * ctx.dim, ctx.NrTotal,
                                  ctx.NzTotal);
-        solution_writer_write_2d(sw, "psi_seed", ctx.u_seed + 4 * ctx.dim, ctx.NrTotal,
+        solution_writer_write_2d(sw, "du5_f", du[k - 1] + 5 * ctx.dim, ctx.NrTotal,
                                  ctx.NzTotal);
-        solution_writer_write_2d(sw, "lambda_seed", ctx.u_seed + 5 * ctx.dim, ctx.NrTotal,
-                                 ctx.NzTotal);
-        w = omega_calc(ctx.u_seed[GNUM * ctx.dim], ctx.m);
-        solution_writer_write_1d(sw, "w_seed", &w, 1);
+    }
 
-        // First calculate initial RHS.
-        rhs(&ctx, f[0], u[0]);
+    // Print final RHS.
+    solution_writer_write_2d(sw, "f0_f", f[k], ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f1_f", f[k] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f2_f", f[k] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f3_f", f[k] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f4_f", f[k] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    solution_writer_write_2d(sw, "f5_f", f[k] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
 
-        // Print initial RHS.
-        solution_writer_write_2d(sw, "f0_i", f[0], ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f1_i", f[0] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f2_i", f[0] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f3_i", f[0] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f4_i", f[0] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f5_i", f[0] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
+    // Also print Newton parameters.
+    switch (ctx.solverType)
+    {
+    case 1:
+        solution_writer_write_1d(sw, "norm_du", norm_du, k);
+        solution_writer_write_1d(sw, "norm_du_bar", norm_du_bar, k);
+        break;
+    case 2:
+        solution_writer_write_1d(sw, "norm_f", norm_f, k);
+        break;
+    }
 
-        // Calculate 2-norms.
-        f_norms[0] = norm2(&ctx, f[0]);
-        f_norms[1] = norm2(&ctx, f[0] + ctx.dim);
-        f_norms[2] = norm2(&ctx, f[0] + 2 * ctx.dim);
-        f_norms[3] = norm2(&ctx, f[0] + 3 * ctx.dim);
-        f_norms[4] = norm2(&ctx, f[0] + 4 * ctx.dim);
-        f_norms[5] = norm2(&ctx, f[0] + 5 * ctx.dim);
+    solution_writer_write_1d(sw, "lambda", lambda, k);
+    solution_writer_write_1d(sw, "Theta", Theta, k);
+    solution_writer_write_1d(sw, "mu", mu, k);
+    solution_writer_write_1d(sw, "lambda_prime", lambda_prime, k);
+    solution_writer_write_1d(sw, "mu_prime", mu_prime, k);
 
-        rb_log(RB_LOG_INFO,
-               "***                                                \n"
-               "***        INITIAL GUESS:                          \n"
-               "***           || f0 ||   = %-12.10E           \n"
-               "***           || f1 ||   = %-12.10E           \n"
-               "***           || f2 ||   = %-12.10E           \n"
-               "***           || f3 ||   = %-12.10E           \n"
-               "***           || f4 ||   = %-12.10E           \n"
-               "***           || f5 ||   = %-12.10E           \n"
-               "***                                                \n"
-               "***                                                \n"
-               "******************************************************\n",
-               f_norms[0], f_norms[1], f_norms[2], f_norms[3], f_norms[4], f_norms[5]);
+    // Print final iteration's RHS's norms.
+    f_norms[0] = norm2(&ctx, f[k]);
+    f_norms[1] = norm2(&ctx, f[k] + ctx.dim);
+    f_norms[2] = norm2(&ctx, f[k] + 2 * ctx.dim);
+    f_norms[3] = norm2(&ctx, f[k] + 3 * ctx.dim);
+    f_norms[4] = norm2(&ctx, f[k] + 4 * ctx.dim);
+    f_norms[5] = norm2(&ctx, f[k] + 5 * ctx.dim);
+    rb_log(RB_LOG_INFO,
+           "***                                                \n"
+           "***        FINAL ITERATION:                        \n"
+           "***           || f0 ||   = %-12.10E           \n"
+           "***           || f1 ||   = %-12.10E           \n"
+           "***           || f2 ||   = %-12.10E           \n"
+           "***           || f3 ||   = %-12.10E           \n"
+           "***           || f4 ||   = %-12.10E           \n"
+           "***           || f5 ||   = %-12.10E           \n"
+           "***                                                \n"
+           "***                                                \n"
+           "******************************************************\n",
+           f_norms[0], f_norms[1], f_norms[2], f_norms[3], f_norms[4], f_norms[5]);
 
-        // Newton solve.
-        k = run_newton(&ctx, sw, &errCode, u, f, du, du_bar, norm_f, norm_du, norm_du_bar, lambda,
-                       Theta, mu, lambda_prime, mu_prime, &J, linear_solve_1, linear_solve_2);
+    // Also print omega.
+    rb_log(RB_LOG_INFO,
+           "******************************************************\n"
+           "***                                                \n"
+           "***           FINAL OMEGA:                         \n"
+           "***            w          = %-12.10E            \n"
+           "***                                                \n"
+           "******************************************************\n",
+           w);
 
-        // Get omega.
-        w = omega_calc(u[k][ctx.w_idx], ctx.m);
+    // ANALYSIS PHASE.
+    run_analysis(&ctx, sw, u, r, z, k, w);
 
-        // Print final solutions.
-        solution_writer_write_2d(sw, "log_alpha_f", u[k], ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "beta_f", u[k] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "log_h_f", u[k] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "log_a_f", u[k] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "psi_f", u[k] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "lambda_f", u[k] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_1d(sw, "w_f", &w, 1);
+    // Close the writer (flushes HDF5 attributes and closes the file).
+    solution_writer_close(sw);
 
-        // Print final update.
-        if (k > 0)
-        {
-            solution_writer_write_2d(sw, "du0_f", du[k - 1], ctx.NrTotal, ctx.NzTotal);
-            solution_writer_write_2d(sw, "du1_f", du[k - 1] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
-            solution_writer_write_2d(sw, "du2_f", du[k - 1] + 2 * ctx.dim, ctx.NrTotal,
-                                     ctx.NzTotal);
-            solution_writer_write_2d(sw, "du3_f", du[k - 1] + 3 * ctx.dim, ctx.NrTotal,
-                                     ctx.NzTotal);
-            solution_writer_write_2d(sw, "du4_f", du[k - 1] + 4 * ctx.dim, ctx.NrTotal,
-                                     ctx.NzTotal);
-            solution_writer_write_2d(sw, "du5_f", du[k - 1] + 5 * ctx.dim, ctx.NrTotal,
-                                     ctx.NzTotal);
-        }
-
-        // Print final RHS.
-        solution_writer_write_2d(sw, "f0_f", f[k], ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f1_f", f[k] + ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f2_f", f[k] + 2 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f3_f", f[k] + 3 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f4_f", f[k] + 4 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-        solution_writer_write_2d(sw, "f5_f", f[k] + 5 * ctx.dim, ctx.NrTotal, ctx.NzTotal);
-
-        // Also print Newton parameters.
-        switch (ctx.solverType)
-        {
-        case 1:
-            solution_writer_write_1d(sw, "norm_du", norm_du, k);
-            solution_writer_write_1d(sw, "norm_du_bar", norm_du_bar, k);
-            break;
-        case 2:
-            solution_writer_write_1d(sw, "norm_f", norm_f, k);
-            break;
-        }
-
-        solution_writer_write_1d(sw, "lambda", lambda, k);
-        solution_writer_write_1d(sw, "Theta", Theta, k);
-        solution_writer_write_1d(sw, "mu", mu, k);
-        solution_writer_write_1d(sw, "lambda_prime", lambda_prime, k);
-        solution_writer_write_1d(sw, "mu_prime", mu_prime, k);
-
-        // Print final iteration's RHS's norms.
-        f_norms[0] = norm2(&ctx, f[k]);
-        f_norms[1] = norm2(&ctx, f[k] + ctx.dim);
-        f_norms[2] = norm2(&ctx, f[k] + 2 * ctx.dim);
-        f_norms[3] = norm2(&ctx, f[k] + 3 * ctx.dim);
-        f_norms[4] = norm2(&ctx, f[k] + 4 * ctx.dim);
-        f_norms[5] = norm2(&ctx, f[k] + 5 * ctx.dim);
-        rb_log(RB_LOG_INFO,
-               "***                                                \n"
-               "***        FINAL ITERATION:                        \n"
-               "***           || f0 ||   = %-12.10E           \n"
-               "***           || f1 ||   = %-12.10E           \n"
-               "***           || f2 ||   = %-12.10E           \n"
-               "***           || f3 ||   = %-12.10E           \n"
-               "***           || f4 ||   = %-12.10E           \n"
-               "***           || f5 ||   = %-12.10E           \n"
-               "***                                                \n"
-               "***                                                \n"
-               "******************************************************\n",
-               f_norms[0], f_norms[1], f_norms[2], f_norms[3], f_norms[4], f_norms[5]);
-
-        // Also print omega.
-        rb_log(RB_LOG_INFO,
-               "******************************************************\n"
-               "***                                                \n"
-               "***           FINAL OMEGA:                         \n"
-               "***            w          = %-12.10E            \n"
-               "***                                                \n"
-               "******************************************************\n",
-               w);
-
-        // ANALYSIS PHASE.
-        run_analysis(&ctx, sw, u, r, z, k, w);
-
-        // Close the writer (flushes HDF5 attributes and closes the file).
-        solution_writer_close(sw);
-
-        // Rename directory to include w.
-        snprintf(ctx.final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", ctx.l, w, ctx.dr,
-                 ctx.NrInterior);
-        rename(ctx.initial_dirname, ctx.final_dirname);
-
-        // Sweep continuation if sanity checks pass.
-        if (!sweep_advance(&ctx, u, k, w, errCode, &J))
-            break;
-    } while (ctx.sweep > 0);
+    // Rename directory to include w.
+    snprintf(ctx.final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", ctx.l, w, ctx.dr,
+             ctx.NrInterior);
+    rename(ctx.initial_dirname, ctx.final_dirname);
+    } // end single-solve block
 
     // Clear memory.
     rb_log(RB_LOG_INFO,
@@ -834,6 +679,7 @@ int main(int argc, char *argv[])
            "******************************************************\n"
            "******************************************************\n");
 
-    // All done.
-    return 0;
+    // All done. Exit code per the single-solution contract (exit_codes.h):
+    // 0 = converged, 1 = Newton non-convergence.
+    return (errCode == 0) ? RB_EXIT_OK : RB_EXIT_NEWTON;
 }

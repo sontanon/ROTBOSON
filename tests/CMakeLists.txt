@@ -17,3 +17,12 @@ add_executable(test_output test_output.c)
 target_link_libraries(test_output PRIVATE rotboson_core)
 
 add_test(NAME output COMMAND test_output)
+
+# Exit-code contract test (SAN-10): runs the real binary with valid and
+# invalid parameter files and pins the process exit codes.
+add_executable(test_exit_codes test_exit_codes.c)
+target_compile_definitions(
+    test_exit_codes PRIVATE ROTBOSON_BIN="$<TARGET_FILE:ROTBOSON>"
+                            ROTBOSON_SMOKE_CONFIG="${CMAKE_SOURCE_DIR}/out/l1_smoke_ci.toml")
+
+add_test(NAME exit_codes COMMAND test_exit_codes)

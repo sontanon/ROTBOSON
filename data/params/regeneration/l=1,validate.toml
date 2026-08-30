@@ -31,9 +31,6 @@ psi_i = "../data/seeds/universal/l=1,w=9.00983E-01,dr=3.12500E-02,N=0512/psi_f.a
 # SCALE INITIAL DATA.
 scale_u4 = 1.000
 
-# NEXT ADVANCEMENT.
-scale_next = 1.000
-
 # FIXED VARIABLE.
 fixedPhi = 0
 fixedPhiR = 0
@@ -53,6 +50,4 @@ useLowRank = 0
 max_initial_guess_checks = 0
 norm_f0_target = 5.0E-05
 
-# SWEEP CONTROL
-rr_phi_max_minimum = 32.000
 # Regeneration copy: golden template with local seed paths (Phase 0 validation).
