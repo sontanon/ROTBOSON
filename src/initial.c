@@ -86,7 +86,7 @@ void initial_guess(rb_context *ctx, double *u)
             k = (MKL_INT)floor(0.5 / ctx->dr_i + ctx->ghost_i - 0.5);
 #pragma omp parallel shared(u) private(i, j, r) // rr.
             {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
                 for (i = k; i < ctx->NrTotalInitial; ++i)
                 {
                     r = ctx->dr_i * (i + 0.5 - ctx->ghost_i);
@@ -137,7 +137,7 @@ void initial_guess(rb_context *ctx, double *u)
         {
 #pragma omp parallel shared(u)
             {
-#pragma omp for schedule(guided)
+#pragma omp for schedule(static)
                 for (i = 0 * ctx->dim; i < 1 * ctx->dim; ++i)
                 {
                     u[i] = 0.0;
@@ -155,7 +155,7 @@ void initial_guess(rb_context *ctx, double *u)
         {
 #pragma omp parallel shared(u)
             {
-#pragma omp for schedule(guided)
+#pragma omp for schedule(static)
                 for (i = 1 * ctx->dim; i < 2 * ctx->dim; ++i)
                 {
                     u[i] = 0.0;
@@ -173,7 +173,7 @@ void initial_guess(rb_context *ctx, double *u)
         {
 #pragma omp parallel shared(u)
             {
-#pragma omp for schedule(guided)
+#pragma omp for schedule(static)
                 for (i = 2 * ctx->dim; i < 3 * ctx->dim; ++i)
                 {
                     u[i] = 0.0;
@@ -191,7 +191,7 @@ void initial_guess(rb_context *ctx, double *u)
         {
 #pragma omp parallel shared(u)
             {
-#pragma omp for schedule(guided)
+#pragma omp for schedule(static)
                 for (i = 3 * ctx->dim; i < 4 * ctx->dim; ++i)
                 {
                     u[i] = 0.0;
@@ -210,7 +210,7 @@ void initial_guess(rb_context *ctx, double *u)
 // Now do initial guess for phi.
 #pragma omp parallel shared(u) private(i, j, r, z, rr) // rr.
             {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
                 for (i = ctx->ghost; i < ctx->NrTotal; ++i)
                 {
                     r = ctx->dr * (i + 0.5 - ctx->ghost);
@@ -243,7 +243,7 @@ void initial_guess(rb_context *ctx, double *u)
             /*
             #pragma omp parallel shared(u)
             {
-                #pragma omp for schedule(guided)
+                #pragma omp for schedule(static)
                 for (i = 5 * dim; i <  5 * dim; ++i)
                 {
                     u[i] = 0.0;
@@ -253,7 +253,7 @@ void initial_guess(rb_context *ctx, double *u)
             k = (MKL_INT)floor(0.5 / ctx->dr + ctx->ghost - 0.5);
 #pragma omp parallel shared(u) private(i, j, r) // rr.
             {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
                 for (i = k; i < ctx->NrTotal; ++i)
                 {
                     r = ctx->dr * (i + 0.5 - ctx->ghost);
@@ -307,7 +307,7 @@ void initial_guess(rb_context *ctx, double *u)
 // Axis.
 #pragma omp parallel shared(u) private(i, j)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (j = ctx->ghost; j < ctx->NzTotal; ++j)
         {
             for (i = 0; i < ctx->ghost; ++i)
@@ -324,7 +324,7 @@ void initial_guess(rb_context *ctx, double *u)
 // Equator.
 #pragma omp parallel shared(u) private(i, j)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (i = ctx->ghost; i < ctx->NrTotal; ++i)
         {
             for (j = 0; j < ctx->ghost; ++j)

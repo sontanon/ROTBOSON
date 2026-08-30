@@ -130,7 +130,7 @@ void csr_grid_fill_4th(
 // Fill left-boundary using axis symmetry.
 #pragma omp parallel shared(A) private(offset)
         {
-#pragma omp for schedule(dynamic, 1) private(k, j)
+#pragma omp for schedule(static) private(k, j)
             for (j = ghost; j < NzTotal; ++j)
             {
                 // Each j iteration fills 2 elements.
@@ -157,7 +157,7 @@ void csr_grid_fill_4th(
 // with Robin, semi-onesided stencil and equatorial symmetry.
 #pragma omp parallel shared(A) private(offset, i, j, k)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (i = ghost; i < NrInterior + ghost; ++i)
         {
             // Each iteration of i loop will fill p_cc * NzInterior + 4 + p_cs + p_bound values.
@@ -280,7 +280,7 @@ void csr_grid_fill_4th(
 // Main sc stencil.
 #pragma omp parallel shared(A), private(j, k, offset)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (j = ghost; j < ghost + NzInterior; ++j)
         {
             // Each iteration of the j loop fills p_sc elements.
@@ -388,7 +388,7 @@ void csr_grid_fill_4th(
 // Boundary.
 #pragma omp parallel shared(A), private(j, k, offset)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (j = ghost; j < ghost + NzInterior; ++j)
         {
             // Each iteration of the j loop fills p_bound elements.
@@ -528,7 +528,7 @@ void csr_grid_fill_2nd(
 // Fill left-boundary using axis symmetry.
 #pragma omp parallel shared(A) private(offset)
     {
-#pragma omp for schedule(dynamic, 1) private(k, j)
+#pragma omp for schedule(static) private(k, j)
         for (j = ghost; j < NzTotal; ++j)
         {
             // Each j iteration fills 2 elements.
@@ -554,7 +554,7 @@ void csr_grid_fill_2nd(
 // Robin and equatorial symmetry, respectively.
 #pragma omp parallel shared(A) private(offset, i, j, k)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (i = ghost; i < NrInterior + ghost; ++i)
         {
             // Each iteration of i loop will fill p_center * NzInterior + (2 + p_bound) values.
@@ -633,7 +633,7 @@ void csr_grid_fill_2nd(
 // Robin Boundary.
 #pragma omp parallel shared(A), private(j, k, offset)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (j = ghost; j < NzInterior + 1; ++j)
         {
             // Each iteration of the loop fills p_bound elements.

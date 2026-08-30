@@ -28,7 +28,7 @@ double simps(double *y, const double dx, const MKL_INT dim)
     {
         // Main loop.
 #ifdef PARALLEL
-#pragma omp parallel for schedule(dynamic, 1) private(k, dx_o_3) reduction(+ : i)
+#pragma omp parallel for schedule(static) private(k, dx_o_3) reduction(+ : i)
 #endif
         for (k = 1; k < n / 2; ++k)
             i += dx_o_3 * 2.0 * (2.0 * y[2 * k - 1] + y[2 * k]);

@@ -63,7 +63,7 @@ void solver_diff_gen(rb_context *ctx)
     if (ctx->order == 4)
     {
 // Interior points.
-#pragma omp parallel for schedule(dynamic, 1) shared(diff) private(i, j, k, offset)
+#pragma omp parallel for schedule(static) shared(diff) private(i, j, k, offset)
         for (i = ctx->ghost; i < ctx->ghost + ctx->NrInterior; ++i)
         {
             // 1. log_alpha: 30 different points.
@@ -629,7 +629,7 @@ void solver_diff_gen(rb_context *ctx)
 
         // Now next-to-last rho strip.
         i = ctx->ghost + ctx->NrInterior;
-#pragma omp parallel for schedule(dynamic, 1) shared(diff) private(j, k, offset)
+#pragma omp parallel for schedule(static) shared(diff) private(j, k, offset)
         for (j = ctx->ghost; j < ctx->ghost + ctx->NzInterior; ++j)
         {
             // 1. log_alpha: 30 points.
@@ -1203,7 +1203,7 @@ void solver_diff_gen(rb_context *ctx)
 
         // Last boundary points.
         i = ctx->NrTotal - 1;
-#pragma omp parallel for schedule(dynamic, 1) shared(diff) private(j, offset)
+#pragma omp parallel for schedule(static) shared(diff) private(j, offset)
         for (j = ctx->ghost; j < ctx->NzTotal; ++j)
         {
             // 5. psi: 2 points.
@@ -1225,7 +1225,7 @@ void solver_diff_gen(rb_context *ctx)
     else
     {
 // Interior points.
-#pragma omp parallel for schedule(dynamic, 1) shared(diff) private(i, j, offset)
+#pragma omp parallel for schedule(static) shared(diff) private(i, j, offset)
         for (i = ctx->ghost; i < ctx->NrInterior + ctx->ghost; i++)
         {
             // log_alpha: 18 different points.
@@ -1490,7 +1490,7 @@ void solver_diff_gen(rb_context *ctx)
         }
 
 // Lambda interior points.
-#pragma omp parallel for schedule(dynamic, 1) shared(diff) private(i, j, offset)
+#pragma omp parallel for schedule(static) shared(diff) private(i, j, offset)
         for (i = ctx->ghost; i < ctx->NrInterior + ctx->ghost; i++)
         {
             // lambda: 22 different points.
