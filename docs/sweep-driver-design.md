@@ -134,8 +134,9 @@ maxNewtonIter    = 50
 hwl_min          = 8
 hwl_max          = 40
 support_fraction = 0.85            # r99 / r_bdy above this → widen domain
-psi0_step        = 1.0e-2          # Δψ₀ (absolute) or ratio (relative mode)
-psi0_step_mode   = "absolute"      # "relative": ψ₀·(1±psi0_step), golden-ladder-like
+psi0_step        = 3.0e-2          # per-step ratio ψ₀·(1±psi0_step) (default mode)
+psi0_step_mode   = "relative"      # golden-ladder-like, scale-free across decades;
+                                   # "absolute" = fixed Δψ₀
 max_retries      = 3               # shrink-and-retry attempts on Newton failure
 
 [output]

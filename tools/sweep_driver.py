@@ -111,7 +111,7 @@ KNOWN = {
 DEFAULTS = {
     "campaign": {
         "m": 1.0,
-        "psi0_step_mode": "absolute",
+        "psi0_step_mode": "relative",
         "max_retries": 3,
         "max_steps": 50,
         "fixedPhiR": 2,
@@ -666,7 +666,7 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
     def next_target(base_psi0: float, factor: float = 1.0) -> float:
         """ψ₀ target for the next step, shrunk by `factor` after a retry.
 
-        absolute mode: fixed Δψ₀ per design §3.1. relative mode: fixed-ratio
+        relative mode (default): fixed-ratio
         steps (target = ψ₀·(1 ± psi0_step) — the golden ladder's
         scale_u4 = 1.125 semantics), which stay scale-free as ψ₀ spans orders
         of magnitude and never overshoot the way a fixed absolute Δψ₀ does

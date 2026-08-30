@@ -145,9 +145,9 @@ l = 1
 direction = "up"          # amplitude growing (ω → ω_min) or "down" (ψ₀ → 0)
 psi0_target = 0.008       # stop when ψ₀ crosses this
 omega_target = 0.85       # optional ω stop
-psi0_step = 0.0005        # step size: absolute Δψ₀ (default mode)...
-psi0_step_mode = "relative"  # ...or a per-step ratio, ψ₀ → ψ₀·(1 ± psi0_step),
-                             # which stays scale-free when ψ₀ spans decades
+psi0_step = 0.03          # per-step ratio, ψ₀ → ψ₀·(1 ± psi0_step) — the
+                          # default mode (golden-ladder-like, scale-free);
+                          # psi0_step_mode = "absolute" switches to fixed Δψ₀
 max_retries = 3           # on Newton failure the step shrinks ×½ and retries
 max_steps = 20
 
