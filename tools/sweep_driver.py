@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import time
@@ -193,8 +194,12 @@ def load_spec(path: Path) -> dict:
     if out["format"] not in ("hdf5", "ascii"):
         raise SpecError('[output] format must be "hdf5" or "ascii"')
 
-    # Spec hash: content hash of the file (a changed spec invalidates resume).
-    spec["_spec_hash"] = hashlib.sha256(raw_bytes).hexdigest()
+    # Spec hash: content hash with runtime control keys (max_steps,
+    # max_retries) excluded — raising a limit must not invalidate the physics
+    # state of a running campaign; any physics-affecting change does.
+    control = re.compile(r"^\s*(max_steps|max_retries)\s*=.*$", re.MULTILINE)
+    canon = control.sub("", raw_bytes.decode()).encode()
+    spec["_spec_hash"] = hashlib.sha256(canon).hexdigest()
     return spec
 
 
@@ -585,6 +590,11 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         state = load_state(spec)
         if state is None:
             state = fresh_state(spec)
+        else:
+            # A resumed campaign is running again: clear any status left over
+            # from the run that wrote this state (e.g. its own done/failed).
+            state["status"] = "running"
+            state["stop_reason"] = None
     state["spec_file"] = None
 
     step_no = len(state["steps"])
