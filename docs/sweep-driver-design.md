@@ -109,8 +109,10 @@ already has (numpy, h5py).
 l                = 1
 target           = "psi0"          # what we step in: "psi0" (primary) | "omega" (fallback)
 psi0_start       = 1.0e-2          # ψ₀ of the seed solution
-psi0_target      = 2.0             # stop when ψ₀ ≥ this (turning point may stop earlier)
-direction        = "up"            # "up" | "down" (ψ₀ decreasing)
+psi0_target      = 2.0             # "up": stop when ψ₀ ≥ this; "down": stop when ψ₀ ≤ this
+omega_target     = 0.90            # optional, either direction: stop when ω crosses this
+                                   # ("up": ω ≤ omega_target near the minimum; "down": ω ≥ it)
+direction        = "up"            # "up" (amplitude grows, ω → ω_min) | "down" (amplitude → 0, ω → m)
 max_steps        = 200
 
 [seed]
@@ -119,6 +121,7 @@ source           = "out/<seed solution dir>"
 
 [grid]
 dr               = 8.0e-2          # initial grid; N fixed by grid.N
+dr_max           = 3.2e-1          # regrid cap: domain growth budget (dr ×2 never beyond this)
 N                = 400
 order            = 4
 
@@ -228,7 +231,7 @@ Diagnostics read from each solution (all already computed by C's analysis):
 | 2 | Newton iterations high, or `lambda_min` collapsed (< 1e-3)    | Shrink Δψ₀ (×0.5); retry the step from the last good solution          |
 | 3 | Newton failed (exit 1)                                        | Retry with Δψ₀ ×0.25; two consecutive failures → stop, flag for human  |
 | 4 | Solver error (exit 2)                                         | Retry once; if persistent → stop (backend/environment problem)          |
-| 5 | `r99 / r_bdy > support_fraction` (support → boundary)         | **Regrid**: dr ×2 (coarser, larger domain), re-solve same ψ₀ (§4)       |
+| 5 | `r99 / r_bdy > support_fraction` (support → boundary)         | **Regrid**: dr ×2 (coarser, larger domain), re-solve same ψ₀ (§4) — only while `dr < dr_max`; otherwise **stop** (`stopped:domain_budget`) |
 | 6 | `hwl < hwl_min` (under-resolved spike)                        | **Regrid**: dr ÷2 (finer, smaller domain), re-solve same ψ₀ (§4)        |
 | 7 | `hwl > hwl_max` (over-resolved, wasteful)                     | Optional: dr ×2 to save time (never blocks the campaign)               |
 | 8 | `rr_phi_max` below floor (max spike hugging the axis, l ≥ 2)  | Same as 6 — this is the paper's high-amplitude limit case; also raise the resolution floor requirement |
@@ -241,7 +244,25 @@ and familiar.
 
 ---
 
-## 6. Turning point (minimum ω) handling
+### 6.1 Exit conditions (both directions) (both directions)
+
+A campaign stops when any of these fires; the reason is recorded in `state.json`:
+
+| condition | `up` direction | `down` direction |
+|---|---|---|
+| ψ₀ target reached | ψ₀ ≥ `psi0_target` | ψ₀ ≤ `psi0_target` (floor, e.g. the paper's 1e-8) |
+| ω target crossed | ω ≤ `omega_target` (past the minimum) | ω ≥ `omega_target` (Newtonian asymptote; catalogue used ω = 0.9) |
+| domain budget exhausted | n/a (domain shrinks) | `dr` reached `dr_max` and support still hits the boundary → `stopped:domain_budget` |
+| step budget | `max_steps` | `max_steps` |
+| turning point | §6 detection | n/a (ω monotone rising toward m) |
+| failure stall | rules 3/4 | rules 3/4 |
+
+The domain-budget stop is the honest answer to "regrids can grow forever": with N fixed,
+growing dr costs no memory but destroys the truncation-error budget and eventually solves
+a physically trivial weak-field configuration. `dr_max` defaults to 4× the seed dr (two
+regrids); going beyond it requires an explicit spec override.
+
+## 6. Turning point (minimum ω) handling & exit conditions
 
 - **Detection:** track `dω/dψ₀` across the last 3 steps (central differences). When it
   approaches 0 and changes sign, mark `ω_min ≈ min(ω)` between the bracketing steps.
@@ -277,10 +298,13 @@ original within the truncation-error proxy (paper §IX: "changes in resolution h
 done seamlessly"); (c) interpolation round-trip error measured directly
 (`hdf5_roundtrip.py` machinery).
 
-### 7.4 Turning point
-Run a down-direction l=1 campaign toward the known minimum-ω region; check that the
+### 7.4 Turning point + low-amplitude tail
+Run an up-direction l=1 campaign toward the known minimum-ω region; check that the
 driver detects, samples, and reports ω_min consistent with the published turning-point
-values (Table IX.1 / Catalogue2).
+values (Table IX.1 / Catalogue2). Then run a down-direction l=1 campaign from a
+mid-branch seed (ω ≈ 0.87): verify it regrows the domain (dr ×2 at most, per `dr_max`),
+stops cleanly at `omega_target` (0.9), and that every solution along the tail passes
+`check_against_summary.py` at the §4c tolerances.
 
 Gate: none of SAN-10/SAN-17/SAN-14 is "done" until its slice of §7.1–7.4 passes on both
 backends (release/MKL and umfpack).
