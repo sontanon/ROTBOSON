@@ -244,7 +244,9 @@ and familiar.
 
 ---
 
-### 6.1 Exit conditions (both directions) (both directions)
+## 6. Exit conditions & turning-point handling
+
+### 6.1 Exit conditions (both directions)
 
 A campaign stops when any of these fires; the reason is recorded in `state.json`:
 
@@ -262,7 +264,7 @@ growing dr costs no memory but destroys the truncation-error budget and eventual
 a physically trivial weak-field configuration. `dr_max` defaults to 4× the seed dr (two
 regrids); going beyond it requires an explicit spec override.
 
-## 6. Turning point (minimum ω) handling & exit conditions
+### 6.2 Turning point (minimum ω) handling
 
 - **Detection:** track `dω/dψ₀` across the last 3 steps (central differences). When it
   approaches 0 and changes sign, mark `ω_min ≈ min(ω)` between the bracketing steps.
