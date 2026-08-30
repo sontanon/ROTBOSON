@@ -44,6 +44,8 @@ def diag(**overrides) -> dict:
         "rr_phi_max_min": 0.5,
         "newton_fast_iters": 8,
         "lambda_min_floor": 1.0e-3,
+        "direction": "down",  # rule 5's conservative branch
+        "support_window": None,
     }
     base.update(overrides)
     return base
@@ -101,25 +103,36 @@ class TestGridRules:
         d2 = diag(hwl=41, dr=1.0, dr_max=1.0)
         assert decide_action(d2) == "grow"
 
-    def test_support_rising_regrids_coarser(self):
-        # trend-aware rule 5: field spreading (support fraction rising)
-        d = diag(r99=15.6, r_bdy=17.0, support_prev=0.80)
+    def test_down_support_rising_regrids_coarser(self):
+        # down direction: the conservative single-step trend check applies
+        d = diag(r99=15.6, r_bdy=17.0, direction="down", support_window=[0.80])
         assert decide_action(d) == "regrid_coarser"
         # unknown trend (first step) keeps the conservative behaviour
-        assert decide_action(diag(r99=15.6, r_bdy=17.0)) == "regrid_coarser"
+        assert decide_action(diag(r99=15.6, r_bdy=17.0, direction="down")) == "regrid_coarser"
 
-    def test_support_shrinking_self_resolves(self):
-        # support above the threshold but FALLING: the up-sweep from a weak
-        # extended seed localizes on its own — no widening regrid, no budget
-        # stop (SAN-20 sweep finding)
-        d = diag(r99=15.6, r_bdy=17.0, support_prev=0.92)
+    def test_up_stagnant_support_does_not_fire(self):
+        # SAN-20 sweep finding: the weak seed's tail grazes the boundary with
+        # a support fraction stuck at ~0.949, wobbling in the 4th decimal.
+        # A single-step trend check fired on every uptick and burned the
+        # campaign on futile widening regrids; the up direction now needs the
+        # fraction to rise across the WHOLE 3-step window.
+        d = diag(r99=15.6, r_bdy=17.0, direction="up", support_window=[0.9489, 0.9490, 0.9491])
         assert decide_action(d) == "grow"
 
+    def test_up_persistently_rising_still_fires(self):
+        d = diag(r99=15.6, r_bdy=17.0, direction="up", support_window=[0.70, 0.75, 0.80])
+        assert decide_action(d) == "regrid_coarser"
+
+    def test_up_unknown_window_does_not_fire(self):
+        # no same-grid history yet (first steps): the up direction does not
+        # treat boundary-grazing as an emergency
+        assert decide_action(diag(r99=15.6, r_bdy=17.0, direction="up")) == "grow"
+
     def test_domain_budget_still_stops_when_spreading_at_cap(self):
-        d = diag(r99=15.6, r_bdy=17.0, support_prev=0.80, dr=1.0, dr_max=1.0)
+        d = diag(r99=15.6, r_bdy=17.0, direction="down", support_window=[0.80], dr=1.0, dr_max=1.0)
         assert decide_action(d) == "stop:domain_budget"
         # ...but a shrinking field at the cap does not stop
-        d2 = diag(r99=15.6, r_bdy=17.0, support_prev=0.92, dr=1.0, dr_max=1.0)
+        d2 = diag(r99=15.6, r_bdy=17.0, direction="down", support_window=[0.92], dr=1.0, dr_max=1.0)
         assert decide_action(d2) == "grow"
 
     def test_finer_wins_over_coarser_when_both_fire(self):

@@ -1004,16 +1004,25 @@ def decide_action(diag: dict) -> str:
 
     r99, r_bdy = diag.get("r99"), diag.get("r_bdy")
     if r99 is not None and r_bdy and r99 / r_bdy > diag["support_fraction"]:
-        # Rule 5: support → boundary. Fire only when the field is *spreading*
-        # (support fraction rising): an up-sweep from a weak extended seed
-        # starts beyond the threshold but localizes within a few steps, and
-        # widening regrids there are transient baggage —SAN-20 sweep finding.
-        prev = diag.get("support_prev")
-        if prev is None or r99 / r_bdy >= prev:
+        # Rule 5: support → boundary. Direction-qualified (SAN-20 sweep
+        # finding): on the up direction a weak seed *starts* with its tail
+        # grazing the boundary and localizes only slowly — a single-step
+        # trend check fires on numerical noise and burns the campaign on
+        # futile widening regrids. Up therefore requires the support
+        # fraction to be persistently rising across the whole recent window;
+        # down (the genuinely dangerous spreading toward ω → m) keeps the
+        # conservative single-step check.
+        window = diag.get("support_window") or []
+        if diag["direction"] == "up":
+            spreading = bool(window) and all(r99 / r_bdy >= w for w in window)
+        else:
+            prev = window[-1] if window else None
+            spreading = prev is None or r99 / r_bdy >= prev
+        if spreading:
             if diag["dr"] < diag["dr_max"]:
                 return "regrid_coarser"
             return "stop:domain_budget"
-        # support shrinking: the situation is self-resolving — fall through.
+        # self-resolving — fall through.
 
     if hwl is not None and hwl > diag["hwl_max"] and diag["dr"] < diag["dr_max"]:
         return "regrid_coarser_optional"  # rule 7: over-resolved, save time
@@ -1311,26 +1320,25 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         a = spec["adaptivity"]
         g = current_grid(state, spec)
         dr, n = float(g["dr"]), int(g["N"])
-        # Support-fraction trend (rule 5 fires only when the field spreads):
-        # previous completed step's fraction, when it lived on the same grid.
-        support_prev = None
+        # Support-fraction history (rule 5 is direction/trend qualified): the
+        # last few completed steps' fractions, when they lived on this grid.
         prior = [
             s
             for s in state["steps"][:-1]
-            if s.get("r99") is not None and s.get("exit_code", 1) == 0
+            if s.get("r99") is not None and s.get("exit_code", 1) == 0 and s.get("dr") == dr
         ]
-        if prior and prior[-1].get("dr") == dr:
-            pb = (int(prior[-1]["N"]) + 2 * ghost_of(spec["grid"]["order"])) * float(
-                prior[-1]["dr"]
-            )
-            support_prev = prior[-1]["r99"] / pb
+        support_window = []
+        for s in prior[-3:]:
+            pb = (int(s["N"]) + 2 * ghost_of(spec["grid"]["order"])) * float(s["dr"])
+            support_window.append(s["r99"] / pb)
         diag = {
             "newton_iters": last.get("newton_iters"),
             "lambda_min": last.get("lambda_min"),
             "hwl": last.get("hwl"),
             "rr_phi_max": last.get("rr_phi_max"),
             "r99": last.get("r99"),
-            "support_prev": support_prev,
+            "support_window": support_window,
+            "direction": c["direction"],
             "r_bdy": (n + 2 * ghost_of(spec["grid"]["order"])) * dr,
             "dr": dr,
             "dr_max": spec["grid"]["dr_max"],
