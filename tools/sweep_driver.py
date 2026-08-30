@@ -1368,6 +1368,15 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             )
             return 0
 
+        # Rule 7 (optional coarsening) backs off after a rejected attempt:
+        # with the grid unchanged, the same dr x2 keeps failing the same
+        # truncation proxy, so re-probing every step merely doubles the cost
+        # (SAN-20 sweep finding).
+        if action == "regrid_coarser_optional":
+            if state.get("optional_cooldown", 0) > 0:
+                state["optional_cooldown"] -= 1
+                action = "ok"
+
         if action.startswith("regrid"):
             required = action != "regrid_coarser_optional"
             if action == "regrid_finer":
@@ -1388,9 +1397,11 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                     current_grid(state, spec)["dr"] = try_dr
                     state["step_factor"] = 1.0  # fresh grid: restart step sizing
                     state["regrid_failures"] = 0
+                    state["optional_cooldown"] = 0
                     save_state(spec, state)
                     break
                 if not required:
+                    state["optional_cooldown"] = 10  # back off before re-probing
                     break  # rule 7 is optional: never blocks the campaign
                 step_no += 1  # failed attempt consumed its slot; try the next dr
             if accepted:
