@@ -134,7 +134,9 @@ maxNewtonIter    = 50
 hwl_min          = 8
 hwl_max          = 40
 support_fraction = 0.85            # r99 / r_bdy above this → widen domain
-psi0_step        = 1.0e-2          # initial Δψ₀
+psi0_step        = 1.0e-2          # Δψ₀ (absolute) or ratio (relative mode)
+psi0_step_mode   = "absolute"      # "relative": ψ₀·(1±psi0_step), golden-ladder-like
+max_retries      = 3               # shrink-and-retry attempts on Newton failure
 
 [output]
 root             = "out/campaigns/<name>/"   # solution dirs + state.json
@@ -167,27 +169,28 @@ and validates `spec_hash` (a changed spec aborts resume with a clear error).
 
 ```
 for step in campaign:
-    psi0_next = state.last_psi0 + step_size(state)          # §5
+    psi0_next = next_target(state)                          # §5; shrunk on retry
     seed      = initial_guess(state, psi0_next)             # §4
     par       = render_params(spec, state, psi0_next, seed) # TOML → out/campaigns/.../step.toml
     run C binary (subprocess, timeout); map exit code
-    if exit_code != 0: apply decision table (§5); may retry smaller ψ₀ step / regrid / stop
+    if exit_code == 1: shrink the step (÷2) and retry, up to max_retries (core
+                       implements this subset of the §5 table; regrid/actions
+                       beyond shrinking are SAN-14)
+    if exit_code in {2,3,4}: stop (not retryable by stepping)
     read HDF5 → diagnostics → append to state.json
     if turning-point test (§6) fires: record & stop (or continue per spec)
 ```
 
 ### 3.4 Initial guess for the next step
 
-Primary: **linear extrapolation in ψ₀** across the last two converged solutions,
-`u_guess = u_k + (u_k − u_{k−1}) · Δψ₀_k/Δψ₀_{k−1}` (discrete analogue of the old
-`scale_next` prediction, but done in Python on the field data, and never *fixed* to the
-prediction — it is only the seed). Implementation: read the two HDF5 solutions with
-`rotboson_io`, blend, write ASCII seed fields, point `*_i` params at them
-(`readInitialData = 1`).
-
-First step from a single seed uses `scale_u4`-style amplitude scaling of the seed toward
-the target ψ₀ (the archived ladder template's trick), or no extrapolation at all for a
-small first Δψ₀.
+Base (implemented in the SAN-17 core): **previous solution + exact ψ rescale** —
+`scale_u4 = ψ₀_target / ψ_prev(fixedPhi point)`, the archived ladder template's trick.
+Linear extrapolation in ψ₀ across the last two solutions
+(`u_guess = u_k + (u_k − u_{k−1}) · Δψ₀_k/Δψ₀_{k−1}`, design §3.4) activates only once
+**both** predecessors are fixedPhi continuation steps: extrapolating across the fixedOmega
+seed solve was verified A/B to produce guesses Newton cannot recover from (λ → λ_min
+stagnation), while the rescale-only guess converges in 2–5 iterations on the test branch.
+Both guesses are only seeds; the fixedPhi constraint lands ψ₀ exactly on target.
 
 ---
 
