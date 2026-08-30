@@ -101,6 +101,27 @@ class TestGridRules:
         d2 = diag(hwl=41, dr=1.0, dr_max=1.0)
         assert decide_action(d2) == "grow"
 
+    def test_support_rising_regrids_coarser(self):
+        # trend-aware rule 5: field spreading (support fraction rising)
+        d = diag(r99=15.6, r_bdy=17.0, support_prev=0.80)
+        assert decide_action(d) == "regrid_coarser"
+        # unknown trend (first step) keeps the conservative behaviour
+        assert decide_action(diag(r99=15.6, r_bdy=17.0)) == "regrid_coarser"
+
+    def test_support_shrinking_self_resolves(self):
+        # support above the threshold but FALLING: the up-sweep from a weak
+        # extended seed localizes on its own — no widening regrid, no budget
+        # stop (SAN-20 sweep finding)
+        d = diag(r99=15.6, r_bdy=17.0, support_prev=0.92)
+        assert decide_action(d) == "grow"
+
+    def test_domain_budget_still_stops_when_spreading_at_cap(self):
+        d = diag(r99=15.6, r_bdy=17.0, support_prev=0.80, dr=1.0, dr_max=1.0)
+        assert decide_action(d) == "stop:domain_budget"
+        # ...but a shrinking field at the cap does not stop
+        d2 = diag(r99=15.6, r_bdy=17.0, support_prev=0.92, dr=1.0, dr_max=1.0)
+        assert decide_action(d2) == "grow"
+
     def test_finer_wins_over_coarser_when_both_fire(self):
         # contradictory needs: under-resolution takes precedence (docstring)
         d = diag(hwl=7, r99=15.6, r_bdy=17.0)

@@ -1004,10 +1004,16 @@ def decide_action(diag: dict) -> str:
 
     r99, r_bdy = diag.get("r99"), diag.get("r_bdy")
     if r99 is not None and r_bdy and r99 / r_bdy > diag["support_fraction"]:
-        # rule 5: support → boundary; widen the domain while the budget lasts
-        if diag["dr"] < diag["dr_max"]:
-            return "regrid_coarser"
-        return "stop:domain_budget"
+        # Rule 5: support → boundary. Fire only when the field is *spreading*
+        # (support fraction rising): an up-sweep from a weak extended seed
+        # starts beyond the threshold but localizes within a few steps, and
+        # widening regrids there are transient baggage —SAN-20 sweep finding.
+        prev = diag.get("support_prev")
+        if prev is None or r99 / r_bdy >= prev:
+            if diag["dr"] < diag["dr_max"]:
+                return "regrid_coarser"
+            return "stop:domain_budget"
+        # support shrinking: the situation is self-resolving — fall through.
 
     if hwl is not None and hwl > diag["hwl_max"] and diag["dr"] < diag["dr_max"]:
         return "regrid_coarser_optional"  # rule 7: over-resolved, save time
@@ -1305,12 +1311,26 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         a = spec["adaptivity"]
         g = current_grid(state, spec)
         dr, n = float(g["dr"]), int(g["N"])
+        # Support-fraction trend (rule 5 fires only when the field spreads):
+        # previous completed step's fraction, when it lived on the same grid.
+        support_prev = None
+        prior = [
+            s
+            for s in state["steps"][:-1]
+            if s.get("r99") is not None and s.get("exit_code", 1) == 0
+        ]
+        if prior and prior[-1].get("dr") == dr:
+            pb = (int(prior[-1]["N"]) + 2 * ghost_of(spec["grid"]["order"])) * float(
+                prior[-1]["dr"]
+            )
+            support_prev = prior[-1]["r99"] / pb
         diag = {
             "newton_iters": last.get("newton_iters"),
             "lambda_min": last.get("lambda_min"),
             "hwl": last.get("hwl"),
             "rr_phi_max": last.get("rr_phi_max"),
             "r99": last.get("r99"),
+            "support_prev": support_prev,
             "r_bdy": (n + 2 * ghost_of(spec["grid"]["order"])) * dr,
             "dr": dr,
             "dr_max": spec["grid"]["dr_max"],
