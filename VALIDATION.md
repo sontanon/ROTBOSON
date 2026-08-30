@@ -122,3 +122,31 @@ backends) and a level-gated logger. Two acceptance checks:
 Also: `tests/test_output.c` (CTest) pins the ASCII writer's byte output and
 path-awareness; all three presets (release, umfpack, asan-ubsan) build and
 pass CTest.
+
+## SAN-10 — single-solution strip (2026-08-30)
+
+Removed `sweep_advance()` and the in-C sweep/ladder machinery (keys `sweep`,
+`scale_next`, `w_step`, `w_min`/`w_max`, `rr_phi_max_minimum/maximum`,
+`hwl_min/max`); strict exit codes introduced (`src/exit_codes.h`, pinned by the
+new `exit_codes` CTest); HDF5 provenance extended with a `created` (UTC)
+attribute. Validation on this machine (both backends, `release` and `umfpack`
+presets):
+
+- **Behaviour unchanged:** the l=1 w=0.95 N=256 from-scratch solve with the
+  stripped binary matches the pre-strip binary's output on every field and
+  observable (`tools/compare_solutions.py`, rtol=1e-10 / atol=1e-12; worst
+  diffs ~1e-12, i.e. the solver's run-to-run OpenMP reduction noise). Note the
+  output is *not* byte-identical between ANY two runs of the same binary
+  (pre-existing; see below), so the §4c tolerance gate — not byte comparison —
+  is the correct gate.
+- **CTest:** 4/4 pass on both presets, including the new `exit_codes` test
+  (config errors → 3, valid coarse solve → 0).
+- **HDF5:** `outputFormat="hdf5"` run exits 0; `solution.h5` carries
+  `git_hash`, `parfile`, `output_backend`, `created`; scalars agree with the
+  ASCII solve to ~1.6e-13.
+
+Known pre-existing issue (filed separately from SAN-10): rare run-to-run
+nondeterminism in this environment — occasionally a coordinate/field row shows
+a value from a neighbouring row (OpenMP grid-fill race), and one intermittent
+segfault was observed with the UMFPACK binary under load. Both reproduce on
+pre-strip master; tracked in a dedicated issue.

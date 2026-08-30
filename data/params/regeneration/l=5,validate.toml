@@ -38,9 +38,6 @@ lambda_i = "../data/golden/l=5,w=8.00759E-01,dr=1.60000E-01,N=0200/lambda_f.asc"
 # SCALE INITIAL DATA.
 scale_u4 = 1.00000
 
-# NEXT ADVANCEMENT.
-scale_next = 1.0000
-
 # FIXED VARIABLE.
 fixedPhi = 0
 fixedPhiR = 0
@@ -60,6 +57,4 @@ useLowRank = 0
 max_initial_guess_checks = 0
 norm_f0_target = 5.0E-05
 
-# SWEEP CONTROL
-rr_phi_max_minimum = 32.0000
 # Regeneration copy: golden template with local seed paths (Phase 0 validation).

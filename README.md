@@ -60,9 +60,28 @@ with `uv run tools/par_to_toml.py`.
 Two extra keys control output:
 - `outputFormat = "ascii"` (default) writes the legacy one-file-per-field
   `.asc` layout; `outputFormat = "hdf5"` writes a single self-describing
-  `solution.h5` per solution.
+  `solution.h5` per solution (root attributes include the build git hash,
+  parameter file, backend and creation timestamp).
 - `loglevel = "error" | "warn" | "info" (default) | "debug"` sets the
   verbosity of the progress/banner output.
+
+### Single-solution contract & exit codes
+
+The binary does one thing: **one invocation = one Newton solve = one solution
+directory.** Sweep/continuation orchestration lives in the Python driver (see
+`docs/sweep-driver-design.md`; the old in-C `sweep_advance`/ladder machinery
+was removed in SAN-10). The process exit code is part of the public contract
+(`src/exit_codes.h`):
+
+| code | meaning                                          |
+|------|--------------------------------------------------|
+| 0    | converged (`error_code = 0`), solution written    |
+| 1    | Newton did not converge within `maxNewtonIter`    |
+| 2    | linear-solver error (PARDISO/UMFPACK failure)     |
+| 3    | configuration/parse error (bad TOML, bad paths)   |
+| 4    | I/O error (output directory/file failure)         |
+
+Pinned by the `exit_codes` CTest.
 
 ### HDF5 (optional, for `outputFormat = "hdf5"`)
 

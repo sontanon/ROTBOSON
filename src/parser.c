@@ -1,5 +1,6 @@
 #include "tools.h"
 #include "context.h"
+#include "exit_codes.h"
 #include "log.h"
 #include "toml.h"
 
@@ -50,7 +51,7 @@ static void die(const char *fmt, ...)
     va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
     va_end(ap);
-    exit(EXIT_FAILURE);
+    exit(RB_EXIT_CONFIG); // Configuration/parse errors are exit code 3.
 }
 
 static void warn(const char *fmt, ...)
@@ -74,7 +75,7 @@ static const char *const KNOWN_KEYS[] = {
     // Initial data (file paths + grid).
     "readInitialData", "log_alpha_i", "beta_i", "log_h_i", "log_a_i", "psi_i", "lambda_i", "w_i",
     "NrTotalInitial", "NzTotalInitial", "order_i", "ghost_i", "dr_i", "dz_i",
-    // Scale initial data.
+    // Scale initial data (seed shaping; the sweep driver decides when/how much).
     "scale_u0", "scale_u1", "scale_u2", "scale_u3", "scale_u4", "scale_u5", "scale_u6",
     // Analytic initial guess.
     "psi0", "sigmaR", "sigmaZ", "rExt",
@@ -84,11 +85,6 @@ static const char *const KNOWN_KEYS[] = {
     "solverType", "localSolver", "epsilon", "maxNewtonIter", "lambda0", "lambdaMin", "useLowRank",
     // Initial guess check.
     "max_initial_guess_checks", "norm_f0_target",
-    // Sweep control.
-    "rr_phi_max_minimum", "rr_phi_max_maximum", "sweep", "hwl_min", "hwl_max", "w_max", "w_min",
-    "w_step",
-    // Next-scale advancement.
-    "scale_next",
     // Output.
     "outputFormat", "loglevel", NULL};
 
@@ -482,39 +478,6 @@ void parser(rb_context *ctx, const char *fname)
     else
         warn("missing \"norm_f0_target\". Using default, norm_f0_target = %3.5E.\n",
              ctx->norm_f0_target);
-
-    // -- SWEEP CONTROL -----------------------------------------------------
-    if (lookup_double(tab, "rr_phi_max_minimum", &ctx->rr_phi_max_minimum))
-    {
-        if (ctx->rr_phi_max_minimum < 4 * ctx->dr ||
-            ctx->rr_phi_max_minimum > ctx->dr * ctx->NrInterior)
-            die("rr_phi_max_minimum = %3.5E is out of bounds [4*dr, dr*NrInterior].\n",
-                ctx->rr_phi_max_minimum);
-    }
-    else
-        warn("missing \"rr_phi_max_minimum\". Using default, rr_phi_max_minimum = %3.5E.\n",
-             ctx->rr_phi_max_minimum);
-
-    if (lookup_double(tab, "rr_phi_max_maximum", &ctx->rr_phi_max_maximum))
-    {
-        if (ctx->rr_phi_max_maximum < ctx->rr_phi_max_minimum ||
-            ctx->rr_phi_max_maximum > ctx->dr * ctx->NrTotal)
-            die("rr_phi_max_maximum = %3.5E is out of bounds [rr_phi_max_minimum, dr*NrTotal].\n",
-                ctx->rr_phi_max_maximum);
-    }
-    else
-        warn("missing \"rr_phi_max_maximum\". Using default, rr_phi_max_maximum = %3.5E.\n",
-             ctx->rr_phi_max_maximum);
-
-    lookup_int(tab, "sweep", &ctx->sweep);
-    lookup_int(tab, "hwl_min", &ctx->hwl_min);
-    lookup_int(tab, "hwl_max", &ctx->hwl_max);
-    lookup_double(tab, "w_max", &ctx->w_max);
-    lookup_double(tab, "w_min", &ctx->w_min);
-    lookup_double(tab, "w_step", &ctx->w_step);
-
-    // -- NEXT SCALE ADVANCEMENT -------------------------------------------
-    lookup_double(tab, "scale_next", &ctx->scale_next);
 
     // -- OUTPUT ------------------------------------------------------------
     // Backend selection: "ascii" (default) or "hdf5".

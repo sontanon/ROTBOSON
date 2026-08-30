@@ -6,7 +6,7 @@
 // the numeric kernels are no longer implicitly coupled to global state.
 //
 // Design notes:
-//   - "Params" (grid, field, solver, sweep) are set once by the parser and
+//   - "Params" (grid, field, solver) are set once by the parser and
 //     read-only afterwards.
 //   - "State" (derivative buffers, spherical interpolation arrays, analysis
 //     outputs, seed, output directory names) is mutated across the solve.
@@ -77,9 +77,6 @@ typedef struct rb_context
     double scale_u6;
     double *u_seed;
 
-    // -- NEXT SCALE ADVANCE -------------------------------------------------
-    double scale_next;
-
     // -- SOLVER PARAMETERS --------------------------------------------------
     MKL_INT solverType;
     MKL_INT localSolver;
@@ -119,16 +116,6 @@ typedef struct rb_context
     MKL_INT log_level;
     char initial_dirname[MAX_STR_LEN];
     char final_dirname[MAX_STR_LEN];
-
-    // -- SWEEP CONTROL -------------------------------------------------------
-    MKL_INT sweep;
-    double rr_phi_max_minimum;
-    double rr_phi_max_maximum;
-    MKL_INT hwl_min;
-    MKL_INT hwl_max;
-    double w_max;
-    double w_min;
-    double w_step;
 
     // -- ANALYSIS ------------------------------------------------------------
     double *i_rr;

@@ -47,7 +47,6 @@ fixedPhiR = 2
 fixedPhiZ = 2
 fixedOmega = 0
 
-# NEXT SOLUTION.
 # This controls generating the next solutions.
 # By setting sweep = 1, after generating a successful solution, the solver will
 # scale the solution by scale_next and will use it as new initial data.
@@ -58,11 +57,6 @@ fixedOmega = 0
 # without increasing the resolution. In this case, the execution will end if the HWL is
 # less than 5 grid points.
 # w_min: also will exit if the frequency drops below this amount.
-sweep = 1
-scale_next = 1.1
-hwl_max = 200
-hwl_min = 5
-w_min = 0.5
 
 # SOLVER PARAMETERS.
 solverType = 1

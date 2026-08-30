@@ -12,6 +12,7 @@
 // sparsity pattern and its values refreshed on each factorization.
 #include "tools.h"
 #include "solver.h"
+#include "exit_codes.h"
 
 #include <suitesparse/umfpack.h>
 
@@ -128,7 +129,7 @@ void solver_solve(double *u, csr_matrix *A, double *f)
         if (status != UMFPACK_OK)
         {
             printf("UMFPACK symbolic factorization failed: %d\n", status);
-            exit(1);
+            exit(RB_EXIT_SOLVER);
         }
         A->analysis_phase = 1;
     }
@@ -142,14 +143,14 @@ void solver_solve(double *u, csr_matrix *A, double *f)
     if (status != UMFPACK_OK)
     {
         printf("UMFPACK numeric factorization failed: %d\n", status);
-        exit(2);
+        exit(RB_EXIT_SOLVER);
     }
 
     status = umfpack_dl_solve(UMFPACK_A, CSC_Ap, CSC_Ai, CSC_Ax, u, f, Num, Control, Info);
     if (status != UMFPACK_OK)
     {
         printf("UMFPACK solve failed: %d\n", status);
-        exit(3);
+        exit(RB_EXIT_SOLVER);
     }
 }
 
@@ -161,14 +162,14 @@ void solver_repeated_solve(double *u, csr_matrix *A, double *f)
     if (!Num)
     {
         printf("UMFPACK: repeated solve requested before factorization.\n");
-        exit(3);
+        exit(RB_EXIT_SOLVER);
     }
 
     status = umfpack_dl_solve(UMFPACK_A, CSC_Ap, CSC_Ai, CSC_Ax, u, f, Num, Control, Info);
     if (status != UMFPACK_OK)
     {
         printf("UMFPACK solve failed: %d\n", status);
-        exit(3);
+        exit(RB_EXIT_SOLVER);
     }
 }
 

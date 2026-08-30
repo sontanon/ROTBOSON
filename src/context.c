@@ -51,9 +51,6 @@ void rb_context_init(rb_context *ctx)
     ctx->scale_u5 = 1.0;
     ctx->scale_u6 = 1.0;
 
-    // NEXT SCALE ADVANCE.
-    ctx->scale_next = 1.0;
-
     // SOLVER.
     ctx->solverType = 1;
     ctx->localSolver = 1;
@@ -66,15 +63,6 @@ void rb_context_init(rb_context *ctx)
     // INITIAL GUESS CHECK.
     ctx->max_initial_guess_checks = 8;
     ctx->norm_f0_target = 1.0E-05;
-
-    // SWEEP CONTROL.
-    ctx->rr_phi_max_minimum = 1.0;
-    ctx->rr_phi_max_maximum = 100.0;
-    ctx->hwl_min = 10;
-    ctx->hwl_max = 100;
-    ctx->w_max = 1.0;
-    ctx->w_min = 0.0;
-    ctx->w_step = 0.0;
 
     // ANALYSIS.
     ctx->phi_max = 1.0;

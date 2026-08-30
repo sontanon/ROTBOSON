@@ -34,6 +34,7 @@ int hdf5_backend_init(solution_writer *w)
 #else
 
 #include <hdf5.h>
+#include <time.h>
 
 // File/dataset attribute helper for scalars and fixed strings.
 static void put_double_attr(hid_t loc, const char *name, double v)
@@ -163,6 +164,17 @@ static void write_attributes(solution_writer *w)
     put_string_attr(file, "git_hash", ROTBOSON_GIT_HASH);
     put_string_attr(file, "parfile", w->parfile);
     put_string_attr(file, "output_backend", "hdf5");
+
+    // Creation timestamp, ISO 8601 UTC.
+    char timestamp[32];
+    {
+        time_t now = time(NULL);
+        struct tm tm_utc;
+        gmtime_r(&now, &tm_utc);
+        strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &tm_utc);
+    }
+    put_string_attr(file, "created", timestamp);
+
     put_llong_attr(file, "format_version", 1);
 
     // GRID.
@@ -221,7 +233,6 @@ static void write_attributes(solution_writer *w)
     put_double_attr(file, "scale_u4", c->scale_u4);
     put_double_attr(file, "scale_u5", c->scale_u5);
     put_double_attr(file, "scale_u6", c->scale_u6);
-    put_double_attr(file, "scale_next", c->scale_next);
 
     // SOLVER.
     put_llong_attr(file, "solverType", c->solverType);
@@ -235,16 +246,6 @@ static void write_attributes(solution_writer *w)
     // INITIAL GUESS CHECK.
     put_llong_attr(file, "max_initial_guess_checks", c->max_initial_guess_checks);
     put_double_attr(file, "norm_f0_target", c->norm_f0_target);
-
-    // SWEEP CONTROL.
-    put_llong_attr(file, "sweep", c->sweep);
-    put_double_attr(file, "rr_phi_max_minimum", c->rr_phi_max_minimum);
-    put_double_attr(file, "rr_phi_max_maximum", c->rr_phi_max_maximum);
-    put_llong_attr(file, "hwl_min", c->hwl_min);
-    put_llong_attr(file, "hwl_max", c->hwl_max);
-    put_double_attr(file, "w_max", c->w_max);
-    put_double_attr(file, "w_min", c->w_min);
-    put_double_attr(file, "w_step", c->w_step);
 
     // SPHERICAL ANALYSIS GRID.
     put_llong_attr(file, "NrrTotal", c->NrrTotal);

@@ -52,6 +52,3 @@ useLowRank = 0
 # INITIAL GUESS CHECK.
 max_initial_guess_checks = 0
 norm_f0_target = 5.0E-05
-
-# SWEEP CONTROL
-rr_phi_max_minimum = 8.0
