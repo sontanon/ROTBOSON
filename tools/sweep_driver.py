@@ -121,6 +121,7 @@ ADAPTIVITY_KEYS = {
     "newton_fast_iters",
     "lambda_min_floor",
     "regrid_rtol",
+    "newtonian_delta",
 }
 KNOWN = {
     "campaign": CAMPAIGN_KEYS,
@@ -167,6 +168,7 @@ DEFAULTS = {
         "newton_fast_iters": 8,
         "lambda_min_floor": 1.0e-3,
         "regrid_rtol": 2.0e-2,
+        "newtonian_delta": 1.0e-2,
     },
 }
 
@@ -248,6 +250,8 @@ def load_spec(path: Path) -> dict:
         raise SpecError("[adaptivity] lambda_min_floor must be > 0")
     if a["regrid_rtol"] <= 0:
         raise SpecError("[adaptivity] regrid_rtol must be > 0")
+    if a["newtonian_delta"] < 0:
+        raise SpecError("[adaptivity] newtonian_delta must be >= 0")
     if not isinstance(c["stop_at_turning_point"], bool):
         raise SpecError("[campaign] stop_at_turning_point must be a boolean")
 
@@ -529,11 +533,24 @@ def render_params(
 # Running one step
 # ---------------------------------------------------------------------------
 
+# Sentinel exit code for a step that hit run_binary's wall-clock timeout (not
+# a real signal — chosen far from any errno/signal value).
+TIMEOUT_EXIT = -999
+
 
 def run_binary(
-    binary: Path, params: Path, root: Path, step: int, label: str | None = None
+    binary: Path,
+    params: Path,
+    root: Path,
+    step: int,
+    label: str | None = None,
+    timeout_s: float = 3600.0,
 ) -> tuple[int, Path]:
-    """Run ROTBOSON from the campaign root; returns (exit code, log path)."""
+    """Run ROTBOSON from the campaign root; returns (exit code, log path).
+
+    A wall-clock timeout returns TIMEOUT_EXIT instead of raising, so a hung
+    solver is recorded like any other failure (SAN-20 item 2).
+    """
     log_dir = root / "logs"
     log_dir.mkdir(exist_ok=True)
     log = log_dir / f"step{step if label is None else label}.log"
@@ -543,9 +560,18 @@ def run_binary(
             f"# ROTBOSON {binary} {params}\n# start {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n"
         )
         lf.flush()
-        proc = subprocess.run(
-            [str(binary), str(params)], cwd=root, stdout=lf, stderr=subprocess.STDOUT, timeout=3600
-        )
+        try:
+            proc = subprocess.run(
+                [str(binary), str(params)],
+                cwd=root,
+                stdout=lf,
+                stderr=subprocess.STDOUT,
+                timeout=timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            wall = time.monotonic() - t0
+            lf.write(f"# TIMEOUT after {timeout_s:.0f}s (wall={wall:.1f}s)\n")
+            return TIMEOUT_EXIT, log
     wall = time.monotonic() - t0
     with log.open("a") as lf:
         lf.write(f"# exit_code={proc.returncode} wall={wall:.1f}s\n")
@@ -857,6 +883,39 @@ def omega_of_last(state: dict) -> float:
     raise SystemExit("no completed step records ω; cannot continue")
 
 
+def newtonian_limit_stop(state: dict, spec: dict) -> str | None:
+    """SAN-20 item 1: is a failed step the branch's physical Newtonian end?
+
+    In the down direction ω → m as ψ₀ → 0; the field extends without bound
+    and the Jacobian becomes singular, so the solver exits 2 near ω = m. That
+    is the branch's physical termination, not a backend failure: return the
+    `stopped:newtonian_limit` stop reason when the last step failed with exit
+    2 and the last *completed* ω sits within `[adaptivity] newtonian_delta`
+    of m. Returns None otherwise (including the up direction, whose M_max
+    end has no clean ω-based signature — investigation item, SAN-20 #5).
+    """
+    c = spec["campaign"]
+    if c["direction"] != "down":
+        return None
+    steps = state["steps"]
+    if not steps or steps[-1].get("exit_code") != 2:
+        return None
+    omega = next(
+        (
+            float(s["omega"])
+            for s in reversed(steps)
+            if s.get("omega") is not None and s.get("exit_code", 1) == 0
+        ),
+        None,
+    )
+    if omega is None:
+        return None
+    delta = spec["adaptivity"]["newtonian_delta"]
+    if omega >= float(c.get("m", 1.0)) - delta:
+        return "stopped:newtonian_limit"
+    return None
+
+
 def finished(state: dict, spec: dict) -> str | None:
     """Fixed-grid subset of the §6.1 exit conditions. Returns stop reason."""
     c = spec["campaign"]
@@ -890,6 +949,13 @@ def finished(state: dict, spec: dict) -> str | None:
         return "stopped:turning_point"
     if state["steps"][-1]["exit_code"] not in (0, None):
         code = state["steps"][-1]["exit_code"]
+        if code == 2:
+            # A solver error near ω → m is the branch's physical end (SAN-20).
+            nl = newtonian_limit_stop(state, spec)
+            if nl is not None:
+                return nl
+        if code == TIMEOUT_EXIT:
+            return "failed:timeout"
         if code < 0:
             # Killed by a signal (e.g. -11 = SIGSEGV). Rare, pre-existing C
             # backend flakiness (SAN-19); recorded distinctly from exit codes.
@@ -1191,18 +1257,21 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             if code == 0 and sol is not None and last.get("psi0") is not None:
                 break
 
-            retryable = code == 1 or code < 0 or (code == 2 and attempts == 0)
+            # A solver error near ω → m is the branch's physical end: do not
+            # waste a retry chasing it (SAN-20 item 1).
+            near_limit = code == 2 and newtonian_limit_stop(state, spec) is not None
+            retryable = (
+                code == 1 or code < 0 or code == TIMEOUT_EXIT or (code == 2 and attempts == 0)
+            ) and not near_limit
             exhausted = attempts >= c["max_retries"] or (
-                code in (1, 2) and psi0_target == base_psi0
+                code in (1, 2, TIMEOUT_EXIT) and psi0_target == base_psi0
             )
             if retryable and not exhausted:
                 attempts += 1
-                if code == 1:
-                    factor /= 2.0  # Newton failure: shrink the step
-                if code == 2:
-                    # Rule 4: a solver error gets exactly one retry (a smaller
-                    # step also yields a closer, better-conditioned seed);
-                    # persistent failure stops the campaign.
+                if code in (1, 2, TIMEOUT_EXIT):
+                    # Newton failure: shrink the step. Solver error/timeout:
+                    # rule 4 retry — a smaller step also yields a closer,
+                    # better-conditioned seed; persistent failure stops.
                     factor /= 2.0
                 # Drop the failed attempt from the step history (keep the log).
                 state["steps"].pop()
@@ -1210,6 +1279,8 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                 cause = (
                     "did not converge"
                     if code == 1
+                    else "timed out"
+                    if code == TIMEOUT_EXIT
                     else f"killed by signal {signal.Signals(-code).name}"
                     if code < 0
                     else "solver error"
