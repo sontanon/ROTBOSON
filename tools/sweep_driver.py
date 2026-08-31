@@ -1005,11 +1005,11 @@ def decide_action(diag: dict) -> str:
     (rules 3–4) never reach here — the retry loop handles them.
     """
     hwl = diag.get("hwl")
-    if hwl is not None and hwl < diag["hwl_min"]:
+    if hwl is not None and hwl < diag["hwl_min"] and not diag.get("finer_blacklisted"):
         return "regrid_finer"  # rules 6/8: under-resolved spike / axis hug
 
     rr = diag.get("rr_phi_max")
-    if rr is not None and rr < diag["rr_phi_max_min"]:
+    if rr is not None and rr < diag["rr_phi_max_min"] and not diag.get("finer_blacklisted"):
         return "regrid_finer"  # rule 8: field maximum hugging the axis
 
     r99, r_bdy = diag.get("r99"), diag.get("r_bdy")
@@ -1330,6 +1330,53 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                 )
                 continue
 
+            # SAN-20 sweep finding: a terminal failure immediately after an
+            # accepted regrid means the NEW grid rejects stepping (e.g. the
+            # finer grid at the fold: PARDISO -4 on every attempt). Auto-
+            # revert to the previous grid, blacklist finer regrids for the
+            # campaign, and keep going on the grid that works. The regrid's
+            # solution is preserved in state['fold_fine_grid_measurement'].
+            rg = next(
+                (
+                    s
+                    for s in reversed(state["steps"][:-1])
+                    if s.get("mode") == "regrid" and s.get("regrid", {}).get("accepted")
+                ),
+                None,
+            )
+            if (
+                rg is not None
+                and state["steps"][-1].get("exit_code", 0) != 0
+                and state["steps"].index(rg) == len(state["steps"]) - 2
+                and not state.get("finer_blacklist")
+            ):
+                from_dr = rg["regrid"]["from_dr"]
+                state.setdefault("fold_fine_grid_measurement", []).append(
+                    {
+                        "psi0": rg.get("psi0"),
+                        "omega": rg.get("omega"),
+                        "dr": rg.get("dr"),
+                        "sol_dir": rg.get("sol_dir"),
+                        "note": "finer-grid re-solve accepted but stepping failed on it; "
+                        "auto-reverted (SAN-20)",
+                    }
+                )
+                state["steps"] = [s for s in state["steps"] if s is not rg]
+                while state["steps"] and state["steps"][-1].get("exit_code", 0) != 0:
+                    state["steps"].pop()
+                current_grid(state, spec)["dr"] = from_dr
+                state["step_factor"] = 1.0
+                state["finer_blacklist"] = True
+                state["ok_streak"] = 0
+                state["optional_cooldown"] = 0
+                state["regrid_failures"] = 0
+                save_state(spec, state)
+                print(
+                    f"[driver] step {step_no}: new grid rejects stepping; auto-reverted to "
+                    f"dr={from_dr:.5E} and blacklisted finer regrids (SAN-20)"
+                )
+                continue
+
             state["status"] = "failed"
             state["stop_reason"] = finished(state, spec) or f"failed:exit{code}"
             save_state(spec, state)
@@ -1373,6 +1420,7 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             "newton_fast_iters": a["newton_fast_iters"],
             "lambda_min_floor": a["lambda_min_floor"],
             "optional_coarsening": a["optional_coarsening"],
+            "finer_blacklisted": bool(state.get("finer_blacklist")),
         }
         action = decide_action(diag)
 

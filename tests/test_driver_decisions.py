@@ -124,6 +124,15 @@ class TestGridRules:
         d = diag(r99=15.6, r_bdy=17.0, direction="up", support_window=[0.70, 0.75, 0.80])
         assert decide_action(d) == "regrid_coarser"
 
+    def test_finer_blacklist_suppresses_rules_6_and_8(self):
+        # SAN-20: when the finer grid rejects stepping, the driver blacklists
+        # finer regrids for the campaign — under-resolution then falls
+        # through to the ordinary step-size rules
+        d = diag(hwl=5, rr_phi_max=0.4)
+        assert decide_action(d) == "regrid_finer"
+        d["finer_blacklisted"] = True
+        assert decide_action(d) == "grow"
+
     def test_rule7_disabled_by_default(self):
         # SAN-20 sweep finding: an accepted coarsening can stall the
         # campaign, so rule 7 runs only when explicitly enabled
