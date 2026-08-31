@@ -387,7 +387,7 @@ def write_seed_field(path: Path, data: np.ndarray) -> None:
 
 
 def render_seed(
-    spec: dict, root: Path, prev: list[dict], psi0_target: float
+    spec: dict, root: Path, prev: list[dict], psi0_target: float, extrapolate: bool = True
 ) -> tuple[float, float]:
     """Build the seed files for the next step.
 
@@ -397,6 +397,11 @@ def render_seed(
     *continuation* steps (design §3.4) kicks in once both predecessors are
     fixedPhi solves; mixing the fixedOmega seed solve into the extrapolation
     empirically produces guesses Newton cannot recover from.
+
+    `extrapolate=False` forces the plain rescale — used by the retry loop
+    after an attempt failed: in marginal regions the extrapolated guess
+    diverges Newton while the rescaled one converges (SAN-20 sweep finding:
+    the same target went exit 2 with extrapolation and exit 0 without).
     Returns (scale_u4, omega_guess).
     """
     seed_dir = root / "seed"
@@ -406,7 +411,8 @@ def render_seed(
     fields = solution_fields(Path(cur["sol_dir"]))
 
     can_extrapolate = (
-        len(prev) >= 2
+        extrapolate
+        and len(prev) >= 2
         and prev[-1].get("mode") == "fixedPhi"
         and prev[-2].get("mode") == "fixedPhi"
         and prev[-1]["psi0"] != prev[-2]["psi0"]
@@ -1265,7 +1271,12 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         while True:
             psi0_target = next_target(base_psi0, factor)
             prev = [s for s in state["steps"] if s.get("psi0") is not None]
-            scale_u4, w_guess = render_seed(spec, root, prev, psi0_target)
+            # After a failed attempt drop the linear extrapolation: in
+            # marginal regions it diverges Newton while the plain rescale
+            # from the last good solution converges (SAN-20).
+            scale_u4, w_guess = render_seed(
+                spec, root, prev, psi0_target, extrapolate=attempts == 0
+            )
             params = render_params(spec, root, step_no, scale_u4=scale_u4, seed_dir=root / "seed")
 
             stale = root / initial_dirname(spec)
