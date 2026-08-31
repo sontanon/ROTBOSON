@@ -122,6 +122,7 @@ ADAPTIVITY_KEYS = {
     "lambda_min_floor",
     "regrid_rtol",
     "newtonian_delta",
+    "optional_coarsening",
 }
 KNOWN = {
     "campaign": CAMPAIGN_KEYS,
@@ -164,11 +165,12 @@ DEFAULTS = {
         "rr_phi_max_min": 0.5,
         "grow_factor": 1.25,
         "shrink_factor": 0.5,
-        "factor_max": 4.0,
+        "factor_max": 2.0,
         "newton_fast_iters": 8,
         "lambda_min_floor": 1.0e-3,
         "regrid_rtol": 2.0e-2,
         "newtonian_delta": 1.0e-2,
+        "optional_coarsening": False,
     },
 }
 
@@ -252,6 +254,8 @@ def load_spec(path: Path) -> dict:
         raise SpecError("[adaptivity] regrid_rtol must be > 0")
     if a["newtonian_delta"] < 0:
         raise SpecError("[adaptivity] newtonian_delta must be >= 0")
+    if not isinstance(a["optional_coarsening"], bool):
+        raise SpecError("[adaptivity] optional_coarsening must be a boolean")
     if not isinstance(c["stop_at_turning_point"], bool):
         raise SpecError("[campaign] stop_at_turning_point must be a boolean")
 
@@ -1024,8 +1028,17 @@ def decide_action(diag: dict) -> str:
             return "stop:domain_budget"
         # self-resolving — fall through.
 
-    if hwl is not None and hwl > diag["hwl_max"] and diag["dr"] < diag["dr_max"]:
-        return "regrid_coarser_optional"  # rule 7: over-resolved, save time
+    if (
+        diag.get("optional_coarsening")
+        and hwl is not None
+        and hwl > diag["hwl_max"]
+        and diag["dr"] < diag["dr_max"]
+    ):
+        # rule 7: over-resolved, save time — OFF by default: an accepted
+        # coarsening moves the campaign onto a grid whose subsequent
+        # stepping can fail (SAN-20 sweep finding), and the time saving is
+        # unmeasured.
+        return "regrid_coarser_optional"
 
     iters, lam = diag.get("newton_iters"), diag.get("lambda_min")
     grudging = lam is not None and lam < diag["lambda_min_floor"]
@@ -1348,6 +1361,7 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             "rr_phi_max_min": a["rr_phi_max_min"],
             "newton_fast_iters": a["newton_fast_iters"],
             "lambda_min_floor": a["lambda_min_floor"],
+            "optional_coarsening": a["optional_coarsening"],
         }
         action = decide_action(diag)
 

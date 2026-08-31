@@ -46,6 +46,7 @@ def diag(**overrides) -> dict:
         "lambda_min_floor": 1.0e-3,
         "direction": "down",  # rule 5's conservative branch
         "support_window": None,
+        "optional_coarsening": True,  # rule-7 tests opt in explicitly
     }
     base.update(overrides)
     return base
@@ -122,6 +123,15 @@ class TestGridRules:
     def test_up_persistently_rising_still_fires(self):
         d = diag(r99=15.6, r_bdy=17.0, direction="up", support_window=[0.70, 0.75, 0.80])
         assert decide_action(d) == "regrid_coarser"
+
+    def test_rule7_disabled_by_default(self):
+        # SAN-20 sweep finding: an accepted coarsening can stall the
+        # campaign, so rule 7 runs only when explicitly enabled
+        d = diag(hwl=41)
+        d["optional_coarsening"] = False
+        assert decide_action(d) == "grow"
+        d["optional_coarsening"] = True
+        assert decide_action(d) == "regrid_coarser_optional"
 
     def test_up_unknown_window_does_not_fire(self):
         # no same-grid history yet (first steps): the up direction does not
