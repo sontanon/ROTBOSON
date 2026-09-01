@@ -121,6 +121,8 @@ ADAPTIVITY_KEYS = {
     "newton_fast_iters",
     "lambda_min_floor",
     "regrid_rtol",
+    "newtonian_delta",
+    "optional_coarsening",
 }
 KNOWN = {
     "campaign": CAMPAIGN_KEYS,
@@ -163,10 +165,12 @@ DEFAULTS = {
         "rr_phi_max_min": 0.5,
         "grow_factor": 1.25,
         "shrink_factor": 0.5,
-        "factor_max": 4.0,
+        "factor_max": 2.0,
         "newton_fast_iters": 8,
         "lambda_min_floor": 1.0e-3,
         "regrid_rtol": 2.0e-2,
+        "newtonian_delta": 1.0e-2,
+        "optional_coarsening": False,
     },
 }
 
@@ -248,6 +252,10 @@ def load_spec(path: Path) -> dict:
         raise SpecError("[adaptivity] lambda_min_floor must be > 0")
     if a["regrid_rtol"] <= 0:
         raise SpecError("[adaptivity] regrid_rtol must be > 0")
+    if a["newtonian_delta"] < 0:
+        raise SpecError("[adaptivity] newtonian_delta must be >= 0")
+    if not isinstance(a["optional_coarsening"], bool):
+        raise SpecError("[adaptivity] optional_coarsening must be a boolean")
     if not isinstance(c["stop_at_turning_point"], bool):
         raise SpecError("[campaign] stop_at_turning_point must be a boolean")
 
@@ -379,7 +387,7 @@ def write_seed_field(path: Path, data: np.ndarray) -> None:
 
 
 def render_seed(
-    spec: dict, root: Path, prev: list[dict], psi0_target: float
+    spec: dict, root: Path, prev: list[dict], psi0_target: float, extrapolate: bool = True
 ) -> tuple[float, float]:
     """Build the seed files for the next step.
 
@@ -389,6 +397,11 @@ def render_seed(
     *continuation* steps (design §3.4) kicks in once both predecessors are
     fixedPhi solves; mixing the fixedOmega seed solve into the extrapolation
     empirically produces guesses Newton cannot recover from.
+
+    `extrapolate=False` forces the plain rescale — used by the retry loop
+    after an attempt failed: in marginal regions the extrapolated guess
+    diverges Newton while the rescaled one converges (SAN-20 sweep finding:
+    the same target went exit 2 with extrapolation and exit 0 without).
     Returns (scale_u4, omega_guess).
     """
     seed_dir = root / "seed"
@@ -398,7 +411,8 @@ def render_seed(
     fields = solution_fields(Path(cur["sol_dir"]))
 
     can_extrapolate = (
-        len(prev) >= 2
+        extrapolate
+        and len(prev) >= 2
         and prev[-1].get("mode") == "fixedPhi"
         and prev[-2].get("mode") == "fixedPhi"
         and prev[-1]["psi0"] != prev[-2]["psi0"]
@@ -529,11 +543,24 @@ def render_params(
 # Running one step
 # ---------------------------------------------------------------------------
 
+# Sentinel exit code for a step that hit run_binary's wall-clock timeout (not
+# a real signal — chosen far from any errno/signal value).
+TIMEOUT_EXIT = -999
+
 
 def run_binary(
-    binary: Path, params: Path, root: Path, step: int, label: str | None = None
+    binary: Path,
+    params: Path,
+    root: Path,
+    step: int,
+    label: str | None = None,
+    timeout_s: float = 3600.0,
 ) -> tuple[int, Path]:
-    """Run ROTBOSON from the campaign root; returns (exit code, log path)."""
+    """Run ROTBOSON from the campaign root; returns (exit code, log path).
+
+    A wall-clock timeout returns TIMEOUT_EXIT instead of raising, so a hung
+    solver is recorded like any other failure (SAN-20 item 2).
+    """
     log_dir = root / "logs"
     log_dir.mkdir(exist_ok=True)
     log = log_dir / f"step{step if label is None else label}.log"
@@ -543,9 +570,18 @@ def run_binary(
             f"# ROTBOSON {binary} {params}\n# start {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n"
         )
         lf.flush()
-        proc = subprocess.run(
-            [str(binary), str(params)], cwd=root, stdout=lf, stderr=subprocess.STDOUT, timeout=3600
-        )
+        try:
+            proc = subprocess.run(
+                [str(binary), str(params)],
+                cwd=root,
+                stdout=lf,
+                stderr=subprocess.STDOUT,
+                timeout=timeout_s,
+            )
+        except subprocess.TimeoutExpired:
+            wall = time.monotonic() - t0
+            lf.write(f"# TIMEOUT after {timeout_s:.0f}s (wall={wall:.1f}s)\n")
+            return TIMEOUT_EXIT, log
     wall = time.monotonic() - t0
     with log.open("a") as lf:
         lf.write(f"# exit_code={proc.returncode} wall={wall:.1f}s\n")
@@ -857,6 +893,39 @@ def omega_of_last(state: dict) -> float:
     raise SystemExit("no completed step records ω; cannot continue")
 
 
+def newtonian_limit_stop(state: dict, spec: dict) -> str | None:
+    """SAN-20 item 1: is a failed step the branch's physical Newtonian end?
+
+    In the down direction ω → m as ψ₀ → 0; the field extends without bound
+    and the Jacobian becomes singular, so the solver exits 2 near ω = m. That
+    is the branch's physical termination, not a backend failure: return the
+    `stopped:newtonian_limit` stop reason when the last step failed with exit
+    2 and the last *completed* ω sits within `[adaptivity] newtonian_delta`
+    of m. Returns None otherwise (including the up direction, whose M_max
+    end has no clean ω-based signature — investigation item, SAN-20 #5).
+    """
+    c = spec["campaign"]
+    if c["direction"] != "down":
+        return None
+    steps = state["steps"]
+    if not steps or steps[-1].get("exit_code") != 2:
+        return None
+    omega = next(
+        (
+            float(s["omega"])
+            for s in reversed(steps)
+            if s.get("omega") is not None and s.get("exit_code", 1) == 0
+        ),
+        None,
+    )
+    if omega is None:
+        return None
+    delta = spec["adaptivity"]["newtonian_delta"]
+    if omega >= float(c.get("m", 1.0)) - delta:
+        return "stopped:newtonian_limit"
+    return None
+
+
 def finished(state: dict, spec: dict) -> str | None:
     """Fixed-grid subset of the §6.1 exit conditions. Returns stop reason."""
     c = spec["campaign"]
@@ -890,6 +959,13 @@ def finished(state: dict, spec: dict) -> str | None:
         return "stopped:turning_point"
     if state["steps"][-1]["exit_code"] not in (0, None):
         code = state["steps"][-1]["exit_code"]
+        if code == 2:
+            # A solver error near ω → m is the branch's physical end (SAN-20).
+            nl = newtonian_limit_stop(state, spec)
+            if nl is not None:
+                return nl
+        if code == TIMEOUT_EXIT:
+            return "failed:timeout"
         if code < 0:
             # Killed by a signal (e.g. -11 = SIGSEGV). Rare, pre-existing C
             # backend flakiness (SAN-19); recorded distinctly from exit codes.
@@ -929,22 +1005,46 @@ def decide_action(diag: dict) -> str:
     (rules 3–4) never reach here — the retry loop handles them.
     """
     hwl = diag.get("hwl")
-    if hwl is not None and hwl < diag["hwl_min"]:
+    if hwl is not None and hwl < diag["hwl_min"] and not diag.get("finer_blacklisted"):
         return "regrid_finer"  # rules 6/8: under-resolved spike / axis hug
 
     rr = diag.get("rr_phi_max")
-    if rr is not None and rr < diag["rr_phi_max_min"]:
+    if rr is not None and rr < diag["rr_phi_max_min"] and not diag.get("finer_blacklisted"):
         return "regrid_finer"  # rule 8: field maximum hugging the axis
 
     r99, r_bdy = diag.get("r99"), diag.get("r_bdy")
     if r99 is not None and r_bdy and r99 / r_bdy > diag["support_fraction"]:
-        # rule 5: support → boundary; widen the domain while the budget lasts
-        if diag["dr"] < diag["dr_max"]:
-            return "regrid_coarser"
-        return "stop:domain_budget"
+        # Rule 5: support → boundary. Direction-qualified (SAN-20 sweep
+        # finding): on the up direction a weak seed *starts* with its tail
+        # grazing the boundary and localizes only slowly — a single-step
+        # trend check fires on numerical noise and burns the campaign on
+        # futile widening regrids. Up therefore requires the support
+        # fraction to be persistently rising across the whole recent window;
+        # down (the genuinely dangerous spreading toward ω → m) keeps the
+        # conservative single-step check.
+        window = diag.get("support_window") or []
+        if diag["direction"] == "up":
+            spreading = bool(window) and all(r99 / r_bdy >= w for w in window)
+        else:
+            prev = window[-1] if window else None
+            spreading = prev is None or r99 / r_bdy >= prev
+        if spreading:
+            if diag["dr"] < diag["dr_max"]:
+                return "regrid_coarser"
+            return "stop:domain_budget"
+        # self-resolving — fall through.
 
-    if hwl is not None and hwl > diag["hwl_max"] and diag["dr"] < diag["dr_max"]:
-        return "regrid_coarser_optional"  # rule 7: over-resolved, save time
+    if (
+        diag.get("optional_coarsening")
+        and hwl is not None
+        and hwl > diag["hwl_max"]
+        and diag["dr"] < diag["dr_max"]
+    ):
+        # rule 7: over-resolved, save time — OFF by default: an accepted
+        # coarsening moves the campaign onto a grid whose subsequent
+        # stepping can fail (SAN-20 sweep finding), and the time saving is
+        # unmeasured.
+        return "regrid_coarser_optional"
 
     iters, lam = diag.get("newton_iters"), diag.get("lambda_min")
     grudging = lam is not None and lam < diag["lambda_min_floor"]
@@ -1171,7 +1271,12 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         while True:
             psi0_target = next_target(base_psi0, factor)
             prev = [s for s in state["steps"] if s.get("psi0") is not None]
-            scale_u4, w_guess = render_seed(spec, root, prev, psi0_target)
+            # After a failed attempt drop the linear extrapolation: in
+            # marginal regions it diverges Newton while the plain rescale
+            # from the last good solution converges (SAN-20).
+            scale_u4, w_guess = render_seed(
+                spec, root, prev, psi0_target, extrapolate=attempts == 0
+            )
             params = render_params(spec, root, step_no, scale_u4=scale_u4, seed_dir=root / "seed")
 
             stale = root / initial_dirname(spec)
@@ -1191,18 +1296,21 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             if code == 0 and sol is not None and last.get("psi0") is not None:
                 break
 
-            retryable = code == 1 or code < 0 or (code == 2 and attempts == 0)
+            # A solver error near ω → m is the branch's physical end: do not
+            # waste a retry chasing it (SAN-20 item 1).
+            near_limit = code == 2 and newtonian_limit_stop(state, spec) is not None
+            retryable = (
+                code == 1 or code < 0 or code == TIMEOUT_EXIT or (code == 2 and attempts == 0)
+            ) and not near_limit
             exhausted = attempts >= c["max_retries"] or (
-                code in (1, 2) and psi0_target == base_psi0
+                code in (1, 2, TIMEOUT_EXIT) and psi0_target == base_psi0
             )
             if retryable and not exhausted:
                 attempts += 1
-                if code == 1:
-                    factor /= 2.0  # Newton failure: shrink the step
-                if code == 2:
-                    # Rule 4: a solver error gets exactly one retry (a smaller
-                    # step also yields a closer, better-conditioned seed);
-                    # persistent failure stops the campaign.
+                if code in (1, 2, TIMEOUT_EXIT):
+                    # Newton failure: shrink the step. Solver error/timeout:
+                    # rule 4 retry — a smaller step also yields a closer,
+                    # better-conditioned seed; persistent failure stops.
                     factor /= 2.0
                 # Drop the failed attempt from the step history (keep the log).
                 state["steps"].pop()
@@ -1210,6 +1318,8 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                 cause = (
                     "did not converge"
                     if code == 1
+                    else "timed out"
+                    if code == TIMEOUT_EXIT
                     else f"killed by signal {signal.Signals(-code).name}"
                     if code < 0
                     else "solver error"
@@ -1217,6 +1327,53 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                 print(
                     f"[driver] step {step_no} attempt {attempts} {cause}; "
                     f"retrying (factor {factor:.3f}), log: {log}"
+                )
+                continue
+
+            # SAN-20 sweep finding: a terminal failure immediately after an
+            # accepted regrid means the NEW grid rejects stepping (e.g. the
+            # finer grid at the fold: PARDISO -4 on every attempt). Auto-
+            # revert to the previous grid, blacklist finer regrids for the
+            # campaign, and keep going on the grid that works. The regrid's
+            # solution is preserved in state['fold_fine_grid_measurement'].
+            rg = next(
+                (
+                    s
+                    for s in reversed(state["steps"][:-1])
+                    if s.get("mode") == "regrid" and s.get("regrid", {}).get("accepted")
+                ),
+                None,
+            )
+            if (
+                rg is not None
+                and state["steps"][-1].get("exit_code", 0) != 0
+                and state["steps"].index(rg) == len(state["steps"]) - 2
+                and not state.get("finer_blacklist")
+            ):
+                from_dr = rg["regrid"]["from_dr"]
+                state.setdefault("fold_fine_grid_measurement", []).append(
+                    {
+                        "psi0": rg.get("psi0"),
+                        "omega": rg.get("omega"),
+                        "dr": rg.get("dr"),
+                        "sol_dir": rg.get("sol_dir"),
+                        "note": "finer-grid re-solve accepted but stepping failed on it; "
+                        "auto-reverted (SAN-20)",
+                    }
+                )
+                state["steps"] = [s for s in state["steps"] if s is not rg]
+                while state["steps"] and state["steps"][-1].get("exit_code", 0) != 0:
+                    state["steps"].pop()
+                current_grid(state, spec)["dr"] = from_dr
+                state["step_factor"] = 1.0
+                state["finer_blacklist"] = True
+                state["ok_streak"] = 0
+                state["optional_cooldown"] = 0
+                state["regrid_failures"] = 0
+                save_state(spec, state)
+                print(
+                    f"[driver] step {step_no}: new grid rejects stepping; auto-reverted to "
+                    f"dr={from_dr:.5E} and blacklisted finer regrids (SAN-20)"
                 )
                 continue
 
@@ -1234,12 +1391,25 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         a = spec["adaptivity"]
         g = current_grid(state, spec)
         dr, n = float(g["dr"]), int(g["N"])
+        # Support-fraction history (rule 5 is direction/trend qualified): the
+        # last few completed steps' fractions, when they lived on this grid.
+        prior = [
+            s
+            for s in state["steps"][:-1]
+            if s.get("r99") is not None and s.get("exit_code", 1) == 0 and s.get("dr") == dr
+        ]
+        support_window = []
+        for s in prior[-3:]:
+            pb = (int(s["N"]) + 2 * ghost_of(spec["grid"]["order"])) * float(s["dr"])
+            support_window.append(s["r99"] / pb)
         diag = {
             "newton_iters": last.get("newton_iters"),
             "lambda_min": last.get("lambda_min"),
             "hwl": last.get("hwl"),
             "rr_phi_max": last.get("rr_phi_max"),
             "r99": last.get("r99"),
+            "support_window": support_window,
+            "direction": c["direction"],
             "r_bdy": (n + 2 * ghost_of(spec["grid"]["order"])) * dr,
             "dr": dr,
             "dr_max": spec["grid"]["dr_max"],
@@ -1249,13 +1419,24 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             "rr_phi_max_min": a["rr_phi_max_min"],
             "newton_fast_iters": a["newton_fast_iters"],
             "lambda_min_floor": a["lambda_min_floor"],
+            "optional_coarsening": a["optional_coarsening"],
+            "finer_blacklisted": bool(state.get("finer_blacklist")),
         }
         action = decide_action(diag)
 
         if action == "grow":  # rule 1: fast, healthy convergence → grow Δψ₀
             state["step_factor"] = min(factor * a["grow_factor"], a["factor_max"])
+            state["ok_streak"] = 0
         elif action == "shrink":  # rule 2: converged, but only just — ease off
             state["step_factor"] = max(factor * a["shrink_factor"], 1.0 / 64.0)
+            state["ok_streak"] = 0
+        elif action == "ok":
+            # A run of unremarkable-but-fine steps gently regrows a factor
+            # that earlier (re)tries shrank — otherwise it never recovers.
+            state["ok_streak"] = state.get("ok_streak", 0) + 1
+            if state["ok_streak"] >= 5:
+                state["step_factor"] = min(factor * a["grow_factor"], a["factor_max"])
+                state["ok_streak"] = 0
         save_state(spec, state)
 
         if action == "stop:domain_budget":
@@ -1268,6 +1449,15 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                 f"dr_max={dr:.5E}; stopping (design §6.1)"
             )
             return 0
+
+        # Rule 7 (optional coarsening) backs off after a rejected attempt:
+        # with the grid unchanged, the same dr x2 keeps failing the same
+        # truncation proxy, so re-probing every step merely doubles the cost
+        # (SAN-20 sweep finding).
+        if action == "regrid_coarser_optional":
+            if state.get("optional_cooldown", 0) > 0:
+                state["optional_cooldown"] -= 1
+                action = "ok"
 
         if action.startswith("regrid"):
             required = action != "regrid_coarser_optional"
@@ -1289,17 +1479,23 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                     current_grid(state, spec)["dr"] = try_dr
                     state["step_factor"] = 1.0  # fresh grid: restart step sizing
                     state["regrid_failures"] = 0
+                    state["optional_cooldown"] = 0
                     save_state(spec, state)
                     break
                 if not required:
+                    state["optional_cooldown"] = 10  # back off before re-probing
                     break  # rule 7 is optional: never blocks the campaign
                 step_no += 1  # failed attempt consumed its slot; try the next dr
             if accepted:
                 continue  # re-check exit conditions on the new grid
-            # Regrid ladder exhausted: stay on the old grid, ease the step
+            # Regrid ladder exhausted. For a REQUIRED regrid, ease the step
             # (design §4: "fall back to stepping on the old grid with a
-            # smaller Δψ₀").
-            state["step_factor"] = max(factor * a["shrink_factor"], 1.0 / 64.0)
+            # smaller Δψ₀"). An optional rejection says nothing about the
+            # step size — shrinking it there just stalls the campaign
+            # (SAN-20 sweep finding: factor shrunk to ~1/3 and never
+            # recovered).
+            if required:
+                state["step_factor"] = max(factor * a["shrink_factor"], 1.0 / 64.0)
             if required:
                 state["regrid_failures"] = state.get("regrid_failures", 0) + 1
             save_state(spec, state)

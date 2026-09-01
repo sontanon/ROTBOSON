@@ -71,7 +71,7 @@ interpolation...\n");
 */
 
 // Fill coordinate grids.
-#pragma omp parallel for schedule(dynamic, 1) private(i, j, aux_rr) shared(p_rr, p_th)
+#pragma omp parallel for schedule(static) private(i, j, aux_rr) shared(p_rr, p_th)
     for (i = 0; i < NrrTotal; ++i)
     {
         // Radial value.
@@ -94,7 +94,7 @@ interpolation...\n");
                         Drz_u + k * dim, dr, dz, NrTotal, NzTotal);
 // printf("*** i_u[%lld](0) = %lf\n", k, aux_u);
 //  Fill in to trivial angular array.
-#pragma omp parallel for schedule(dynamic, 1) private(j) shared(p_u)
+#pragma omp parallel for schedule(static) private(j) shared(p_u)
         for (j = 0; j < NthTotal; ++j)
         {
             p_u[k * p_dim + j] = aux_u;
@@ -103,7 +103,7 @@ interpolation...\n");
 // printf("*** Filled values at origin.\n");
 
 // Now loop over other rr values.
-#pragma omp parallel for schedule(dynamic, 1)                                                      \
+#pragma omp parallel for schedule(static)                                                      \
     private(aux_r, aux_z, aux_rr, aux_th, fi, fj, i0, j0, di, dj, i, j, k) shared(p_u)
     for (i = 1; i < NrrTotal; ++i)
     {

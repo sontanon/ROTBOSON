@@ -79,7 +79,7 @@ void initial_interpolator(double *u_1, double *u_0, const MKL_INT NrInterior_0,
     double aux_r;
 #pragma omp parallel shared(r_0, z_0) private(i_0, j_0, aux_r)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (i_0 = 0; i_0 < NrTotal_0; ++i_0)
         {
             // Calculate rho value.
@@ -150,7 +150,7 @@ void initial_interpolator(double *u_1, double *u_0, const MKL_INT NrInterior_0,
     double f_i_0, di;
     double f_j_0, dj;
 // Now loop over grid elements.
-#pragma omp parallel for schedule(dynamic, 1) private(k, i_1, j_1, f_i_0, i_0, di, f_j_0, j_0, dj) \
+#pragma omp parallel for schedule(static) private(k, i_1, j_1, f_i_0, i_0, di, f_j_0, j_0, dj) \
     shared(u_1)
     for (i_1 = ghost_1; i_1 < i_inf_1; ++i_1)
     {

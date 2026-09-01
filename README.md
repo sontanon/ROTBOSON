@@ -171,7 +171,11 @@ rr_phi_max_min = 0.5      # regrid dr ÷2 when the field max hugs the axis
 regrid_rtol = 2.0e-2      # coarsening accepted only within this truncation proxy
 grow_factor = 1.25        # Δψ₀ growth on fast, healthy convergence
 shrink_factor = 0.5       # Δψ₀ shrink on grudging convergence
+factor_max = 2.0          # growth cap (6% relative steps)
 newton_fast_iters = 8     # "fast" Newton threshold for growth
+optional_coarsening = false  # rule 7 (hwl > hwl_max → dr ×2); OFF by
+                          # default — an accepted coarsening can stall
+                          # subsequent stepping (SAN-20)
 ```
 
 ```bash

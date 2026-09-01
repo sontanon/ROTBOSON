@@ -19,7 +19,7 @@ void ex_phi_analysis(solution_writer *sw, double *phi_max, double *rr_phi_max, M
 
     // Add scalar field.
     double *sph_phi = (double *)SAFE_MALLOC(sizeof(double) * p_dim);
-#pragma omp parallel for schedule(dynamic, 1) shared(sph_phi)
+#pragma omp parallel for schedule(static) shared(sph_phi)
     for (k = 0; k < p_dim; ++k)
     {
         sph_phi[k] = pow(sph_rr[k] * sin(sph_th[k]), l) * sph_psi[k];
@@ -190,7 +190,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
 
 // Schwarzschild Psuedomass.
 // First compute integrands.
-#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1, i2) private(k)
+#pragma omp parallel for schedule(static) shared(i0, i1, i2) private(k)
     for (k = 0; k < p_dim; ++k)
     {
         // i0 is volumen element.
@@ -200,7 +200,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
         // Area derivative.
         i2[k] = (1.0 + 0.5 * sph_rr[k] * (sph_Drr_log_a[k] + sph_Drr_log_h[k])) * i0[k];
     }
-#pragma omp parallel for schedule(dynamic, 1) shared(I0, I1, I2, M_Schwarz) private(k)
+#pragma omp parallel for schedule(static) shared(I0, I1, I2, M_Schwarz) private(k)
     for (k = 0; k < NrrTotal; ++k)
     {
         I0[k] = simps(&i0[P_IDX(k, 0)], dth, NthTotal);
@@ -212,7 +212,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
 // Surface integrals.
 // Komar mass 1, ADM mass, Komar angular momentum 1.
 // Compute integrands.
-#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1, i2) private(k)
+#pragma omp parallel for schedule(static) shared(i0, i1, i2) private(k)
     for (k = 0; k < p_dim; ++k)
     {
         i0[k] = (exp(sph_log_alpha[k]) * sph_Drr_log_alpha[k] -
@@ -227,7 +227,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
                 sin(sph_th[k]) * sin(sph_th[k]) * sin(sph_th[k]) * sph_Drr_beta[k] /
                 exp(sph_log_alpha[k]);
     }
-#pragma omp parallel for schedule(dynamic, 1) shared(M_Komar1, M_ADM, J_Komar2) private(k)
+#pragma omp parallel for schedule(static) shared(M_Komar1, M_ADM, J_Komar2) private(k)
     for (k = 0; k < NrrTotal; ++k)
     {
         M_Komar1[k] = simps(&i0[P_IDX(k, 0)], dth, NthTotal);
@@ -237,7 +237,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
 
 // Volume integrals.
 // Komar mass 2, Komar angular momentum 2.
-#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1) private(k)
+#pragma omp parallel for schedule(static) shared(i0, i1) private(k)
     for (k = 0; k < p_dim; ++k)
     {
         i0[k] = 4.0 * M_PI *
@@ -251,7 +251,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
                 exp(sph_log_alpha[k]);
     }
 // Integrate angle.
-#pragma omp parallel for schedule(dynamic, 1) shared(I0, I1) private(k)
+#pragma omp parallel for schedule(static) shared(I0, I1) private(k)
     for (k = 0; k < NrrTotal; ++k)
     {
         I0[k] = simps(&i0[P_IDX(k, 0)], dth, NthTotal);
@@ -298,7 +298,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
         i0[k] = i1[k] = i2[k] = i3[k] = 0.0;
     }
 // Beyond the origin, the integrand must be calculated carefully.
-#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1, i2, i3)                               \
+#pragma omp parallel for schedule(static) shared(i0, i1, i2, i3)                               \
     private(k, aux_rr, aux_th, aux_r, aux_rlm1, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi_o_r, \
                 aux_phi2_o_r2)
     // aux_rl, axu_phi, aux_phi2)
@@ -348,7 +348,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
     }
     // Integrate angles: theta from 0 to PI.
     I3[0] = 0.0;
-#pragma omp parallel for schedule(dynamic, 1) shared(I3) private(k)
+#pragma omp parallel for schedule(static) shared(I3) private(k)
     for (k = 1; k < NrrTotal; ++k)
     {
         I3[k] = 2.0 * simps(&i3[P_IDX(k, 0)], dth, NthTotal);
@@ -364,7 +364,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
         i0[k] = i1[k] = i2[k] = i3[k] = 0.0;
     }
 // Beyond the origin, the integrand must be calculated carefully.
-#pragma omp parallel for schedule(dynamic, 1) shared(i0, i1, i2, i3)                               \
+#pragma omp parallel for schedule(static) shared(i0, i1, i2, i3)                               \
     private(k, aux_rr, aux_th, aux_r, aux_rlm1, aux_alpha2, aux_beta, aux_a2, aux_h2, aux_phi_o_r, \
                 aux_phi2_o_r2)
     // aux_rl, aux_phi, aux_phi2)
@@ -424,7 +424,7 @@ void ex_analysis(solution_writer *sw, double *M, double *J, double *GRV2, double
     }
     // Integrate angles.
     I3[0] = 0.0;
-#pragma omp parallel for schedule(dynamic, 1) shared(I3) private(k)
+#pragma omp parallel for schedule(static) shared(I3) private(k)
     for (k = 1; k < NrrTotal; ++k)
     {
         I3[k] = 4.0 * M_PI * simps(&i3[P_IDX(k, 0)], dth, NthTotal);

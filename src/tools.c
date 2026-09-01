@@ -41,7 +41,7 @@ void array_sum(double *z, const double alpha, double *x, const double beta, doub
     MKL_INT i;
 #pragma omp parallel shared(z)
     {
-#pragma omp for schedule(guided)
+#pragma omp for schedule(static)
         for (i = 0; i < dim; ++i)
             z[i] = alpha * x[i] + beta * y[i];
     }

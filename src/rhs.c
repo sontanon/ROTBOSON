@@ -59,7 +59,7 @@ void rhs(rb_context *ctx, double *f, double *u)
 // Rescale.
 #pragma omp parallel private(i, j, r)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (i = 0; i < ctx->NrTotal; ++i)
         {
             r = ((double)(i - ctx->ghost) + 0.5) * ctx->dr;
@@ -81,7 +81,7 @@ void rhs(rb_context *ctx, double *f, double *u)
 #else
 #pragma omp parallel private(i, j, r)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (i = 0; i < ctx->NrTotal; ++i)
         {
             r = ((double)(i - ctx->ghost) + 0.5) * ctx->dr;
@@ -133,7 +133,7 @@ void rhs(rb_context *ctx, double *f, double *u)
     {
 #pragma omp parallel shared(f) private(j, k)
         {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
             for (j = ctx->ghost; j < ctx->NzTotal; ++j)
             {
                 for (k = 0; k < GNUM; ++k)
@@ -149,7 +149,7 @@ void rhs(rb_context *ctx, double *f, double *u)
     {
 #pragma omp parallel shared(f) private(i, k)
         {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
             for (i = ctx->ghost; i < ctx->NrTotal; ++i)
             {
                 for (k = 0; k < GNUM; ++k)
@@ -162,7 +162,7 @@ void rhs(rb_context *ctx, double *f, double *u)
 // Main interior points.
 #pragma omp parallel shared(f) private(i, j)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (i = ctx->ghost; i < ctx->NrTotal - 1; ++i)
         {
             for (j = ctx->ghost; j < ctx->NzTotal - 1; ++j)
@@ -192,7 +192,7 @@ void rhs(rb_context *ctx, double *f, double *u)
     j = ctx->NzTotal - 1;
 #pragma omp parallel shared(f) private(i)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (i = ctx->ghost; i < ctx->NrTotal - 1; ++i)
         {
             rhs_bdry(f, u, ctx->Dr_u, ctx->Dz_u, ctx->NrTotal, ctx->NzTotal, ctx->dim, ctx->ghost,
@@ -216,7 +216,7 @@ void rhs(rb_context *ctx, double *f, double *u)
     i = ctx->NrTotal - 1;
 #pragma omp parallel shared(f) private(j)
     {
-#pragma omp for schedule(dynamic, 1)
+#pragma omp for schedule(static)
         for (j = ctx->ghost; j < ctx->NzTotal - 1; ++j)
         {
             rhs_bdry(f, u, ctx->Dr_u, ctx->Dz_u, ctx->NrTotal, ctx->NzTotal, ctx->dim, ctx->ghost,
