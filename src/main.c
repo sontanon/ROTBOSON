@@ -300,10 +300,11 @@ int main(int argc, char *argv[])
     rb_context ctx;
     rb_context_init(&ctx);
 
-    // Local alias for the IDX macro, which indexes by row-major stride NzTotal.
-    const MKL_INT NzTotal = ctx.NzTotal;
-
     // Parse the parameter file into ctx.
+    // NOTE: do not cache ctx.NzTotal (or any other parsed value) before this
+    // point: rb_context_init only holds defaults, and the IDX macro expands
+    // whatever `NzTotal` is in scope. A pre-parse alias once made the grid
+    // fill below index with the default stride (SAN-19).
     parser(&ctx, argv[1]);
 
     print_parameters(&ctx);
@@ -340,20 +341,17 @@ int main(int argc, char *argv[])
 
     // Since these grids never change, fill them once and for all.
     // Fill coordinate grids.
-    double aux_r;
-#pragma omp parallel shared(r, z) private(i, j, aux_r)
+#pragma omp parallel for schedule(static) private(j)
+    for (i = 0; i < ctx.NrTotal; i++)
     {
-#pragma omp for schedule(dynamic, 1)
-        for (i = 0; i < ctx.NrTotal; i++)
+        // Calculate rho value.
+        double aux_r = ((double)(i - ctx.ghost) + 0.5) * ctx.dr;
+        // Loop over z points. Explicit stride: IDX() would silently expand to
+        // whatever `NzTotal` is in scope (see the parser note above).
+        for (j = 0; j < ctx.NzTotal; j++)
         {
-            // Calculate rho value.
-            aux_r = ((double)(i - ctx.ghost) + 0.5) * ctx.dr;
-            // Loop over z points.
-            for (j = 0; j < ctx.NzTotal; j++)
-            {
-                r[IDX(i, j)] = aux_r;
-                z[IDX(i, j)] = ((double)(j - ctx.ghost) + 0.5) * ctx.dz;
-            }
+            r[i * ctx.NzTotal + j] = aux_r;
+            z[i * ctx.NzTotal + j] = ((double)(j - ctx.ghost) + 0.5) * ctx.dz;
         }
     }
 

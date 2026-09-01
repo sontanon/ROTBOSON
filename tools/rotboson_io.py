@@ -22,6 +22,7 @@ SCALAR_FILES = [
     "r99.asc",
     "rr_phi_max.asc",
     "phi_max.asc",
+    "hwl_resolution.asc",
     "ergoregion_flag.asc",
 ]
 

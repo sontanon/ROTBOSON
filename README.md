@@ -130,7 +130,7 @@ uv sync --dev
 uv run tools/smoke.py out/l1_from_scratch.toml
 ```
 
-### Sweep driver (SAN-17)
+### Sweep driver (SAN-17 core + SAN-14 adaptive layer)
 
 `tools/sweep_driver.py` runs continuation campaigns: the C binary solves one
 solution per step, Python orchestrates. The continuation parameter is **ψ₀**
@@ -162,11 +162,22 @@ N = 64
 [output]
 root = "out/campaigns/l1-up"
 format = "hdf5"
+
+[adaptivity]              # optional — defaults shown (historical C values)
+hwl_min = 8               # regrid dr ÷2 when the field's half-width drops below this
+hwl_max = 40              # optional dr ×2 when wastefully over-resolved
+support_fraction = 0.85   # regrid dr ×2 when r99/r_bdy crosses this
+rr_phi_max_min = 0.5      # regrid dr ÷2 when the field max hugs the axis
+regrid_rtol = 2.0e-2      # coarsening accepted only within this truncation proxy
+grow_factor = 1.25        # Δψ₀ growth on fast, healthy convergence
+shrink_factor = 0.5       # Δψ₀ shrink on grudging convergence
+newton_fast_iters = 8     # "fast" Newton threshold for growth
 ```
 
 ```bash
 uv run tools/sweep_driver.py <campaign.toml>            # runs the campaign
 uv run tools/sweep_driver.py <campaign.toml> --fresh    # discard state, start over
+uv run tools/sweep_driver.py <campaign.toml> --summarize  # localize ω_min (post-processing)
 ```
 
 Each step writes `stepNNNN.toml` + `logs/stepNNNN.log` under the campaign
@@ -174,7 +185,34 @@ root; `state.json` is updated atomically after every step, so an interrupted
 campaign resumes from the last completed step on the next invocation (a
 changed spec aborts resume). Solutions are read back via `tools/rotboson_io.py`
 (HDF5 preferred), and each step records ψ₀, ω, Komar mass/angular momentum,
-`rr_phi_max`, `r99` and the Newton iteration count.
+`rr_phi_max`, `r99`, `hwl_resolution` and the Newton health (iteration count,
+tail damping λ, final ‖f‖).
+
+Adaptive behaviour (design §4–6):
+
+- **Step-size control** — a persistent step factor grows (×1.25) after fast,
+  healthy convergence and shrinks (×½) after grudging convergence or failure;
+  Newton non-convergence shrinks and retries, a solver error retries once
+  (rule 4), and a signal-killed step retries at the same size (SAN-19).
+- **Regrid ladder** — when the decision table calls for it, the driver
+  re-solves the *same* ψ₀ on a grid with dr ×2 or ÷2 (N fixed), seeding
+  through the C interpolator (`readInitialData = 3`) and correcting the
+  constraint scale so ψ₀ lands exactly. Coarsening is accepted only when
+  ω/M_Komar/J_Komar stay within `regrid_rtol` of the source (truncation-error
+  proxy); refinement is accepted on convergence + exact ψ₀ landing and merely
+  records the old grid's error. Failed widening regrids fall back to the
+  midpoint dr, then to smaller steps on the old grid; three consecutive
+  failures stop the campaign (`stopped:domain_budget`, §6.1).
+- **Turning point** — dω/dψ₀ is monitored across the last three branch
+  points; with `stop_at_turning_point = true` (default) the campaign stops
+  cleanly (`stopped:turning_point`, ω_min estimate in `state.json`), otherwise
+  it switches to fine sampling and steps through the fold. `--summarize`
+  localizes ω_min from any finished campaign with a degree-4 polynomial fit
+  (paper §IX) and writes `summary.json`.
+
+The decision logic lives in pure functions (`decide_action`,
+`detect_turning_point`, `turning_point_estimate`), unit-tested in
+`tests/test_driver_decisions.py` (`uv run pytest`).
 
 ## What a fresh clone gets you
 
