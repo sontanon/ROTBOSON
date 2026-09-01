@@ -45,6 +45,7 @@ from pathlib import Path
 from typing import Final, Self, cast
 
 import numpy as np
+from logsetup import configure, get_logger
 from rotboson_io import (
     extract_scalars,
     extract_scalars_from_hdf5,
@@ -54,6 +55,10 @@ from rotboson_io import (
 )
 
 REPO = Path(__file__).resolve().parent.parent
+
+# Operational telemetry goes through logging (stderr); this module has no
+# stdout report product (see logsetup's convention note).
+logger = get_logger(__name__)
 
 # Binary location: same search order as tools/smoke.py.
 BUILD_PRESETS: Final[tuple[str, ...]] = ("release", "umfpack", "dev", "asan-ubsan")
@@ -1295,9 +1300,11 @@ def do_regrid(
     if new_dr < src_dr and src.r99 is not None:
         new_domain = (src_n + 2 * ghost_of(order)) * new_dr
         if src.r99 > spec.adaptivity.boundary_fraction * new_domain:
-            print(
-                f"[driver] regrid step {step_no}: skipped — support r99={src.r99:.3g} "
-                f"would not fit in the {new_domain:.3g} domain"
+            logger.warning(
+                "regrid step %d: skipped — support r99=%.3g would not fit in the %.3g domain",
+                step_no,
+                src.r99,
+                new_domain,
             )
             state = state.with_rejected_probe(
                 RegridProbe(
@@ -1371,9 +1378,12 @@ def do_regrid(
                 # correction lands the re-solve exactly on ψ₀.
                 rejected.append(probe)
                 scale_u4 *= base_psi0 / achieved
-                print(
-                    f"[driver] regrid step {step_no}: interpolated constraint drifted "
-                    f"{drift:.2e}; correcting scale_u4 → {scale_u4:.10E}"
+                logger.warning(
+                    "regrid step %d: interpolated constraint drifted %.2e; "
+                    "correcting scale_u4 → %.10E",
+                    step_no,
+                    drift,
+                    scale_u4,
                 )
                 continue
         rec = probe
@@ -1421,17 +1431,24 @@ def do_regrid(
         )
         save_state(spec, state)
         diffs = ", ".join(f"{k}={v:.2e}" for k, v in rel.items())
-        print(
-            f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} accepted: "
-            f"finer (old-grid error recorded) ({diffs})"
+        logger.info(
+            "regrid step %d: dr %.5E → %.5E accepted: finer (old-grid error recorded) (%s)",
+            step_no,
+            src_dr,
+            new_dr,
+            diffs,
         )
     else:
         if rec is not None:
             state = state.with_rejected_probe(rec)
         save_state(spec, state)
-        print(
-            f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} "
-            f"REJECTED (exit {rec.exit_code if rec else 'n/a'}, log: {rec.log if rec else 'n/a'})"
+        logger.warning(
+            "regrid step %d: dr %.5E → %.5E REJECTED (exit %s, log: %s)",
+            step_no,
+            src_dr,
+            new_dr,
+            rec.exit_code if rec else "n/a",
+            rec.log if rec else "n/a",
         )
     return accepted, rec_step, state
 
@@ -1774,8 +1791,8 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             state = replace(loaded, status=Status.RUNNING, stop_reason=None)
 
     step_no = len(state.steps)
-    print(f"[driver] campaign root: {root}")
-    print(f"[driver] starting at step {step_no}, status={state.status}")
+    logger.info("campaign root: %s", root)
+    logger.info("starting at step %d, status=%s", step_no, state.status)
 
     # ----- seed step -------------------------------------------------------
     if step_no == 0:
@@ -1801,13 +1818,16 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             )
             state.steps.append(entry)
             save_state(spec, state)
-            print(
-                f"[driver] step 0 (seed): ψ₀={entry.psi0:.6E} ω={entry.omega:.6E} from {src.name}"
+            logger.info(
+                "step 0 (seed): ψ₀=%.6E ω=%.6E from %s",
+                entry.psi0,
+                entry.omega,
+                src.name,
             )
             step_no = 1
         elif dry_run:
             render_params(spec, root, 0)
-            print("[dry-run] rendered step 0 params; stopping (seed solve not run)")
+            logger.info("dry-run: rendered step 0 params; stopping (seed solve not run)")
             return 0
         else:
             params = render_params(spec, root, 0)
@@ -1824,17 +1844,18 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                     stop_reason=state.stop_reason or StopReason.seed_exit(code),
                 )
                 save_state(spec, state)
-                print(
-                    f"[driver] seed solve failed (exit {code}); see {root / 'logs' / 'step0000.log'}"
+                logger.error(
+                    "seed solve failed (exit %d); see %s", code, root / "logs" / "step0000.log"
                 )
                 return 1
-            print(
-                f"[driver] step 0 (seed solve): ψ₀={state.steps[-1].psi0:.6E} "
-                f"ω={state.steps[-1].omega:.6E}"
+            logger.info(
+                "step 0 (seed solve): ψ₀=%.6E ω=%.6E",
+                state.steps[-1].psi0,
+                state.steps[-1].omega,
             )
             step_no = 1
     elif dry_run:
-        print("[dry-run] campaign already has steps; nothing to render")
+        logger.info("dry-run: campaign already has steps; nothing to render")
         return 0
 
     # ----- continuation steps ---------------------------------------------
@@ -1874,12 +1895,12 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                     ),
                 )
             save_state(spec, state)
-            print(f"[driver] stop: {stop}")
+            logger.info("stop: %s", stop)
             tp = state.turning_point
             if tp:
                 w = tp.get("omega", tp.get("omega_sample_min"))
                 p = tp.get("psi0", tp.get("psi0_sample_min"))
-                print(f"[driver] ω_min ≈ {w:.6E} at ψ₀ ≈ {p:.6E} ({tp.get('method')})")
+                logger.info("ω_min ≈ %.6E at ψ₀ ≈ %.6E (%s)", w, p, tp.get("method"))
             return 0 if state.status != Status.FAILED else 1
 
         # Retry loop (decision-table rules 2-3, core subset): on Newton
@@ -1936,9 +1957,12 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                     if code < 0
                     else "solver error"
                 )
-                print(
-                    f"[driver] step {step_no} attempt {attempts} {cause}; "
-                    f"retrying with rescaled seed, log: {log}"
+                logger.warning(
+                    "step %d attempt %d %s; retrying with rescaled seed, log: %s",
+                    step_no,
+                    attempts,
+                    cause,
+                    log,
                 )
                 continue
 
@@ -1973,9 +1997,11 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                     pending_refinement=None,
                 )
                 save_state(spec, state)
-                print(
-                    f"[driver] step {step_no}: verification failed on the refined grid; "
-                    f"reverted to dr={pending.from_dr:.5E}, refinements disabled (SAN-21)"
+                logger.warning(
+                    "step %d: verification failed on the refined grid; "
+                    "reverted to dr=%.5E, refinements disabled (SAN-21)",
+                    step_no,
+                    pending.from_dr,
                 )
                 reverted = True
                 break
@@ -1986,7 +2012,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 stop_reason=finished(state, spec) or StopReason.exit_code(code),
             )
             save_state(spec, state)
-            print(f"[driver] step {step_no} FAILED (exit {code}); log: {log}")
+            logger.error("step %d FAILED (exit %d); log: %s", step_no, code, log)
             return 1
 
         note = f", {attempts} retry" if attempts else ""
@@ -2038,12 +2064,18 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             # on this grid (a failed refinement is not retried blindly).
             state = replace(state, refinements_left=diag.refinements_left - 1)
             save_state(spec, state)
-            print(f"[driver] refinement rejected; continuing on dr={dr:.5E}")
+            logger.warning("refinement rejected; continuing on dr=%.5E", dr)
 
-        print(
-            f"[driver] step {step_no - 1}: ψ₀={last.psi0:.6E} ω={last.omega:.6E} "
-            f"(guess ω≈{w_guess:.4f}, {last.newton_iters} iters{note}) [{action}] "
-            f"-> {Path(last.sol_dir or '').name}"
+        logger.info(
+            "step %d: ψ₀=%.6E ω=%.6E (guess ω≈%.4f, %s iters%s) [%s] -> %s",
+            step_no - 1,
+            last.psi0,
+            last.omega,
+            w_guess,
+            last.newton_iters,
+            note,
+            action,
+            Path(last.sol_dir or "").name,
         )
 
     # pragma: no cover — the campaign loop only exits via return
@@ -2058,11 +2090,11 @@ def summarize(spec: Spec) -> int:
     """
     state = load_state(spec)
     if state is None:
-        print("[driver] no state.json to summarize", file=sys.stderr)
+        logger.error("no state.json to summarize")
         return 1
     omegas = [s.omega for s in state.steps]
     if not any(w is not None for w in omegas):
-        print("[driver] no completed steps record ω; nothing to summarize", file=sys.stderr)
+        logger.error("no completed steps record ω; nothing to summarize")
         return 1
     report = turning_point_estimate(
         [s.psi0 for s in state.steps],
@@ -2073,8 +2105,10 @@ def summarize(spec: Spec) -> int:
     report["stop_reason"] = state.stop_reason
     out = spec.output.root / "summary.json"
     out.write_text(json.dumps(report, indent=2) + "\n")
+    # The summary payload is the tool's stdout product (machine-consumed):
+    # printed, not logged.
     print(f"[driver] summary: {json.dumps(report)}")
-    print(f"[driver] wrote {out}")
+    logger.info("wrote %s", out)
     return 0
 
 
@@ -2092,12 +2126,35 @@ def main() -> int:
         action="store_true",
         help="localize ω_min from the campaign's state.json (post-processing)",
     )
+    verbosity = ap.add_mutually_exclusive_group()
+    verbosity.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="verbose diagnostics (DEBUG logging)",
+    )
+    verbosity.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="only warnings and errors (WARNING logging)",
+    )
+    ap.add_argument(
+        "--log-json",
+        action="store_true",
+        help="emit logs as one JSON object per line on stderr (campaign telemetry)",
+    )
     args = ap.parse_args()
+
+    configure(
+        "DEBUG" if args.verbose else "WARNING" if args.quiet else None,
+        json_logs=args.log_json,
+    )
 
     try:
         spec = load_spec(args.campaign)
     except SpecError as e:
-        print(f"[driver] invalid campaign spec: {e}", file=sys.stderr)
+        logger.error("invalid campaign spec: %s", e)
         return 3
 
     if args.summarize:
