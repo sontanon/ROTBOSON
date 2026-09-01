@@ -1,0 +1,119 @@
+{
+  "spec_hash": "03f82e19754c4dfd81e58d48dd6e708be31d5b03320b3e1181df572eedcb777f",
+  "spec_file": null,
+  "steps": [
+    {
+      "i": 0,
+      "exit_code": 0,
+      "mode": "fixedPhi",
+      "sol_dir": "/workspace/rotboson/out/campaigns/sweep-l1-v2/l=1,w=9.50000E-01,dr=1.25000E-01,N=0128",
+      "dr": 0.125,
+      "N": 128,
+      "omega": 0.95,
+      "M_Komar": 0.7893092851563183,
+      "J_Komar": 0.7907533263521535,
+      "rr_phi_max": 6.904807752424797,
+      "r99": 15.684605443920676,
+      "hwl": 85.0,
+      "psi0": 0.0028385589893570092,
+      "newton_iters": 12
+    },
+    {
+      "i": 1,
+      "exit_code": 0,
+      "mode": "fixedPhi",
+      "sol_dir": "/workspace/rotboson/out/campaigns/sweep-l1-v2/l=1,w=9.48499E-01,dr=1.25000E-01,N=0128",
+      "dr": 0.125,
+      "N": 128,
+      "omega": 0.9484993141239845,
+      "M_Komar": 0.8029212481831263,
+      "J_Komar": 0.805302070488294,
+      "rr_phi_max": 6.834484427006956,
+      "r99": 15.674873625504867,
+      "hwl": 84.0,
+      "psi0": 0.0029237157590377197,
+      "newton_iters": 3,
+      "psi0_target": 0.002923715759038
+    },
+    {
+      "i": 2,
+      "exit_code": 0,
+      "mode": "fixedPhi",
+      "sol_dir": "/workspace/rotboson/out/campaigns/sweep-l1-v2/l=1,w=9.46995E-01,dr=1.25000E-01,N=0128",
+      "dr": 0.125,
+      "N": 128,
+      "omega": 0.9469954748555989,
+      "M_Komar": 0.8163280644537066,
+      "J_Komar": 0.8196683966924363,
+      "rr_phi_max": 6.764237234746286,
+      "r99": 15.664396740090991,
+      "hwl": 85.0,
+      "psi0": 0.003011427231809,
+      "newton_iters": 2,
+      "psi0_target": 0.003011427231809
+    },
+    {
+      "i": 3,
+      "exit_code": 0,
+      "mode": "fixedPhi",
+      "sol_dir": "/workspace/rotboson/out/campaigns/sweep-l1-v2/l=1,w=9.45489E-01,dr=1.25000E-01,N=0128",
+      "dr": 0.125,
+      "N": 128,
+      "omega": 0.945489374156675,
+      "M_Komar": 0.8295172536285912,
+      "J_Komar": 0.8338371621233345,
+      "rr_phi_max": 6.693666173324069,
+      "r99": 15.653102812781674,
+      "hwl": 84.0,
+      "psi0": 0.003101770048763,
+      "newton_iters": 2,
+      "psi0_target": 0.003101770048763
+    }
+  ],
+  "status": "done",
+  "stop_reason": "done:psi0_target",
+  "grid": {
+    "dr": 0.125,
+    "N": 128
+  },
+  "refinements_left": 0,
+  "turning_point": null,
+  "rejected_regrids": [
+    {
+      "i": 165,
+      "mode": "regrid-probe",
+      "exit_code": 0,
+      "scale_u4": 1.0,
+      "log": "/workspace/rotboson/out/campaigns/sweep-l1-v2/logs/step165.log",
+      "sol_dir": "/workspace/rotboson/out/campaigns/sweep-l1-v2/l=1,w=6.45894E-01,dr=6.25000E-02,N=0128",
+      "scalars": {
+        "w_f.asc": 0.6458938146186869,
+        "GRV2.asc": -0.011056135387960665,
+        "GRV3.asc": 3.211363706017822,
+        "r99.asc": 2.080728765181329,
+        "rr_phi_max.asc": 0.5175293538729014,
+        "phi_max.asc": 0.13088742851649743,
+        "hwl_resolution.asc": 15.0,
+        "ergoregion_flag.asc": 1.0,
+        "M_ADM.asc": 1.2649671501761768,
+        "M_Komar1.asc": 1.0548102625537785,
+        "M_Komar2.asc": 1.0548209307138474,
+        "M_Schwarz.asc": 1.0489828281703062,
+        "J_Komar1.asc": 0.9953497591947484,
+        "J_Komar2.asc": 0.9953979313180656,
+        "error_code.asc": 0
+      },
+      "psi0": 0.3664943472192774
+    }
+  ],
+  "pending_refinement": null,
+  "fold_fine_grid_measurement": [
+    {
+      "psi0": 0.3725975546273408,
+      "omega": 0.6459705050646782,
+      "dr": 0.125,
+      "sol_dir": "/workspace/rotboson/out/campaigns/sweep-l1-v2/l=1,w=X.XXXXXE-01,dr=1.25000E-01,N=0128",
+      "note": "refined-grid verification step failed; refinement not committed, solution kept as measurement (SAN-21)"
+    }
+  ]
+}
