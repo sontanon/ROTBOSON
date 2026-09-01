@@ -1,0 +1,8 @@
+# ty configuration for the Python tooling under tools/ and tests/.
+# `tools/` is on the module search path so tests can import sweep_driver
+# directly (they extend sys.path at runtime for pytest).
+[src]
+include = ["tools", "tests"]
+
+[environment]
+extra-paths = ["tools"]

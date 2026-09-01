@@ -6,8 +6,6 @@ Legacy ROTBOSON output formats:
 - integer files: one %lld per line (e.g. error_code.asc).
 """
 
-from __future__ import annotations
-
 import re
 from pathlib import Path
 

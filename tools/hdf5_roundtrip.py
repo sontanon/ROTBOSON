@@ -9,8 +9,6 @@ Usage:
     uv run tools/hdf5_roundtrip.py <solution_dir> --ref <ascii_solution_dir>
 """
 
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path

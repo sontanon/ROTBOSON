@@ -4,8 +4,6 @@ The full-output originals remain archived on the backup drive
 (Seagate Expansion Drive:/RBS). Run:  uv run tools/strip_notebooks.py
 """
 
-from __future__ import annotations
-
 import sys
 from pathlib import Path
 

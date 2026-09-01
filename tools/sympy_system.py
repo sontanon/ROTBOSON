@@ -29,8 +29,6 @@ regularization variable), and pulls in the auxiliaries
 ``Dr_u6_aux`` / ``Dr_u7_aux``.
 """
 
-from __future__ import annotations
-
 import sympy as sp
 
 # ---------------------------------------------------------------------------

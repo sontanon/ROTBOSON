@@ -8,8 +8,6 @@ Usage:
     uv run tools/ladder_continue.py <seed_solution_dir> --target 0.720859 --max-steps 12
 """
 
-from __future__ import annotations
-
 import argparse
 import re
 import shutil

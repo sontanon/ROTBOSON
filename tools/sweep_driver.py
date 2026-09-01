@@ -29,8 +29,6 @@ The decision logic lives in pure functions (`decide_action`,
 `tests/test_driver_decisions.py`. Golden-sequence verification is SAN-13.
 """
 
-from __future__ import annotations
-
 import argparse
 import hashlib
 import json
@@ -467,6 +465,9 @@ def render_params(
             # use mode 1.
             f"readInitialData = {3 if initial_grid else 1}",
         ]
+        # seed_dir is only read on this branch; the from_scratch step-0
+        # branch renders analytic initial data instead.
+        assert seed_dir is not None, "seed_dir required when seeding from files"
         for param, field in SEED_PARAM_KEYS.items():
             lines.append(f'{param} = "{(seed_dir / field).resolve()}"')
         lines.append(f'w_i = "{(seed_dir / "w_f.asc").resolve()}"')

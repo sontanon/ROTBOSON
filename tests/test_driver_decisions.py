@@ -6,7 +6,6 @@ one refinement rule (under-resolved peak → dr ÷2, verify-then-commit),
 physics-limit/boundary stops, timeout handling, turning-point detection.
 """
 
-from __future__ import annotations
 
 import sys
 from pathlib import Path

@@ -13,8 +13,6 @@ Usage:
 Prints virial, correction, total, and the values stored in GRV2.asc/GRV3.asc.
 """
 
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path

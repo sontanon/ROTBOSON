@@ -7,10 +7,9 @@ independent SymPy Jacobian from :mod:`tools.sympy_system`, at a few hundred
 random sample points.  Exit code 0 iff every entry agrees.
 """
 
-from __future__ import annotations
-
 import random
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import nbformat
@@ -73,9 +72,11 @@ def notebook_symbols() -> dict[str, sp.Symbol]:
     return syms
 
 
-def parse_nb(expr_str: str, ns: dict[str, sp.Expr]) -> sp.Expr:
+def parse_nb(expr_str: str, ns: Mapping[str, sp.Expr]) -> sp.Expr:
     code = expr_str.replace("M_PI", "pi").replace("lambda", "lam")
-    return sp.sympify(code, locals=ns)
+    # sympy's stubs omit the `locals` parameter from every sympify overload
+    # even though the implementation accepts it (sympy >= 1.13).
+    return sp.sympify(code, locals=ns)  # ty: ignore[no-matching-overload]
 
 
 def sample_point(seed: int) -> dict[str, float]:

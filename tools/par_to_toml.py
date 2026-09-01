@@ -16,8 +16,6 @@ Usage:
 With ``--in-place`` the original ``.par`` files are deleted after conversion.
 """
 
-from __future__ import annotations
-
 import argparse
 import re
 import sys
