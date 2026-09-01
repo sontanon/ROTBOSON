@@ -241,8 +241,11 @@ def load_spec(path: Path) -> dict:
     # Spec hash: content hash with runtime control keys (max_steps,
     # max_retries) excluded — raising a limit must not invalidate the physics
     # state of a running campaign; any physics-affecting change does.
+    # The hash ignores runtime control keys AND comment lines — commentary
+    # edits must not invalidate a running campaign's resume (SAN-21).
     control = re.compile(r"^\s*(max_steps|max_retries)\s*=.*$", re.MULTILINE)
-    canon = control.sub("", raw_bytes.decode()).encode()
+    comments = re.compile(r"^\s*#.*$", re.MULTILINE)
+    canon = comments.sub("", control.sub("", raw_bytes.decode())).encode()
     spec["_spec_hash"] = hashlib.sha256(canon).hexdigest()
     return spec
 
