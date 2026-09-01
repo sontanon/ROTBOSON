@@ -1256,16 +1256,12 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             # permanent, no oscillation (SAN-21).
             pending = state.get("pending_refinement")
             if pending is not None:
-                state.setdefault("fold_fine_grid_measurement", []).append(
-                    {
-                        "psi0": last.get("psi0"),
-                        "omega": last.get("omega"),
-                        "dr": last.get("dr"),
-                        "sol_dir": last.get("sol_dir"),
-                        "note": "refined-grid verification step failed; refinement not "
-                        "committed, solution kept as measurement (SAN-21)",
-                    }
+                measurement = dict(pending.get("measurement", {}))
+                measurement["note"] = (
+                    "refined-grid re-solve at the fold; its verification step failed so the "
+                    "refinement was not committed — kept as the fold measurement (SAN-21)"
                 )
+                state.setdefault("fold_fine_grid_measurement", []).append(measurement)
                 rg_step = pending.get("regrid_step")
                 state["steps"] = [
                     s
@@ -1318,7 +1314,16 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             if ok:
                 current_grid(state, spec)["dr"] = new_dr
                 state["refinements_left"] = diag["refinements_left"] - 1
-                state["pending_refinement"] = {"from_dr": dr, "regrid_step": step_no}
+                state["pending_refinement"] = {
+                    "from_dr": dr,
+                    "regrid_step": step_no,
+                    "measurement": {
+                        "psi0": state["steps"][-1].get("psi0"),
+                        "omega": state["steps"][-1].get("omega"),
+                        "dr": new_dr,
+                        "sol_dir": str(Path(state["steps"][-1]["sol_dir"])),
+                    },
+                }
                 step_no += 1
                 save_state(spec, state)
                 continue  # re-check exit conditions on the new grid
