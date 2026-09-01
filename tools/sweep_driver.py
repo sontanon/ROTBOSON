@@ -598,9 +598,9 @@ def do_regrid(
     """Re-solve the *same* ψ₀ on a grid with dr → `new_dr` (design §4).
 
     Seeds through the C interpolator (readInitialData = 3) from the last good
-    solution, constrains ψ(fixedPhi point) = ψ₀ as usual, and accepts only
-    when ω / M_Komar / J_Komar agree with the source solution within the
-    truncation-error proxy (`[adaptivity] regrid_rtol`).
+    solution and constrains ψ(fixedPhi point) = ψ₀ as usual. v2 only refines
+    (dr ÷2): acceptance is convergence + the exact ψ₀ landing, and the
+    recorded ω / M_Komar / J_Komar differences are the old grid's error.
 
     The C freezes the Newton update at the fixedPhi point, so the enforced ψ₀
     is the *interpolated seed's* value there — which can drift from the
@@ -612,7 +612,8 @@ def do_regrid(
     Only an *accepted* re-grid is recorded as a step (mode "regrid") — it is
     the same branch point as the source, not a new one. Failed or rejected
     attempts go to state['rejected_regrids'] for provenance; the caller
-    falls back (midpoint dr, then smaller steps on the old grid).
+    stays on the current grid and counts the attempt against
+    max_refinements.
 
     Returns (accepted, step_record).
     """
@@ -639,7 +640,7 @@ def do_regrid(
     # if the support would not fit in the new domain, the attempt is futile.
     if new_dr < src_dr and src.get("r99") is not None:
         new_domain = (src_n + 2 * ghost_of(order)) * new_dr
-        if src["r99"] > spec["adaptivity"]["support_fraction"] * new_domain:
+        if src["r99"] > spec["adaptivity"]["boundary_fraction"] * new_domain:
             print(
                 f"[driver] regrid step {step_no}: skipped — support r99={src['r99']:.3g} "
                 f"would not fit in the {new_domain:.3g} domain"
@@ -657,12 +658,6 @@ def do_regrid(
             save_state(spec, state)
             return False, {}
 
-    # Coarsening loses accuracy: gate on the truncation-error proxy. Refining
-    # only gains accuracy — a global-parameter difference there measures the
-    # OLD grid's error (the reason we are refining), so it is recorded as
-    # provenance but does not block acceptance; convergence + the exact ψ₀
-    # landing are the guards.
-    strict = new_dr > src_dr
     initial_grid = {
         "NrTotalInitial": src_n + 2 * ghost_of(order),
         "NzTotalInitial": src_n + 2 * ghost_of(order),
@@ -736,7 +731,6 @@ def do_regrid(
     accepted = False
     rec_step: dict = {}
     if rec and rec.get("exit_code") == 0 and rec.get("psi0") is not None:
-        rtol = spec["adaptivity"]["regrid_rtol"]
         rel = {}
         for key, fname in (
             ("omega", "w_f.asc"),
@@ -748,7 +742,7 @@ def do_regrid(
                 rel = {}
                 break
             rel[key] = abs(new - old) / abs(old)
-        accepted = bool(rel) and (strict is False or all(v < rtol for v in rel.values()))
+        accepted = bool(rel)
 
     if accepted:
         # Promote the accepted re-solve to a real branch-point step.
@@ -764,9 +758,9 @@ def do_regrid(
         }
         save_state(spec, state)
         diffs = ", ".join(f"{k}={v:.2e}" for k, v in rel.items())
-        kind = "coarser (within truncation proxy)" if strict else "finer (old-grid error recorded)"
         print(
-            f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} accepted: {kind} ({diffs})"
+            f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} accepted: "
+            f"finer (old-grid error recorded) ({diffs})"
         )
     else:
         if rec:
