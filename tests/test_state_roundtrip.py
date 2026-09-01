@@ -12,6 +12,7 @@ The frozen-dataclass state model must be compatible with in-flight campaigns:
 import json
 import sys
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -23,9 +24,21 @@ from sweep_driver import CampaignState, StepMode, StepRecord  # noqa: E402
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
-def load_fixture(name: str) -> tuple[str, dict]:
+def load_fixture(name: str) -> tuple[str, dict[str, object]]:
     text = (FIXTURES / name).read_text()
-    return text, json.loads(text)
+    return text, cast("dict[str, object]", json.loads(text))
+
+
+def raw_steps(raw: dict[str, object]) -> list[dict[str, object]]:
+    return cast("list[dict[str, object]]", raw["steps"])
+
+
+def raw_probes(raw: dict[str, object]) -> list[dict[str, object]]:
+    return cast("list[dict[str, object]]", raw["rejected_regrids"])
+
+
+def raw_fold(raw: dict[str, object]) -> list[dict[str, object]]:
+    return cast("list[dict[str, object]]", raw["fold_fine_grid_measurement"])
 
 
 class TestCurrentWriterByteRoundTrip:
@@ -46,21 +59,19 @@ class TestCurrentWriterByteRoundTrip:
         _, raw = load_fixture("state_v2_current.json")
         state = CampaignState.from_dict(raw)
         assert state.spec_hash == raw["spec_hash"]
-        assert len(state.steps) == len(raw["steps"])
-        assert [s.i for s in state.steps] == [r["i"] for r in raw["steps"]]
-        assert [s.omega for s in state.steps] == [r["omega"] for r in raw["steps"]]
-        assert [s.psi0 for s in state.steps] == [r["psi0"] for r in raw["steps"]]
+        assert len(state.steps) == len(raw_steps(raw))
+        assert [s.i for s in state.steps] == [r["i"] for r in raw_steps(raw)]
+        assert [s.omega for s in state.steps] == [r["omega"] for r in raw_steps(raw)]
+        assert [s.psi0 for s in state.steps] == [r["psi0"] for r in raw_steps(raw)]
         assert state.refinements_left == raw["refinements_left"]
         probes = state.rejected_regrids
-        assert probes is not None and len(probes) == len(raw["rejected_regrids"])
-        assert [p.psi0 for p in probes] == [r.get("psi0") for r in raw["rejected_regrids"]]
-        assert probes[0].scalars == raw["rejected_regrids"][0]["scalars"]
+        assert probes is not None and len(probes) == len(raw_probes(raw))
+        assert [p.psi0 for p in probes] == [r.get("psi0") for r in raw_probes(raw)]
+        assert probes[0].scalars == raw_probes(raw)[0]["scalars"]
         fold = state.fold_fine_grid_measurement
         assert fold is not None
-        assert [m.sol_dir for m in fold] == [
-            m["sol_dir"] for m in raw["fold_fine_grid_measurement"]
-        ]
-        assert fold[0].note == raw["fold_fine_grid_measurement"][0]["note"]
+        assert [m.sol_dir for m in fold] == [m["sol_dir"] for m in raw_fold(raw)]
+        assert fold[0].note == raw_fold(raw)[0]["note"]
 
     def test_int_scalars_keep_identity(self):
         # int-valued scalars (e.g. error_code) must not become floats
@@ -69,9 +80,9 @@ class TestCurrentWriterByteRoundTrip:
         assert state.rejected_regrids is not None
         probe = state.rejected_regrids[0]
         assert probe.scalars is not None
+        orig_scalars = cast("dict[str, object]", raw_probes(raw)[0]["scalars"])
         for key, value in probe.scalars.items():
-            orig = raw["rejected_regrids"][0]["scalars"][key]
-            assert type(value) is type(orig)
+            assert type(value) is type(orig_scalars[key])
 
 
 class TestLegacyCompat:
@@ -93,7 +104,7 @@ class TestLegacyCompat:
 
     def test_legacy_modeled_data_survives(self, state):
         s, raw = state
-        for raw_step in raw["steps"]:
+        for raw_step in raw_steps(raw):
             modeled = StepRecord.from_dict(raw_step).to_dict()
             # every key the current writer emits matches the original value
             for key, value in modeled.items():
@@ -132,7 +143,11 @@ class TestSyntheticRecords:
             omega=0.91,
             psi0=0.31,
             regrid=RegridInfo(
-                from_dr=0.125, to_dr=0.0625, source="/tmp/src", rel_diff={"omega": 1e-4}, accepted=True
+                from_dr=0.125,
+                to_dr=0.0625,
+                source="/tmp/src",
+                rel_diff={"omega": 1e-4},
+                accepted=True,
             ),
         )
         assert StepRecord.from_dict(rec.to_dict()) == rec

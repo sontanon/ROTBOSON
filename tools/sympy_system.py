@@ -31,6 +31,13 @@ regularization variable), and pulls in the auxiliaries
 
 import sympy as sp
 
+
+def _as_expr(e: object) -> sp.Expr:
+    """Narrow sympy's loosely-typed stubs (Expr ops may be stubbed wider)."""
+    assert isinstance(e, sp.Expr)
+    return e
+
+
 # ---------------------------------------------------------------------------
 # Symbols
 # ---------------------------------------------------------------------------
@@ -97,16 +104,16 @@ def residuals(s: dict[str, sp.Expr]) -> list[sp.Expr]:
     """Return the six residual brackets ``R_0..R_5`` (before ``dr2*dzodr``)."""
 
     def Dr(k: int) -> sp.Expr:
-        return s[f"dRu{k}"] / s["dr"]
+        return _as_expr(s[f"dRu{k}"] / s["dr"])
 
     def Dz(k: int) -> sp.Expr:
-        return s[f"dZu{k}"] / s["dz"]
+        return _as_expr(s[f"dZu{k}"] / s["dz"])
 
     def Drr(k: int) -> sp.Expr:
-        return s[f"dRRu{k}"] / s["dr2"]
+        return _as_expr(s[f"dRRu{k}"] / s["dr2"])
 
     def Dzz(k: int) -> sp.Expr:
-        return s[f"dZZu{k}"] / s["dz2"]
+        return _as_expr(s[f"dZZu{k}"] / s["dz2"])
 
     r = s["r"]
     r2 = s["r2"]
@@ -234,7 +241,7 @@ def jacobian(s: dict[str, sp.Expr], f: list[sp.Expr]) -> list[list[sp.Expr]]:
         cols += [s[f"u{k}"], s[f"dRu{k}"], s[f"dZu{k}"], s[f"dRRu{k}"], s[f"dZZu{k}"]]
     cols += [s["w"]]
 
-    J = [[sp.diff(Fi, c) for c in cols] for Fi in F]
+    J = [[_as_expr(sp.diff(Fi, c)) for c in cols] for Fi in F]
     return J
 
 
@@ -319,7 +326,7 @@ def to_c(expr: sp.Expr, s: dict[str, sp.Expr]) -> sp.Expr:
         lambda t: t.is_Pow and t.base == dzodr and t.exp.is_negative,
         lambda t: C["drodz"] ** (-t.exp),
     )
-    return e
+    return _as_expr(e)
 
 
 # ---------------------------------------------------------------------------

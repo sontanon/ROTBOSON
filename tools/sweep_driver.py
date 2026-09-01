@@ -916,7 +916,9 @@ def load_state(spec: Spec) -> CampaignState | None:
     p = state_path(spec)
     if not p.exists():
         return None
-    raw: dict[str, object] = json.loads(p.read_text())
+    raw = json.loads(p.read_text())
+    if not isinstance(raw, dict):
+        raise ValueError(f"state.json at {p} is corrupt: top level is not a JSON object")
     if raw.get("spec_hash") != spec.spec_hash:
         raise SystemExit(
             f"state.json at {p} was written for a different spec version; "

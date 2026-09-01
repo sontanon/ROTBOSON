@@ -94,6 +94,8 @@ jobs:
         run: uv run ruff format --check tools/
       - name: Type check (ty)
         run: uv run ty check tools/ tests/
+      - name: Unit tests (Python 3.14)
+        run: uv run pytest tests/ -q
 
   python-sympy:
     name: SymPy derivation + codegen checks
