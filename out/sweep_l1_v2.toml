@@ -1,9 +1,10 @@
-# SAN-21 v2 validation: full l=1 branch, fixed 3% steps, refine-on-spikes.
-# through the minimum-omega turning point, up to psi0 = 0.5) with the adaptive
-# layer enabled. Reference: the archived SAN-17 sweep (out/campaigns/sweep-l1-up,
-# 176 steps, omega_min = 0.647077) and paper Table IX.1 (omega_min = 0.64561).
-# stop_at_turning_point = false exercises fine sampling through the fold;
-# the [adaptivity] defaults govern step growth/shrink and regrids.
+# SAN-21 v2 validation: the full l=1 branch in one uninterrupted campaign
+# (acceptance: <= 3 h) — from scratch through the minimum-omega turning point
+# to psi0 = 0.5. Fixed 3% relative steps, refine-on-spikes (hwl < 8 or the
+# peak closer to the axis than half its own width), verify-then-commit.
+# Reference: the archived SAN-17 sweep (out/campaigns/sweep-l1-up, 176 steps,
+# omega_min = 0.647077) and paper Table IX.1 (omega_min = 0.64561).
+# stop_at_turning_point = false pushes through the fold to psi0 = 0.5.
 [campaign]
 l = 1
 direction = "up"
