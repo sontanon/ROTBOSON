@@ -9,12 +9,14 @@ Usage:
 """
 
 import argparse
+import logging
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from logsetup import configure, get_logger
 from rotboson_io import find_solution_dirs, read_scalar
 
 REPO = Path(__file__).resolve().parent.parent
@@ -34,10 +36,20 @@ SEED_FILES = [
 ]
 
 
+# Telemetry goes to logging (stderr) AND the campaign log file: the ladder
+# runs unattended for hours, and the file survives terminal loss.
+logger = get_logger(__name__)
+_FILE_HANDLER: logging.FileHandler | None = None
+
+
 def log(msg: str) -> None:
-    print(msg, flush=True)
-    with LOGFILE.open("a") as fh:
-        fh.write(msg + "\n")
+    global _FILE_HANDLER
+    if _FILE_HANDLER is None:
+        LOGFILE.parent.mkdir(parents=True, exist_ok=True)
+        _FILE_HANDLER = logging.FileHandler(LOGFILE)
+        _FILE_HANDLER.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+        logger.addHandler(_FILE_HANDLER)
+    logger.info(msg)
 
 
 def make_par(seed_dir: Path, out_par: Path) -> None:
@@ -79,6 +91,7 @@ def main() -> int:
     )
     parser.add_argument("--max-steps", type=int, default=12)
     args = parser.parse_args()
+    configure()
 
     seed = args.seed_dir.resolve()
     if not seed.is_dir():

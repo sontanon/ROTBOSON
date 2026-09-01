@@ -25,6 +25,7 @@ from pathlib import Path
 
 import sympy as sp
 import sympy_system as ss
+from logsetup import configure, get_logger
 
 # ---------------------------------------------------------------------------
 # Finite-difference stencil data (offsets + per-subtype coefficients).
@@ -697,6 +698,9 @@ def _clang_format(content: str, filename: str, repo: Path) -> str:
     return proc.stdout if proc.returncode == 0 else content
 
 
+logger = get_logger(__name__)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -704,6 +708,7 @@ def main() -> int:
     )
     ap.add_argument("--out-dir", type=Path, default=None)
     args = ap.parse_args()
+    configure()
 
     s, R, f, Jc = ss.build_c()
     jac_str = _expr_strings(Jc)
@@ -723,11 +728,11 @@ def main() -> int:
         target = repo / rel
         if args.check:
             if not target.exists() or target.read_text() != content:
-                print(f"[generate_kernels] DIFFERS: {rel}")
+                logger.warning("DIFFERS: %s", rel)
                 changed = True
         else:
             target.write_text(content)
-            print(f"[generate_kernels] wrote {rel} ({len(content)} bytes)")
+            logger.info("wrote %s (%d bytes)", rel, len(content))
     if args.check:
         print("[generate_kernels] check " + ("FAILED" if changed else "OK"))
         return 1 if changed else 0
