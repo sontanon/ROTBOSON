@@ -7,13 +7,15 @@ Legacy ROTBOSON output formats:
 """
 
 import re
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Final
 
 import numpy as np
 
-SOLUTION_DIR_RE = re.compile(r"^l=\d+,w=[\d.Ee+-]+,dr=[\d.Ee+-]+,N=\d+$")
+SOLUTION_DIR_RE: Final = re.compile(r"^l=\d+,w=[\d.Ee+-]+,dr=[\d.Ee+-]+,N=\d+$")
 
-SCALAR_FILES = [
+SCALAR_FILES: Final[tuple[str, ...]] = (
     "w_f.asc",
     "GRV2.asc",
     "GRV3.asc",
@@ -22,20 +24,20 @@ SCALAR_FILES = [
     "phi_max.asc",
     "hwl_resolution.asc",
     "ergoregion_flag.asc",
-]
+)
 
 # Radial-profile files: the physically meaningful value is the LAST entry
 # (evaluated at the outer boundary rr_inf).
-PROFILE_FILES = [
+PROFILE_FILES: Final[tuple[str, ...]] = (
     "M_ADM.asc",
     "M_Komar1.asc",
     "M_Komar2.asc",
     "M_Schwarz.asc",
     "J_Komar1.asc",
     "J_Komar2.asc",
-]
+)
 
-FIELD_FILES = [
+FIELD_FILES: Final[tuple[str, ...]] = (
     "log_alpha_f.asc",
     "beta_f.asc",
     "log_h_f.asc",
@@ -48,7 +50,7 @@ FIELD_FILES = [
     "sph_log_a_f.asc",
     "sph_psi_f.asc",
     "sph_lambda_f.asc",
-]
+)
 
 
 def read_1d(path: str | Path) -> np.ndarray:
@@ -212,7 +214,7 @@ def extract_scalars(sol_dir: str | Path) -> dict[str, float | int]:
 
 
 def compare_scalars(
-    ref: dict, new: dict, rtol: float = 1e-10, atol: float = 1e-12
+    ref: Mapping[str, object], new: Mapping[str, object], rtol: float = 1e-10, atol: float = 1e-12
 ) -> tuple[bool, list[str]]:
     """Compare scalar dicts; return (ok, report lines).
 
@@ -225,7 +227,12 @@ def compare_scalars(
     keys = sorted(set(ref) & set(new))
     for key in keys:
         r, n = ref[key], new[key]
-        if isinstance(r, (int, float)) and not isinstance(r, bool):
+        if (
+            isinstance(r, (int, float))
+            and not isinstance(r, bool)
+            and isinstance(n, (int, float))
+            and not isinstance(n, bool)
+        ):
             diff = abs(float(r) - float(n))
             rel = diff / max(abs(float(r)), 1e-300)
             status = "PASS" if (diff <= atol or rel <= rtol) else "FAIL"
