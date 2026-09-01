@@ -329,3 +329,64 @@ backends (release/MKL and umfpack).
 **Out of scope:** parallel/multi-campaign orchestration, M4 multigrid/non-uniform grids,
 perturbation/stability solver, paper figure generation (driver only emits solutions +
 state; plotting stays ad hoc).
+
+---
+
+## Revision 2 (SAN-21) — the fixed-step workhorse and one refinement rule
+
+Revision 1's full adaptive apparatus was validated end-to-end on the l=1
+branch (from scratch through the turning point to ψ₀ = 0.5; see SAN-14).
+It worked — and the run showed most of the policy layer was not worth its
+cost: the fixed 3% relative ladder crossed the fold without a single
+failure (176 solves, 1.6 h) while the adaptive run needed 2173 solves and
+12.6 h, with six distinct policy findings. Revision 2 keeps what earned
+its keep and deletes the rest.
+
+### What stays
+
+- ψ₀ continuation, plain-rescale seeds, fixedPhi/interpolated restarts,
+  state.json resume, strict exit codes, timeout/physics-limit/signal
+  handling, curve tooling and `--summarize`.
+- **Fixed relative Δψ₀ stepping** (default 3%) — no growth, no
+  damping-based shrinking. The λ history carries a trailing 0.0 sentinel
+  on healthy solves ([1.0, 0.0]), so any tail statistic over it is
+  meaningless; the λ-based "grudging convergence" metric is retired.
+- **ψ₀-stepping crosses the fold naturally** — the minimum is a
+  measurement target, not a resolution event.
+
+### The one refinement rule (verify-then-commit)
+
+When the field's peak is under-resolved — hwl < `hwl_min` (8) **or** the
+peak sits closer to the axis than half its own width
+(`rr_phi_max < (hwl/2)·dr`, the grid-relative form of the old
+rr_phi_max-floor rule; within a half-width of the origin the φ ∝ r^l
+power law dominates and the peak-location fit is axis-biased) — refine
+**once**: dr ÷2 (domain shrinks, N fixed), interpolated re-solve at the
+same ψ₀, committed immediately, and the next continuation step doubles
+as verification. If verification fails, the refinement is not committed:
+restore the previous grid, keep the fine solution as a measurement
+(`fold_fine_grid_measurement`), and disable further refinements. One
+decision, permanent, no oscillation. `max_refinements` (default 2)
+bounds the count per campaign.
+
+### What is deleted
+
+Rules 1 (growth), 2 (damping-based shrink), 5 (support widening — weak-field
+boundary error dominates and widening cannot fix it; down campaigns stop at
+`stopped:boundary` instead, with `omega_target = 0.9` as the practical
+paper-convention end), 7 (coarsening), the trend windows/cooldowns/
+blacklists/auto-revert machinery, the domain budget, and the fine-sampling
+mode. Resolution changes are irreversible factors of 2.
+
+### Evidence (l=1, dr = 0.125/N = 128, both campaigns on the same grid)
+
+| | fixed 3% (SAN-17) | adaptive v1 (SAN-14) |
+|---|---|---|
+| wall clock | 1.6 h | 12.6 h |
+| solves | 176 | 2173 |
+| branch curve | golden-anchored | matches v1 reference to 1.7e-5 |
+| fold measurement | ω 0.64708 | ω 0.64597 on dr ÷2 (paper: 0.64561) |
+
+The v2 acceptance run is the fixed ladder's predictability plus the fold
+measurement: one uninterrupted campaign, ≤ 3 h, reproducing the branch and
+refining where the spikes demand it.

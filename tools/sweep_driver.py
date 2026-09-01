@@ -112,17 +112,9 @@ SOLVER_KEYS = {
 OUTPUT_KEYS = {"root", "format"}
 ADAPTIVITY_KEYS = {
     "hwl_min",
-    "hwl_max",
-    "support_fraction",
-    "rr_phi_max_min",
-    "grow_factor",
-    "shrink_factor",
-    "factor_max",
-    "newton_fast_iters",
-    "lambda_min_floor",
-    "regrid_rtol",
+    "max_refinements",
     "newtonian_delta",
-    "optional_coarsening",
+    "boundary_fraction",
 }
 KNOWN = {
     "campaign": CAMPAIGN_KEYS,
@@ -160,17 +152,9 @@ DEFAULTS = {
     # what the old in-C sweep tolerated.
     "adaptivity": {
         "hwl_min": 8,
-        "hwl_max": 40,
-        "support_fraction": 0.85,
-        "rr_phi_max_min": 0.5,
-        "grow_factor": 1.25,
-        "shrink_factor": 0.5,
-        "factor_max": 2.0,
-        "newton_fast_iters": 8,
-        "lambda_min_floor": 1.0e-3,
-        "regrid_rtol": 2.0e-2,
+        "max_refinements": 2,
         "newtonian_delta": 1.0e-2,
-        "optional_coarsening": False,
+        "boundary_fraction": 0.95,
     },
 }
 
@@ -234,28 +218,14 @@ def load_spec(path: Path) -> dict:
         raise SpecError("[grid] dr_max must be >= dr")
 
     a = spec["adaptivity"]
-    if a["hwl_min"] <= 0 or a["hwl_max"] <= a["hwl_min"]:
-        raise SpecError("[adaptivity] hwl thresholds must satisfy 0 < hwl_min < hwl_max")
-    if not 0.0 < a["support_fraction"] <= 1.0:
-        raise SpecError("[adaptivity] support_fraction must be in (0, 1]")
-    if a["rr_phi_max_min"] <= 0:
-        raise SpecError("[adaptivity] rr_phi_max_min must be > 0")
-    if a["grow_factor"] <= 1.0:
-        raise SpecError("[adaptivity] grow_factor must be > 1")
-    if not 0.0 < a["shrink_factor"] < 1.0:
-        raise SpecError("[adaptivity] shrink_factor must be in (0, 1)")
-    if a["factor_max"] < 1.0:
-        raise SpecError("[adaptivity] factor_max must be >= 1")
-    if a["newton_fast_iters"] < 1:
-        raise SpecError("[adaptivity] newton_fast_iters must be >= 1")
-    if a["lambda_min_floor"] <= 0:
-        raise SpecError("[adaptivity] lambda_min_floor must be > 0")
-    if a["regrid_rtol"] <= 0:
-        raise SpecError("[adaptivity] regrid_rtol must be > 0")
+    if a["hwl_min"] <= 0:
+        raise SpecError("[adaptivity] hwl_min must be > 0")
+    if a["max_refinements"] < 0:
+        raise SpecError("[adaptivity] max_refinements must be >= 0")
     if a["newtonian_delta"] < 0:
         raise SpecError("[adaptivity] newtonian_delta must be >= 0")
-    if not isinstance(a["optional_coarsening"], bool):
-        raise SpecError("[adaptivity] optional_coarsening must be a boolean")
+    if not 0.0 < a["boundary_fraction"] <= 1.0:
+        raise SpecError("[adaptivity] boundary_fraction must be in (0, 1]")
     if not isinstance(c["stop_at_turning_point"], bool):
         raise SpecError("[campaign] stop_at_turning_point must be a boolean")
 
@@ -271,8 +241,11 @@ def load_spec(path: Path) -> dict:
     # Spec hash: content hash with runtime control keys (max_steps,
     # max_retries) excluded — raising a limit must not invalidate the physics
     # state of a running campaign; any physics-affecting change does.
+    # The hash ignores runtime control keys AND comment lines — commentary
+    # edits must not invalidate a running campaign's resume (SAN-21).
     control = re.compile(r"^\s*(max_steps|max_retries)\s*=.*$", re.MULTILINE)
-    canon = control.sub("", raw_bytes.decode()).encode()
+    comments = re.compile(r"^\s*#.*$", re.MULTILINE)
+    canon = comments.sub("", control.sub("", raw_bytes.decode())).encode()
     spec["_spec_hash"] = hashlib.sha256(canon).hexdigest()
     return spec
 
@@ -325,11 +298,10 @@ def fresh_state(spec: dict) -> dict:
         "steps": [],
         "status": "running",
         "stop_reason": None,
-        # Adaptive state (SAN-14): the grid can drift from the spec's initial
-        # value via regrids; the step factor persists grow/shrink decisions.
+        # Adaptive state (SAN-21 v2): the grid can drift from the spec's
+        # initial value via refinements; refinements_left bounds them.
         "grid": {"dr": spec["grid"]["dr"], "N": spec["grid"]["N"]},
-        "step_factor": 1.0,
-        "fine_sampling": False,
+        "refinements_left": spec["adaptivity"]["max_refinements"],
         "turning_point": None,
     }
 
@@ -629,9 +601,9 @@ def do_regrid(
     """Re-solve the *same* ψ₀ on a grid with dr → `new_dr` (design §4).
 
     Seeds through the C interpolator (readInitialData = 3) from the last good
-    solution, constrains ψ(fixedPhi point) = ψ₀ as usual, and accepts only
-    when ω / M_Komar / J_Komar agree with the source solution within the
-    truncation-error proxy (`[adaptivity] regrid_rtol`).
+    solution and constrains ψ(fixedPhi point) = ψ₀ as usual. v2 only refines
+    (dr ÷2): acceptance is convergence + the exact ψ₀ landing, and the
+    recorded ω / M_Komar / J_Komar differences are the old grid's error.
 
     The C freezes the Newton update at the fixedPhi point, so the enforced ψ₀
     is the *interpolated seed's* value there — which can drift from the
@@ -643,7 +615,8 @@ def do_regrid(
     Only an *accepted* re-grid is recorded as a step (mode "regrid") — it is
     the same branch point as the source, not a new one. Failed or rejected
     attempts go to state['rejected_regrids'] for provenance; the caller
-    falls back (midpoint dr, then smaller steps on the old grid).
+    stays on the current grid and counts the attempt against
+    max_refinements.
 
     Returns (accepted, step_record).
     """
@@ -670,7 +643,7 @@ def do_regrid(
     # if the support would not fit in the new domain, the attempt is futile.
     if new_dr < src_dr and src.get("r99") is not None:
         new_domain = (src_n + 2 * ghost_of(order)) * new_dr
-        if src["r99"] > spec["adaptivity"]["support_fraction"] * new_domain:
+        if src["r99"] > spec["adaptivity"]["boundary_fraction"] * new_domain:
             print(
                 f"[driver] regrid step {step_no}: skipped — support r99={src['r99']:.3g} "
                 f"would not fit in the {new_domain:.3g} domain"
@@ -688,12 +661,6 @@ def do_regrid(
             save_state(spec, state)
             return False, {}
 
-    # Coarsening loses accuracy: gate on the truncation-error proxy. Refining
-    # only gains accuracy — a global-parameter difference there measures the
-    # OLD grid's error (the reason we are refining), so it is recorded as
-    # provenance but does not block acceptance; convergence + the exact ψ₀
-    # landing are the guards.
-    strict = new_dr > src_dr
     initial_grid = {
         "NrTotalInitial": src_n + 2 * ghost_of(order),
         "NzTotalInitial": src_n + 2 * ghost_of(order),
@@ -767,7 +734,6 @@ def do_regrid(
     accepted = False
     rec_step: dict = {}
     if rec and rec.get("exit_code") == 0 and rec.get("psi0") is not None:
-        rtol = spec["adaptivity"]["regrid_rtol"]
         rel = {}
         for key, fname in (
             ("omega", "w_f.asc"),
@@ -779,7 +745,7 @@ def do_regrid(
                 rel = {}
                 break
             rel[key] = abs(new - old) / abs(old)
-        accepted = bool(rel) and (strict is False or all(v < rtol for v in rel.values()))
+        accepted = bool(rel)
 
     if accepted:
         # Promote the accepted re-solve to a real branch-point step.
@@ -795,9 +761,9 @@ def do_regrid(
         }
         save_state(spec, state)
         diffs = ", ".join(f"{k}={v:.2e}" for k, v in rel.items())
-        kind = "coarser (within truncation proxy)" if strict else "finer (old-grid error recorded)"
         print(
-            f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} accepted: {kind} ({diffs})"
+            f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} accepted: "
+            f"finer (old-grid error recorded) ({diffs})"
         )
     else:
         if rec:
@@ -834,7 +800,6 @@ def newton_health(sol_dir: Path, fmt: str) -> dict:
                 lam = read_1d(f)
         if lam is not None and lam.size:
             health["newton_iters"] = int(lam.size)
-            health["lambda_min"] = float(np.min(lam[-3:]))
         norm = None
         if datasets is not None and "norm_f.asc" in datasets:
             norm = np.asarray(datasets["norm_f.asc"], dtype=float)
@@ -951,6 +916,16 @@ def finished(state: dict, spec: dict) -> str | None:
             return "done:omega_target"
     if len(state["steps"]) >= c["max_steps"]:
         return "done:max_steps"
+    if direction == "down":
+        # Weak-field boundary stop (v2): near ω → m the tail reaches the
+        # outer boundary and boundary error dominates — widening cannot fix
+        # it, so stop instead of regridding. The practical default is to end
+        # down campaigns at omega_target = 0.9 first (paper convention).
+        last = steps[-1]
+        if last.get("r99") is not None and last.get("dr") and last.get("N"):
+            r_bdy = (int(last["N"]) + 2 * ghost_of(spec["grid"]["order"])) * float(last["dr"])
+            if last["r99"] / r_bdy > spec["adaptivity"]["boundary_fraction"]:
+                return "stopped:boundary"
     if (
         c.get("stop_at_turning_point", True)
         and direction == "up"
@@ -986,77 +961,39 @@ def ghost_of(order: int) -> int:
 
 
 def decide_action(diag: dict) -> str:
-    """Design §5 decision table for a *converged* step; returns an action.
+    """v2 policy (SAN-21): exactly one active rule — refine when the field's
+    peak is under-resolved.
 
-    One of: "regrid_finer", "regrid_coarser", "regrid_coarser_optional",
-    "stop:domain_budget", "shrink", "grow", "ok".
+    Under-resolution means either the half-max width of the field drops
+    below `hwl_min` points (spikes), or the peak sits closer to the axis
+    than half its own width (`rr_phi_max < (hwl/2)·dr`) — a grid-relative
+    form of the old axis-hug rule: within a half-width of the origin the
+    φ ∝ r^l power law dominates the profile and the peak-location fit
+    becomes axis-biased. The criterion is self-consistent under refinement
+    (hwl grows as dr shrinks, so it converges to a statement about the
+    continuum profile, not the grid).
 
-    `diag` bundles the step's diagnostics with the [adaptivity] thresholds:
-    newton_iters, lambda_min, hwl, rr_phi_max, r99, r_bdy, dr, dr_max,
-    hwl_min, hwl_max, support_fraction, rr_phi_max_min, newton_fast_iters,
-    lambda_min_floor. None diagnostics are skipped (step lacked data).
+    Everything else is fixed relative stepping: no growth, no damping-based
+    shrinking (the λ history carries a trailing 0.0 convergence sentinel
+    that made any tail statistic meaningless — SAN-20), no boundary regrids
+    (weak-field boundary error dominates and widening cannot fix it — the
+    campaign stops instead, see `finished`). `refinements_left` bounds the
+    number of dr ÷2 refinements per campaign (irreversible,
+    verify-then-commit: a refinement is only adopted after the next step
+    converges on it).
 
-    Precedence note: the design table lists solver-health rules first, but a
-    grid about to be replaced makes step-size growth wasted work, so grid
-    rules are evaluated first. Under-resolution (rule 6/8) wins over boundary
-    proximity (rule 5): a regrid to finer+smaller fixes the spike and
-    (by shrinking the domain) only improves the support fraction, while the
-    converse would refine away from the failing solution. Failure stalls
-    (rules 3–4) never reach here — the retry loop handles them.
+    Returns "regrid_finer" or "ok".
     """
+    if diag.get("refinements_left", 0) <= 0:
+        return "ok"
     hwl = diag.get("hwl")
-    if hwl is not None and hwl < diag["hwl_min"] and not diag.get("finer_blacklisted"):
-        return "regrid_finer"  # rules 6/8: under-resolved spike / axis hug
-
-    rr = diag.get("rr_phi_max")
-    if rr is not None and rr < diag["rr_phi_max_min"] and not diag.get("finer_blacklisted"):
-        return "regrid_finer"  # rule 8: field maximum hugging the axis
-
-    r99, r_bdy = diag.get("r99"), diag.get("r_bdy")
-    if r99 is not None and r_bdy and r99 / r_bdy > diag["support_fraction"]:
-        # Rule 5: support → boundary. Direction-qualified (SAN-20 sweep
-        # finding): on the up direction a weak seed *starts* with its tail
-        # grazing the boundary and localizes only slowly — a single-step
-        # trend check fires on numerical noise and burns the campaign on
-        # futile widening regrids. Up therefore requires the support
-        # fraction to be persistently rising across the whole recent window;
-        # down (the genuinely dangerous spreading toward ω → m) keeps the
-        # conservative single-step check.
-        window = diag.get("support_window") or []
-        if diag["direction"] == "up":
-            spreading = bool(window) and all(r99 / r_bdy >= w for w in window)
-        else:
-            prev = window[-1] if window else None
-            spreading = prev is None or r99 / r_bdy >= prev
-        if spreading:
-            if diag["dr"] < diag["dr_max"]:
-                return "regrid_coarser"
-            return "stop:domain_budget"
-        # self-resolving — fall through.
-
-    if (
-        diag.get("optional_coarsening")
-        and hwl is not None
-        and hwl > diag["hwl_max"]
-        and diag["dr"] < diag["dr_max"]
-    ):
-        # rule 7: over-resolved, save time — OFF by default: an accepted
-        # coarsening moves the campaign onto a grid whose subsequent
-        # stepping can fail (SAN-20 sweep finding), and the time saving is
-        # unmeasured.
-        return "regrid_coarser_optional"
-
-    iters, lam = diag.get("newton_iters"), diag.get("lambda_min")
-    grudging = lam is not None and lam < diag["lambda_min_floor"]
-    slow = iters is not None and iters > 2 * diag["newton_fast_iters"]
-    if grudging or slow:
-        return "shrink"  # rule 2: converged, but only just — ease off
-    if (
-        iters is not None
-        and iters <= diag["newton_fast_iters"]
-        and (lam is None or lam >= diag["lambda_min_floor"])
-    ):
-        return "grow"  # rule 1: fast, healthy convergence
+    if hwl is None:
+        return "ok"
+    if hwl < diag["hwl_min"]:
+        return "regrid_finer"
+    rr, dr = diag.get("rr_phi_max"), diag.get("dr")
+    if rr is not None and rr < (hwl / 2.0) * dr:
+        return "regrid_finer"
     return "ok"
 
 
@@ -1213,24 +1150,15 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
     c = spec["campaign"]
     sign = 1 if c["direction"] == "up" else -1
 
-    def next_target(base_psi0: float, factor: float = 1.0) -> float:
-        """ψ₀ target for the next step, shrunk by `factor` after a retry.
-
-        relative mode (default): fixed-ratio
-        steps (target = ψ₀·(1 ± psi0_step) — the golden ladder's
-        scale_u4 = 1.125 semantics), which stay scale-free as ψ₀ spans orders
-        of magnitude and never overshoot the way a fixed absolute Δψ₀ does
-        from a tiny seed. The target is clamped to land exactly on
-        psi0_target.
+    def next_target(base_psi0: float) -> float:
+        """ψ₀ target for the next step: fixed relative stepping (v2) —
+        target = ψ₀·(1 ± psi0_step), the golden-ladder semantics, clamped to
+        land exactly on psi0_target.
         """
         if c["psi0_step_mode"] == "relative":
-            target = base_psi0 * (1.0 + sign * factor * c["psi0_step"])
+            target = base_psi0 * (1.0 + sign * c["psi0_step"])
         else:
-            target = base_psi0 + sign * factor * c["psi0_step"]
-        if state.get("fine_sampling"):
-            # Rule 9 (continuing past the turning point): sample the branch
-            # bottom densely regardless of the stored step factor.
-            factor = min(factor, 0.25)
+            target = base_psi0 + sign * c["psi0_step"]
         if c["direction"] == "up":
             return min(round(target, 15), c["psi0_target"])
         return max(round(target, 15), c["psi0_target"])
@@ -1266,10 +1194,10 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         # a Newton failure, the step size is not the cause. Solver/config/
         # I-O errors are not retryable.
         base_psi0 = psi0_of_last(state)
-        factor = float(state.get("step_factor", 1.0))
         attempts = 0
+        reverted = False
         while True:
-            psi0_target = next_target(base_psi0, factor)
+            psi0_target = next_target(base_psi0)
             prev = [s for s in state["steps"] if s.get("psi0") is not None]
             # After a failed attempt drop the linear extrapolation: in
             # marginal regions it diverges Newton while the plain rescale
@@ -1290,7 +1218,6 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             record_step(state, spec, step_no, sol, code)
             last = state["steps"][-1]
             last["psi0_target"] = psi0_target
-            last["step_factor"] = factor
             save_state(spec, state)
 
             if code == 0 and sol is not None and last.get("psi0") is not None:
@@ -1299,20 +1226,12 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             # A solver error near ω → m is the branch's physical end: do not
             # waste a retry chasing it (SAN-20 item 1).
             near_limit = code == 2 and newtonian_limit_stop(state, spec) is not None
-            retryable = (
-                code == 1 or code < 0 or code == TIMEOUT_EXIT or (code == 2 and attempts == 0)
-            ) and not near_limit
-            exhausted = attempts >= c["max_retries"] or (
-                code in (1, 2, TIMEOUT_EXIT) and psi0_target == base_psi0
-            )
-            if retryable and not exhausted:
+            retryable = (code in (1, 2, TIMEOUT_EXIT) or code < 0) and not near_limit
+            if retryable and attempts < c["max_retries"]:
+                # v2: fixed Δψ₀ — retries keep the same target and drop the
+                # extrapolated seed (SAN-20 finding: the rescale converges
+                # where the extrapolation diverges).
                 attempts += 1
-                if code in (1, 2, TIMEOUT_EXIT):
-                    # Newton failure: shrink the step. Solver error/timeout:
-                    # rule 4 retry — a smaller step also yields a closer,
-                    # better-conditioned seed; persistent failure stops.
-                    factor /= 2.0
-                # Drop the failed attempt from the step history (keep the log).
                 state["steps"].pop()
                 save_state(spec, state)
                 cause = (
@@ -1326,56 +1245,40 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                 )
                 print(
                     f"[driver] step {step_no} attempt {attempts} {cause}; "
-                    f"retrying (factor {factor:.3f}), log: {log}"
+                    f"retrying with rescaled seed, log: {log}"
                 )
                 continue
 
-            # SAN-20 sweep finding: a terminal failure immediately after an
-            # accepted regrid means the NEW grid rejects stepping (e.g. the
-            # finer grid at the fold: PARDISO -4 on every attempt). Auto-
-            # revert to the previous grid, blacklist finer regrids for the
-            # campaign, and keep going on the grid that works. The regrid's
-            # solution is preserved in state['fold_fine_grid_measurement'].
-            rg = next(
-                (
-                    s
-                    for s in reversed(state["steps"][:-1])
-                    if s.get("mode") == "regrid" and s.get("regrid", {}).get("accepted")
-                ),
-                None,
-            )
-            if (
-                rg is not None
-                and state["steps"][-1].get("exit_code", 0) != 0
-                and state["steps"].index(rg) == len(state["steps"]) - 2
-                and not state.get("finer_blacklist")
-            ):
-                from_dr = rg["regrid"]["from_dr"]
-                state.setdefault("fold_fine_grid_measurement", []).append(
-                    {
-                        "psi0": rg.get("psi0"),
-                        "omega": rg.get("omega"),
-                        "dr": rg.get("dr"),
-                        "sol_dir": rg.get("sol_dir"),
-                        "note": "finer-grid re-solve accepted but stepping failed on it; "
-                        "auto-reverted (SAN-20)",
-                    }
+            # Verify-then-commit (v2): a pending (adopted-but-unverified)
+            # refinement whose verification step failed is not committed —
+            # restore the previous grid, keep the finer-grid solution as a
+            # measurement, and disable further refinements. One decision,
+            # permanent, no oscillation (SAN-21).
+            pending = state.get("pending_refinement")
+            if pending is not None:
+                measurement = dict(pending.get("measurement", {}))
+                measurement["note"] = (
+                    "refined-grid re-solve at the fold; its verification step failed so the "
+                    "refinement was not committed — kept as the fold measurement (SAN-21)"
                 )
-                state["steps"] = [s for s in state["steps"] if s is not rg]
-                while state["steps"] and state["steps"][-1].get("exit_code", 0) != 0:
-                    state["steps"].pop()
-                current_grid(state, spec)["dr"] = from_dr
-                state["step_factor"] = 1.0
-                state["finer_blacklist"] = True
-                state["ok_streak"] = 0
-                state["optional_cooldown"] = 0
-                state["regrid_failures"] = 0
+                state.setdefault("fold_fine_grid_measurement", []).append(measurement)
+                rg_step = pending.get("regrid_step")
+                state["steps"] = [
+                    s
+                    for s in state["steps"]
+                    if not (s.get("mode") == "regrid" and s.get("i") == rg_step)
+                    and s.get("exit_code", 0) == 0
+                ]
+                current_grid(state, spec)["dr"] = pending["from_dr"]
+                state["refinements_left"] = 0
+                state["pending_refinement"] = None
                 save_state(spec, state)
                 print(
-                    f"[driver] step {step_no}: new grid rejects stepping; auto-reverted to "
-                    f"dr={from_dr:.5E} and blacklisted finer regrids (SAN-20)"
+                    f"[driver] step {step_no}: verification failed on the refined grid; "
+                    f"reverted to dr={pending['from_dr']:.5E}, refinements disabled (SAN-21)"
                 )
-                continue
+                reverted = True
+                break
 
             state["status"] = "failed"
             state["stop_reason"] = finished(state, spec) or f"failed:exit{code}"
@@ -1383,156 +1286,60 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             print(f"[driver] step {step_no} FAILED (exit {code}); log: {log}")
             return 1
 
-        note = f", {attempts} shrink-retry" if attempts else ""
+        note = f", {attempts} retry" if attempts else ""
         step_no += 1  # the continuation step consumed its slot
+        if reverted:
+            continue  # refinement reverted: re-check exit conditions
 
-        # ----- adaptive decision (design §5) --------------------------------
-        state["step_factor"] = factor
+        # ----- refinement decision (design §5, v2) --------------------------
         a = spec["adaptivity"]
         g = current_grid(state, spec)
-        dr, n = float(g["dr"]), int(g["N"])
-        # Support-fraction history (rule 5 is direction/trend qualified): the
-        # last few completed steps' fractions, when they lived on this grid.
-        prior = [
-            s
-            for s in state["steps"][:-1]
-            if s.get("r99") is not None and s.get("exit_code", 1) == 0 and s.get("dr") == dr
-        ]
-        support_window = []
-        for s in prior[-3:]:
-            pb = (int(s["N"]) + 2 * ghost_of(spec["grid"]["order"])) * float(s["dr"])
-            support_window.append(s["r99"] / pb)
+        dr = float(g["dr"])
         diag = {
-            "newton_iters": last.get("newton_iters"),
-            "lambda_min": last.get("lambda_min"),
             "hwl": last.get("hwl"),
             "rr_phi_max": last.get("rr_phi_max"),
-            "r99": last.get("r99"),
-            "support_window": support_window,
-            "direction": c["direction"],
-            "r_bdy": (n + 2 * ghost_of(spec["grid"]["order"])) * dr,
             "dr": dr,
-            "dr_max": spec["grid"]["dr_max"],
+            "refinements_left": state.get("refinements_left", a["max_refinements"]),
             "hwl_min": a["hwl_min"],
-            "hwl_max": a["hwl_max"],
-            "support_fraction": a["support_fraction"],
-            "rr_phi_max_min": a["rr_phi_max_min"],
-            "newton_fast_iters": a["newton_fast_iters"],
-            "lambda_min_floor": a["lambda_min_floor"],
-            "optional_coarsening": a["optional_coarsening"],
-            "finer_blacklisted": bool(state.get("finer_blacklist")),
         }
         action = decide_action(diag)
 
-        if action == "grow":  # rule 1: fast, healthy convergence → grow Δψ₀
-            state["step_factor"] = min(factor * a["grow_factor"], a["factor_max"])
-            state["ok_streak"] = 0
-        elif action == "shrink":  # rule 2: converged, but only just — ease off
-            state["step_factor"] = max(factor * a["shrink_factor"], 1.0 / 64.0)
-            state["ok_streak"] = 0
-        elif action == "ok":
-            # A run of unremarkable-but-fine steps gently regrows a factor
-            # that earlier (re)tries shrank — otherwise it never recovers.
-            state["ok_streak"] = state.get("ok_streak", 0) + 1
-            if state["ok_streak"] >= 5:
-                state["step_factor"] = min(factor * a["grow_factor"], a["factor_max"])
-                state["ok_streak"] = 0
-        save_state(spec, state)
-
-        if action == "stop:domain_budget":
-            state["status"] = "stopped"
-            state["stop_reason"] = "stopped:domain_budget"
-            save_state(spec, state)
-            print(
-                f"[driver] step {step_no}: support fraction "
-                f"{last['r99'] / diag['r_bdy']:.3f} > {a['support_fraction']} at "
-                f"dr_max={dr:.5E}; stopping (design §6.1)"
-            )
-            return 0
-
-        # Rule 7 (optional coarsening) backs off after a rejected attempt:
-        # with the grid unchanged, the same dr x2 keeps failing the same
-        # truncation proxy, so re-probing every step merely doubles the cost
-        # (SAN-20 sweep finding).
-        if action == "regrid_coarser_optional":
-            if state.get("optional_cooldown", 0) > 0:
-                state["optional_cooldown"] -= 1
-                action = "ok"
-
-        if action.startswith("regrid"):
-            required = action != "regrid_coarser_optional"
-            if action == "regrid_finer":
-                new_dr = dr / 2.0
-            else:
-                new_dr = min(dr * 2.0, spec["grid"]["dr_max"])
-            accepted = False
-            tries = [new_dr]
-            if required and new_dr != dr:
-                mid = (dr + new_dr) / 2.0  # design §4 fallback: halve the move
-                if dr < mid < new_dr:
-                    tries.append(mid)
-            for try_dr in tries:
-                # The regrid consumes the next free step slot.
-                ok, _ = do_regrid(spec, root, state, binary, step_no, try_dr, base_psi0)
-                if ok:
-                    accepted = True
-                    current_grid(state, spec)["dr"] = try_dr
-                    state["step_factor"] = 1.0  # fresh grid: restart step sizing
-                    state["regrid_failures"] = 0
-                    state["optional_cooldown"] = 0
-                    save_state(spec, state)
-                    break
-                if not required:
-                    state["optional_cooldown"] = 10  # back off before re-probing
-                    break  # rule 7 is optional: never blocks the campaign
-                step_no += 1  # failed attempt consumed its slot; try the next dr
-            if accepted:
-                continue  # re-check exit conditions on the new grid
-            # Regrid ladder exhausted. For a REQUIRED regrid, ease the step
-            # (design §4: "fall back to stepping on the old grid with a
-            # smaller Δψ₀"). An optional rejection says nothing about the
-            # step size — shrinking it there just stalls the campaign
-            # (SAN-20 sweep finding: factor shrunk to ~1/3 and never
-            # recovered).
-            if required:
-                state["step_factor"] = max(factor * a["shrink_factor"], 1.0 / 64.0)
-            if required:
-                state["regrid_failures"] = state.get("regrid_failures", 0) + 1
-            save_state(spec, state)
-            print(f"[driver] regrid rejected; continuing on dr={dr:.5E} with smaller steps")
-            if state.get("regrid_failures", 0) >= 3:
-                # The support keeps violating the budget and every widening
-                # regrid is rejected on accuracy (or fails): the domain
-                # budget is exhausted in the §6.1 sense even though
-                # dr < dr_max — wider grids cannot be trusted at this dr.
-                state["status"] = "stopped"
-                state["stop_reason"] = "stopped:domain_budget"
+        if action == "regrid_finer":
+            # Irreversible refinement (dr ÷2, domain shrinks, N fixed): the
+            # interpolated re-solve at the same ψ₀ is committed immediately,
+            # and the next continuation step doubles as its verification —
+            # verify-then-commit (SAN-21).
+            new_dr = dr / 2.0
+            ok, _ = do_regrid(spec, root, state, binary, step_no, new_dr, base_psi0)
+            if ok:
+                current_grid(state, spec)["dr"] = new_dr
+                state["refinements_left"] = diag["refinements_left"] - 1
+                state["pending_refinement"] = {
+                    "from_dr": dr,
+                    "regrid_step": step_no,
+                    "measurement": {
+                        "psi0": state["steps"][-1].get("psi0"),
+                        "omega": state["steps"][-1].get("omega"),
+                        "dr": new_dr,
+                        "sol_dir": str(Path(state["steps"][-1]["sol_dir"])),
+                    },
+                }
+                step_no += 1
                 save_state(spec, state)
-                print(
-                    f"[driver] step {step_no}: 3 consecutive widening regrids rejected; "
-                    "stopping (design §6.1 domain budget)"
-                )
-                return 0
-        else:
-            state["regrid_failures"] = 0
-
-        # Rule 9 with stop_at_turning_point = false: continue past the turning
-        # point, sampling the branch bottom densely.
-        if (
-            not c.get("stop_at_turning_point", True)
-            and c["direction"] == "up"
-            and not state.get("fine_sampling")
-            and detect_turning_point(state["steps"])
-        ):
-            state["fine_sampling"] = True
+                continue  # re-check exit conditions on the new grid
+            # The finer re-solve itself failed: count the attempt and stay
+            # on this grid (a failed refinement is not retried blindly).
+            state["refinements_left"] = diag["refinements_left"] - 1
             save_state(spec, state)
-            print("[driver] turning point crossed; switching to fine Δψ₀ sampling")
+            print(f"[driver] refinement rejected; continuing on dr={dr:.5E}")
 
         print(
             f"[driver] step {step_no - 1}: ψ₀={last['psi0']:.6E} ω={last['omega']:.6E} "
             f"(guess ω≈{w_guess:.4f}, {last['newton_iters']} iters{note}) [{action}] "
             f"-> {Path(last['sol_dir']).name}"
         )
+
+    # pragma: no cover — the campaign loop only exits via return
 
 
 def summarize(spec: dict) -> int:
@@ -1546,13 +1353,14 @@ def summarize(spec: dict) -> int:
     if state is None:
         print("[driver] no state.json to summarize", file=sys.stderr)
         return 1
-    steps = state["steps"]
-    psi0s = [s.get("psi0") for s in steps]
-    omegas = [s.get("omega") for s in steps]
+    omegas = [s.get("omega") for s in state["steps"]]
     if not any(w is not None for w in omegas):
         print("[driver] no completed steps record ω; nothing to summarize", file=sys.stderr)
         return 1
-    report = turning_point_estimate(psi0s, omegas)
+    report = turning_point_estimate(
+        [s.get("psi0") for s in state["steps"]],
+        omegas,
+    )
     report["campaign"] = str(spec["output"]["root"])
     report["status"] = state.get("status")
     report["stop_reason"] = state.get("stop_reason")
