@@ -80,8 +80,8 @@ jobs:
       - name: Smoke test (l=1, w=0.95, coarse grid)
         run: uv run tools/smoke.py out/l1_smoke_ci.toml --skip-build --binary build/umfpack/ROTBOSON 2>&1 | tail -20
 
-  python-lint:
-    name: Python lint (ruff)
+  python-checks:
+    name: Python checks (ruff + ty, 3.14)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,6 +92,10 @@ jobs:
         run: uv run ruff check tools/
       - name: Ruff format check
         run: uv run ruff format --check tools/
+      - name: Type check (ty)
+        run: uv run ty check tools/ tests/
+      - name: Unit tests (Python 3.14)
+        run: uv run pytest tests/ -q
 
   python-sympy:
     name: SymPy derivation + codegen checks

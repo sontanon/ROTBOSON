@@ -1,7 +1,7 @@
 [project]
 name = "rotboson-tools"
 version = "0.1.0"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = []
 
 [dependency-groups]
@@ -12,4 +12,5 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.16.4",
     "sympy>=1.14.0",
+    "ty>=0.0.77",
 ]

@@ -12,8 +12,6 @@ Usage:
     uv run tools/check_against_summary.py <solution_dir> [<solution_dir> ...]
 """
 
-from __future__ import annotations
-
 import argparse
 import re
 import sys

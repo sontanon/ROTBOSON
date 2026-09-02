@@ -16,8 +16,6 @@ Usage:
 With ``--in-place`` the original ``.par`` files are deleted after conversion.
 """
 
-from __future__ import annotations
-
 import argparse
 import re
 import sys
@@ -51,8 +49,8 @@ def convert_line(line: str) -> tuple[str, str | None]:
         # Not a key/value line (e.g. a stray comment fragment). Preserve it.
         return "comment", line
 
-    key = m.group(2)
-    value = m.group(4).rstrip()
+    key = str(m.group(2))
+    value = str(m.group(4)).rstrip()
     if value.endswith(";"):
         value = value[:-1].rstrip()
     if not value:

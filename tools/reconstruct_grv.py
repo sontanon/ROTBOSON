@@ -13,8 +13,6 @@ Usage:
 Prints virial, correction, total, and the values stored in GRV2.asc/GRV3.asc.
 """
 
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path
@@ -115,7 +113,7 @@ def simps(y: np.ndarray, dx: float) -> float:
             result += dx_o_3 * 2.0 * (2.0 * y[2 * k - 1] + y[2 * k])
         result += dx_o_3 * (y[0] + 5.0 * y[1] + 5.0 * y[n] + y[n - 1])
         result *= 3.0 / 8.0
-    return result
+    return float(result)
 
 
 def grv_reconstruct(sol_dir: Path):

@@ -7,11 +7,11 @@ independent SymPy Jacobian from :mod:`tools.sympy_system`, at a few hundred
 random sample points.  Exit code 0 iff every entry agrees.
 """
 
-from __future__ import annotations
-
 import random
 import sys
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 import nbformat
 import numpy as np
@@ -29,13 +29,13 @@ def load_notebook_jacobian(path: str = NB_PATH) -> list[list[str]]:
     nb = nbformat.read(path, as_version=4)
     for cell in nb.cells:
         if cell.cell_type == "code" and cell.source.lstrip().startswith("jacobian = ["):
-            ns: dict = {}
+            ns: dict[str, object] = {}
             exec(cell.source, ns)
-            return ns["jacobian"]
+            return cast("list[list[str]]", ns["jacobian"])
     raise RuntimeError("jacobian list not found in notebook")
 
 
-def notebook_symbols() -> dict[str, sp.Symbol]:
+def notebook_symbols() -> dict[str, sp.Expr]:
     names = []
     for var in ("dRu", "dZu", "dRRu", "dZZu"):
         names += [f"{var}{k}" for k in range(1, 7)]
@@ -68,14 +68,18 @@ def notebook_symbols() -> dict[str, sp.Symbol]:
         "lam",
         "psi",
     ]
-    syms = {n: sp.symbols(n, real=True) for n in names}
+    syms: dict[str, sp.Expr] = {n: sp.symbols(n, real=True) for n in names}
     syms["pi"] = sp.pi
     return syms
 
 
-def parse_nb(expr_str: str, ns: dict[str, sp.Expr]) -> sp.Expr:
+def parse_nb(expr_str: str, ns: Mapping[str, sp.Expr]) -> sp.Expr:
     code = expr_str.replace("M_PI", "pi").replace("lambda", "lam")
-    return sp.sympify(code, locals=ns)
+    # sympy's stubs omit the `locals` parameter from every sympify overload
+    # even though the implementation accepts it (sympy >= 1.13).
+    result = sp.sympify(code, locals=ns)  # ty: ignore[no-matching-overload]
+    assert isinstance(result, sp.Expr)
+    return result
 
 
 def sample_point(seed: int) -> dict[str, float]:

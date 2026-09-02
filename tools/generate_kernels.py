@@ -16,8 +16,6 @@ Usage:
     uv run tools/generate_kernels.py [--check] [--out-dir DIR]
 """
 
-from __future__ import annotations
-
 import argparse
 import re
 import shutil

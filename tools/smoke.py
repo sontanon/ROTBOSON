@@ -12,8 +12,6 @@ directory under the process working directory). Output is written to out/ as
 before.
 """
 
-from __future__ import annotations
-
 import argparse
 import subprocess
 import sys

@@ -4,8 +4,6 @@ Usage:
     uv run tools/compare_solutions.py <ref_dir> <new_dir> [--rtol 1e-10]
 """
 
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path

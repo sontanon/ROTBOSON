@@ -15,8 +15,6 @@ Usage:
     uv run tools/mms_test.py
 """
 
-from __future__ import annotations
-
 import sys
 
 import numpy as np

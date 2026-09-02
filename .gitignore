@@ -34,3 +34,5 @@ data/seeds/
 *.cfg
 *.json
 !CMakePresets.json
+# Round-trip test fixtures are deliberate, versioned state.json snapshots
+!tests/fixtures/*.json

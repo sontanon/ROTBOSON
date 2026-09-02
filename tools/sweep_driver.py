@@ -29,8 +29,6 @@ The decision logic lives in pure functions (`decide_action`,
 `tests/test_driver_decisions.py`. Golden-sequence verification is SAN-13.
 """
 
-from __future__ import annotations
-
 import argparse
 import hashlib
 import json
@@ -40,7 +38,11 @@ import subprocess
 import sys
 import time
 import tomllib
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
+from enum import StrEnum
 from pathlib import Path
+from typing import Final, Self, cast
 
 import numpy as np
 from rotboson_io import (
@@ -54,19 +56,19 @@ from rotboson_io import (
 REPO = Path(__file__).resolve().parent.parent
 
 # Binary location: same search order as tools/smoke.py.
-BUILD_PRESETS = ("release", "umfpack", "dev", "asan-ubsan")
+BUILD_PRESETS: Final[tuple[str, ...]] = ("release", "umfpack", "dev", "asan-ubsan")
 
 # 2D field datasets used to build the next step's seed (final fields only).
-SEED_FIELDS = [
+SEED_FIELDS: Final[tuple[str, ...]] = (
     "log_alpha_f.asc",
     "beta_f.asc",
     "log_h_f.asc",
     "log_a_f.asc",
     "psi_f.asc",
     "lambda_f.asc",
-]
+)
 
-SEED_PARAM_KEYS = {
+SEED_PARAM_KEYS: Final[Mapping[str, str]] = {
     "log_alpha_i": "log_alpha_f.asc",
     "beta_i": "beta_f.asc",
     "log_h_i": "log_h_f.asc",
@@ -81,86 +83,436 @@ class SpecError(ValueError):
 
 
 # ---------------------------------------------------------------------------
-# Spec loading / validation
+# Closed vocabularies (SAN-24): the string sets that cross the JSON/TOML
+# boundaries. Values match the legacy state.json / param-file spellings
+# exactly — resume and rendering stay byte-compatible.
 # ---------------------------------------------------------------------------
 
-CAMPAIGN_KEYS = {
-    "l",
-    "m",
-    "direction",
-    "psi0_target",
-    "omega_target",
-    "psi0_step",
-    "psi0_step_mode",
-    "max_retries",
-    "max_steps",
-    "fixedPhiR",
-    "fixedPhiZ",
-    "stop_at_turning_point",
-}
-SEED_KEYS = {"policy", "source", "w0", "psi0", "sigmaR", "sigmaZ", "rExt"}
-GRID_KEYS = {"dr", "dr_max", "N", "order"}
-SOLVER_KEYS = {
-    "solverType",
-    "localSolver",
-    "epsilon",
-    "maxNewtonIter",
-    "lambda0",
-    "lambdaMin",
-    "useLowRank",
-}
-OUTPUT_KEYS = {"root", "format"}
-ADAPTIVITY_KEYS = {
-    "hwl_min",
-    "max_refinements",
-    "newtonian_delta",
-    "boundary_fraction",
-}
-KNOWN = {
-    "campaign": CAMPAIGN_KEYS,
-    "seed": SEED_KEYS,
-    "grid": GRID_KEYS,
-    "solver": SOLVER_KEYS,
-    "output": OUTPUT_KEYS,
-    "adaptivity": ADAPTIVITY_KEYS,
+
+class Direction(StrEnum):
+    UP = "up"
+    DOWN = "down"
+
+
+class SeedPolicy(StrEnum):
+    FROM_SCRATCH = "from_scratch"
+    SOLUTION = "solution"
+
+
+class Psi0StepMode(StrEnum):
+    ABSOLUTE = "absolute"
+    RELATIVE = "relative"
+
+
+class OutputFormat(StrEnum):
+    HDF5 = "hdf5"
+    ASCII = "ascii"
+
+
+class StepMode(StrEnum):
+    """How a step was produced (state.json `mode`)."""
+
+    FIXED_PHI = "fixedPhi"
+    SEED = "seed"
+    REGGRID = "regrid"
+    REGGRID_PROBE = "regrid-probe"
+
+
+class Status(StrEnum):
+    """Campaign lifecycle status (state.json `status`)."""
+
+    RUNNING = "running"
+    DONE = "done"
+    STOPPED = "stopped"
+    FAILED = "failed"
+
+
+class StopReason(StrEnum):
+    """The closed stop reasons; dynamic ones come from the factories below.
+
+    `stop_reason` is *stored* as a plain string in state.json because two
+    reasons embed runtime values (signal name, raw exit code); the enum
+    catalogues every fixed reason and keeps the dynamic spellings uniform.
+    """
+
+    DONE_PSI0_TARGET = "done:psi0_target"
+    DONE_OMEGA_TARGET = "done:omega_target"
+    DONE_MAX_STEPS = "done:max_steps"
+    STOPPED_NEWTONIAN_LIMIT = "stopped:newtonian_limit"
+    STOPPED_BOUNDARY = "stopped:boundary"
+    STOPPED_TURNING_POINT = "stopped:turning_point"
+    FAILED_TIMEOUT = "failed:timeout"
+    FAILED_NEWTON = "failed:newton"
+    FAILED_SOLVER = "failed:solver"
+    FAILED_CONFIG = "failed:config"
+    FAILED_IO = "failed:io"
+
+    @staticmethod
+    def signal(sig_name: str) -> str:
+        return f"failed:sig{sig_name}"
+
+    @staticmethod
+    def exit_code(code: int) -> str:
+        return f"failed:exit{code}"
+
+    @staticmethod
+    def seed_exit(code: int) -> str:
+        return f"failed:seed_exit{code}"
+
+
+def stop_family(reason: str) -> str:
+    """'done' / 'stopped' / 'failed' — the component before the first ':'."""
+    return reason.split(":", 1)[0]
+
+
+class Action(StrEnum):
+    """Adaptive decision layer output (`decide_action`)."""
+
+    OK = "ok"
+    REGGRID_FINER = "regrid_finer"
+
+
+# ---------------------------------------------------------------------------
+# Spec model (SAN-24): frozen dataclasses parsed + validated in one place.
+# parse() classmethods are the single choke point raising SpecError; the
+# messages match the previous dict-based validator verbatim. The spec hash
+# is computed over the raw TOML text (SAN-21) and is deliberately untouched
+# by this model.
+# ---------------------------------------------------------------------------
+
+
+def _int(table: str, key: str, v: object) -> int:
+    if isinstance(v, bool) or not isinstance(v, int):
+        raise SpecError(f"[{table}] '{key}' must be an integer")
+    return v
+
+
+def _num(table: str, key: str, v: object) -> float:
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        raise SpecError(f"[{table}] '{key}' must be a number")
+    return float(v)
+
+
+def _str(table: str, key: str, v: object) -> str:
+    if not isinstance(v, str):
+        raise SpecError(f"[{table}] '{key}' must be a string")
+    return v
+
+
+def _bool(table: str, key: str, v: object) -> bool:
+    if not isinstance(v, bool):
+        raise SpecError(f"[{table}] '{key}' must be a boolean")
+    return v
+
+
+# State-file coercions (from_dict): state.json is machine-written, but a
+# corrupted/truncated file should fail with a clear message instead of a
+# cryptic crash deep in a run.
+
+
+def _st_float(v: object) -> float:
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        raise ValueError(f"state.json: expected a number, got {type(v).__name__}")
+    return float(v)
+
+
+def _st_int(v: object) -> int:
+    if isinstance(v, bool) or not isinstance(v, int):
+        raise ValueError(f"state.json: expected an integer, got {type(v).__name__}")
+    return v
+
+
+def _st_str(v: object) -> str:
+    if not isinstance(v, str):
+        raise ValueError(f"state.json: expected a string, got {type(v).__name__}")
+    return v
+
+
+def _st_opt_float(v: object) -> float | None:
+    return None if v is None else _st_float(v)
+
+
+def _st_opt_int(v: object) -> int | None:
+    return None if v is None else _st_int(v)
+
+
+def _st_opt_str(v: object) -> str | None:
+    return None if v is None else _st_str(v)
+
+
+def _st_scalar(v: object) -> float | int:
+    """A JSON number that must keep its int/float identity on round-trip."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        raise ValueError(f"state.json: expected a number, got {type(v).__name__}")
+    return v
+
+
+class _Tables:
+    """TOML table names."""
+
+    CAMPAIGN = "campaign"
+    SEED = "seed"
+    GRID = "grid"
+    SOLVER = "solver"
+    OUTPUT = "output"
+    ADAPTIVITY = "adaptivity"
+
+
+KNOWN: Final[Mapping[str, set[str]]] = {
+    _Tables.CAMPAIGN: {
+        "l",
+        "m",
+        "direction",
+        "psi0_target",
+        "omega_target",
+        "psi0_step",
+        "psi0_step_mode",
+        "max_retries",
+        "max_steps",
+        "fixedPhiR",
+        "fixedPhiZ",
+        "stop_at_turning_point",
+    },
+    _Tables.SEED: {"policy", "source", "w0", "psi0", "sigmaR", "sigmaZ", "rExt"},
+    _Tables.GRID: {"dr", "dr_max", "N", "order"},
+    _Tables.SOLVER: {
+        "solverType",
+        "localSolver",
+        "epsilon",
+        "maxNewtonIter",
+        "lambda0",
+        "lambdaMin",
+        "useLowRank",
+    },
+    _Tables.OUTPUT: {"root", "format"},
+    _Tables.ADAPTIVITY: {
+        "hwl_min",
+        "max_refinements",
+        "newtonian_delta",
+        "boundary_fraction",
+    },
 }
 
-DEFAULTS = {
-    "campaign": {
-        "m": 1.0,
-        "psi0_step_mode": "relative",
-        "max_retries": 3,
-        "max_steps": 50,
-        "fixedPhiR": 2,
-        "fixedPhiZ": 2,
-        "stop_at_turning_point": True,
-    },
-    "seed": {"psi0": 0.01, "sigmaR": 4.0, "sigmaZ": 4.0, "rExt": 12.0},
-    "grid": {"order": 4},
-    "solver": {
-        "solverType": 1,
-        "localSolver": 1,
-        "epsilon": 1.0e-8,
-        "maxNewtonIter": 50,
-        "lambda0": 1.0e-3,
-        "lambdaMin": 1.0e-5,
-        "useLowRank": 0,
-    },
-    "output": {"format": "hdf5"},
+
+@dataclass(frozen=True, slots=True)
+class CampaignSpec:
+    l: int
+    direction: Direction
+    psi0_target: float
+    psi0_step: float
+    m: float = 1.0
+    omega_target: float | None = None
+    psi0_step_mode: Psi0StepMode = Psi0StepMode.RELATIVE
+    max_retries: int = 3
+    max_steps: int = 50
+    fixedPhiR: int = 2
+    fixedPhiZ: int = 2
+    stop_at_turning_point: bool = True
+
+    @classmethod
+    def parse(cls, raw: Mapping[str, object]) -> Self:
+        t = _Tables.CAMPAIGN
+        for key in ("l", "direction", "psi0_target", "psi0_step"):
+            if key not in raw:
+                raise SpecError(f"[{t}] missing required key '{key}'")
+        direction = raw["direction"]
+        if direction not in (Direction.UP, Direction.DOWN):
+            raise SpecError(f'[{t}] direction must be "up" or "down"')
+        psi0_step = _num(t, "psi0_step", raw["psi0_step"])
+        if not psi0_step > 0:
+            raise SpecError(f"[{t}] psi0_step must be > 0")
+        mode = raw.get("psi0_step_mode", Psi0StepMode.RELATIVE)
+        if mode not in (Psi0StepMode.ABSOLUTE, Psi0StepMode.RELATIVE):
+            raise SpecError(f'[{t}] psi0_step_mode must be "absolute" or "relative"')
+        max_retries = _int(t, "max_retries", raw.get("max_retries", 3))
+        if max_retries < 0:
+            raise SpecError(f"[{t}] max_retries must be >= 0")
+        stop_at_turning_point = _bool(
+            t, "stop_at_turning_point", raw.get("stop_at_turning_point", True)
+        )
+        omega_target = raw.get("omega_target")
+        return cls(
+            l=_int(t, "l", raw["l"]),
+            direction=Direction(direction),
+            psi0_target=_num(t, "psi0_target", raw["psi0_target"]),
+            psi0_step=psi0_step,
+            m=_num(t, "m", raw.get("m", 1.0)),
+            omega_target=None if omega_target is None else _num(t, "omega_target", omega_target),
+            psi0_step_mode=Psi0StepMode(mode),
+            max_retries=max_retries,
+            max_steps=_int(t, "max_steps", raw.get("max_steps", 50)),
+            fixedPhiR=_int(t, "fixedPhiR", raw.get("fixedPhiR", 2)),
+            fixedPhiZ=_int(t, "fixedPhiZ", raw.get("fixedPhiZ", 2)),
+            stop_at_turning_point=stop_at_turning_point,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SeedSpec:
+    policy: SeedPolicy
+    psi0: float = 0.01
+    sigmaR: float = 4.0
+    sigmaZ: float = 4.0
+    rExt: float = 12.0
+    source: str | None = None
+    w0: float | None = None
+
+    @classmethod
+    def parse(cls, raw: Mapping[str, object], base_dir: Path) -> Self:
+        t = _Tables.SEED
+        if "policy" not in raw:
+            raise SpecError(f"[{t}] missing required key 'policy'")
+        policy = raw["policy"]
+        if policy not in (SeedPolicy.FROM_SCRATCH, SeedPolicy.SOLUTION):
+            raise SpecError(f'[{t}] policy must be "from_scratch" or "solution"')
+        source: str | None = None
+        if policy == SeedPolicy.SOLUTION:
+            if "source" not in raw:
+                raise SpecError(f"[{t}] policy=solution requires 'source'")
+            source = _str(t, "source", raw["source"])
+            resolved = Path(source)
+            if not resolved.is_absolute():
+                resolved = (base_dir / resolved).resolve()
+                source = str(resolved)
+            if not is_solution_dir(resolved.name) or not resolved.is_dir():
+                raise SpecError(f"[{t}] source is not a solution directory: {source}")
+        w0 = raw.get("w0")
+        if policy == SeedPolicy.FROM_SCRATCH and w0 is None:
+            raise SpecError(f"[{t}] policy=from_scratch requires 'w0' (fixedOmega seed solve)")
+        return cls(
+            policy=SeedPolicy(policy),
+            psi0=_num(t, "psi0", raw.get("psi0", 0.01)),
+            sigmaR=_num(t, "sigmaR", raw.get("sigmaR", 4.0)),
+            sigmaZ=_num(t, "sigmaZ", raw.get("sigmaZ", 4.0)),
+            rExt=_num(t, "rExt", raw.get("rExt", 12.0)),
+            source=source,
+            w0=None if w0 is None else _num(t, "w0", w0),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class GridSpec:
+    dr: float
+    N: int
+    dr_max: float
+    order: int = 4
+
+    @classmethod
+    def parse(cls, raw: Mapping[str, object]) -> Self:
+        t = _Tables.GRID
+        if "dr" not in raw or "N" not in raw:
+            raise SpecError(f"[{t}] missing required keys 'dr' and/or 'N'")
+        dr = _num(t, "dr", raw["dr"])
+        # Domain-growth budget (design §6.1): defaults to 4× the seed dr
+        # (two coarsening regrids); going beyond requires an explicit override.
+        dr_max = _num(t, "dr_max", raw.get("dr_max", 4.0 * dr))
+        if dr_max < dr:
+            raise SpecError(f"[{t}] dr_max must be >= dr")
+        return cls(
+            dr=dr,
+            dr_max=dr_max,
+            N=_int(t, "N", raw["N"]),
+            order=_int(t, "order", raw.get("order", 4)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SolverSpec:
+    solverType: int = 1
+    localSolver: int = 1
+    epsilon: float = 1.0e-8
+    maxNewtonIter: int = 50
+    lambda0: float = 1.0e-3
+    lambdaMin: float = 1.0e-5
+    useLowRank: int = 0
+
+    @classmethod
+    def parse(cls, raw: Mapping[str, object]) -> Self:
+        t = _Tables.SOLVER
+        return cls(
+            solverType=_int(t, "solverType", raw.get("solverType", 1)),
+            localSolver=_int(t, "localSolver", raw.get("localSolver", 1)),
+            epsilon=_num(t, "epsilon", raw.get("epsilon", 1.0e-8)),
+            maxNewtonIter=_int(t, "maxNewtonIter", raw.get("maxNewtonIter", 50)),
+            lambda0=_num(t, "lambda0", raw.get("lambda0", 1.0e-3)),
+            lambdaMin=_num(t, "lambdaMin", raw.get("lambdaMin", 1.0e-5)),
+            useLowRank=_int(t, "useLowRank", raw.get("useLowRank", 0)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AdaptivitySpec:
     # Design §5: defaults start conservative at the historical C sweep
     # thresholds (hwl_min/max, rr_phi_max floor) so early behaviour matches
     # what the old in-C sweep tolerated.
-    "adaptivity": {
-        "hwl_min": 8,
-        "max_refinements": 2,
-        "newtonian_delta": 1.0e-2,
-        "boundary_fraction": 0.95,
-    },
-}
+    hwl_min: float = 8
+    max_refinements: int = 2
+    newtonian_delta: float = 1.0e-2
+    boundary_fraction: float = 0.95
+
+    @classmethod
+    def parse(cls, raw: Mapping[str, object]) -> Self:
+        t = _Tables.ADAPTIVITY
+        hwl_min = _num(t, "hwl_min", raw.get("hwl_min", 8))
+        if hwl_min <= 0:
+            raise SpecError(f"[{t}] hwl_min must be > 0")
+        max_refinements = _int(t, "max_refinements", raw.get("max_refinements", 2))
+        if max_refinements < 0:
+            raise SpecError(f"[{t}] max_refinements must be >= 0")
+        newtonian_delta = _num(t, "newtonian_delta", raw.get("newtonian_delta", 1.0e-2))
+        if newtonian_delta < 0:
+            raise SpecError(f"[{t}] newtonian_delta must be >= 0")
+        boundary_fraction = _num(t, "boundary_fraction", raw.get("boundary_fraction", 0.95))
+        if not 0.0 < boundary_fraction <= 1.0:
+            raise SpecError(f"[{t}] boundary_fraction must be in (0, 1]")
+        return cls(
+            hwl_min=hwl_min,
+            max_refinements=max_refinements,
+            newtonian_delta=newtonian_delta,
+            boundary_fraction=boundary_fraction,
+        )
 
 
-def load_spec(path: Path) -> dict:
-    """Load and validate a campaign spec; returns the fully-defaulted dict."""
+@dataclass(frozen=True, slots=True)
+class OutputSpec:
+    root: Path
+    format: OutputFormat = OutputFormat.HDF5
+
+    @classmethod
+    def parse(cls, raw: Mapping[str, object], spec_path: Path) -> Self:
+        t = _Tables.OUTPUT
+        fmt = raw.get("format", OutputFormat.HDF5)
+        if fmt not in (OutputFormat.HDF5, OutputFormat.ASCII):
+            raise SpecError(f'[{t}] format must be "hdf5" or "ascii"')
+        root = raw.get("root")
+        if root is None:
+            resolved = REPO / "out" / "campaigns" / spec_path.stem
+        else:
+            resolved = Path(_str(t, "root", root))
+            if not resolved.is_absolute():
+                resolved = (spec_path.parent / resolved).resolve()
+        return cls(root=resolved, format=OutputFormat(fmt))
+
+
+@dataclass(frozen=True, slots=True)
+class Spec:
+    """A fully-validated campaign spec (the former `spec: dict`)."""
+
+    campaign: CampaignSpec
+    seed: SeedSpec
+    grid: GridSpec
+    solver: SolverSpec
+    output: OutputSpec
+    adaptivity: AdaptivitySpec
+    spec_hash: str
+
+    def with_grid(self, dr: float) -> Spec:
+        """Copy with the grid's dr replaced (regrid rendering)."""
+        return replace(self, grid=replace(self.grid, dr=dr))
+
+
+def load_spec(path: Path) -> Spec:
+    """Load and validate a campaign spec; returns the fully-defaulted model."""
     raw_bytes = path.read_bytes()
     raw = tomllib.loads(raw_bytes.decode())
 
@@ -173,70 +525,15 @@ def load_spec(path: Path) -> dict:
             if extra:
                 raise SpecError(f"[{table}] unknown keys: {sorted(extra)}")
 
-    spec: dict = {}
-    for table in KNOWN:
-        merged = dict(DEFAULTS.get(table, {}))
-        merged.update(raw.get(table, {}))
-        spec[table] = merged
-    spec["campaign"].update(raw.get("campaign", {}))
-
-    c = spec["campaign"]
-    for key in ("l", "direction", "psi0_target", "psi0_step"):
-        if key not in c:
-            raise SpecError(f"[campaign] missing required key '{key}'")
-    if c["direction"] not in ("up", "down"):
-        raise SpecError('[campaign] direction must be "up" or "down"')
-    if not c["psi0_step"] > 0:
-        raise SpecError("[campaign] psi0_step must be > 0")
-    if c["psi0_step_mode"] not in ("absolute", "relative"):
-        raise SpecError('[campaign] psi0_step_mode must be "absolute" or "relative"')
-    if c["max_retries"] < 0:
-        raise SpecError("[campaign] max_retries must be >= 0")
-
-    seed = spec["seed"]
-    if "policy" not in seed:
-        raise SpecError("[seed] missing required key 'policy'")
-    if seed["policy"] not in ("from_scratch", "solution"):
-        raise SpecError('[seed] policy must be "from_scratch" or "solution"')
-    if seed["policy"] == "solution":
-        if "source" not in seed:
-            raise SpecError("[seed] policy=solution requires 'source'")
-        if not Path(seed["source"]).is_absolute():
-            seed["source"] = str((path.parent / seed["source"]).resolve())
-        if not is_solution_dir(Path(seed["source"]).name) or not Path(seed["source"]).is_dir():
-            raise SpecError(f"[seed] source is not a solution directory: {seed['source']}")
-    if seed["policy"] == "from_scratch" and "w0" not in seed:
-        raise SpecError("[seed] policy=from_scratch requires 'w0' (fixedOmega seed solve)")
-
-    grid = spec["grid"]
-    if "dr" not in grid or "N" not in grid:
-        raise SpecError("[grid] missing required keys 'dr' and/or 'N'")
-    # Domain-growth budget (design §6.1): defaults to 4× the seed dr (two
-    # coarsening regrids); going beyond requires an explicit override.
-    grid.setdefault("dr_max", 4.0 * grid["dr"])
-    if grid["dr_max"] < grid["dr"]:
-        raise SpecError("[grid] dr_max must be >= dr")
-
-    a = spec["adaptivity"]
-    if a["hwl_min"] <= 0:
-        raise SpecError("[adaptivity] hwl_min must be > 0")
-    if a["max_refinements"] < 0:
-        raise SpecError("[adaptivity] max_refinements must be >= 0")
-    if a["newtonian_delta"] < 0:
-        raise SpecError("[adaptivity] newtonian_delta must be >= 0")
-    if not 0.0 < a["boundary_fraction"] <= 1.0:
-        raise SpecError("[adaptivity] boundary_fraction must be in (0, 1]")
-    if not isinstance(c["stop_at_turning_point"], bool):
-        raise SpecError("[campaign] stop_at_turning_point must be a boolean")
-
-    out = spec["output"]
-    if "root" not in out:
-        name = path.stem
-        out["root"] = str(REPO / "out" / "campaigns" / name)
-    if not Path(out["root"]).is_absolute():
-        out["root"] = str((path.parent / out["root"]).resolve())
-    if out["format"] not in ("hdf5", "ascii"):
-        raise SpecError('[output] format must be "hdf5" or "ascii"')
+    spec = Spec(
+        campaign=CampaignSpec.parse(raw.get("campaign", {})),
+        seed=SeedSpec.parse(raw.get("seed", {}), base_dir=path.parent),
+        grid=GridSpec.parse(raw.get("grid", {})),
+        solver=SolverSpec.parse(raw.get("solver", {})),
+        output=OutputSpec.parse(raw.get("output", {}), spec_path=path),
+        adaptivity=AdaptivitySpec.parse(raw.get("adaptivity", {})),
+        spec_hash="",
+    )
 
     # Spec hash: content hash with runtime control keys (max_steps,
     # max_retries) excluded — raising a limit must not invalidate the physics
@@ -246,8 +543,7 @@ def load_spec(path: Path) -> dict:
     control = re.compile(r"^\s*(max_steps|max_retries)\s*=.*$", re.MULTILINE)
     comments = re.compile(r"^\s*#.*$", re.MULTILINE)
     canon = comments.sub("", control.sub("", raw_bytes.decode())).encode()
-    spec["_spec_hash"] = hashlib.sha256(canon).hexdigest()
-    return spec
+    return replace(spec, spec_hash=hashlib.sha256(canon).hexdigest())
 
 
 def find_binary() -> Path:
@@ -263,59 +559,399 @@ def find_binary() -> Path:
 
 # ---------------------------------------------------------------------------
 # State (design §3.2): atomic writes, spec-hash-guarded resume
+#
+# SAN-24: the state.json plumbing is frozen dataclasses. `to_dict` emits keys
+# in exactly the order the previous dict-based writer produced them, so a
+# state.json written by this code re-serializes byte-identically (round-trip
+# unit-tested against an archived state.json). `from_dict` is deliberately
+# lenient: legacy state.json files (SAN-17 era, missing keys) load and
+# resume. Resume is a one-way upgrade: a legacy file re-saved by this code
+# gains the newer keys.
 # ---------------------------------------------------------------------------
 
 
-def state_path(spec: dict) -> Path:
-    return Path(spec["output"]["root"]) / "state.json"
+@dataclass(frozen=True, slots=True)
+class GridPosition:
+    """The campaign's current grid (dr drifts via refinements)."""
+
+    dr: float
+    N: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {"dr": self.dr, "N": self.N}
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, object]) -> Self:
+        return cls(dr=_st_float(raw.get("dr", 0.0)), N=_st_int(raw.get("N", 0)))
 
 
-def load_state(spec: dict) -> dict | None:
+@dataclass(frozen=True, slots=True)
+class RegridInfo:
+    """Accepted-regrid provenance attached to a StepRecord."""
+
+    from_dr: float
+    to_dr: float
+    source: str | None
+    rel_diff: dict[str, float]
+    accepted: bool
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "from_dr": self.from_dr,
+            "to_dr": self.to_dr,
+            "source": self.source,
+            "rel_diff": self.rel_diff,
+            "accepted": self.accepted,
+        }
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, object]) -> Self:
+        rel = raw.get("rel_diff", {})
+        return cls(
+            from_dr=_st_float(raw.get("from_dr", 0.0)),
+            to_dr=_st_float(raw.get("to_dr", 0.0)),
+            source=_st_opt_str(raw.get("source")),
+            rel_diff={k: _st_float(v) for k, v in rel.items()} if isinstance(rel, Mapping) else {},
+            accepted=bool(raw.get("accepted", False)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RegridProbe:
+    """A rejected/skipped regrid attempt (state.json `rejected_regrids`).
+
+    Two legacy shapes share this model: a solved-but-rejected probe
+    (scale_u4/log/sol_dir/scalars/psi0) and a support-fit skip (skipped/
+    from_dr/to_dr). `to_dict` emits present fields in the legacy insertion
+    order so both round-trip byte-compatibly.
+    """
+
+    i: int
+    mode: StepMode
+    exit_code: int | None
+    scale_u4: float | None = None
+    log: str | None = None
+    sol_dir: str | None = None
+    scalars: dict[str, float | int] | None = None
+    psi0: float | None = None
+    skipped: str | None = None
+    from_dr: float | None = None
+    to_dr: float | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        out: dict[str, object] = {"i": self.i, "mode": self.mode, "exit_code": self.exit_code}
+        if self.sol_dir is not None:
+            # psi0 is always written once a solution exists (null on read failure).
+            out.update(
+                scale_u4=self.scale_u4,
+                log=self.log,
+                sol_dir=self.sol_dir,
+                scalars=self.scalars,
+                psi0=self.psi0,
+            )
+        else:
+            extras = {
+                "scale_u4": self.scale_u4,
+                "log": self.log,
+                "skipped": self.skipped,
+                "from_dr": self.from_dr,
+                "to_dr": self.to_dr,
+            }
+            out.update({k: v for k, v in extras.items() if v is not None})
+        return out
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, object]) -> Self:
+        scalars = raw.get("scalars")
+        return cls(
+            i=_st_int(raw.get("i", 0)),
+            mode=StepMode(_st_str(raw.get("mode", "regrid-probe"))),
+            exit_code=_st_opt_int(raw.get("exit_code")),
+            scale_u4=_st_opt_float(raw.get("scale_u4")),
+            log=_st_opt_str(raw.get("log")),
+            sol_dir=_st_opt_str(raw.get("sol_dir")),
+            scalars={k: _st_scalar(v) for k, v in scalars.items()}
+            if isinstance(scalars, Mapping)
+            else None,
+            psi0=_st_opt_float(raw.get("psi0")),
+            skipped=_st_opt_str(raw.get("skipped")),
+            from_dr=_st_opt_float(raw.get("from_dr")),
+            to_dr=_st_opt_float(raw.get("to_dr")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class FoldMeasurement:
+    """A kept measurement at a fold (state.json `fold_fine_grid_measurement`)."""
+
+    psi0: float | None
+    omega: float | None
+    dr: float
+    sol_dir: str
+    note: str | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        out: dict[str, object] = {
+            "psi0": self.psi0,
+            "omega": self.omega,
+            "dr": self.dr,
+            "sol_dir": self.sol_dir,
+        }
+        if self.note is not None:
+            out["note"] = self.note
+        return out
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, object]) -> Self:
+        return cls(
+            psi0=_st_opt_float(raw.get("psi0")),
+            omega=_st_opt_float(raw.get("omega")),
+            dr=_st_float(raw.get("dr", 0.0)),
+            sol_dir=_st_str(raw.get("sol_dir", "")),
+            note=_st_opt_str(raw.get("note")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PendingRefinement:
+    """An adopted-but-unverified refinement (state.json `pending_refinement`)."""
+
+    from_dr: float
+    regrid_step: int
+    measurement: FoldMeasurement
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "from_dr": self.from_dr,
+            "regrid_step": self.regrid_step,
+            "measurement": self.measurement.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, object]) -> Self:
+        measurement = raw.get("measurement")
+        return cls(
+            from_dr=_st_float(raw.get("from_dr", 0.0)),
+            regrid_step=_st_int(raw.get("regrid_step", 0)),
+            measurement=(
+                FoldMeasurement.from_dict(measurement)
+                if isinstance(measurement, Mapping)
+                else FoldMeasurement(psi0=None, omega=None, dr=0.0, sol_dir="")
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class StepRecord:
+    """One campaign step (state.json `steps[i]`).
+
+    Optional scalars are None exactly when the legacy writer omitted the key:
+    a failed step records only (i, exit_code, mode [+ psi0_target]); a step
+    with a solution directory always carries the scalar block (values may be
+    null when a file was unreadable).
+    """
+
+    i: int
+    exit_code: int
+    mode: StepMode = StepMode.FIXED_PHI
+    sol_dir: str | None = None
+    dr: float | None = None
+    N: int | None = None
+    omega: float | None = None
+    M_Komar: float | None = None
+    J_Komar: float | None = None
+    rr_phi_max: float | None = None
+    r99: float | None = None
+    hwl: float | None = None
+    psi0: float | None = None
+    newton_iters: int | None = None
+    norm_f: float | None = None
+    psi0_target: float | None = None
+    regrid: RegridInfo | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        out: dict[str, object] = {"i": self.i, "exit_code": self.exit_code, "mode": self.mode}
+        if self.sol_dir is not None:
+            out.update(
+                sol_dir=self.sol_dir,
+                dr=self.dr,
+                N=self.N,
+                omega=self.omega,
+                M_Komar=self.M_Komar,
+                J_Komar=self.J_Komar,
+                rr_phi_max=self.rr_phi_max,
+                r99=self.r99,
+                hwl=self.hwl,
+                psi0=self.psi0,
+            )
+        if self.newton_iters is not None:
+            out["newton_iters"] = self.newton_iters
+        if self.norm_f is not None:
+            out["norm_f"] = self.norm_f
+        if self.psi0_target is not None:
+            out["psi0_target"] = self.psi0_target
+        if self.regrid is not None:
+            out["regrid"] = self.regrid.to_dict()
+        return out
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, object]) -> Self:
+        regrid = raw.get("regrid")
+        return cls(
+            i=_st_int(raw.get("i", 0)),
+            exit_code=_st_int(raw.get("exit_code", 0)),
+            mode=StepMode(_st_str(raw.get("mode", "fixedPhi"))),
+            sol_dir=_st_opt_str(raw.get("sol_dir")),
+            dr=_st_opt_float(raw.get("dr")),
+            N=_st_opt_int(raw.get("N")),
+            omega=_st_opt_float(raw.get("omega")),
+            M_Komar=_st_opt_float(raw.get("M_Komar")),
+            J_Komar=_st_opt_float(raw.get("J_Komar")),
+            rr_phi_max=_st_opt_float(raw.get("rr_phi_max")),
+            r99=_st_opt_float(raw.get("r99")),
+            hwl=_st_opt_float(raw.get("hwl")),
+            psi0=_st_opt_float(raw.get("psi0")),
+            newton_iters=_st_opt_int(raw.get("newton_iters")),
+            norm_f=_st_opt_float(raw.get("norm_f")),
+            psi0_target=_st_opt_float(raw.get("psi0_target")),
+            regrid=RegridInfo.from_dict(regrid) if isinstance(regrid, Mapping) else None,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CampaignState:
+    """Campaign resume state (state.json)."""
+
+    spec_hash: str
+    spec_file: str | None = None
+    steps: list[StepRecord] = field(default_factory=list)
+    status: Status = Status.RUNNING
+    stop_reason: str | None = None
+    grid: GridPosition | None = None
+    refinements_left: int | None = None
+    turning_point: dict[str, object] | None = None
+    rejected_regrids: list[RegridProbe] | None = None
+    pending_refinement: PendingRefinement | None = None
+    fold_fine_grid_measurement: list[FoldMeasurement] | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        out: dict[str, object] = {
+            "spec_hash": self.spec_hash,
+            "spec_file": self.spec_file,
+            "steps": [s.to_dict() for s in self.steps],
+            "status": self.status,
+            "stop_reason": self.stop_reason,
+        }
+        if self.grid is not None:
+            out["grid"] = self.grid.to_dict()
+        if self.refinements_left is not None:
+            out["refinements_left"] = self.refinements_left
+        out["turning_point"] = self.turning_point
+        if self.rejected_regrids is not None:
+            out["rejected_regrids"] = [p.to_dict() for p in self.rejected_regrids]
+        out["pending_refinement"] = (
+            self.pending_refinement.to_dict() if self.pending_refinement else None
+        )
+        if self.fold_fine_grid_measurement is not None:
+            out["fold_fine_grid_measurement"] = [
+                m.to_dict() for m in self.fold_fine_grid_measurement
+            ]
+        return out
+
+    @classmethod
+    def from_dict(cls, raw: Mapping[str, object]) -> Self:
+        # Legacy files (SAN-17 era) lack grid/refinements_left and the
+        # provenance lists: they stay None and the effective values come
+        # from the spec via current_grid().
+        grid = raw.get("grid")
+        rejected = raw.get("rejected_regrids")
+        fold = raw.get("fold_fine_grid_measurement")
+        pending = raw.get("pending_refinement")
+        turning_point = raw.get("turning_point")
+        steps = raw.get("steps", [])
+        return cls(
+            spec_hash=_st_str(raw.get("spec_hash", "")),
+            spec_file=_st_opt_str(raw.get("spec_file")),
+            steps=[StepRecord.from_dict(s) for s in cast("list[Mapping[str, object]]", steps)]
+            if isinstance(steps, list)
+            else [],
+            status=Status(_st_str(raw.get("status", "running"))),
+            stop_reason=_st_opt_str(raw.get("stop_reason")),
+            grid=GridPosition.from_dict(grid) if isinstance(grid, Mapping) else None,
+            refinements_left=_st_opt_int(raw.get("refinements_left")),
+            turning_point=dict(cast("Mapping[str, object]", turning_point))
+            if isinstance(turning_point, Mapping)
+            else None,
+            rejected_regrids=[
+                RegridProbe.from_dict(p) for p in cast("list[Mapping[str, object]]", rejected)
+            ]
+            if isinstance(rejected, list)
+            else None,
+            pending_refinement=PendingRefinement.from_dict(pending)
+            if isinstance(pending, Mapping)
+            else None,
+            fold_fine_grid_measurement=[
+                FoldMeasurement.from_dict(m) for m in cast("list[Mapping[str, object]]", fold)
+            ]
+            if isinstance(fold, list)
+            else None,
+        )
+
+    def with_rejected_probe(self, probe: RegridProbe) -> CampaignState:
+        """Append to `rejected_regrids` (creating the list on first use)."""
+        return replace(self, rejected_regrids=[*(self.rejected_regrids or []), probe])
+
+    def with_fold_measurement(self, measurement: FoldMeasurement) -> CampaignState:
+        """Append to `fold_fine_grid_measurement` (creating the list on first use)."""
+        return replace(
+            self, fold_fine_grid_measurement=[*(self.fold_fine_grid_measurement or []), measurement]
+        )
+
+
+def state_path(spec: Spec) -> Path:
+    return spec.output.root / "state.json"
+
+
+def load_state(spec: Spec) -> CampaignState | None:
     p = state_path(spec)
     if not p.exists():
         return None
-    state = json.loads(p.read_text())
-    if state.get("spec_hash") != spec["_spec_hash"]:
+    raw = json.loads(p.read_text())
+    if not isinstance(raw, dict):
+        raise ValueError(f"state.json at {p} is corrupt: top level is not a JSON object")
+    if raw.get("spec_hash") != spec.spec_hash:
         raise SystemExit(
             f"state.json at {p} was written for a different spec version; "
             "pass --fresh to discard it."
         )
-    return state
+    return CampaignState.from_dict(raw)
 
 
-def save_state(spec: dict, state: dict) -> None:
+def save_state(spec: Spec, state: CampaignState) -> None:
     p = state_path(spec)
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(state, indent=2) + "\n")
+    tmp.write_text(json.dumps(state.to_dict(), indent=2) + "\n")
     tmp.replace(p)  # atomic on POSIX
 
 
-def fresh_state(spec: dict) -> dict:
-    return {
-        "spec_hash": spec["_spec_hash"],
-        "spec_file": None,  # filled by main()
-        "steps": [],
-        "status": "running",
-        "stop_reason": None,
+def fresh_state(spec: Spec) -> CampaignState:
+    return CampaignState(
+        spec_hash=spec.spec_hash,
         # Adaptive state (SAN-21 v2): the grid can drift from the spec's
         # initial value via refinements; refinements_left bounds them.
-        "grid": {"dr": spec["grid"]["dr"], "N": spec["grid"]["N"]},
-        "refinements_left": spec["adaptivity"]["max_refinements"],
-        "turning_point": None,
-    }
+        grid=GridPosition(dr=spec.grid.dr, N=spec.grid.N),
+        refinements_left=spec.adaptivity.max_refinements,
+    )
 
 
-def current_grid(state: dict, spec: dict) -> dict:
-    """Current grid (dr may have moved from the spec's initial value).
+def current_grid(state: CampaignState, spec: Spec) -> GridPosition:
+    """Effective grid: the state's tracked value, else the spec's initial grid.
 
-    Backwards compatible with SAN-17 state.json files that predate regrids.
+    Backwards compatible with SAN-17 state.json files that predate regrids
+    (which lack the `grid` key entirely).
     """
-    g = state.get("grid")
-    if g is None:
-        g = {"dr": spec["grid"]["dr"], "N": spec["grid"]["N"]}
-        state["grid"] = g
-    return g
+    return state.grid or GridPosition(dr=spec.grid.dr, N=spec.grid.N)
 
 
 # ---------------------------------------------------------------------------
@@ -323,7 +959,7 @@ def current_grid(state: dict, spec: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def solution_scalars(sol_dir: Path) -> dict:
+def solution_scalars(sol_dir: Path) -> dict[str, float | int]:
     if (sol_dir / "solution.h5").exists():
         return extract_scalars_from_hdf5(sol_dir)
     return extract_scalars(sol_dir)
@@ -340,10 +976,10 @@ def solution_fields(sol_dir: Path) -> dict[str, np.ndarray]:
     return {name: read_2d(sol_dir / name) for name in SEED_FIELDS}
 
 
-def psi_at_fixed_point(psi: np.ndarray, spec: dict) -> float:
+def psi_at_fixed_point(psi: np.ndarray, spec: Spec) -> float:
     """ψ at the fixedPhi grid point — the value the C constraint enforces."""
-    c = spec["campaign"]
-    return float(psi[c["fixedPhiR"], c["fixedPhiZ"]])
+    c = spec.campaign
+    return float(psi[c.fixedPhiR, c.fixedPhiZ])
 
 
 # ---------------------------------------------------------------------------
@@ -359,7 +995,7 @@ def write_seed_field(path: Path, data: np.ndarray) -> None:
 
 
 def render_seed(
-    spec: dict, root: Path, prev: list[dict], psi0_target: float, extrapolate: bool = True
+    spec: Spec, root: Path, prev: list[StepRecord], psi0_target: float, extrapolate: bool = True
 ) -> tuple[float, float]:
     """Build the seed files for the next step.
 
@@ -380,23 +1016,28 @@ def render_seed(
     seed_dir.mkdir(parents=True, exist_ok=True)
 
     cur = prev[-1]
-    fields = solution_fields(Path(cur["sol_dir"]))
+    assert cur.sol_dir is not None
+    fields = solution_fields(Path(cur.sol_dir))
 
     can_extrapolate = (
         extrapolate
         and len(prev) >= 2
-        and prev[-1].get("mode") == "fixedPhi"
-        and prev[-2].get("mode") == "fixedPhi"
-        and prev[-1]["psi0"] != prev[-2]["psi0"]
+        and prev[-1].mode == StepMode.FIXED_PHI
+        and prev[-2].mode == StepMode.FIXED_PHI
+        and prev[-1].psi0 != prev[-2].psi0
     )
     if can_extrapolate:
-        older = solution_fields(Path(prev[-2]["sol_dir"]))
-        ratio = (psi0_target - prev[-1]["psi0"]) / (prev[-1]["psi0"] - prev[-2]["psi0"])
+        assert cur.psi0 is not None and cur.omega is not None
+        assert prev[-2].psi0 is not None and prev[-2].omega is not None
+        assert prev[-2].sol_dir is not None
+        older = solution_fields(Path(prev[-2].sol_dir))
+        ratio = (psi0_target - cur.psi0) / (cur.psi0 - prev[-2].psi0)
         for name in SEED_FIELDS:
             fields[name] = fields[name] + ratio * (fields[name] - older[name])
-        w_guess = cur["omega"] + ratio * (cur["omega"] - prev[-2]["omega"])
+        w_guess = cur.omega + ratio * (cur.omega - prev[-2].omega)
     else:
-        w_guess = cur["omega"]
+        assert cur.omega is not None
+        w_guess = cur.omega
 
     psi_fixed = psi_at_fixed_point(fields["psi_f.asc"], spec)
     if psi_fixed == 0:
@@ -411,50 +1052,57 @@ def render_seed(
     return scale_u4, w_guess
 
 
-def spec_with_grid(spec: dict, dr: float) -> dict:
-    """Shallow spec copy with the grid's dr replaced (regrid rendering)."""
-    return {**spec, "grid": {**spec["grid"], "dr": dr}}
+@dataclass(frozen=True, slots=True)
+class InitialGrid:
+    """Source-grid description for an interpolated regrid restart (C side)."""
+
+    NrTotalInitial: int
+    NzTotalInitial: int
+    order_i: int
+    ghost_i: int
+    dr_i: float
+    dz_i: float
 
 
 def render_params(
-    spec: dict,
+    spec: Spec,
     root: Path,
     step: int,
     *,
     scale_u4: float | None = None,
     seed_dir: Path | None = None,
-    initial_grid: dict | None = None,
+    initial_grid: InitialGrid | None = None,
 ) -> Path:
     """Render the per-step parameter file into the campaign root."""
-    c, grid, solver = spec["campaign"], spec["grid"], spec["solver"]
+    c, grid, solver = spec.campaign, spec.grid, spec.solver
     lines = [
         f"# Rendered by tools/sweep_driver.py — step {step}, {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
         "",
         "# GRID",
-        f"dr = {grid['dr']:.6E}",
-        f"dz = {grid['dr']:.6E}",
-        f"NrInterior = {grid['N']}",
-        f"NzInterior = {grid['N']}",
-        f"order = {grid['order']}",
+        f"dr = {grid.dr:.6E}",
+        f"dz = {grid.dr:.6E}",
+        f"NrInterior = {grid.N}",
+        f"NzInterior = {grid.N}",
+        f"order = {grid.order}",
         "",
         "# SCALAR FIELD PROPERTIES",
-        f"l = {c['l']}",
-        f"m = {c['m']}",
+        f"l = {c.l}",
+        f"m = {c.m}",
         "",
     ]
 
-    seed = spec["seed"]
-    if seed["policy"] == "from_scratch" and step == 0:
+    seed = spec.seed
+    if seed.policy == SeedPolicy.FROM_SCRATCH and step == 0:
         lines += [
             "# INITIAL DATA (analytic guess, seed solve at fixed ω)",
             "readInitialData = 0",
-            f"psi0 = {seed['psi0']:.6E}",
-            f"sigmaR = {seed['sigmaR']:.6E}",
-            f"sigmaZ = {seed['sigmaZ']:.6E}",
-            f"rExt = {seed['rExt']:.6E}",
+            f"psi0 = {seed.psi0:.6E}",
+            f"sigmaR = {seed.sigmaR:.6E}",
+            f"sigmaZ = {seed.sigmaZ:.6E}",
+            f"rExt = {seed.rExt:.6E}",
             "",
             "# INITIAL FREQUENCY (fixed for the seed solve)",
-            f"w0 = {seed['w0']:.6E}",
+            f"w0 = {seed.w0:.6E}",
             "",
             "fixedPhi = 0",
             "fixedOmega = 1",
@@ -467,17 +1115,20 @@ def render_params(
             # use mode 1.
             f"readInitialData = {3 if initial_grid else 1}",
         ]
+        # seed_dir is only read on this branch; the from_scratch step-0
+        # branch renders analytic initial data instead.
+        assert seed_dir is not None, "seed_dir required when seeding from files"
         for param, field in SEED_PARAM_KEYS.items():
             lines.append(f'{param} = "{(seed_dir / field).resolve()}"')
         lines.append(f'w_i = "{(seed_dir / "w_f.asc").resolve()}"')
-        if initial_grid:
+        if initial_grid is not None:
             lines += [
-                f"NrTotalInitial = {initial_grid['NrTotalInitial']}",
-                f"NzTotalInitial = {initial_grid['NzTotalInitial']}",
-                f"order_i = {initial_grid['order_i']}",
-                f"ghost_i = {initial_grid['ghost_i']}",
-                f"dr_i = {initial_grid['dr_i']:.6E}",
-                f"dz_i = {initial_grid['dz_i']:.6E}",
+                f"NrTotalInitial = {initial_grid.NrTotalInitial}",
+                f"NzTotalInitial = {initial_grid.NzTotalInitial}",
+                f"order_i = {initial_grid.order_i}",
+                f"ghost_i = {initial_grid.ghost_i}",
+                f"dr_i = {initial_grid.dr_i:.6E}",
+                f"dz_i = {initial_grid.dz_i:.6E}",
             ]
         lines += [
             "",
@@ -485,25 +1136,25 @@ def render_params(
             f"scale_u4 = {scale_u4:.10E}",
             "",
             "fixedPhi = 1",
-            f"fixedPhiR = {c['fixedPhiR']}",
-            f"fixedPhiZ = {c['fixedPhiZ']}",
+            f"fixedPhiR = {c.fixedPhiR}",
+            f"fixedPhiZ = {c.fixedPhiZ}",
             "fixedOmega = 0",
         ]
 
     lines += [
         "",
         "# SOLVER PARAMETERS",
-        f"solverType = {solver['solverType']}",
-        f"localSolver = {solver['localSolver']}",
-        f"epsilon = {solver['epsilon']:.6E}",
-        f"maxNewtonIter = {solver['maxNewtonIter']}",
-        f"lambda0 = {solver['lambda0']:.6E}",
-        f"lambdaMin = {solver['lambdaMin']:.6E}",
-        f"useLowRank = {solver['useLowRank']}",
+        f"solverType = {solver.solverType}",
+        f"localSolver = {solver.localSolver}",
+        f"epsilon = {solver.epsilon:.6E}",
+        f"maxNewtonIter = {solver.maxNewtonIter}",
+        f"lambda0 = {solver.lambda0:.6E}",
+        f"lambdaMin = {solver.lambdaMin:.6E}",
+        f"useLowRank = {solver.useLowRank}",
         "",
-        f'outputFormat = "{spec["output"]["format"]}"',
+        f'outputFormat = "{spec.output.format}"',
     ]
-    if spec["output"]["format"] == "ascii":
+    if spec.output.format == OutputFormat.ASCII:
         lines.append('loglevel = "warn"')
 
     out = root / f"step{step:04d}.toml"
@@ -560,13 +1211,13 @@ def run_binary(
     return proc.returncode, log
 
 
-def initial_dirname(spec: dict) -> str:
+def initial_dirname(spec: Spec) -> str:
     """The pre-rename output dir name the C binary writes (parser convention)."""
-    c, grid = spec["campaign"], spec["grid"]
-    return f"l={c['l']},w=X.XXXXXE-01,dr={grid['dr']:.5E},N={grid['N']:04d}"
+    c, grid = spec.campaign, spec.grid
+    return f"l={c.l},w=X.XXXXXE-01,dr={grid.dr:.5E},N={grid.N:04d}"
 
 
-def new_solution_dir(root: Path, before: set[Path], spec: dict, step: int) -> Path | None:
+def new_solution_dir(root: Path, before: set[Path], spec: Spec, step: int) -> Path | None:
     """Locate the solution the run just produced.
 
     Normally the binary renames its output dir to the final w= name. If that
@@ -590,14 +1241,13 @@ def new_solution_dir(root: Path, before: set[Path], spec: dict, step: int) -> Pa
 
 
 def do_regrid(
-    spec: dict,
+    spec: Spec,
     root: Path,
-    state: dict,
+    state: CampaignState,
     binary: Path,
     step_no: int,
     new_dr: float,
-    base_psi0: float,
-) -> tuple[bool, dict]:
+) -> tuple[bool, StepRecord | None, CampaignState]:
     """Re-solve the *same* ψ₀ on a grid with dr → `new_dr` (design §4).
 
     Seeds through the C interpolator (readInitialData = 3) from the last good
@@ -618,62 +1268,63 @@ def do_regrid(
     stays on the current grid and counts the attempt against
     max_refinements.
 
-    Returns (accepted, step_record).
+    Returns (accepted, step_record, updated_state).
     """
     # Source = last good solution that is not a rejected regrid attempt:
     # seeding from a rejected attempt would chase its drifted branch point.
-    src = None
-    for s in reversed(state["steps"]):
-        if s.get("psi0") is None or s.get("exit_code", 1) != 0:
+    src: StepRecord | None = None
+    for s in reversed(state.steps):
+        if s.psi0 is None or s.exit_code != 0:
             continue
-        if s.get("mode") == "regrid" and not s.get("regrid", {}).get("accepted", False):
+        if s.mode == StepMode.REGGRID and (s.regrid is None or not s.regrid.accepted):
             continue
         src = s
         break
     if src is None:
-        return False, {}
+        return False, None, state
 
     # Re-solve the SOURCE's ψ₀ — not the last step's value, which a failed
     # attempt may have moved.
-    base_psi0 = float(src["psi0"])
-    src_dr, src_n = float(src["dr"]), int(src["N"])
-    order = spec["grid"]["order"]
+    assert src.psi0 is not None and src.dr is not None and src.N is not None
+    base_psi0 = float(src.psi0)
+    src_dr, src_n = float(src.dr), int(src.N)
+    order = spec.grid.order
 
     # Finer regrids shrink the domain (N fixed): never amputate the field —
     # if the support would not fit in the new domain, the attempt is futile.
-    if new_dr < src_dr and src.get("r99") is not None:
+    if new_dr < src_dr and src.r99 is not None:
         new_domain = (src_n + 2 * ghost_of(order)) * new_dr
-        if src["r99"] > spec["adaptivity"]["boundary_fraction"] * new_domain:
+        if src.r99 > spec.adaptivity.boundary_fraction * new_domain:
             print(
-                f"[driver] regrid step {step_no}: skipped — support r99={src['r99']:.3g} "
+                f"[driver] regrid step {step_no}: skipped — support r99={src.r99:.3g} "
                 f"would not fit in the {new_domain:.3g} domain"
             )
-            state.setdefault("rejected_regrids", []).append(
-                {
-                    "i": step_no,
-                    "mode": "regrid-probe",
-                    "exit_code": None,
-                    "skipped": "support would not fit",
-                    "from_dr": src_dr,
-                    "to_dr": new_dr,
-                }
+            state = state.with_rejected_probe(
+                RegridProbe(
+                    i=step_no,
+                    mode=StepMode.REGGRID_PROBE,
+                    exit_code=None,
+                    skipped="support would not fit",
+                    from_dr=src_dr,
+                    to_dr=new_dr,
+                )
             )
             save_state(spec, state)
-            return False, {}
+            return False, None, state
 
-    initial_grid = {
-        "NrTotalInitial": src_n + 2 * ghost_of(order),
-        "NzTotalInitial": src_n + 2 * ghost_of(order),
-        "order_i": order,
-        "ghost_i": ghost_of(order),
-        "dr_i": src_dr,
-        "dz_i": src_dr,
-    }
-    spec2 = spec_with_grid(spec, new_dr)
-    rejected: list[dict] = []
+    initial_grid = InitialGrid(
+        NrTotalInitial=src_n + 2 * ghost_of(order),
+        NzTotalInitial=src_n + 2 * ghost_of(order),
+        order_i=order,
+        ghost_i=ghost_of(order),
+        dr_i=src_dr,
+        dz_i=src_dr,
+    )
+    spec2 = spec.with_grid(new_dr)
+    rejected: list[RegridProbe] = []
 
     scale_u4, _ = render_seed(spec, root, [src], base_psi0)
-    rec: dict = {}
+    rec: RegridProbe | None = None
     for attempt in range(2):
         params = render_params(
             spec2,
@@ -697,23 +1348,22 @@ def do_regrid(
             label=f"{step_no:04d}_probe{attempt}" if attempt else None,
         )
         sol = new_solution_dir(root, before, spec2, step_no)
-        probe: dict = {
-            "i": step_no,
-            "mode": "regrid-probe",
-            "exit_code": code,
-            "scale_u4": scale_u4,
-            "log": str(log),
-        }
+        probe = RegridProbe(
+            i=step_no,
+            mode=StepMode.REGGRID_PROBE,
+            exit_code=code,
+            scale_u4=scale_u4,
+            log=str(log),
+        )
         if sol is not None:
-            probe["sol_dir"] = str(sol)
-            probe["scalars"] = solution_scalars(sol)
-            try:
-                fields = solution_fields(sol)
-                probe["psi0"] = psi_at_fixed_point(fields["psi_f.asc"], spec2)
-            except Exception:  # noqa: BLE001 — probe diagnostics only
-                probe["psi0"] = None
+            probe = replace(
+                probe,
+                sol_dir=str(sol),
+                scalars=solution_scalars(sol),
+                psi0=_probe_psi0(sol, spec2),
+            )
 
-        achieved = probe.get("psi0")
+        achieved = probe.psi0
         if attempt == 0 and code == 0 and achieved is not None:
             drift = abs(achieved - base_psi0) / abs(base_psi0)
             if drift > 1.0e-9:
@@ -729,36 +1379,46 @@ def do_regrid(
         rec = probe
         break
 
-    state.setdefault("rejected_regrids", []).extend(rejected)
+    for p in rejected:
+        state = state.with_rejected_probe(p)
 
     accepted = False
-    rec_step: dict = {}
-    if rec and rec.get("exit_code") == 0 and rec.get("psi0") is not None:
-        rel = {}
+    rel: dict[str, float] = {}
+    rec_step: StepRecord | None = None
+    if rec is not None and rec.exit_code == 0 and rec.psi0 is not None and rec.sol_dir is not None:
         for key, fname in (
             ("omega", "w_f.asc"),
             ("M_Komar", "M_Komar1.asc"),
             ("J_Komar", "J_Komar1.asc"),
         ):
-            old, new = src.get(key), rec.get("scalars", {}).get(fname)
+            old, new = getattr(src, key), (rec.scalars or {}).get(fname)
             if old is None or new is None or abs(old) == 0:
                 rel = {}
                 break
             rel[key] = abs(new - old) / abs(old)
         accepted = bool(rel)
 
-    if accepted:
+    if accepted and rec is not None:
         # Promote the accepted re-solve to a real branch-point step.
-        sol = Path(rec["sol_dir"])
-        record_step(state, spec2, step_no, sol, 0, mode="regrid")
-        rec_step = state["steps"][-1]
-        rec_step["regrid"] = {
-            "from_dr": src_dr,
-            "to_dr": new_dr,
-            "source": src.get("sol_dir"),
-            "rel_diff": rel,
-            "accepted": True,
-        }
+        assert rec.sol_dir is not None
+        record_step(state, spec2, step_no, Path(rec.sol_dir), 0, mode=StepMode.REGGRID)
+        rec_step = state.steps[-1]
+        state = replace(
+            state,
+            steps=[
+                *state.steps[:-1],
+                replace(
+                    state.steps[-1],
+                    regrid=RegridInfo(
+                        from_dr=src_dr,
+                        to_dr=new_dr,
+                        source=src.sol_dir,
+                        rel_diff=rel,
+                        accepted=True,
+                    ),
+                ),
+            ],
+        )
         save_state(spec, state)
         diffs = ", ".join(f"{k}={v:.2e}" for k, v in rel.items())
         print(
@@ -766,17 +1426,26 @@ def do_regrid(
             f"finer (old-grid error recorded) ({diffs})"
         )
     else:
-        if rec:
-            state.setdefault("rejected_regrids", []).append(rec)
+        if rec is not None:
+            state = state.with_rejected_probe(rec)
         save_state(spec, state)
         print(
             f"[driver] regrid step {step_no}: dr {src_dr:.5E} → {new_dr:.5E} "
-            f"REJECTED (exit {rec.get('exit_code') if rec else 'n/a'}, log: {rec.get('log') if rec else 'n/a'})"
+            f"REJECTED (exit {rec.exit_code if rec else 'n/a'}, log: {rec.log if rec else 'n/a'})"
         )
-    return accepted, rec_step
+    return accepted, rec_step, state
 
 
-def newton_health(sol_dir: Path, fmt: str) -> dict:
+def _probe_psi0(sol: Path, spec: Spec) -> float | None:
+    """ψ₀ achieved by a regrid probe (None when fields are unreadable)."""
+    try:
+        fields = solution_fields(sol)
+        return psi_at_fixed_point(fields["psi_f.asc"], spec)
+    except Exception:  # noqa: BLE001 — probe diagnostics only
+        return None
+
+
+def newton_health(sol_dir: Path, fmt: OutputFormat) -> dict[str, float | int]:
     """Newton health from the iteration histories (design §5 diagnostics).
 
     Returns {} when the histories are unavailable (failed step). `lambda_min`
@@ -785,10 +1454,10 @@ def newton_health(sol_dir: Path, fmt: str) -> dict:
     the end flags a step that converged only grudgingly.
     """
     try:
-        datasets = None
-        if fmt == "hdf5" and (sol_dir / "solution.h5").exists():
+        datasets: dict[str, np.ndarray] | None = None
+        if fmt == OutputFormat.HDF5 and (sol_dir / "solution.h5").exists():
             datasets, _ = read_hdf5(sol_dir / "solution.h5")
-        health: dict = {}
+        health: dict[str, float | int] = {}
         lam = None
         if datasets is not None and "lambda.asc" in datasets:
             lam = np.asarray(datasets["lambda.asc"], dtype=float)
@@ -817,48 +1486,59 @@ def newton_health(sol_dir: Path, fmt: str) -> dict:
 
 
 def record_step(
-    state: dict, spec: dict, i: int, sol_dir: Path | None, exit_code: int, mode: str = "fixedPhi"
-) -> None:
-    step: dict = {"i": i, "exit_code": exit_code, "mode": mode}
+    state: CampaignState,
+    spec: Spec,
+    i: int,
+    sol_dir: Path | None,
+    exit_code: int,
+    mode: StepMode = StepMode.FIXED_PHI,
+    psi0_target: float | None = None,
+) -> StepRecord:
+    step = StepRecord(i=i, exit_code=exit_code, mode=mode, psi0_target=psi0_target)
     if sol_dir is not None:
         scalars = solution_scalars(sol_dir)
-        entry = {
-            "sol_dir": str(sol_dir),
-            "dr": spec["grid"]["dr"],
-            "N": spec["grid"]["N"],
-            "omega": scalars.get("w_f.asc"),
-            "M_Komar": scalars.get("M_Komar1.asc"),
-            "J_Komar": scalars.get("J_Komar1.asc"),
-            "rr_phi_max": scalars.get("rr_phi_max.asc"),
-            "r99": scalars.get("r99.asc"),
-            "hwl": scalars.get("hwl_resolution.asc"),
-        }
+        health = newton_health(sol_dir, spec.output.format)
+        psi0: float | None
         try:
             # ψ₀ from the field at the fixedPhi point (the constraint value).
             fields = solution_fields(sol_dir)
-            entry["psi0"] = psi_at_fixed_point(fields["psi_f.asc"], spec)
+            psi0 = psi_at_fixed_point(fields["psi_f.asc"], spec)
         except Exception:  # noqa: BLE001 — a failed step may lack field data
-            entry["psi0"] = None
-        step.update(entry)
-        step.update(newton_health(sol_dir, spec["output"]["format"]))
-    state["steps"].append(step)
+            psi0 = None
+        step = replace(
+            step,
+            sol_dir=str(sol_dir),
+            dr=spec.grid.dr,
+            N=spec.grid.N,
+            omega=scalars.get("w_f.asc"),
+            M_Komar=scalars.get("M_Komar1.asc"),
+            J_Komar=scalars.get("J_Komar1.asc"),
+            rr_phi_max=scalars.get("rr_phi_max.asc"),
+            r99=scalars.get("r99.asc"),
+            hwl=scalars.get("hwl_resolution.asc"),
+            psi0=psi0,
+            newton_iters=(int(health["newton_iters"]) if "newton_iters" in health else None),
+            norm_f=health.get("norm_f"),
+        )
+    state.steps.append(step)
+    return step
 
 
-def psi0_of_last(state: dict) -> float:
-    for step in reversed(state["steps"]):
-        if step.get("psi0") is not None and step.get("exit_code", 1) == 0:
-            return float(step["psi0"])
+def psi0_of_last(state: CampaignState) -> float:
+    for step in reversed(state.steps):
+        if step.psi0 is not None and step.exit_code == 0:
+            return float(step.psi0)
     raise SystemExit("no completed step records ψ₀; cannot continue")
 
 
-def omega_of_last(state: dict) -> float:
-    for step in reversed(state["steps"]):
-        if step.get("omega") is not None and step.get("exit_code", 1) == 0:
-            return float(step["omega"])
+def omega_of_last(state: CampaignState) -> float:
+    for step in reversed(state.steps):
+        if step.omega is not None and step.exit_code == 0:
+            return float(step.omega)
     raise SystemExit("no completed step records ω; cannot continue")
 
 
-def newtonian_limit_stop(state: dict, spec: dict) -> str | None:
+def newtonian_limit_stop(state: CampaignState, spec: Spec) -> str | None:
     """SAN-20 item 1: is a failed step the branch's physical Newtonian end?
 
     In the down direction ω → m as ψ₀ → 0; the field extends without bound
@@ -869,84 +1549,80 @@ def newtonian_limit_stop(state: dict, spec: dict) -> str | None:
     of m. Returns None otherwise (including the up direction, whose M_max
     end has no clean ω-based signature — investigation item, SAN-20 #5).
     """
-    c = spec["campaign"]
-    if c["direction"] != "down":
+    c = spec.campaign
+    if c.direction != Direction.DOWN:
         return None
-    steps = state["steps"]
-    if not steps or steps[-1].get("exit_code") != 2:
+    if not state.steps or state.steps[-1].exit_code != 2:
         return None
     omega = next(
-        (
-            float(s["omega"])
-            for s in reversed(steps)
-            if s.get("omega") is not None and s.get("exit_code", 1) == 0
-        ),
+        (float(s.omega) for s in reversed(state.steps) if s.omega is not None and s.exit_code == 0),
         None,
     )
     if omega is None:
         return None
-    delta = spec["adaptivity"]["newtonian_delta"]
-    if omega >= float(c.get("m", 1.0)) - delta:
-        return "stopped:newtonian_limit"
+    delta = spec.adaptivity.newtonian_delta
+    if omega >= c.m - delta:
+        return StopReason.STOPPED_NEWTONIAN_LIMIT
     return None
 
 
-def finished(state: dict, spec: dict) -> str | None:
+def finished(state: CampaignState, spec: Spec) -> str | None:
     """Fixed-grid subset of the §6.1 exit conditions. Returns stop reason."""
-    c = spec["campaign"]
-    steps = [s for s in state["steps"] if s.get("psi0") is not None]
+    c = spec.campaign
+    steps = [s for s in state.steps if s.psi0 is not None]
     if not steps:
         return None
-    psi0 = float(steps[-1]["psi0"])
+    psi0 = float(steps[-1].psi0) if steps[-1].psi0 is not None else 0.0
     omega = omega_of_last(state)
-    direction = c["direction"]
+    direction = c.direction
 
     # ψ₀ hits the constraint value exactly, up to last-ulp rounding of the
     # scale factor; compare with a tolerance so an exact landing stops the
     # campaign instead of re-solving the same point forever.
-    tol = 1e-9 * max(1.0, abs(c["psi0_target"]))
-    if direction == "up" and psi0 >= c["psi0_target"] - tol:
-        return "done:psi0_target"
-    if direction == "down" and psi0 <= c["psi0_target"] + tol:
-        return "done:psi0_target"
-    if "omega_target" in c and c["omega_target"] is not None:
-        if direction == "up" and omega <= c["omega_target"]:
-            return "done:omega_target"
-        if direction == "down" and omega >= c["omega_target"]:
-            return "done:omega_target"
-    if len(state["steps"]) >= c["max_steps"]:
-        return "done:max_steps"
-    if direction == "down":
+    tol = 1e-9 * max(1.0, abs(c.psi0_target))
+    if direction == Direction.UP and psi0 >= c.psi0_target - tol:
+        return StopReason.DONE_PSI0_TARGET
+    if direction == Direction.DOWN and psi0 <= c.psi0_target + tol:
+        return StopReason.DONE_PSI0_TARGET
+    if c.omega_target is not None:
+        if direction == Direction.UP and omega <= c.omega_target:
+            return StopReason.DONE_OMEGA_TARGET
+        if direction == Direction.DOWN and omega >= c.omega_target:
+            return StopReason.DONE_OMEGA_TARGET
+    if len(state.steps) >= c.max_steps:
+        return StopReason.DONE_MAX_STEPS
+    if direction == Direction.DOWN:
         # Weak-field boundary stop (v2): near ω → m the tail reaches the
         # outer boundary and boundary error dominates — widening cannot fix
         # it, so stop instead of regridding. The practical default is to end
         # down campaigns at omega_target = 0.9 first (paper convention).
         last = steps[-1]
-        if last.get("r99") is not None and last.get("dr") and last.get("N"):
-            r_bdy = (int(last["N"]) + 2 * ghost_of(spec["grid"]["order"])) * float(last["dr"])
-            if last["r99"] / r_bdy > spec["adaptivity"]["boundary_fraction"]:
-                return "stopped:boundary"
-    if (
-        c.get("stop_at_turning_point", True)
-        and direction == "up"
-        and detect_turning_point(state["steps"])
-    ):
-        return "stopped:turning_point"
-    if state["steps"][-1]["exit_code"] not in (0, None):
-        code = state["steps"][-1]["exit_code"]
+        if last.r99 is not None and last.dr and last.N:
+            r_bdy = (int(last.N) + 2 * ghost_of(spec.grid.order)) * float(last.dr)
+            if last.r99 / r_bdy > spec.adaptivity.boundary_fraction:
+                return StopReason.STOPPED_BOUNDARY
+    if c.stop_at_turning_point and direction == Direction.UP and detect_turning_point(state.steps):
+        return StopReason.STOPPED_TURNING_POINT
+    if state.steps[-1].exit_code != 0:
+        code = state.steps[-1].exit_code
         if code == 2:
             # A solver error near ω → m is the branch's physical end (SAN-20).
             nl = newtonian_limit_stop(state, spec)
             if nl is not None:
                 return nl
         if code == TIMEOUT_EXIT:
-            return "failed:timeout"
+            return StopReason.FAILED_TIMEOUT
         if code < 0:
             # Killed by a signal (e.g. -11 = SIGSEGV). Rare, pre-existing C
             # backend flakiness (SAN-19); recorded distinctly from exit codes.
-            return f"failed:sig{signal.Signals(-code).name.removeprefix('SIG').lower()}"
-        reason = {1: "failed:newton", 2: "failed:solver", 3: "failed:config", 4: "failed:io"}
-        return reason.get(code, f"failed:exit{code}")
+            return StopReason.signal(signal.Signals(-code).name.removeprefix("SIG").lower())
+        reason = {
+            1: StopReason.FAILED_NEWTON,
+            2: StopReason.FAILED_SOLVER,
+            3: StopReason.FAILED_CONFIG,
+            4: StopReason.FAILED_IO,
+        }
+        return reason.get(code, StopReason.exit_code(code))
     return None
 
 
@@ -960,7 +1636,22 @@ def ghost_of(order: int) -> int:
     return order // 2
 
 
-def decide_action(diag: dict) -> str:
+@dataclass(frozen=True, slots=True)
+class StepDiagnostics:
+    """Diagnostics feeding `decide_action` (design §5, formerly a plain dict).
+
+    `hwl`/`rr_phi_max` are None when the step's scalars were unreadable —
+    an under-resolved peak cannot be proven, so None means "do not refine".
+    """
+
+    hwl: float | None
+    rr_phi_max: float | None
+    dr: float
+    refinements_left: int
+    hwl_min: float
+
+
+def decide_action(diag: StepDiagnostics) -> Action:
     """v2 policy (SAN-21): exactly one active rule — refine when the field's
     peak is under-resolved.
 
@@ -984,20 +1675,18 @@ def decide_action(diag: dict) -> str:
 
     Returns "regrid_finer" or "ok".
     """
-    if diag.get("refinements_left", 0) <= 0:
-        return "ok"
-    hwl = diag.get("hwl")
-    if hwl is None:
-        return "ok"
-    if hwl < diag["hwl_min"]:
-        return "regrid_finer"
-    rr, dr = diag.get("rr_phi_max"), diag.get("dr")
-    if rr is not None and rr < (hwl / 2.0) * dr:
-        return "regrid_finer"
-    return "ok"
+    if diag.refinements_left <= 0:
+        return Action.OK
+    if diag.hwl is None:
+        return Action.OK
+    if diag.hwl < diag.hwl_min:
+        return Action.REGGRID_FINER
+    if diag.rr_phi_max is not None and diag.rr_phi_max < (diag.hwl / 2.0) * diag.dr:
+        return Action.REGGRID_FINER
+    return Action.OK
 
 
-def detect_turning_point(steps: list[dict]) -> bool:
+def detect_turning_point(steps: list[StepRecord]) -> bool:
     """Design §6.2: has the branch's minimum-ω turning point been crossed?
 
     Looks at the last three fixedPhi steps with distinct increasing ψ₀ and
@@ -1006,11 +1695,11 @@ def detect_turning_point(steps: list[dict]) -> bool:
     toward m on the down side.
     """
     pts = [
-        (float(s["psi0"]), float(s["omega"]))
+        (float(s.psi0), float(s.omega))
         for s in steps
-        if s.get("mode") in ("fixedPhi", "seed")
-        and s.get("psi0") is not None
-        and s.get("omega") is not None
+        if s.mode in (StepMode.FIXED_PHI, StepMode.SEED)
+        and s.psi0 is not None
+        and s.omega is not None
     ]
     if len(pts) < 3:
         return False
@@ -1022,7 +1711,9 @@ def detect_turning_point(steps: list[dict]) -> bool:
     return s1 < 0.0 < s2
 
 
-def turning_point_estimate(psi0s, omegas, degree: int = 4) -> dict:
+def turning_point_estimate(
+    psi0s: Sequence[float | None], omegas: Sequence[float | None], degree: int = 4
+) -> dict[str, object]:
     """Design §6.2 localization: fit a low-order polynomial ω(ψ₀) over the
     samples bracketing the smallest sampled ω and take its extremum (the
     paper used a 4th-degree spline). Returns a report dict; falls back to
@@ -1061,8 +1752,8 @@ def turning_point_estimate(psi0s, omegas, degree: int = 4) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
-    root = Path(spec["output"]["root"])
+def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
+    root = spec.output.root
     root.mkdir(parents=True, exist_ok=True)
     binary = find_binary()
 
@@ -1074,47 +1765,44 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
                 shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
         state = fresh_state(spec)
     else:
-        state = load_state(spec)
-        if state is None:
+        loaded = load_state(spec)
+        if loaded is None:
             state = fresh_state(spec)
         else:
             # A resumed campaign is running again: clear any status left over
             # from the run that wrote this state (e.g. its own done/failed).
-            state["status"] = "running"
-            state["stop_reason"] = None
-    state["spec_file"] = None
+            state = replace(loaded, status=Status.RUNNING, stop_reason=None)
 
-    step_no = len(state["steps"])
+    step_no = len(state.steps)
     print(f"[driver] campaign root: {root}")
-    print(f"[driver] starting at step {step_no}, status={state['status']}")
+    print(f"[driver] starting at step {step_no}, status={state.status}")
 
     # ----- seed step -------------------------------------------------------
     if step_no == 0:
-        seed = spec["seed"]
-        if seed["policy"] == "solution":
-            src = Path(seed["source"])
+        seed = spec.seed
+        if seed.policy == SeedPolicy.SOLUTION:
+            src = Path(seed.source or "")
             scalars = solution_scalars(src)
             fields = solution_fields(src)
-            entry = {
-                "i": 0,
-                "exit_code": 0,
-                "sol_dir": str(src),
-                "dr": spec["grid"]["dr"],
-                "N": spec["grid"]["N"],
-                "omega": scalars.get("w_f.asc"),
-                "psi0": psi_at_fixed_point(fields["psi_f.asc"], spec),
-                "M_Komar": scalars.get("M_Komar1.asc"),
-                "J_Komar": scalars.get("J_Komar1.asc"),
-                "rr_phi_max": scalars.get("rr_phi_max.asc"),
-                "r99": scalars.get("r99.asc"),
-                "hwl": scalars.get("hwl_resolution.asc"),
-                "newton_iters": None,
-                "mode": "seed",
-            }
-            state["steps"].append(entry)
+            entry = StepRecord(
+                i=0,
+                exit_code=0,
+                mode=StepMode.SEED,
+                sol_dir=str(src),
+                dr=spec.grid.dr,
+                N=spec.grid.N,
+                omega=scalars.get("w_f.asc"),
+                psi0=psi_at_fixed_point(fields["psi_f.asc"], spec),
+                M_Komar=scalars.get("M_Komar1.asc"),
+                J_Komar=scalars.get("J_Komar1.asc"),
+                rr_phi_max=scalars.get("rr_phi_max.asc"),
+                r99=scalars.get("r99.asc"),
+                hwl=scalars.get("hwl_resolution.asc"),
+            )
+            state.steps.append(entry)
             save_state(spec, state)
             print(
-                f"[driver] step 0 (seed): ψ₀={entry['psi0']:.6E} ω={entry['omega']:.6E} from {src.name}"
+                f"[driver] step 0 (seed): ψ₀={entry.psi0:.6E} ω={entry.omega:.6E} from {src.name}"
             )
             step_no = 1
         elif dry_run:
@@ -1127,19 +1815,22 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             code, _ = run_binary(binary, params, root, 0)
             sol = new_solution_dir(root, before, spec, 0)
             record_step(state, spec, 0, sol, code)
-            state["stop_reason"] = finished(state, spec)
+            state = replace(state, stop_reason=finished(state, spec))
             save_state(spec, state)
             if code != 0 or sol is None:
-                state["status"] = "failed"
-                state["stop_reason"] = state["stop_reason"] or f"failed:seed_exit{code}"
+                state = replace(
+                    state,
+                    status=Status.FAILED,
+                    stop_reason=state.stop_reason or StopReason.seed_exit(code),
+                )
                 save_state(spec, state)
                 print(
                     f"[driver] seed solve failed (exit {code}); see {root / 'logs' / 'step0000.log'}"
                 )
                 return 1
             print(
-                f"[driver] step 0 (seed solve): ψ₀={state['steps'][-1]['psi0']:.6E} "
-                f"ω={state['steps'][-1]['omega']:.6E}"
+                f"[driver] step 0 (seed solve): ψ₀={state.steps[-1].psi0:.6E} "
+                f"ω={state.steps[-1].omega:.6E}"
             )
             step_no = 1
     elif dry_run:
@@ -1147,45 +1838,49 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         return 0
 
     # ----- continuation steps ---------------------------------------------
-    c = spec["campaign"]
-    sign = 1 if c["direction"] == "up" else -1
+    c = spec.campaign
+    sign = 1 if c.direction == Direction.UP else -1
 
     def next_target(base_psi0: float) -> float:
         """ψ₀ target for the next step: fixed relative stepping (v2) —
         target = ψ₀·(1 ± psi0_step), the golden-ladder semantics, clamped to
         land exactly on psi0_target.
         """
-        if c["psi0_step_mode"] == "relative":
-            target = base_psi0 * (1.0 + sign * c["psi0_step"])
+        if c.psi0_step_mode == Psi0StepMode.RELATIVE:
+            target = base_psi0 * (1.0 + sign * c.psi0_step)
         else:
-            target = base_psi0 + sign * c["psi0_step"]
-        if c["direction"] == "up":
-            return min(round(target, 15), c["psi0_target"])
-        return max(round(target, 15), c["psi0_target"])
+            target = base_psi0 + sign * c.psi0_step
+        if c.direction == Direction.UP:
+            return min(round(target, 15), c.psi0_target)
+        return max(round(target, 15), c.psi0_target)
 
     while True:
         stop = finished(state, spec)
         if stop is not None:
-            if stop.startswith("done"):
-                state["status"] = "done"
-            elif stop.startswith("stopped:"):
-                state["status"] = "stopped"  # clean stop (turning point / budget)
+            family = stop_family(stop)
+            if family == "done":
+                new_status = Status.DONE
+            elif family == "stopped":
+                new_status = Status.STOPPED  # clean stop (turning point / budget)
             else:
-                state["status"] = "failed"
-            state["stop_reason"] = stop
-            if stop == "stopped:turning_point":
-                steps = state["steps"]
-                state["turning_point"] = turning_point_estimate(
-                    [s.get("psi0") for s in steps], [s.get("omega") for s in steps]
+                new_status = Status.FAILED
+            state = replace(state, status=new_status, stop_reason=stop)
+            if stop == StopReason.STOPPED_TURNING_POINT:
+                steps = state.steps
+                state = replace(
+                    state,
+                    turning_point=turning_point_estimate(
+                        [s.psi0 for s in steps], [s.omega for s in steps]
+                    ),
                 )
             save_state(spec, state)
             print(f"[driver] stop: {stop}")
-            tp = state.get("turning_point")
+            tp = state.turning_point
             if tp:
                 w = tp.get("omega", tp.get("omega_sample_min"))
                 p = tp.get("psi0", tp.get("psi0_sample_min"))
                 print(f"[driver] ω_min ≈ {w:.6E} at ψ₀ ≈ {p:.6E} ({tp.get('method')})")
-            return 0 if state["status"] != "failed" else 1
+            return 0 if state.status != Status.FAILED else 1
 
         # Retry loop (decision-table rules 2-3, core subset): on Newton
         # non-convergence (exit 1) shrink the step and retry from the last
@@ -1198,7 +1893,7 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
         reverted = False
         while True:
             psi0_target = next_target(base_psi0)
-            prev = [s for s in state["steps"] if s.get("psi0") is not None]
+            prev = [s for s in state.steps if s.psi0 is not None]
             # After a failed attempt drop the linear extrapolation: in
             # marginal regions it diverges Newton while the plain rescale
             # from the last good solution converges (SAN-20).
@@ -1215,24 +1910,22 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             before = set(find_solution_dirs(root))
             code, log = run_binary(binary, params, root, step_no)
             sol = new_solution_dir(root, before, spec, step_no)
-            record_step(state, spec, step_no, sol, code)
-            last = state["steps"][-1]
-            last["psi0_target"] = psi0_target
+            last = record_step(state, spec, step_no, sol, code, psi0_target=psi0_target)
             save_state(spec, state)
 
-            if code == 0 and sol is not None and last.get("psi0") is not None:
+            if code == 0 and sol is not None and last.psi0 is not None:
                 break
 
             # A solver error near ω → m is the branch's physical end: do not
             # waste a retry chasing it (SAN-20 item 1).
             near_limit = code == 2 and newtonian_limit_stop(state, spec) is not None
             retryable = (code in (1, 2, TIMEOUT_EXIT) or code < 0) and not near_limit
-            if retryable and attempts < c["max_retries"]:
+            if retryable and attempts < c.max_retries:
                 # v2: fixed Δψ₀ — retries keep the same target and drop the
                 # extrapolated seed (SAN-20 finding: the rescale converges
                 # where the extrapolation diverges).
                 attempts += 1
-                state["steps"].pop()
+                state.steps.pop()
                 save_state(spec, state)
                 cause = (
                     "did not converge"
@@ -1254,34 +1947,44 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             # restore the previous grid, keep the finer-grid solution as a
             # measurement, and disable further refinements. One decision,
             # permanent, no oscillation (SAN-21).
-            pending = state.get("pending_refinement")
+            pending = state.pending_refinement
             if pending is not None:
-                measurement = dict(pending.get("measurement", {}))
-                measurement["note"] = (
-                    "refined-grid re-solve at the fold; its verification step failed so the "
-                    "refinement was not committed — kept as the fold measurement (SAN-21)"
+                measurement = replace(
+                    pending.measurement,
+                    note=(
+                        "refined-grid re-solve at the fold; its verification step failed so the "
+                        "refinement was not committed — kept as the fold measurement (SAN-21)"
+                    ),
                 )
-                state.setdefault("fold_fine_grid_measurement", []).append(measurement)
-                rg_step = pending.get("regrid_step")
-                state["steps"] = [
+                rg_step = pending.regrid_step
+                kept_steps = [
                     s
-                    for s in state["steps"]
-                    if not (s.get("mode") == "regrid" and s.get("i") == rg_step)
-                    and s.get("exit_code", 0) == 0
+                    for s in state.steps
+                    if not (s.mode == StepMode.REGGRID and s.i == rg_step) and s.exit_code == 0
                 ]
-                current_grid(state, spec)["dr"] = pending["from_dr"]
-                state["refinements_left"] = 0
-                state["pending_refinement"] = None
+                state = replace(
+                    state,
+                    steps=kept_steps,
+                ).with_fold_measurement(measurement)
+                state = replace(
+                    state,
+                    grid=replace(current_grid(state, spec), dr=pending.from_dr),
+                    refinements_left=0,
+                    pending_refinement=None,
+                )
                 save_state(spec, state)
                 print(
                     f"[driver] step {step_no}: verification failed on the refined grid; "
-                    f"reverted to dr={pending['from_dr']:.5E}, refinements disabled (SAN-21)"
+                    f"reverted to dr={pending.from_dr:.5E}, refinements disabled (SAN-21)"
                 )
                 reverted = True
                 break
 
-            state["status"] = "failed"
-            state["stop_reason"] = finished(state, spec) or f"failed:exit{code}"
+            state = replace(
+                state,
+                status=Status.FAILED,
+                stop_reason=finished(state, spec) or StopReason.exit_code(code),
+            )
             save_state(spec, state)
             print(f"[driver] step {step_no} FAILED (exit {code}); log: {log}")
             return 1
@@ -1292,57 +1995,61 @@ def run_campaign(spec: dict, fresh: bool, dry_run: bool) -> int:
             continue  # refinement reverted: re-check exit conditions
 
         # ----- refinement decision (design §5, v2) --------------------------
-        a = spec["adaptivity"]
-        g = current_grid(state, spec)
-        dr = float(g["dr"])
-        diag = {
-            "hwl": last.get("hwl"),
-            "rr_phi_max": last.get("rr_phi_max"),
-            "dr": dr,
-            "refinements_left": state.get("refinements_left", a["max_refinements"]),
-            "hwl_min": a["hwl_min"],
-        }
+        a = spec.adaptivity
+        dr = current_grid(state, spec).dr
+        diag = StepDiagnostics(
+            hwl=last.hwl,
+            rr_phi_max=last.rr_phi_max,
+            dr=dr,
+            refinements_left=(
+                state.refinements_left if state.refinements_left is not None else a.max_refinements
+            ),
+            hwl_min=a.hwl_min,
+        )
         action = decide_action(diag)
 
-        if action == "regrid_finer":
+        if action == Action.REGGRID_FINER:
             # Irreversible refinement (dr ÷2, domain shrinks, N fixed): the
             # interpolated re-solve at the same ψ₀ is committed immediately,
             # and the next continuation step doubles as its verification —
             # verify-then-commit (SAN-21).
             new_dr = dr / 2.0
-            ok, _ = do_regrid(spec, root, state, binary, step_no, new_dr, base_psi0)
+            ok, _, state = do_regrid(spec, root, state, binary, step_no, new_dr)
             if ok:
-                current_grid(state, spec)["dr"] = new_dr
-                state["refinements_left"] = diag["refinements_left"] - 1
-                state["pending_refinement"] = {
-                    "from_dr": dr,
-                    "regrid_step": step_no,
-                    "measurement": {
-                        "psi0": state["steps"][-1].get("psi0"),
-                        "omega": state["steps"][-1].get("omega"),
-                        "dr": new_dr,
-                        "sol_dir": str(Path(state["steps"][-1]["sol_dir"])),
-                    },
-                }
+                state = replace(
+                    state,
+                    grid=replace(current_grid(state, spec), dr=new_dr),
+                    refinements_left=diag.refinements_left - 1,
+                    pending_refinement=PendingRefinement(
+                        from_dr=dr,
+                        regrid_step=step_no,
+                        measurement=FoldMeasurement(
+                            psi0=state.steps[-1].psi0,
+                            omega=state.steps[-1].omega,
+                            dr=new_dr,
+                            sol_dir=str(Path(state.steps[-1].sol_dir or "")),
+                        ),
+                    ),
+                )
                 step_no += 1
                 save_state(spec, state)
                 continue  # re-check exit conditions on the new grid
             # The finer re-solve itself failed: count the attempt and stay
             # on this grid (a failed refinement is not retried blindly).
-            state["refinements_left"] = diag["refinements_left"] - 1
+            state = replace(state, refinements_left=diag.refinements_left - 1)
             save_state(spec, state)
             print(f"[driver] refinement rejected; continuing on dr={dr:.5E}")
 
         print(
-            f"[driver] step {step_no - 1}: ψ₀={last['psi0']:.6E} ω={last['omega']:.6E} "
-            f"(guess ω≈{w_guess:.4f}, {last['newton_iters']} iters{note}) [{action}] "
-            f"-> {Path(last['sol_dir']).name}"
+            f"[driver] step {step_no - 1}: ψ₀={last.psi0:.6E} ω={last.omega:.6E} "
+            f"(guess ω≈{w_guess:.4f}, {last.newton_iters} iters{note}) [{action}] "
+            f"-> {Path(last.sol_dir or '').name}"
         )
 
     # pragma: no cover — the campaign loop only exits via return
 
 
-def summarize(spec: dict) -> int:
+def summarize(spec: Spec) -> int:
     """--summarize: localize ω_min from a finished campaign (design §6.2).
 
     Post-processing only: reads state.json, fits a low-order polynomial to
@@ -1353,18 +2060,18 @@ def summarize(spec: dict) -> int:
     if state is None:
         print("[driver] no state.json to summarize", file=sys.stderr)
         return 1
-    omegas = [s.get("omega") for s in state["steps"]]
+    omegas = [s.omega for s in state.steps]
     if not any(w is not None for w in omegas):
         print("[driver] no completed steps record ω; nothing to summarize", file=sys.stderr)
         return 1
     report = turning_point_estimate(
-        [s.get("psi0") for s in state["steps"]],
+        [s.psi0 for s in state.steps],
         omegas,
     )
-    report["campaign"] = str(spec["output"]["root"])
-    report["status"] = state.get("status")
-    report["stop_reason"] = state.get("stop_reason")
-    out = Path(spec["output"]["root"]) / "summary.json"
+    report["campaign"] = str(spec.output.root)
+    report["status"] = state.status
+    report["stop_reason"] = state.stop_reason
+    out = spec.output.root / "summary.json"
     out.write_text(json.dumps(report, indent=2) + "\n")
     print(f"[driver] summary: {json.dumps(report)}")
     print(f"[driver] wrote {out}")
