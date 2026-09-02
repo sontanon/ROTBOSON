@@ -8,11 +8,14 @@ import sys
 from pathlib import Path
 
 import nbformat
+from logsetup import configure, get_logger
 
 NOTEBOOKS = Path(__file__).resolve().parent.parent / "derivations" / "notebooks"
 
 
 def main() -> int:
+    configure()
+    logger = get_logger(__name__)
     total = stripped = 0
     for nb_path in sorted(NOTEBOOKS.glob("*.ipynb")):
         nb = nbformat.read(nb_path, as_version=4)
@@ -28,7 +31,7 @@ def main() -> int:
             nbformat.write(nb, nb_path)
             stripped += 1
         total += 1
-    print(f"[strip] {stripped}/{total} notebooks stripped in {NOTEBOOKS}")
+    logger.info("stripped %d/%d notebooks in %s", stripped, total, NOTEBOOKS)
     return 0
 
 

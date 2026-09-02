@@ -18,6 +18,7 @@ import sys
 import time
 from pathlib import Path
 
+from logsetup import configure, get_logger
 from rotboson_io import extract_scalars, find_solution_dirs
 
 REPO = Path(__file__).resolve().parent.parent
@@ -26,6 +27,11 @@ OUT = REPO / "out"
 # CMake build dirs (single-config presets); the binary lives in the configured
 # build tree. Keep support for the legacy Makefile binary at the repo root.
 BUILD_PRESETS = ("release", "umfpack", "dev", "asan-ubsan")
+
+# Progress/diagnostics go through logging (stderr); the final observables
+# block is this tool's stdout product and stays on plain prints (logsetup's
+# convention note) so CI `tail` and VALIDATION.md keep their shape.
+logger = get_logger(__name__)
 
 
 def find_binary() -> Path:
@@ -43,16 +49,16 @@ def find_binary() -> Path:
 
 
 def build(jobs: int) -> Path:
-    print("[smoke] building ROTBOSON with CMake (release preset) ...")
+    logger.info("building ROTBOSON with CMake (release preset) ...")
     subprocess.run(["cmake", "--preset", "release"], cwd=REPO, check=True)
     subprocess.run(["cmake", "--build", "--preset", "release", f"-j{jobs}"], cwd=REPO, check=True)
-    print("[smoke] build OK")
+    logger.info("build OK")
     return REPO / "build" / "release" / "ROTBOSON"
 
 
 def run_par(binary: Path, parfile: Path) -> Path:
     par = parfile.resolve()
-    print(f"[smoke] running ROTBOSON with {par.name} ...")
+    logger.info("running ROTBOSON with %s ...", par.name)
     proc = subprocess.run(
         [str(binary), str(par)],
         cwd=OUT,
@@ -63,11 +69,11 @@ def run_par(binary: Path, parfile: Path) -> Path:
     )
     log = OUT / "smoke_run.log"
     log.write_text(proc.stdout)
-    print(f"[smoke] ROTBOSON exited with code {proc.returncode}; log -> {log}")
+    logger.info("ROTBOSON exited with code %d; log -> %s", proc.returncode, log)
     if proc.returncode != 0:
         tail = "\n".join(proc.stdout.splitlines()[-25:])
-        print(tail)
-        raise SystemExit("ROTBOSON run failed")
+        logger.error("ROTBOSON run failed; last output:\n%s", tail)
+        raise SystemExit(1)
     dirs = find_solution_dirs(OUT)
     if not dirs:
         raise SystemExit("no solution directory found in out/")
@@ -85,7 +91,9 @@ def main() -> None:
         help="path to the ROTBOSON executable (overrides discovery/build)",
     )
     parser.add_argument("--jobs", type=int, default=8)
+    parser.add_argument("--log-json", action="store_true", help="emit logs as JSON lines on stderr")
     args = parser.parse_args()
+    configure(json_logs=args.log_json)
 
     if args.binary is not None:
         binary = args.binary.resolve()

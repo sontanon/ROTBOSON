@@ -17,6 +17,7 @@ import nbformat
 import numpy as np
 import sympy as sp
 import sympy_system as ss
+from logsetup import configure, get_logger
 
 NB_PATH = str(
     Path(__file__).resolve().parent.parent
@@ -137,7 +138,11 @@ def derived(vals: dict[str, float]) -> dict[str, float]:
     return d
 
 
+logger = get_logger(__name__)
+
+
 def check() -> int:
+    configure()
     s, R, f, J = ss.build()
     nb_jac = load_notebook_jacobian()
     ns = notebook_symbols()
@@ -331,8 +336,13 @@ def check() -> int:
                 if not np.isclose(a, b, rtol=1e-9, atol=1e-11 * denom):
                     nbad += 1
                     if nbad <= 20:
-                        print(
-                            f"MISMATCH seed={seed} row={i} col={j}: sympy={a:.6e} notebook={b:.6e}"
+                        logger.warning(
+                            "MISMATCH seed=%d row=%d col=%d: sympy=%.6e notebook=%.6e",
+                            seed,
+                            i,
+                            j,
+                            a,
+                            b,
                         )
     if nbad:
         print(f"FAIL: {nbad} mismatches across {npts} samples")

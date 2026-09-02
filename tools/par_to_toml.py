@@ -21,6 +21,8 @@ import re
 import sys
 from pathlib import Path
 
+from logsetup import configure, get_logger
+
 # Keys that were present in the historical files but never read by the parser
 # (libconfig silently ignored them; strict TOML validation would reject them).
 DEAD_KEYS = {
@@ -82,6 +84,9 @@ def convert_file(par: Path, out: Path) -> list[str]:
     return dropped
 
 
+logger = get_logger(__name__)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("files", nargs="+", type=Path, help=".par files to convert")
@@ -91,10 +96,11 @@ def main() -> None:
         help="delete the original .par files after converting",
     )
     args = parser.parse_args()
+    configure()
 
     for par in args.files:
         if par.suffix != ".par":
-            print(f"skip {par} (not a .par file)", file=sys.stderr)
+            logger.warning("skip %s (not a .par file)", par)
             continue
         out = par.with_suffix(".toml")
         dropped = convert_file(par, out)

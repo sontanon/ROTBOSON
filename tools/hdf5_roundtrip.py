@@ -13,7 +13,10 @@ import argparse
 import sys
 from pathlib import Path
 
+from logsetup import configure, get_logger
 from rotboson_io import HDF5_FILENAME, compare_hdf5_to_ascii, hdf5_to_asc, read_hdf5
+
+logger = get_logger(__name__)
 
 
 def main() -> int:
@@ -24,6 +27,7 @@ def main() -> int:
     parser.add_argument("--rtol", type=float, default=1e-10)
     parser.add_argument("--atol", type=float, default=1e-12)
     args = parser.parse_args()
+    configure()
 
     h5 = args.sol_dir / HDF5_FILENAME
     if not h5.exists():
@@ -53,7 +57,7 @@ def main() -> int:
         return 0 if ok else 1
 
     if not args.out and not args.ref:
-        print("no --out or --ref given; nothing to do")
+        logger.warning("no --out or --ref given; nothing to do")
         return 0
     return 0
 
