@@ -1,4 +1,4 @@
-"""Python sweep driver with adaptive stepping — SAN-17 (core) + SAN-14 (adaptive).
+"""Python sweep driver with adaptive continuation stepping.
 
 C solves one solution; Python drives. The continuation parameter is **ψ₀**
 (the field value at the fixedPhi grid point): each step renders a parameter
@@ -14,7 +14,7 @@ solution directory per step under `[output] root`. An interrupted campaign
 resumes automatically from the last completed step; a changed spec aborts
 resume (delete state.json or pass --fresh).
 
-Adaptive layer (SAN-14, design §4–6):
+Adaptive layer (design §4–6):
   * step-size control in Δψ₀ (grow on fast healthy convergence, shrink on
     trouble, persistent factor in state.json);
   * regrid ladder — dr ×2 / ÷2 at fixed N via the C interpolator
@@ -26,7 +26,7 @@ Adaptive layer (SAN-14, design §4–6):
     that localizes ω_min with a low-order polynomial fit.
 The decision logic lives in pure functions (`decide_action`,
 `detect_turning_point`, `turning_point_estimate`) unit-tested in
-`tests/test_driver_decisions.py`. Golden-sequence verification is SAN-13.
+`tests/test_driver_decisions.py`.
 """
 
 import argparse
@@ -88,7 +88,7 @@ class SpecError(ValueError):
 
 
 # ---------------------------------------------------------------------------
-# Closed vocabularies (SAN-24): the string sets that cross the JSON/TOML
+# Closed vocabularies: the string sets that cross the JSON/TOML
 # boundaries. Values match the legacy state.json / param-file spellings
 # exactly — resume and rendering stay byte-compatible.
 # ---------------------------------------------------------------------------
@@ -178,10 +178,10 @@ class Action(StrEnum):
 
 
 # ---------------------------------------------------------------------------
-# Spec model (SAN-24): frozen dataclasses parsed + validated in one place.
+# Spec model: frozen dataclasses parsed + validated in one place.
 # parse() classmethods are the single choke point raising SpecError; the
 # messages match the previous dict-based validator verbatim. The spec hash
-# is computed over the raw TOML text (SAN-21) and is deliberately untouched
+# is computed over the raw TOML text and is deliberately untouched
 # by this model.
 # ---------------------------------------------------------------------------
 
@@ -544,7 +544,7 @@ def load_spec(path: Path) -> Spec:
     # max_retries) excluded — raising a limit must not invalidate the physics
     # state of a running campaign; any physics-affecting change does.
     # The hash ignores runtime control keys AND comment lines — commentary
-    # edits must not invalidate a running campaign's resume (SAN-21).
+    # edits must not invalidate a running campaign's resume.
     control = re.compile(r"^\s*(max_steps|max_retries)\s*=.*$", re.MULTILINE)
     comments = re.compile(r"^\s*#.*$", re.MULTILINE)
     canon = comments.sub("", control.sub("", raw_bytes.decode())).encode()
@@ -565,11 +565,11 @@ def find_binary() -> Path:
 # ---------------------------------------------------------------------------
 # State (design §3.2): atomic writes, spec-hash-guarded resume
 #
-# SAN-24: the state.json plumbing is frozen dataclasses. `to_dict` emits keys
+# The state.json plumbing is frozen dataclasses. `to_dict` emits keys
 # in exactly the order the previous dict-based writer produced them, so a
 # state.json written by this code re-serializes byte-identically (round-trip
 # unit-tested against an archived state.json). `from_dict` is deliberately
-# lenient: legacy state.json files (SAN-17 era, missing keys) load and
+# lenient: legacy state.json files (early format, missing keys) load and
 # resume. Resume is a one-way upgrade: a legacy file re-saved by this code
 # gains the newer keys.
 # ---------------------------------------------------------------------------
@@ -865,7 +865,7 @@ class CampaignState:
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, object]) -> Self:
-        # Legacy files (SAN-17 era) lack grid/refinements_left and the
+        # Legacy files (pre-regrid format) lack grid/refinements_left and the
         # provenance lists: they stay None and the effective values come
         # from the spec via current_grid().
         grid = raw.get("grid")
@@ -943,7 +943,7 @@ def save_state(spec: Spec, state: CampaignState) -> None:
 def fresh_state(spec: Spec) -> CampaignState:
     return CampaignState(
         spec_hash=spec.spec_hash,
-        # Adaptive state (SAN-21 v2): the grid can drift from the spec's
+        # Adaptive state: the grid can drift from the spec's
         # initial value via refinements; refinements_left bounds them.
         grid=GridPosition(dr=spec.grid.dr, N=spec.grid.N),
         refinements_left=spec.adaptivity.max_refinements,
@@ -953,7 +953,7 @@ def fresh_state(spec: Spec) -> CampaignState:
 def current_grid(state: CampaignState, spec: Spec) -> GridPosition:
     """Effective grid: the state's tracked value, else the spec's initial grid.
 
-    Backwards compatible with SAN-17 state.json files that predate regrids
+    Backwards compatible with state.json files that predate regrids
     (which lack the `grid` key entirely).
     """
     return state.grid or GridPosition(dr=spec.grid.dr, N=spec.grid.N)
@@ -1013,8 +1013,8 @@ def render_seed(
 
     `extrapolate=False` forces the plain rescale — used by the retry loop
     after an attempt failed: in marginal regions the extrapolated guess
-    diverges Newton while the rescaled one converges (SAN-20 sweep finding:
-    the same target went exit 2 with extrapolation and exit 0 without).
+    diverges Newton while the rescaled one converges (empirically the same
+    target went exit 2 with extrapolation and exit 0 without).
     Returns (scale_u4, omega_guess).
     """
     seed_dir = root / "seed"
@@ -1187,7 +1187,7 @@ def run_binary(
     """Run ROTBOSON from the campaign root; returns (exit code, log path).
 
     A wall-clock timeout returns TIMEOUT_EXIT instead of raising, so a hung
-    solver is recorded like any other failure (SAN-20 item 2).
+    solver is recorded like any other failure.
     """
     log_dir = root / "logs"
     log_dir.mkdir(exist_ok=True)
@@ -1556,7 +1556,7 @@ def omega_of_last(state: CampaignState) -> float:
 
 
 def newtonian_limit_stop(state: CampaignState, spec: Spec) -> str | None:
-    """SAN-20 item 1: is a failed step the branch's physical Newtonian end?
+    """Is a failed step the branch's physical Newtonian end?
 
     In the down direction ω → m as ψ₀ → 0; the field extends without bound
     and the Jacobian becomes singular, so the solver exits 2 near ω = m. That
@@ -1564,7 +1564,7 @@ def newtonian_limit_stop(state: CampaignState, spec: Spec) -> str | None:
     `stopped:newtonian_limit` stop reason when the last step failed with exit
     2 and the last *completed* ω sits within `[adaptivity] newtonian_delta`
     of m. Returns None otherwise (including the up direction, whose M_max
-    end has no clean ω-based signature — investigation item, SAN-20 #5).
+    end has no clean ω-based signature).
     """
     c = spec.campaign
     if c.direction != Direction.DOWN:
@@ -1623,7 +1623,7 @@ def finished(state: CampaignState, spec: Spec) -> str | None:
     if state.steps[-1].exit_code != 0:
         code = state.steps[-1].exit_code
         if code == 2:
-            # A solver error near ω → m is the branch's physical end (SAN-20).
+            # A solver error near ω → m is the branch's physical end.
             nl = newtonian_limit_stop(state, spec)
             if nl is not None:
                 return nl
@@ -1631,7 +1631,7 @@ def finished(state: CampaignState, spec: Spec) -> str | None:
             return StopReason.FAILED_TIMEOUT
         if code < 0:
             # Killed by a signal (e.g. -11 = SIGSEGV). Rare, pre-existing C
-            # backend flakiness (SAN-19); recorded distinctly from exit codes.
+            # backend flakiness); recorded distinctly from exit codes.
             return StopReason.signal(signal.Signals(-code).name.removeprefix("SIG").lower())
         reason = {
             1: StopReason.FAILED_NEWTON,
@@ -1669,7 +1669,7 @@ class StepDiagnostics:
 
 
 def decide_action(diag: StepDiagnostics) -> Action:
-    """v2 policy (SAN-21): exactly one active rule — refine when the field's
+    """Decision policy: exactly one active rule — refine when the field's
     peak is under-resolved.
 
     Under-resolution means either the half-max width of the field drops
@@ -1683,7 +1683,7 @@ def decide_action(diag: StepDiagnostics) -> Action:
 
     Everything else is fixed relative stepping: no growth, no damping-based
     shrinking (the λ history carries a trailing 0.0 convergence sentinel
-    that made any tail statistic meaningless — SAN-20), no boundary regrids
+    that made any tail statistic meaningless), no boundary regrids
     (weak-field boundary error dominates and widening cannot fix it — the
     campaign stops instead, see `finished`). `refinements_left` bounds the
     number of dr ÷2 refinements per campaign (irreversible,
@@ -1906,7 +1906,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
         # Retry loop (decision-table rules 2-3, core subset): on Newton
         # non-convergence (exit 1) shrink the step and retry from the last
         # good solution. A step killed by a signal (code < 0, e.g. SIGSEGV —
-        # SAN-19 backend flakiness) is retried at the same step size: unlike
+        # rare backend flakiness) is retried at the same step size: unlike
         # a Newton failure, the step size is not the cause. Solver/config/
         # I-O errors are not retryable.
         base_psi0 = psi0_of_last(state)
@@ -1917,7 +1917,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             prev = [s for s in state.steps if s.psi0 is not None]
             # After a failed attempt drop the linear extrapolation: in
             # marginal regions it diverges Newton while the plain rescale
-            # from the last good solution converges (SAN-20).
+            # from the last good solution converges.
             scale_u4, w_guess = render_seed(
                 spec, root, prev, psi0_target, extrapolate=attempts == 0
             )
@@ -1938,12 +1938,12 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 break
 
             # A solver error near ω → m is the branch's physical end: do not
-            # waste a retry chasing it (SAN-20 item 1).
+            # waste a retry chasing it.
             near_limit = code == 2 and newtonian_limit_stop(state, spec) is not None
             retryable = (code in (1, 2, TIMEOUT_EXIT) or code < 0) and not near_limit
             if retryable and attempts < c.max_retries:
                 # v2: fixed Δψ₀ — retries keep the same target and drop the
-                # extrapolated seed (SAN-20 finding: the rescale converges
+                # extrapolated seed (the rescale converges
                 # where the extrapolation diverges).
                 attempts += 1
                 state.steps.pop()
@@ -1970,14 +1970,14 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             # refinement whose verification step failed is not committed —
             # restore the previous grid, keep the finer-grid solution as a
             # measurement, and disable further refinements. One decision,
-            # permanent, no oscillation (SAN-21).
+            # permanent, no oscillation.
             pending = state.pending_refinement
             if pending is not None:
                 measurement = replace(
                     pending.measurement,
                     note=(
                         "refined-grid re-solve at the fold; its verification step failed so the "
-                        "refinement was not committed — kept as the fold measurement (SAN-21)"
+                        "refinement was not committed — kept as the fold measurement"
                     ),
                 )
                 rg_step = pending.regrid_step
@@ -1999,7 +1999,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 save_state(spec, state)
                 logger.warning(
                     "step %d: verification failed on the refined grid; "
-                    "reverted to dr=%.5E, refinements disabled (SAN-21)",
+                    "reverted to dr=%.5E, refinements disabled",
                     step_no,
                     pending.from_dr,
                 )
@@ -2038,7 +2038,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             # Irreversible refinement (dr ÷2, domain shrinks, N fixed): the
             # interpolated re-solve at the same ψ₀ is committed immediately,
             # and the next continuation step doubles as its verification —
-            # verify-then-commit (SAN-21).
+            # verify-then-commit.
             new_dr = dr / 2.0
             ok, _, state = do_regrid(spec, root, state, binary, step_no, new_dr)
             if ok:

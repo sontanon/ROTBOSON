@@ -18,7 +18,7 @@ target_link_libraries(test_output PRIVATE rotboson_core)
 
 add_test(NAME output COMMAND test_output)
 
-# Exit-code contract test (SAN-10): runs the real binary with valid and
+# Exit-code contract test: runs the real binary with valid and
 # invalid parameter files and pins the process exit codes.
 add_executable(test_exit_codes test_exit_codes.c)
 target_compile_definitions(

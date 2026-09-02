@@ -1,4 +1,4 @@
-"""Central logging setup for ROTBOSON tooling (SAN-24 spike / SAN-25).
+"""Central logging setup for ROTBOSON tooling.
 
 Convention:
 - **print() is a tool's stdout product** — final reports and verdicts that a

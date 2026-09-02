@@ -1,4 +1,4 @@
-// Exit-code contract test (SAN-10 / design doc §2).
+// Exit-code contract test (design doc §2).
 //
 // The Python sweep driver keys its decision table off the binary's exit
 // codes, so this test pins the public contract:

@@ -7,7 +7,7 @@ include = ["tools", "tests"]
 [environment]
 extra-paths = ["tools"]
 
-# Phase C (SAN-24): severities raised toward strict. These are the rules
+# Severities raised toward strict. These are the rules
 # beyond ty 0.0.77's default set; every enabled rule must pass clean.
 [rules]
 unsound-return-statement = "error"

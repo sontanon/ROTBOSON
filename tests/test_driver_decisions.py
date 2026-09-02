@@ -1,7 +1,7 @@
-"""Unit tests for the v2 adaptive decision layer (SAN-21; design §4–6 rev 2).
+"""Unit tests for the v2 adaptive decision layer (design §4–6 rev 2).
 
 The decision logic lives in pure functions in tools/sweep_driver.py; these
-tests feed them frozen-dataclass diagnostics (SAN-24). v2 policy: fixed
+tests feed them frozen-dataclass diagnostics. v2 policy: fixed
 relative stepping, one refinement rule (under-resolved peak → dr ÷2,
 verify-then-commit), physics-limit/boundary stops, timeout handling,
 turning-point detection.

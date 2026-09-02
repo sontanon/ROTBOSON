@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
     // NOTE: do not cache ctx.NzTotal (or any other parsed value) before this
     // point: rb_context_init only holds defaults, and the IDX macro expands
     // whatever `NzTotal` is in scope. A pre-parse alias once made the grid
-    // fill below index with the default stride (SAN-19).
+    // fill below index with the default stride.
     parser(&ctx, argv[1]);
 
     print_parameters(&ctx);

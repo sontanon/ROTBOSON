@@ -1,10 +1,10 @@
-"""state.json round-trip tests (SAN-24 Phase B).
+"""state.json round-trip tests.
 
 The frozen-dataclass state model must be compatible with in-flight campaigns:
 
-* the CURRENT writer's shape (SAN-21 v2) must round-trip **byte-identically**
+* the CURRENT writer's shape must round-trip **byte-identically**
   — resuming must not churn state.json formats mid-campaign;
-* legacy v1 state.json files (SAN-17 era: minimal top-level keys, per-step
+* legacy v1 state.json files (minimal top-level keys, per-step
   extras like `step_factor`) must load and resume; a re-save upgrades the
   file, dropping keys the v2 model no longer tracks.
 """
@@ -86,7 +86,7 @@ class TestCurrentWriterByteRoundTrip:
 
 
 class TestLegacyCompat:
-    """SAN-17-era state.json files load; the model keeps the modeled data."""
+    """Legacy v1 state.json files load; the model keeps the modeled data."""
 
     @pytest.fixture
     def state(self):

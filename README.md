@@ -58,10 +58,16 @@ rejected and wrong types are hard errors. Legacy `.par` files can be converted
 with `uv run tools/par_to_toml.py`.
 
 Two extra keys control output:
+- `outputFormat = "hdf5"` writes a single self-describing `solution.h5` per
+  solution (root attributes include the build git hash, parameter file,
+  backend and creation timestamp). This is the primary format for new work —
+  the Python tooling reads it natively.
 - `outputFormat = "ascii"` (default) writes the legacy one-file-per-field
-  `.asc` layout; `outputFormat = "hdf5"` writes a single self-describing
-  `solution.h5` per solution (root attributes include the build git hash,
-  parameter file, backend and creation timestamp).
+  `.asc` layout, byte-identical to the 2020-era catalogue output. It is a
+  **compatibility backend**, kept so the golden-regression validation chain
+  (which compares archived solutions byte-for-byte) runs unchanged. New
+  workflows should prefer HDF5; the ASCII default stays until the HDF5
+  catalogue rebuild makes the regression chain format-independent.
 - `loglevel = "error" | "warn" | "info" (default) | "debug"` sets the
   verbosity of the progress/banner output.
 
@@ -69,8 +75,8 @@ Two extra keys control output:
 
 The binary does one thing: **one invocation = one Newton solve = one solution
 directory.** Sweep/continuation orchestration lives in the Python driver (see
-`docs/sweep-driver-design.md`; the old in-C `sweep_advance`/ladder machinery
-was removed in SAN-10). The process exit code is part of the public contract
+`docs/sweep-driver-design.md`); the old in-C `sweep_advance`/ladder machinery
+was removed. The process exit code is part of the public contract
 (`src/exit_codes.h`):
 
 | code | meaning                                          |
@@ -85,7 +91,7 @@ Pinned by the `exit_codes` CTest.
 
 ### HDF5 (optional, for `outputFormat = "hdf5"`)
 
-The HDF5 backend needs the HDF5 C library:
+The primary output backend needs the HDF5 C library:
 
 Fedora: `sudo dnf install hdf5-devel`
 Ubuntu/Debian: `sudo apt-get install libhdf5-dev`
@@ -123,14 +129,15 @@ repo root but is deprecated.
 
 ## Python tooling
 
-Analysis/validation tools live under `tools/` and are managed with `uv`:
+Analysis/validation tools live under `tools/` (see `tools/README.md` for the
+full inventory) and are managed with `uv`:
 
 ```bash
 uv sync --dev
 uv run tools/smoke.py out/l1_from_scratch.toml
 ```
 
-### Sweep driver (SAN-17 core + SAN-14 adaptive layer)
+### Sweep driver
 
 `tools/sweep_driver.py` runs continuation campaigns: the C binary solves one
 solution per step, Python orchestrates. The continuation parameter is **ψ₀**
@@ -175,7 +182,7 @@ factor_max = 2.0          # growth cap (6% relative steps)
 newton_fast_iters = 8     # "fast" Newton threshold for growth
 optional_coarsening = false  # rule 7 (hwl > hwl_max → dr ×2); OFF by
                           # default — an accepted coarsening can stall
-                          # subsequent stepping (SAN-20)
+                          # subsequent stepping
 ```
 
 ```bash
@@ -197,7 +204,7 @@ Adaptive behaviour (design §4–6):
 - **Step-size control** — a persistent step factor grows (×1.25) after fast,
   healthy convergence and shrinks (×½) after grudging convergence or failure;
   Newton non-convergence shrinks and retries, a solver error retries once
-  (rule 4), and a signal-killed step retries at the same size (SAN-19).
+  (rule 4), and a signal-killed step retries at the same size.
 - **Regrid ladder** — when the decision table calls for it, the driver
   re-solves the *same* ψ₀ on a grid with dr ×2 or ÷2 (N fixed), seeding
   through the C interpolator (`readInitialData = 3`) and correcting the
@@ -229,9 +236,11 @@ the packages above -- no curated data required:
   UMFPACK fallback smoke runs in seconds) and its HDF5
   variant (`out/l1_from_scratch_hdf5.toml`), plus the continuation config
   (`out/l1_from_initial_data.toml`);
-- all catalogue/convergence/stability parameter templates and the published
-  summary tables (`data/summaries/`, `data/params/`, `data/convergence/`,
-  `data/paper/`);
+- all catalogue/convergence/stability parameter templates
+  (`data/params/`, `data/convergence/`, `data/paper/`); the Catalogue2
+  summary tables (`data/summaries/`, expected by
+  `tools/check_against_summary.py`) are restored together with the golden
+  dataset;
 - the derivation notebooks (`derivations/`) and all Python tooling.
 
 Two things are **not** in the repo (gitignored; 4.7 GB, restored from the
@@ -248,7 +257,7 @@ output; you only cannot re-run the golden-regeneration validation chain.
 `tools/smoke.py` and `tools/hdf5_roundtrip.py` work on freshly generated
 solutions alone.
 
-# Generating l=1 data
+## Generating l=1 data
 
 Two parameter files generate $l=1$ data in `out`. Run from `out/` (output
 directories are created under the process working directory; ROTBOSON no
@@ -276,10 +285,3 @@ continuation from the previous "seed":
 
 This runs for a while (up to $\omega = 0.675222$, where it stops because the
 scalar field is too "spiky" for the grid resolution).
-
-# TODO
-
-* Explain $l \geq 2$.
-* Explain interpolation as initial data.
-* Explain the nonlinear solver.
-* Redo everything in a friendlier language... 😂

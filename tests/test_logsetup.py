@@ -1,4 +1,4 @@
-"""Tests for the shared logging setup (SAN-25)."""
+"""Tests for the shared logging setup."""
 
 import io
 import json

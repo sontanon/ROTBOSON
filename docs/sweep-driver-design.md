@@ -1,6 +1,6 @@
 # Design doc: Python sweep driver with adaptive stepping
 
-**Linear:** [SAN-7](https://linear.app/sontanon/issue/SAN-7/design-doc-python-sweep-driver-with-adaptive-stepping) · status: **DRAFT — awaiting Santiago's review**
+**Linear:** [SAN-7](https://linear.app/sontanon/issue/SAN-7/design-doc-python-sweep-driver-with-adaptive-stepping) · status: **IMPLEMENTED** (all design slices shipped; see §8 rollout table — C contract strip, core driver, adaptive layer, and the Revision 2 fixed-step workhorse all live in `tools/sweep_driver.py`; remaining work is golden-sequence verification, tracked in Linear as SAN-13).
 **Successors:** SAN-10 (strip C), SAN-17 (core driver), SAN-14 (adaptive logic), SAN-13 (verification)
 **Author:** drafted 2026-08-29 from SAN-7 requirements + paper §VI/§IX + audit of `sweep_advance` (`src/main.c:274`) and the fixedPhi ladder machinery.
 

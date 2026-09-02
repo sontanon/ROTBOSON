@@ -113,7 +113,7 @@
       "omega": 0.6459705050646782,
       "dr": 0.125,
       "sol_dir": "/workspace/rotboson/out/campaigns/sweep-l1-v2/l=1,w=X.XXXXXE-01,dr=1.25000E-01,N=0128",
-      "note": "refined-grid verification step failed; refinement not committed, solution kept as measurement (SAN-21)"
+      "note": "refined-grid verification step failed; refinement not committed, solution kept as measurement"
     }
   ]
 }
