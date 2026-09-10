@@ -1,0 +1,25 @@
+# One-step seed test: does the from_scratch l=2 ansatz converge at w0 = 0.9?
+[campaign]
+l = 2
+direction = "up"
+psi0_target = 0.6
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 1
+stop_at_turning_point = true
+
+[seed]
+policy = "from_scratch"
+w0 = 0.9
+
+[grid]
+dr = 0.125
+N = 128
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "/workspace/rotboson/out/campaigns/sweep-l2-seed-test"
+format = "hdf5"

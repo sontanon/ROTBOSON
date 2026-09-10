@@ -1030,6 +1030,12 @@ def render_seed(
         and prev[-1].mode == StepMode.FIXED_PHI
         and prev[-2].mode == StepMode.FIXED_PHI
         and prev[-1].psi0 != prev[-2].psi0
+        # Both predecessors must live on the same grid: across a regrid the
+        # fields are sampled at different radii (staggered grids), and a
+        # pointwise linear extrapolation between them corrupts the whole
+        # seed (observed as ‖du‖₀ ≈ 4 and a PARDISO −4 divergence).
+        and prev[-1].dr == prev[-2].dr
+        and prev[-1].N == prev[-2].N
     )
     if can_extrapolate:
         assert cur.psi0 is not None and cur.omega is not None
@@ -1256,16 +1262,24 @@ def do_regrid(
     """Re-solve the *same* ψ₀ on a grid with dr → `new_dr` (design §4).
 
     Seeds through the C interpolator (readInitialData = 3) from the last good
-    solution and constrains ψ(fixedPhi point) = ψ₀ as usual. v2 only refines
-    (dr ÷2): acceptance is convergence + the exact ψ₀ landing, and the
-    recorded ω / M_Komar / J_Komar differences are the old grid's error.
+    solution and constrains ψ(fixedPhi point) = ψ₀ as usual.
 
-    The C freezes the Newton update at the fixedPhi point, so the enforced ψ₀
-    is the *interpolated seed's* value there — which can drift from the
-    requested ψ₀ (the C bicubic overshoots near the axis on coarse seeds).
-    The frozen value scales exactly linearly with scale_u4, so the first run
-    measures the drift and a second run with a corrected scale lands exactly
-    on ψ₀.
+    Geometry note (2026-09-10, post-mortem of the failed SAN-14..21-style
+    refinements): the fixedPhi point (R,Z) = (2,2) sits at r = 0.5·dr, and
+    the r/θ grids are STAGGERED — after dr → dr/2 no target node coincides
+    with a source node. The interpolated seed at the fine (2,2) therefore
+    reads ~ψ'(0)·dr/2 ≈ +0.85% higher than the coarse ψ₀ *for the same
+    physical branch point* — that offset is the fixed point's radius shift,
+    NOT interpolation error (the C bicubic reproduces a reference bicubic to
+    ≤ 1.7e-4 on both full-domain and halved-domain targets). The earlier
+    "drift correction" (rescaling by achieved/ψ₀) treated this geometric
+    offset as error and actively pinned the fine solution ~0.85% off-branch,
+    which is why every in-campaign refinement failed verification and was
+    reverted (SAN-21..26 campaigns). We no longer rescale: scale_u4 = 1.0,
+    single attempt. The accepted regrid's ψ₀ is re-labelled on the fine
+    grid's fixed point (parameterization jump ≈ +0.85% per ÷2; the branch
+    point itself is unchanged — ω, M_Komar, J_Komar comparisons vs the
+    source remain the old-grid error, as before).
 
     Only an *accepted* re-grid is recorded as a step (mode "regrid") — it is
     the same branch point as the source, not a new one. Failed or rejected
@@ -1328,69 +1342,50 @@ def do_regrid(
         dz_i=src_dr,
     )
     spec2 = spec.with_grid(new_dr)
-    rejected: list[RegridProbe] = []
 
     scale_u4, _ = render_seed(spec, root, [src], base_psi0)
     rec: RegridProbe | None = None
-    for attempt in range(2):
-        params = render_params(
-            spec2,
-            root,
-            step_no,
-            scale_u4=scale_u4,
-            seed_dir=root / "seed",
-            initial_grid=initial_grid,
-        )
-        stale = root / initial_dirname(spec2)
-        if stale.is_dir():
-            import shutil
+    # Single attempt: no drift correction. The interpolated seed's value at
+    # the fine fixed point is the same solution's ψ at a slightly smaller
+    # radius (staggered grids) — rescaling it would move the re-solve
+    # off-branch (see the geometry note in the docstring).
+    params = render_params(
+        spec2,
+        root,
+        step_no,
+        scale_u4=scale_u4,
+        seed_dir=root / "seed",
+        initial_grid=initial_grid,
+    )
+    stale = root / initial_dirname(spec2)
+    if stale.is_dir():
+        import shutil
 
-            shutil.rmtree(stale)
-        before = set(find_solution_dirs(root))
-        code, log = run_binary(
-            binary,
-            params,
-            root,
-            step_no,
-            label=f"{step_no:04d}_probe{attempt}" if attempt else None,
+        shutil.rmtree(stale)
+    before = set(find_solution_dirs(root))
+    code, log = run_binary(
+        binary,
+        params,
+        root,
+        step_no,
+        label=f"{step_no:04d}_probe0",
+    )
+    sol = new_solution_dir(root, before, spec2, step_no)
+    probe = RegridProbe(
+        i=step_no,
+        mode=StepMode.REGGRID_PROBE,
+        exit_code=code,
+        scale_u4=scale_u4,
+        log=str(log),
+    )
+    if sol is not None:
+        probe = replace(
+            probe,
+            sol_dir=str(sol),
+            scalars=solution_scalars(sol),
+            psi0=_probe_psi0(sol, spec2),
         )
-        sol = new_solution_dir(root, before, spec2, step_no)
-        probe = RegridProbe(
-            i=step_no,
-            mode=StepMode.REGGRID_PROBE,
-            exit_code=code,
-            scale_u4=scale_u4,
-            log=str(log),
-        )
-        if sol is not None:
-            probe = replace(
-                probe,
-                sol_dir=str(sol),
-                scalars=solution_scalars(sol),
-                psi0=_probe_psi0(sol, spec2),
-            )
-
-        achieved = probe.psi0
-        if attempt == 0 and code == 0 and achieved is not None:
-            drift = abs(achieved - base_psi0) / abs(base_psi0)
-            if drift > 1.0e-9:
-                # Frozen constraint value is linear in scale_u4: one
-                # correction lands the re-solve exactly on ψ₀.
-                rejected.append(probe)
-                scale_u4 *= base_psi0 / achieved
-                logger.warning(
-                    "regrid step %d: interpolated constraint drifted %.2e; "
-                    "correcting scale_u4 → %.10E",
-                    step_no,
-                    drift,
-                    scale_u4,
-                )
-                continue
-        rec = probe
-        break
-
-    for p in rejected:
-        state = state.with_rejected_probe(p)
+    rec = probe
 
     accepted = False
     rel: dict[str, float] = {}
@@ -1921,17 +1916,23 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             scale_u4, w_guess = render_seed(
                 spec, root, prev, psi0_target, extrapolate=attempts == 0
             )
-            params = render_params(spec, root, step_no, scale_u4=scale_u4, seed_dir=root / "seed")
+            # Render/record against the campaign's *current* grid (state.grid),
+            # not the spec's initial grid: after an accepted regrid the two
+            # differ, and rendering the continuation with the old dr while
+            # seeding from fine-grid fields stretches the configuration 2×
+            # (‖du‖₀ ≈ 4, immediate PARDISO −4).
+            spec_eff = spec.with_grid(current_grid(state, spec).dr)
+            params = render_params(spec_eff, root, step_no, scale_u4=scale_u4, seed_dir=root / "seed")
 
-            stale = root / initial_dirname(spec)
+            stale = root / initial_dirname(spec_eff)
             if stale.is_dir():
                 import shutil
 
                 shutil.rmtree(stale)
             before = set(find_solution_dirs(root))
             code, log = run_binary(binary, params, root, step_no)
-            sol = new_solution_dir(root, before, spec, step_no)
-            last = record_step(state, spec, step_no, sol, code, psi0_target=psi0_target)
+            sol = new_solution_dir(root, before, spec_eff, step_no)
+            last = record_step(state, spec_eff, step_no, sol, code, psi0_target=psi0_target)
             save_state(spec, state)
 
             if code == 0 and sol is not None and last.psi0 is not None:
