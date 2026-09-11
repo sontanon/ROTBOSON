@@ -1648,6 +1648,16 @@ def ghost_of(order: int) -> int:
     return order // 2
 
 
+def _solution_grid_from_name(name: str, default: GridSpec) -> tuple[float, int]:
+    """(dr, N) encoded in a solution directory name; falls back to the spec grid."""
+    from rotboson_io import solution_grid
+
+    got = solution_grid(name)
+    if got is not None:
+        return got
+    return default.dr, default.N
+
+
 @dataclass(frozen=True, slots=True)
 class StepDiagnostics:
     """Diagnostics feeding `decide_action` (design §5, formerly a plain dict).
@@ -1796,13 +1806,18 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             src = Path(seed.source or "")
             scalars = solution_scalars(src)
             fields = solution_fields(src)
+            # The seed solution may live on a different grid than the campaign
+            # (e.g. fold campaigns seeded from another branch's refined-grid
+            # solution). Record the SEED's own grid: step 1 must interpolate
+            # from it, and the ψ₀ label follows the seed's fixed point.
+            seed_dr, seed_n = _solution_grid_from_name(src.name, spec.grid)
             entry = StepRecord(
                 i=0,
                 exit_code=0,
                 mode=StepMode.SEED,
                 sol_dir=str(src),
-                dr=spec.grid.dr,
-                N=spec.grid.N,
+                dr=seed_dr,
+                N=seed_n,
                 omega=scalars.get("w_f.asc"),
                 psi0=psi_at_fixed_point(fields["psi_f.asc"], spec),
                 M_Komar=scalars.get("M_Komar1.asc"),
@@ -1922,7 +1937,33 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             # seeding from fine-grid fields stretches the configuration 2×
             # (‖du‖₀ ≈ 4, immediate PARDISO −4).
             spec_eff = spec.with_grid(current_grid(state, spec).dr)
-            params = render_params(spec_eff, root, step_no, scale_u4=scale_u4, seed_dir=root / "seed")
+            # Cross-grid campaign seed: if the previous good solution lives on
+            # a different grid than the campaign's current grid (e.g. a fold
+            # campaign seeded from another branch's refined-grid solution),
+            # the seed fields must be interpolated (readInitialData = 3),
+            # never loaded as same-grid (readInitialData = 1 — that stretches
+            # the configuration and diverges Newton).
+            last_good = prev[-1]
+            initial_grid = None
+            if (
+                last_good.dr is not None
+                and last_good.N is not None
+                and (
+                    abs(last_good.dr - spec_eff.grid.dr) > 1.0e-12
+                    or last_good.N != spec_eff.grid.N
+                )
+            ):
+                initial_grid = InitialGrid(
+                    NrTotalInitial=last_good.N + 2 * ghost_of(spec_eff.grid.order),
+                    NzTotalInitial=last_good.N + 2 * ghost_of(spec_eff.grid.order),
+                    order_i=spec_eff.grid.order,
+                    ghost_i=ghost_of(spec_eff.grid.order),
+                    dr_i=last_good.dr,
+                    dz_i=last_good.dr,
+                )
+            params = render_params(
+                spec_eff, root, step_no, scale_u4=scale_u4, seed_dir=root / "seed", initial_grid=initial_grid
+            )
 
             stale = root / initial_dirname(spec_eff)
             if stale.is_dir():

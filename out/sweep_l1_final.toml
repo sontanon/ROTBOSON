@@ -1,0 +1,30 @@
+# Final catalogue-grade l=1 campaign (SAN-16): automatic refinements enabled
+# (default adaptivity: hwl_min=8, max_refinements=2, dr/2 N-fixed) from the
+# w=0.9 seed through the fold to psi0=0.6.
+[campaign]
+l = 1
+direction = "up"
+psi0_target = 0.6
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 4000
+stop_at_turning_point = false
+
+[adaptivity]
+max_refinements = 1
+
+[seed]
+policy = "solution"
+source = "/workspace/rotboson/out/campaigns/sweep-l1-v2/l=1,w=8.99572E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.125
+N = 128
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "/workspace/rotboson/out/campaigns/sweep-l1-final"
+format = "hdf5"

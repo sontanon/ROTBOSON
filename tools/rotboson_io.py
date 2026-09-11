@@ -186,6 +186,17 @@ def is_solution_dir(name: str) -> bool:
     return bool(SOLUTION_DIR_RE.match(name))
 
 
+def solution_grid(name: str) -> tuple[float, int] | None:
+    """(dr, N) encoded in a solution directory name, or None if not parseable."""
+    m = re.search(r",dr=([\d.Ee+-]+),N=(\d+)$", name)
+    if not m:
+        return None
+    try:
+        return float(m.group(1)), int(m.group(2))
+    except ValueError:
+        return None
+
+
 def find_solution_dirs(root: str | Path) -> list[Path]:
     root = Path(root)
     return sorted(p for p in root.iterdir() if p.is_dir() and is_solution_dir(p.name))

@@ -1,0 +1,28 @@
+# Refined fold campaign for l=1 (Table IX.1 critical point): grid
+# 324@0.08/domain 25.6 (paper resolution, Komar-clean domain), seeded from
+# the final branch's fold point on the refined grid (dr=0.0625), marching
+# through the fold to psi0=0.5246.
+[campaign]
+l = 1
+direction = "up"
+psi0_target = 0.5246
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 60
+stop_at_turning_point = false
+
+[seed]
+policy = "solution"
+source = "/workspace/rotboson/out/campaigns/sweep-l1-final/l=1,w=6.45765E-01,dr=6.25000E-02,N=0128"
+
+[grid]
+dr = 0.08
+N = 320
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "/workspace/rotboson/out/campaigns/fold-l1-320"
+format = "hdf5"
