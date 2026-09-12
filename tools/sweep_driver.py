@@ -1,4 +1,4 @@
-"""Python sweep driver with adaptive stepping — SAN-17 (core) + SAN-14 (adaptive).
+"""Python sweep driver with adaptive continuation stepping.
 
 C solves one solution; Python drives. The continuation parameter is **ψ₀**
 (the field value at the fixedPhi grid point): each step renders a parameter
@@ -14,7 +14,7 @@ solution directory per step under `[output] root`. An interrupted campaign
 resumes automatically from the last completed step; a changed spec aborts
 resume (delete state.json or pass --fresh).
 
-Adaptive layer (SAN-14, design §4–6):
+Adaptive layer (design §4–6):
   * step-size control in Δψ₀ (grow on fast healthy convergence, shrink on
     trouble, persistent factor in state.json);
   * regrid ladder — dr ×2 / ÷2 at fixed N via the C interpolator
@@ -26,7 +26,7 @@ Adaptive layer (SAN-14, design §4–6):
     that localizes ω_min with a low-order polynomial fit.
 The decision logic lives in pure functions (`decide_action`,
 `detect_turning_point`, `turning_point_estimate`) unit-tested in
-`tests/test_driver_decisions.py`. Golden-sequence verification is SAN-13.
+`tests/test_driver_decisions.py`.
 """
 
 import argparse
@@ -88,7 +88,7 @@ class SpecError(ValueError):
 
 
 # ---------------------------------------------------------------------------
-# Closed vocabularies (SAN-24): the string sets that cross the JSON/TOML
+# Closed vocabularies: the string sets that cross the JSON/TOML
 # boundaries. Values match the legacy state.json / param-file spellings
 # exactly — resume and rendering stay byte-compatible.
 # ---------------------------------------------------------------------------
@@ -178,10 +178,10 @@ class Action(StrEnum):
 
 
 # ---------------------------------------------------------------------------
-# Spec model (SAN-24): frozen dataclasses parsed + validated in one place.
+# Spec model: frozen dataclasses parsed + validated in one place.
 # parse() classmethods are the single choke point raising SpecError; the
 # messages match the previous dict-based validator verbatim. The spec hash
-# is computed over the raw TOML text (SAN-21) and is deliberately untouched
+# is computed over the raw TOML text and is deliberately untouched
 # by this model.
 # ---------------------------------------------------------------------------
 
@@ -544,7 +544,7 @@ def load_spec(path: Path) -> Spec:
     # max_retries) excluded — raising a limit must not invalidate the physics
     # state of a running campaign; any physics-affecting change does.
     # The hash ignores runtime control keys AND comment lines — commentary
-    # edits must not invalidate a running campaign's resume (SAN-21).
+    # edits must not invalidate a running campaign's resume.
     control = re.compile(r"^\s*(max_steps|max_retries)\s*=.*$", re.MULTILINE)
     comments = re.compile(r"^\s*#.*$", re.MULTILINE)
     canon = comments.sub("", control.sub("", raw_bytes.decode())).encode()
@@ -565,11 +565,11 @@ def find_binary() -> Path:
 # ---------------------------------------------------------------------------
 # State (design §3.2): atomic writes, spec-hash-guarded resume
 #
-# SAN-24: the state.json plumbing is frozen dataclasses. `to_dict` emits keys
+# The state.json plumbing is frozen dataclasses. `to_dict` emits keys
 # in exactly the order the previous dict-based writer produced them, so a
 # state.json written by this code re-serializes byte-identically (round-trip
 # unit-tested against an archived state.json). `from_dict` is deliberately
-# lenient: legacy state.json files (SAN-17 era, missing keys) load and
+# lenient: legacy state.json files (early format, missing keys) load and
 # resume. Resume is a one-way upgrade: a legacy file re-saved by this code
 # gains the newer keys.
 # ---------------------------------------------------------------------------
@@ -865,7 +865,7 @@ class CampaignState:
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, object]) -> Self:
-        # Legacy files (SAN-17 era) lack grid/refinements_left and the
+        # Legacy files (pre-regrid format) lack grid/refinements_left and the
         # provenance lists: they stay None and the effective values come
         # from the spec via current_grid().
         grid = raw.get("grid")
@@ -943,7 +943,7 @@ def save_state(spec: Spec, state: CampaignState) -> None:
 def fresh_state(spec: Spec) -> CampaignState:
     return CampaignState(
         spec_hash=spec.spec_hash,
-        # Adaptive state (SAN-21 v2): the grid can drift from the spec's
+        # Adaptive state: the grid can drift from the spec's
         # initial value via refinements; refinements_left bounds them.
         grid=GridPosition(dr=spec.grid.dr, N=spec.grid.N),
         refinements_left=spec.adaptivity.max_refinements,
@@ -953,7 +953,7 @@ def fresh_state(spec: Spec) -> CampaignState:
 def current_grid(state: CampaignState, spec: Spec) -> GridPosition:
     """Effective grid: the state's tracked value, else the spec's initial grid.
 
-    Backwards compatible with SAN-17 state.json files that predate regrids
+    Backwards compatible with state.json files that predate regrids
     (which lack the `grid` key entirely).
     """
     return state.grid or GridPosition(dr=spec.grid.dr, N=spec.grid.N)
@@ -987,6 +987,27 @@ def psi_at_fixed_point(psi: np.ndarray, spec: Spec) -> float:
     return float(psi[c.fixedPhiR, c.fixedPhiZ])
 
 
+def psi0_origin_estimate(psi: np.ndarray) -> float:
+    """ψ₀ as the extrapolated value at the physical origin (grid-independent).
+
+    ψ is even and smooth at the axis (φ = r^l·ψ), so near the origin
+    ψ = a + b·u² + c·v² with u,v the staggered-grid offsets (i−1.5, j−1.5);
+    the fit is evaluated at (0,0) — the physical origin, which lies between
+    grid nodes. Unlike ψ at the fixedPhi node (whose radius is 0.5·dr and
+    therefore changes on every dr÷2 regrid, making ψ₀ labels jump ~+0.85%),
+    this estimate is a property of the *solution*, not of the grid.
+    """
+    idx = np.arange(2, 5)  # first three interior nodes per axis
+    u = idx - 1.5
+    U, V = np.meshgrid(u, u, indexing="ij")
+    A = np.column_stack(
+        [np.ones(U.size), (U**2).ravel().astype(float), (V**2).ravel().astype(float)]
+    )
+    y = np.asarray(psi)[np.ix_(idx, idx)].ravel().astype(float)
+    coef, *_ = np.linalg.lstsq(A, y, rcond=None)
+    return float(coef[0])
+
+
 # ---------------------------------------------------------------------------
 # Seed rendering (design §3.4): linear extrapolation in ψ₀ + exact rescale
 # ---------------------------------------------------------------------------
@@ -1013,8 +1034,8 @@ def render_seed(
 
     `extrapolate=False` forces the plain rescale — used by the retry loop
     after an attempt failed: in marginal regions the extrapolated guess
-    diverges Newton while the rescaled one converges (SAN-20 sweep finding:
-    the same target went exit 2 with extrapolation and exit 0 without).
+    diverges Newton while the rescaled one converges (empirically the same
+    target went exit 2 with extrapolation and exit 0 without).
     Returns (scale_u4, omega_guess).
     """
     seed_dir = root / "seed"
@@ -1030,6 +1051,12 @@ def render_seed(
         and prev[-1].mode == StepMode.FIXED_PHI
         and prev[-2].mode == StepMode.FIXED_PHI
         and prev[-1].psi0 != prev[-2].psi0
+        # Both predecessors must live on the same grid: across a regrid the
+        # fields are sampled at different radii (staggered grids), and a
+        # pointwise linear extrapolation between them corrupts the whole
+        # seed (observed as ‖du‖₀ ≈ 4 and a PARDISO −4 divergence).
+        and prev[-1].dr == prev[-2].dr
+        and prev[-1].N == prev[-2].N
     )
     if can_extrapolate:
         assert cur.psi0 is not None and cur.omega is not None
@@ -1044,7 +1071,7 @@ def render_seed(
         assert cur.omega is not None
         w_guess = cur.omega
 
-    psi_fixed = psi_at_fixed_point(fields["psi_f.asc"], spec)
+    psi_fixed = psi0_origin_estimate(fields["psi_f.asc"])
     if psi_fixed == 0:
         raise SystemExit("seed ψ at the fixedPhi point is zero; cannot rescale")
     scale_u4 = psi0_target / psi_fixed
@@ -1187,7 +1214,7 @@ def run_binary(
     """Run ROTBOSON from the campaign root; returns (exit code, log path).
 
     A wall-clock timeout returns TIMEOUT_EXIT instead of raising, so a hung
-    solver is recorded like any other failure (SAN-20 item 2).
+    solver is recorded like any other failure.
     """
     log_dir = root / "logs"
     log_dir.mkdir(exist_ok=True)
@@ -1256,16 +1283,24 @@ def do_regrid(
     """Re-solve the *same* ψ₀ on a grid with dr → `new_dr` (design §4).
 
     Seeds through the C interpolator (readInitialData = 3) from the last good
-    solution and constrains ψ(fixedPhi point) = ψ₀ as usual. v2 only refines
-    (dr ÷2): acceptance is convergence + the exact ψ₀ landing, and the
-    recorded ω / M_Komar / J_Komar differences are the old grid's error.
+    solution and constrains ψ(fixedPhi point) = ψ₀ as usual.
 
-    The C freezes the Newton update at the fixedPhi point, so the enforced ψ₀
-    is the *interpolated seed's* value there — which can drift from the
-    requested ψ₀ (the C bicubic overshoots near the axis on coarse seeds).
-    The frozen value scales exactly linearly with scale_u4, so the first run
-    measures the drift and a second run with a corrected scale lands exactly
-    on ψ₀.
+    Geometry note (2026-09-10, post-mortem of the failed in-campaign
+    refinement attempts): the fixedPhi point (R,Z) = (2,2) sits at r = 0.5·dr, and
+    the r/θ grids are STAGGERED — after dr → dr/2 no target node coincides
+    with a source node. The interpolated seed at the fine (2,2) therefore
+    reads ~ψ'(0)·dr/2 ≈ +0.85% higher than the coarse ψ₀ *for the same
+    physical branch point* — that offset is the fixed point's radius shift,
+    NOT interpolation error (the C bicubic reproduces a reference bicubic to
+    ≤ 1.7e-4 on both full-domain and halved-domain targets). The earlier
+    "drift correction" (rescaling by achieved/ψ₀) treated this geometric
+    offset as error and actively pinned the fine solution ~0.85% off-branch,
+    which is why every in-campaign refinement failed verification and was
+    reverted across the 2026-09 fold campaigns. We no longer rescale: scale_u4 = 1.0,
+    single attempt. The accepted regrid's ψ₀ is re-labelled on the fine
+    grid's fixed point (parameterization jump ≈ +0.85% per ÷2; the branch
+    point itself is unchanged — ω, M_Komar, J_Komar comparisons vs the
+    source remain the old-grid error, as before).
 
     Only an *accepted* re-grid is recorded as a step (mode "regrid") — it is
     the same branch point as the source, not a new one. Failed or rejected
@@ -1328,69 +1363,50 @@ def do_regrid(
         dz_i=src_dr,
     )
     spec2 = spec.with_grid(new_dr)
-    rejected: list[RegridProbe] = []
 
     scale_u4, _ = render_seed(spec, root, [src], base_psi0)
     rec: RegridProbe | None = None
-    for attempt in range(2):
-        params = render_params(
-            spec2,
-            root,
-            step_no,
-            scale_u4=scale_u4,
-            seed_dir=root / "seed",
-            initial_grid=initial_grid,
-        )
-        stale = root / initial_dirname(spec2)
-        if stale.is_dir():
-            import shutil
+    # Single attempt: no drift correction. The interpolated seed's value at
+    # the fine fixed point is the same solution's ψ at a slightly smaller
+    # radius (staggered grids) — rescaling it would move the re-solve
+    # off-branch (see the geometry note in the docstring).
+    params = render_params(
+        spec2,
+        root,
+        step_no,
+        scale_u4=scale_u4,
+        seed_dir=root / "seed",
+        initial_grid=initial_grid,
+    )
+    stale = root / initial_dirname(spec2)
+    if stale.is_dir():
+        import shutil
 
-            shutil.rmtree(stale)
-        before = set(find_solution_dirs(root))
-        code, log = run_binary(
-            binary,
-            params,
-            root,
-            step_no,
-            label=f"{step_no:04d}_probe{attempt}" if attempt else None,
+        shutil.rmtree(stale)
+    before = set(find_solution_dirs(root))
+    code, log = run_binary(
+        binary,
+        params,
+        root,
+        step_no,
+        label=f"{step_no:04d}_probe0",
+    )
+    sol = new_solution_dir(root, before, spec2, step_no)
+    probe = RegridProbe(
+        i=step_no,
+        mode=StepMode.REGGRID_PROBE,
+        exit_code=code,
+        scale_u4=scale_u4,
+        log=str(log),
+    )
+    if sol is not None:
+        probe = replace(
+            probe,
+            sol_dir=str(sol),
+            scalars=solution_scalars(sol),
+            psi0=_probe_psi0(sol, spec2),
         )
-        sol = new_solution_dir(root, before, spec2, step_no)
-        probe = RegridProbe(
-            i=step_no,
-            mode=StepMode.REGGRID_PROBE,
-            exit_code=code,
-            scale_u4=scale_u4,
-            log=str(log),
-        )
-        if sol is not None:
-            probe = replace(
-                probe,
-                sol_dir=str(sol),
-                scalars=solution_scalars(sol),
-                psi0=_probe_psi0(sol, spec2),
-            )
-
-        achieved = probe.psi0
-        if attempt == 0 and code == 0 and achieved is not None:
-            drift = abs(achieved - base_psi0) / abs(base_psi0)
-            if drift > 1.0e-9:
-                # Frozen constraint value is linear in scale_u4: one
-                # correction lands the re-solve exactly on ψ₀.
-                rejected.append(probe)
-                scale_u4 *= base_psi0 / achieved
-                logger.warning(
-                    "regrid step %d: interpolated constraint drifted %.2e; "
-                    "correcting scale_u4 → %.10E",
-                    step_no,
-                    drift,
-                    scale_u4,
-                )
-                continue
-        rec = probe
-        break
-
-    for p in rejected:
-        state = state.with_rejected_probe(p)
+    rec = probe
 
     accepted = False
     rel: dict[str, float] = {}
@@ -1457,7 +1473,7 @@ def _probe_psi0(sol: Path, spec: Spec) -> float | None:
     """ψ₀ achieved by a regrid probe (None when fields are unreadable)."""
     try:
         fields = solution_fields(sol)
-        return psi_at_fixed_point(fields["psi_f.asc"], spec)
+        return psi0_origin_estimate(fields["psi_f.asc"])
     except Exception:  # noqa: BLE001 — probe diagnostics only
         return None
 
@@ -1519,7 +1535,7 @@ def record_step(
         try:
             # ψ₀ from the field at the fixedPhi point (the constraint value).
             fields = solution_fields(sol_dir)
-            psi0 = psi_at_fixed_point(fields["psi_f.asc"], spec)
+            psi0 = psi0_origin_estimate(fields["psi_f.asc"])
         except Exception:  # noqa: BLE001 — a failed step may lack field data
             psi0 = None
         step = replace(
@@ -1556,7 +1572,7 @@ def omega_of_last(state: CampaignState) -> float:
 
 
 def newtonian_limit_stop(state: CampaignState, spec: Spec) -> str | None:
-    """SAN-20 item 1: is a failed step the branch's physical Newtonian end?
+    """Is a failed step the branch's physical Newtonian end?
 
     In the down direction ω → m as ψ₀ → 0; the field extends without bound
     and the Jacobian becomes singular, so the solver exits 2 near ω = m. That
@@ -1564,7 +1580,7 @@ def newtonian_limit_stop(state: CampaignState, spec: Spec) -> str | None:
     `stopped:newtonian_limit` stop reason when the last step failed with exit
     2 and the last *completed* ω sits within `[adaptivity] newtonian_delta`
     of m. Returns None otherwise (including the up direction, whose M_max
-    end has no clean ω-based signature — investigation item, SAN-20 #5).
+    end has no clean ω-based signature).
     """
     c = spec.campaign
     if c.direction != Direction.DOWN:
@@ -1623,7 +1639,7 @@ def finished(state: CampaignState, spec: Spec) -> str | None:
     if state.steps[-1].exit_code != 0:
         code = state.steps[-1].exit_code
         if code == 2:
-            # A solver error near ω → m is the branch's physical end (SAN-20).
+            # A solver error near ω → m is the branch's physical end.
             nl = newtonian_limit_stop(state, spec)
             if nl is not None:
                 return nl
@@ -1631,7 +1647,7 @@ def finished(state: CampaignState, spec: Spec) -> str | None:
             return StopReason.FAILED_TIMEOUT
         if code < 0:
             # Killed by a signal (e.g. -11 = SIGSEGV). Rare, pre-existing C
-            # backend flakiness (SAN-19); recorded distinctly from exit codes.
+            # backend flakiness); recorded distinctly from exit codes.
             return StopReason.signal(signal.Signals(-code).name.removeprefix("SIG").lower())
         reason = {
             1: StopReason.FAILED_NEWTON,
@@ -1653,6 +1669,16 @@ def ghost_of(order: int) -> int:
     return order // 2
 
 
+def _solution_grid_from_name(name: str, default: GridSpec) -> tuple[float, int]:
+    """(dr, N) encoded in a solution directory name; falls back to the spec grid."""
+    from rotboson_io import solution_grid
+
+    got = solution_grid(name)
+    if got is not None:
+        return got
+    return default.dr, default.N
+
+
 @dataclass(frozen=True, slots=True)
 class StepDiagnostics:
     """Diagnostics feeding `decide_action` (design §5, formerly a plain dict).
@@ -1669,7 +1695,7 @@ class StepDiagnostics:
 
 
 def decide_action(diag: StepDiagnostics) -> Action:
-    """v2 policy (SAN-21): exactly one active rule — refine when the field's
+    """Decision policy: exactly one active rule — refine when the field's
     peak is under-resolved.
 
     Under-resolution means either the half-max width of the field drops
@@ -1683,7 +1709,7 @@ def decide_action(diag: StepDiagnostics) -> Action:
 
     Everything else is fixed relative stepping: no growth, no damping-based
     shrinking (the λ history carries a trailing 0.0 convergence sentinel
-    that made any tail statistic meaningless — SAN-20), no boundary regrids
+    that made any tail statistic meaningless), no boundary regrids
     (weak-field boundary error dominates and widening cannot fix it — the
     campaign stops instead, see `finished`). `refinements_left` bounds the
     number of dr ÷2 refinements per campaign (irreversible,
@@ -1801,15 +1827,20 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             src = Path(seed.source or "")
             scalars = solution_scalars(src)
             fields = solution_fields(src)
+            # The seed solution may live on a different grid than the campaign
+            # (e.g. fold campaigns seeded from another branch's refined-grid
+            # solution). Record the SEED's own grid: step 1 must interpolate
+            # from it, and the ψ₀ label follows the seed's fixed point.
+            seed_dr, seed_n = _solution_grid_from_name(src.name, spec.grid)
             entry = StepRecord(
                 i=0,
                 exit_code=0,
                 mode=StepMode.SEED,
                 sol_dir=str(src),
-                dr=spec.grid.dr,
-                N=spec.grid.N,
+                dr=seed_dr,
+                N=seed_n,
                 omega=scalars.get("w_f.asc"),
-                psi0=psi_at_fixed_point(fields["psi_f.asc"], spec),
+                psi0=psi0_origin_estimate(fields["psi_f.asc"]),
                 M_Komar=scalars.get("M_Komar1.asc"),
                 J_Komar=scalars.get("J_Komar1.asc"),
                 rr_phi_max=scalars.get("rr_phi_max.asc"),
@@ -1906,7 +1937,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
         # Retry loop (decision-table rules 2-3, core subset): on Newton
         # non-convergence (exit 1) shrink the step and retry from the last
         # good solution. A step killed by a signal (code < 0, e.g. SIGSEGV —
-        # SAN-19 backend flakiness) is retried at the same step size: unlike
+        # rare backend flakiness) is retried at the same step size: unlike
         # a Newton failure, the step size is not the cause. Solver/config/
         # I-O errors are not retryable.
         base_psi0 = psi0_of_last(state)
@@ -1917,33 +1948,69 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             prev = [s for s in state.steps if s.psi0 is not None]
             # After a failed attempt drop the linear extrapolation: in
             # marginal regions it diverges Newton while the plain rescale
-            # from the last good solution converges (SAN-20).
+            # from the last good solution converges.
             scale_u4, w_guess = render_seed(
                 spec, root, prev, psi0_target, extrapolate=attempts == 0
             )
-            params = render_params(spec, root, step_no, scale_u4=scale_u4, seed_dir=root / "seed")
+            # Render/record against the campaign's *current* grid (state.grid),
+            # not the spec's initial grid: after an accepted regrid the two
+            # differ, and rendering the continuation with the old dr while
+            # seeding from fine-grid fields stretches the configuration 2×
+            # (‖du‖₀ ≈ 4, immediate PARDISO −4).
+            spec_eff = spec.with_grid(current_grid(state, spec).dr)
+            # Cross-grid campaign seed: if the previous good solution lives on
+            # a different grid than the campaign's current grid (e.g. a fold
+            # campaign seeded from another branch's refined-grid solution),
+            # the seed fields must be interpolated (readInitialData = 3),
+            # never loaded as same-grid (readInitialData = 1 — that stretches
+            # the configuration and diverges Newton).
+            last_good = prev[-1]
+            initial_grid = None
+            if (
+                last_good.dr is not None
+                and last_good.N is not None
+                and (
+                    abs(last_good.dr - spec_eff.grid.dr) > 1.0e-12 or last_good.N != spec_eff.grid.N
+                )
+            ):
+                initial_grid = InitialGrid(
+                    NrTotalInitial=last_good.N + 2 * ghost_of(spec_eff.grid.order),
+                    NzTotalInitial=last_good.N + 2 * ghost_of(spec_eff.grid.order),
+                    order_i=spec_eff.grid.order,
+                    ghost_i=ghost_of(spec_eff.grid.order),
+                    dr_i=last_good.dr,
+                    dz_i=last_good.dr,
+                )
+            params = render_params(
+                spec_eff,
+                root,
+                step_no,
+                scale_u4=scale_u4,
+                seed_dir=root / "seed",
+                initial_grid=initial_grid,
+            )
 
-            stale = root / initial_dirname(spec)
+            stale = root / initial_dirname(spec_eff)
             if stale.is_dir():
                 import shutil
 
                 shutil.rmtree(stale)
             before = set(find_solution_dirs(root))
             code, log = run_binary(binary, params, root, step_no)
-            sol = new_solution_dir(root, before, spec, step_no)
-            last = record_step(state, spec, step_no, sol, code, psi0_target=psi0_target)
+            sol = new_solution_dir(root, before, spec_eff, step_no)
+            last = record_step(state, spec_eff, step_no, sol, code, psi0_target=psi0_target)
             save_state(spec, state)
 
             if code == 0 and sol is not None and last.psi0 is not None:
                 break
 
             # A solver error near ω → m is the branch's physical end: do not
-            # waste a retry chasing it (SAN-20 item 1).
+            # waste a retry chasing it.
             near_limit = code == 2 and newtonian_limit_stop(state, spec) is not None
             retryable = (code in (1, 2, TIMEOUT_EXIT) or code < 0) and not near_limit
             if retryable and attempts < c.max_retries:
                 # v2: fixed Δψ₀ — retries keep the same target and drop the
-                # extrapolated seed (SAN-20 finding: the rescale converges
+                # extrapolated seed (the rescale converges
                 # where the extrapolation diverges).
                 attempts += 1
                 state.steps.pop()
@@ -1970,14 +2037,14 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             # refinement whose verification step failed is not committed —
             # restore the previous grid, keep the finer-grid solution as a
             # measurement, and disable further refinements. One decision,
-            # permanent, no oscillation (SAN-21).
+            # permanent, no oscillation.
             pending = state.pending_refinement
             if pending is not None:
                 measurement = replace(
                     pending.measurement,
                     note=(
                         "refined-grid re-solve at the fold; its verification step failed so the "
-                        "refinement was not committed — kept as the fold measurement (SAN-21)"
+                        "refinement was not committed — kept as the fold measurement"
                     ),
                 )
                 rg_step = pending.regrid_step
@@ -1999,7 +2066,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 save_state(spec, state)
                 logger.warning(
                     "step %d: verification failed on the refined grid; "
-                    "reverted to dr=%.5E, refinements disabled (SAN-21)",
+                    "reverted to dr=%.5E, refinements disabled",
                     step_no,
                     pending.from_dr,
                 )
@@ -2038,7 +2105,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             # Irreversible refinement (dr ÷2, domain shrinks, N fixed): the
             # interpolated re-solve at the same ψ₀ is committed immediately,
             # and the next continuation step doubles as its verification —
-            # verify-then-commit (SAN-21).
+            # verify-then-commit.
             new_dr = dr / 2.0
             ok, _, state = do_regrid(spec, root, state, binary, step_no, new_dr)
             if ok:

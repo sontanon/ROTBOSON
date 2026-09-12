@@ -1,5 +1,10 @@
 # Code critique: what the original ROTBOSON did wrong, and what changed
 
+> **Historical document.** This review describes the 2019–2022 codebase as it
+> was before the Phase 2 modernization; its "what changed" entries are a
+> record of that refactor, not a description of current work. See `PLAN.md`
+> for the roadmap and `README.md` for the current architecture.
+
 This is an honest, itemized review of the anti-patterns in the 2019-2022
 codebase, written as part of Phase 2 (`PLAN.md`). The original focus was the
 physics and the numerics, so none of this is a judgment on the science - the code

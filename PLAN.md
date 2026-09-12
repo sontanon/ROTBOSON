@@ -568,6 +568,9 @@ The UMFPACK backend is interchangeable: `cmake --preset umfpack` + the same smok
 
 - ~~Phase 0 verification may show master ≠ StandarizedOutput exactly.~~ RESOLVED:
   master reproduces StandarizedOutput to ~1e-13 (see `VALIDATION.md`).
+- **2026-09 catalogue rebuild:** l=1..4 re-verified end-to-end with the
+  modernized pipeline (driver + HDF5) against the paper's Table IX.1; session
+  report: `docs/milestone-report-2026-09.md`, figures: `docs/figures/`.
 - GRV2/GRV3 are sensitive derived diagnostics whose historical values predate a
   2020-10-30 analysis fix; compare physical observables (M, J, fields) for regression,
   not GRV (see `VALIDATION.md` §4).

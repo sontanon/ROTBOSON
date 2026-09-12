@@ -1,0 +1,27 @@
+# Round-3: turning-point-detector strategy (run until min omega detected).
+# Seeds from round-2's last point; stop_at_turning_point fires when dω/dψ₀
+# changes sign; the ceiling is only a safety net.
+[campaign]
+l = 4
+direction = "up"
+psi0_target = 1.825
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 60
+stop_at_turning_point = true
+
+[seed]
+policy = "solution"
+source = "/workspace/rotboson/out/campaigns/fold-l4-320c/l=4,w=4.12280E-01,dr=4.00000E-02,N=0320"
+
+[grid]
+dr = 0.04
+N = 320
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "/workspace/rotboson/out/campaigns/fold-l4-320d"
+format = "hdf5"

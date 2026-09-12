@@ -1,0 +1,27 @@
+# Validation of the regrid fix (staggered-grid / drift-correction redesign).
+# Seeds from the overnight l=2 branch at step 201 (psi0=0.2114, hwl=7) so the
+# refinement decision fires immediately; verify-then-commit follows.
+[campaign]
+l = 2
+direction = "up"
+psi0_target = 0.5
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 4
+stop_at_turning_point = false
+
+[seed]
+policy = "solution"
+source = "/workspace/rotboson/out/campaigns/sweep-l2-v2/l=2,w=5.54253E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.125
+N = 128
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "/workspace/rotboson/out/campaigns/sweep-l2-regridtest"
+format = "hdf5"
