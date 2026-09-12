@@ -172,20 +172,30 @@ N = 64
 root = "out/campaigns/l1-up"
 format = "hdf5"
 
-[adaptivity]              # optional — defaults shown (historical C values)
+[adaptivity]              # optional — defaults shown
 hwl_min = 8               # regrid dr ÷2 when the field's half-width drops below this
-hwl_max = 40              # optional dr ×2 when wastefully over-resolved
-support_fraction = 0.85   # regrid dr ×2 when r99/r_bdy crosses this
-rr_phi_max_min = 0.5      # regrid dr ÷2 when the field max hugs the axis
-regrid_rtol = 2.0e-2      # coarsening accepted only within this truncation proxy
-grow_factor = 1.25        # Δψ₀ growth on fast, healthy convergence
-shrink_factor = 0.5       # Δψ₀ shrink on grudging convergence
-factor_max = 2.0          # growth cap (6% relative steps)
-newton_fast_iters = 8     # "fast" Newton threshold for growth
-optional_coarsening = false  # rule 7 (hwl > hwl_max → dr ×2); OFF by
-                          # default — an accepted coarsening can stall
-                          # subsequent stepping
+max_refinements = 2       # dr ÷2 refinement budget per campaign
+refine_keeps_domain = false  # refinement dr ÷2 with N×2 (domain KEPT) instead
+                          # of the legacy fixed-N domain shrink — the runbook
+                          # setting (the legacy ladder becomes self-defeating
+                          # at high M/R: the domain shrinks below the field)
+newtonian_delta = 1.0e-2  # ω → m proximity for the newtonian-limit stop
+boundary_fraction = 0.95  # down-campaigns stop (stopped:boundary) when
+                          # r99/r_bdy crosses this — unless widening is
+                          # still possible (the guard yields to coarsening)
+support_fraction = 0.85   # down-campaigns WIDEN (dr ×2, domain grows) when
+                          # r99/r_bdy crosses this; must be < boundary_fraction
+regrid_rtol = 2.0e-2      # a widening is accepted only if ω/M_Komar/J_Komar
+                          # stay within this truncation proxy of the source
+max_widenings = 2         # dr ×2 widening budget per campaign; with the
+                          # dr_max floor (see [grid]) exhausted →
+                          # stopped:domain_budget
 ```
+
+The `[grid]` table's `dr_max` is the coarseness floor: no widening may push
+dr past it (e.g. `dr_max = 0.5` caps the grid coarseness), so a dilute-end
+campaign ends cleanly once the field's support cannot be accommodated
+within the allowed grid range.
 
 ```bash
 uv run tools/sweep_driver.py <campaign.toml>            # runs the campaign
@@ -208,14 +218,19 @@ Adaptive behaviour (design §4–6):
   Newton non-convergence shrinks and retries, a solver error retries once
   (rule 4), and a signal-killed step retries at the same size.
 - **Regrid ladder** — when the decision table calls for it, the driver
-  re-solves the *same* ψ₀ on a grid with dr ×2 or ÷2 (N fixed), seeding
-  through the C interpolator (`readInitialData = 3`) and correcting the
-  constraint scale so ψ₀ lands exactly. Coarsening is accepted only when
-  ω/M_Komar/J_Komar stay within `regrid_rtol` of the source (truncation-error
-  proxy); refinement is accepted on convergence + exact ψ₀ landing and merely
-  records the old grid's error. Failed widening regrids fall back to the
-  midpoint dr, then to smaller steps on the old grid; three consecutive
-  failures stop the campaign (`stopped:domain_budget`, §6.1).
+  re-solves the *same* ψ₀ on a neighbouring grid, seeding through the C
+  interpolator (`readInitialData = 3`) and correcting the constraint scale
+  so ψ₀ lands exactly. Refinement (dr ÷2) doubles N when
+  `refine_keeps_domain` is set — the domain is KEPT (the runbook setting;
+  the legacy fixed-N variant shrinks the domain and becomes self-defeating
+  at high M/R) — and is accepted on convergence + exact ψ₀ landing, merely
+  recording the old grid's error. Coarsening (dr ×2, domain grows) fires on
+  down-campaigns when the field's support fills the domain
+  (`support_fraction`), is bounded by the `dr_max` floor and the
+  `max_widenings` budget, and is accepted only when ω/M_Komar/J_Komar stay
+  within `regrid_rtol` of the source (truncation-error proxy). Budgets
+  exhausted → `stopped:domain_budget`; a boundary-class failure with the
+  refinement spent → a clean `stopped:boundary` end.
 - **Turning point** — dω/dψ₀ is monitored across the last three branch
   points; with `stop_at_turning_point = true` (default) the campaign stops
   cleanly (`stopped:turning_point`, ω_min estimate in `state.json`), otherwise

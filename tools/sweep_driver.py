@@ -17,16 +17,25 @@ resume (delete state.json or pass --fresh).
 Adaptive layer (design §4–6):
   * step-size control in Δψ₀ (grow on fast healthy convergence, shrink on
     trouble, persistent factor in state.json);
-  * regrid ladder — dr ×2 / ÷2 at fixed N via the C interpolator
-    (readInitialData = 3), re-solving the same ψ₀ and accepting only when
-    ω/M_Komar/J_Komar agree within the truncation-error proxy;
-  * domain-growth budget (`dr_max`) → `stopped:domain_budget`;
+  * regrid ladder — refinement dr ÷2 (N×2 keeping the domain when
+    `refine_keeps_domain` is set, else the legacy fixed-N domain shrink)
+    via the C interpolator (readInitialData = 3), re-solving the same ψ₀;
+    refinement accepts on convergence + readable scalars (the old grid's
+    error is recorded); coarsening dr ×2 (domain grows) accepts only when
+    ω/M_Komar/J_Komar agree within `regrid_rtol` (the truncation proxy);
+  * coarsening trigger: a down-campaign whose field support fills the
+    domain (r99/r_bdy > `support_fraction`) widens the grid, bounded by
+    the coarseness floor (`dr_max`) and the regrid budget (`max_widenings`)
+    → `stopped:domain_budget` when exhausted;
+  * boundary-class failure with the refinement budget spent → a clean
+    `stopped:boundary` stop (the field fills the domain; the campaign ends
+    at the best achievable grid instead of failing);
   * turning-point detection (dω/dψ₀ sign change) with fine sampling or a
     clean `stopped:turning_point` stop, plus `--summarize` post-processing
     that localizes ω_min with a low-order polynomial fit.
 The decision logic lives in pure functions (`decide_action`,
-`detect_turning_point`, `turning_point_estimate`) unit-tested in
-`tests/test_driver_decisions.py`.
+`decide_coarsening`, `detect_turning_point`, `turning_point_estimate`)
+unit-tested in `tests/test_driver_decisions.py`.
 """
 
 import argparse
@@ -146,6 +155,7 @@ class StopReason(StrEnum):
     STOPPED_NEWTONIAN_LIMIT = "stopped:newtonian_limit"
     STOPPED_BOUNDARY = "stopped:boundary"
     STOPPED_TURNING_POINT = "stopped:turning_point"
+    STOPPED_DOMAIN_BUDGET = "stopped:domain_budget"
     FAILED_TIMEOUT = "failed:timeout"
     FAILED_NEWTON = "failed:newton"
     FAILED_SOLVER = "failed:solver"
@@ -295,6 +305,10 @@ KNOWN: Final[Mapping[str, set[str]]] = {
         "max_refinements",
         "newtonian_delta",
         "boundary_fraction",
+        "refine_keeps_domain",
+        "regrid_rtol",
+        "support_fraction",
+        "max_widenings",
     },
 }
 
@@ -454,6 +468,10 @@ class AdaptivitySpec:
     max_refinements: int = 2
     newtonian_delta: float = 1.0e-2
     boundary_fraction: float = 0.95
+    refine_keeps_domain: bool = False
+    regrid_rtol: float = 2.0e-2
+    support_fraction: float = 0.85
+    max_widenings: int = 2
 
     @classmethod
     def parse(cls, raw: Mapping[str, object]) -> Self:
@@ -470,11 +488,30 @@ class AdaptivitySpec:
         boundary_fraction = _num(t, "boundary_fraction", raw.get("boundary_fraction", 0.95))
         if not 0.0 < boundary_fraction <= 1.0:
             raise SpecError(f"[{t}] boundary_fraction must be in (0, 1]")
+        refine_keeps_domain = bool(raw.get("refine_keeps_domain", False))
+        regrid_rtol = _num(t, "regrid_rtol", raw.get("regrid_rtol", 2.0e-2))
+        if regrid_rtol <= 0:
+            raise SpecError(f"[{t}] regrid_rtol must be > 0")
+        support_fraction = _num(t, "support_fraction", raw.get("support_fraction", 0.85))
+        if not 0.0 < support_fraction < 1.0:
+            raise SpecError(f"[{t}] support_fraction must be in (0, 1)")
+        if support_fraction >= boundary_fraction:
+            raise SpecError(
+                f"[{t}] support_fraction must be < boundary_fraction (the coarsening "
+                "trigger must fire before the campaign's boundary stop)"
+            )
+        max_widenings = _int(t, "max_widenings", raw.get("max_widenings", 2))
+        if max_widenings < 0:
+            raise SpecError(f"[{t}] max_widenings must be >= 0")
         return cls(
             hwl_min=hwl_min,
             max_refinements=max_refinements,
             newtonian_delta=newtonian_delta,
             boundary_fraction=boundary_fraction,
+            refine_keeps_domain=refine_keeps_domain,
+            regrid_rtol=regrid_rtol,
+            support_fraction=support_fraction,
+            max_widenings=max_widenings,
         )
 
 
@@ -511,9 +548,11 @@ class Spec:
     adaptivity: AdaptivitySpec
     spec_hash: str
 
-    def with_grid(self, dr: float) -> Spec:
-        """Copy with the grid's dr replaced (regrid rendering)."""
-        return replace(self, grid=replace(self.grid, dr=dr))
+    def with_grid(self, dr: float, N: int | None = None) -> Spec:
+        """Copy with the grid's dr (and optionally N) replaced (regrid rendering)."""
+        if N is None:
+            return replace(self, grid=replace(self.grid, dr=dr))
+        return replace(self, grid=replace(self.grid, dr=dr, N=N))
 
 
 def load_spec(path: Path) -> Spec:
@@ -599,15 +638,21 @@ class RegridInfo:
     source: str | None
     rel_diff: dict[str, float]
     accepted: bool
+    # N of the regrid target when it differs from the source (the
+    # domain-keeping refinement N×2); None = the legacy fixed-N regrid.
+    to_n: int | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        out: dict[str, object] = {
             "from_dr": self.from_dr,
             "to_dr": self.to_dr,
             "source": self.source,
             "rel_diff": self.rel_diff,
             "accepted": self.accepted,
         }
+        if self.to_n is not None:
+            out["to_n"] = self.to_n
+        return out
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, object]) -> Self:
@@ -618,6 +663,7 @@ class RegridInfo:
             source=_st_opt_str(raw.get("source")),
             rel_diff={k: _st_float(v) for k, v in rel.items()} if isinstance(rel, Mapping) else {},
             accepted=bool(raw.get("accepted", False)),
+            to_n=_st_opt_int(raw.get("to_n")),
         )
 
 
@@ -834,6 +880,7 @@ class CampaignState:
     stop_reason: str | None = None
     grid: GridPosition | None = None
     refinements_left: int | None = None
+    widenings_left: int | None = None
     turning_point: dict[str, object] | None = None
     rejected_regrids: list[RegridProbe] | None = None
     pending_refinement: PendingRefinement | None = None
@@ -851,6 +898,8 @@ class CampaignState:
             out["grid"] = self.grid.to_dict()
         if self.refinements_left is not None:
             out["refinements_left"] = self.refinements_left
+        if self.widenings_left is not None:
+            out["widenings_left"] = self.widenings_left
         out["turning_point"] = self.turning_point
         if self.rejected_regrids is not None:
             out["rejected_regrids"] = [p.to_dict() for p in self.rejected_regrids]
@@ -884,6 +933,7 @@ class CampaignState:
             stop_reason=_st_opt_str(raw.get("stop_reason")),
             grid=GridPosition.from_dict(grid) if isinstance(grid, Mapping) else None,
             refinements_left=_st_opt_int(raw.get("refinements_left")),
+            widenings_left=_st_opt_int(raw.get("widenings_left")),
             turning_point=dict(cast("Mapping[str, object]", turning_point))
             if isinstance(turning_point, Mapping)
             else None,
@@ -947,6 +997,7 @@ def fresh_state(spec: Spec) -> CampaignState:
         # initial value via refinements; refinements_left bounds them.
         grid=GridPosition(dr=spec.grid.dr, N=spec.grid.N),
         refinements_left=spec.adaptivity.max_refinements,
+        widenings_left=spec.adaptivity.max_widenings,
     )
 
 
@@ -1272,6 +1323,90 @@ def new_solution_dir(root: Path, before: set[Path], spec: Spec, step: int) -> Pa
     return unique
 
 
+def would_amputate(
+    src_r99: float | None,
+    src_dr: float,
+    src_n: int,
+    new_dr: float,
+    new_n: int,
+    order: int,
+    boundary_fraction: float,
+) -> bool:
+    """Would a finer regrid amputate the field's support?
+
+    Two cases, deliberately asymmetric (the guard decoupling):
+
+    * **Domain-keeping refinement** (new_n > src_n: dr ÷2 with N×2): the
+      interior domain is unchanged — the field fits by construction. Only
+      outright amputation (support past the new boundary) blocks it. The
+      boundary_fraction margin would be self-defeating here: the ghost-inclu-
+      sive boundary radius moves inward ~1.5% (the ghost layer is grid-rela-
+      tive) while the field fits and the solve is valid — exactly the
+      self-defeating-parameter trap the runbook must avoid.
+    * Legacy fixed-N refinement (domain shrinks): the conservative margin
+      applies — never re-solve onto a domain the support barely fits.
+    """
+    if src_r99 is None or new_dr >= src_dr:
+        return False
+    new_boundary = (new_n + 2 * ghost_of(order)) * new_dr
+    if new_n > src_n:
+        return src_r99 >= new_boundary
+    return src_r99 > boundary_fraction * new_boundary
+
+
+def coarsening_acceptable(rel: dict[str, float], regrid_rtol: float) -> bool:
+    """Truncation-proxy gate for a COARSENING regrid (dr ×2): the coarser
+    solve must reproduce ω/M_Komar/J_Komar within `regrid_rtol` — widening
+    is only adopted when it did not corrupt the solution. (Refinement has
+    no such gate: its whole purpose is to reduce the old grid's error,
+    which is recorded.)
+    """
+    return bool(rel) and all(v <= regrid_rtol for v in rel.values())
+
+
+def decide_coarsening(
+    r99_fraction: float | None,
+    support_fraction: float,
+    dr: float,
+    dr_max: float,
+    widenings_left: int,
+) -> str:
+    """Down-campaign coarsening decision (pure, unit-tested).
+
+    When the field's support fills the domain (r99/r_bdy > `support_fraction`),
+    widen the grid (dr ×2, domain grows) — unless the coarseness floor
+    (`dr_max`) or the regrid budget (`widenings_left`) is exhausted, in which
+    case the campaign stops cleanly: `stopped:domain_budget`.
+
+    Returns "ok" (keep stepping), "regrid_coarser", or "stop_budget".
+    """
+    if r99_fraction is None or r99_fraction <= support_fraction:
+        return "ok"
+    if dr * 2.0 > dr_max or widenings_left <= 0:
+        return "stop_budget"
+    return "regrid_coarser"
+
+
+def boundary_failure_stop(
+    last_good_r99: float | None,
+    last_good_dr: float | None,
+    last_good_n: int | None,
+    order: int,
+    boundary_fraction: float,
+) -> bool:
+    """Should a failed step be classified as a boundary end (pure, tested)?
+
+    The last GOOD solution's support already fills the domain — the failure
+    is boundary-driven (the field has no room; refinement is spent). The
+    campaign then ends cleanly at the best achievable grid instead of
+    recording a solver failure.
+    """
+    if last_good_r99 is None or not last_good_dr or not last_good_n:
+        return False
+    r_bdy = (int(last_good_n) + 2 * ghost_of(order)) * float(last_good_dr)
+    return last_good_r99 / r_bdy > boundary_fraction
+
+
 def do_regrid(
     spec: Spec,
     root: Path,
@@ -1279,6 +1414,7 @@ def do_regrid(
     binary: Path,
     step_no: int,
     new_dr: float,
+    new_n: int | None = None,
 ) -> tuple[bool, StepRecord | None, CampaignState]:
     """Re-solve the *same* ψ₀ on a grid with dr → `new_dr` (design §4).
 
@@ -1328,31 +1464,39 @@ def do_regrid(
     assert src.psi0 is not None and src.dr is not None and src.N is not None
     base_psi0 = float(src.psi0)
     src_dr, src_n = float(src.dr), int(src.N)
+    if new_n is None:
+        new_n = src_n  # legacy fixed-N regrid
     order = spec.grid.order
 
-    # Finer regrids shrink the domain (N fixed): never amputate the field —
-    # if the support would not fit in the new domain, the attempt is futile.
-    if new_dr < src_dr and src.r99 is not None:
-        new_domain = (src_n + 2 * ghost_of(order)) * new_dr
-        if src.r99 > spec.adaptivity.boundary_fraction * new_domain:
-            logger.warning(
-                "regrid step %d: skipped — support r99=%.3g would not fit in the %.3g domain",
-                step_no,
-                src.r99,
-                new_domain,
+    # Finer domain-shrinking regrids (the legacy fixed-N ladder) can amputate
+    # the field — if the support would not fit in the new domain, the attempt
+    # is futile. Domain-keeping refinements (dr ÷2 with N×2) cannot shrink
+    # the domain, so the guard does not apply to them: this is the structural
+    # decoupling between the refinement guard and the campaign's
+    # boundary_fraction stop (the runbook's parameters must not be
+    # self-defeating against it).
+    if would_amputate(
+        src.r99, src_dr, src_n, new_dr, new_n, order, spec.adaptivity.boundary_fraction
+    ):
+        new_domain = (new_n + 2 * ghost_of(order)) * new_dr
+        logger.warning(
+            "regrid step %d: skipped — support r99=%.3g would not fit in the %.3g domain",
+            step_no,
+            src.r99,
+            new_domain,
+        )
+        state = state.with_rejected_probe(
+            RegridProbe(
+                i=step_no,
+                mode=StepMode.REGGRID_PROBE,
+                exit_code=None,
+                skipped="support would not fit",
+                from_dr=src_dr,
+                to_dr=new_dr,
             )
-            state = state.with_rejected_probe(
-                RegridProbe(
-                    i=step_no,
-                    mode=StepMode.REGGRID_PROBE,
-                    exit_code=None,
-                    skipped="support would not fit",
-                    from_dr=src_dr,
-                    to_dr=new_dr,
-                )
-            )
-            save_state(spec, state)
-            return False, None, state
+        )
+        save_state(spec, state)
+        return False, None, state
 
     initial_grid = InitialGrid(
         NrTotalInitial=src_n + 2 * ghost_of(order),
@@ -1362,7 +1506,7 @@ def do_regrid(
         dr_i=src_dr,
         dz_i=src_dr,
     )
-    spec2 = spec.with_grid(new_dr)
+    spec2 = spec.with_grid(new_dr, new_n)
 
     scale_u4, _ = render_seed(spec, root, [src], base_psi0)
     rec: RegridProbe | None = None
@@ -1423,12 +1567,17 @@ def do_regrid(
                 break
             rel[key] = abs(new - old) / abs(old)
         accepted = bool(rel)
+    if accepted and new_dr > src_dr:
+        # Coarsening (dr ×2): the truncation-proxy gate applies — the coarser
+        # solve must reproduce ω/M_Komar/J_Komar within regrid_rtol.
+        accepted = coarsening_acceptable(rel, spec.adaptivity.regrid_rtol)
 
     if accepted and rec is not None:
         # Promote the accepted re-solve to a real branch-point step.
         assert rec.sol_dir is not None
         record_step(state, spec2, step_no, Path(rec.sol_dir), 0, mode=StepMode.REGGRID)
         rec_step = state.steps[-1]
+        keep_domain = new_n != src_n
         state = replace(
             state,
             steps=[
@@ -1441,19 +1590,43 @@ def do_regrid(
                         source=src.sol_dir,
                         rel_diff=rel,
                         accepted=True,
+                        to_n=new_n if keep_domain else None,
                     ),
                 ),
             ],
         )
         save_state(spec, state)
         diffs = ", ".join(f"{k}={v:.2e}" for k, v in rel.items())
-        logger.info(
-            "regrid step %d: dr %.5E → %.5E accepted: finer (old-grid error recorded) (%s)",
-            step_no,
-            src_dr,
-            new_dr,
-            diffs,
-        )
+        if keep_domain:
+            logger.info(
+                "regrid step %d: dr %.5E → %.5E (N %d → %d, domain kept) accepted: "
+                "finer (old-grid error recorded) (%s)",
+                step_no,
+                src_dr,
+                new_dr,
+                src_n,
+                new_n,
+                diffs,
+            )
+        elif new_dr > src_dr:
+            logger.info(
+                "regrid step %d: dr %.5E → %.5E accepted: coarser, domain %.3g → %.3g "
+                "within regrid_rtol (%s)",
+                step_no,
+                src_dr,
+                new_dr,
+                (src_n + 2 * ghost_of(order)) * src_dr,
+                (new_n + 2 * ghost_of(order)) * new_dr,
+                diffs,
+            )
+        else:
+            logger.info(
+                "regrid step %d: dr %.5E → %.5E accepted: finer (old-grid error recorded) (%s)",
+                step_no,
+                src_dr,
+                new_dr,
+                diffs,
+            )
     else:
         if rec is not None:
             state = state.with_rejected_probe(rec)
@@ -1629,11 +1802,25 @@ def finished(state: CampaignState, spec: Spec) -> str | None:
         # outer boundary and boundary error dominates — widening cannot fix
         # it, so stop instead of regridding. The practical default is to end
         # down campaigns at omega_target = 0.9 first (paper convention).
+        #
+        # SAN-30: the guard YIELDS to available coarsening — the support
+        # fraction of a just-started dilute campaign can sit marginally over
+        # the threshold while widening is still possible (dr×2 ≤ dr_max,
+        # regrid budget left); stopping there would be self-defeating. The
+        # loop's coarsening decision (support_fraction) widens before the
+        # next solve; the guard fires only once widening is exhausted.
         last = steps[-1]
         if last.r99 is not None and last.dr and last.N:
             r_bdy = (int(last.N) + 2 * ghost_of(spec.grid.order)) * float(last.dr)
             if last.r99 / r_bdy > spec.adaptivity.boundary_fraction:
-                return StopReason.STOPPED_BOUNDARY
+                widenings_left = (
+                    state.widenings_left
+                    if state.widenings_left is not None
+                    else spec.adaptivity.max_widenings
+                )
+                dr = current_grid(state, spec).dr
+                if dr * 2.0 > spec.grid.dr_max or widenings_left <= 0:
+                    return StopReason.STOPPED_BOUNDARY
     if c.stop_at_turning_point and direction == Direction.UP and detect_turning_point(state.steps):
         return StopReason.STOPPED_TURNING_POINT
     if state.steps[-1].exit_code != 0:
@@ -1934,6 +2121,62 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 logger.info("ω_min ≈ %.6E at ψ₀ ≈ %.6E (%s)", w, p, tp.get("method"))
             return 0 if state.status != Status.FAILED else 1
 
+        # ----- coarsening decision (down-campaigns: the dilute end) --------
+        # Runs BEFORE the next solve: a solve on an over-filled domain fails
+        # or corrupts — widening must happen first. (The trigger also sits
+        # below the campaign's boundary stop so the guard yields to it.)
+        if c.direction == Direction.DOWN:
+            # The field spreads toward ω → m: when its support fills the
+            # domain, widen (dr ×2, domain grows) — bounded by the
+            # coarseness floor (dr_max) and the regrid budget
+            # (max_widenings); exhausted → clean stop. Widening cannot fix
+            # the weak-field boundary ERROR (2026-09 §6 note), so beyond
+            # the floor/budget the campaign ends.
+            a_c = spec.adaptivity
+            cur_grid = current_grid(state, spec)
+            last_good = next((s for s in reversed(state.steps) if s.exit_code == 0), None)
+            widenings_left = (
+                state.widenings_left if state.widenings_left is not None else a_c.max_widenings
+            )
+            r99_fraction = (
+                last_good.r99 / ((cur_grid.N + 2 * ghost_of(spec.grid.order)) * cur_grid.dr)
+                if last_good is not None and last_good.r99 is not None
+                else None
+            )
+            caction = decide_coarsening(
+                r99_fraction, a_c.support_fraction, cur_grid.dr, spec.grid.dr_max, widenings_left
+            )
+            if caction == "stop_budget":
+                state = replace(
+                    state,
+                    status=Status.STOPPED,
+                    stop_reason=StopReason.STOPPED_DOMAIN_BUDGET,
+                )
+                save_state(spec, state)
+                logger.info(
+                    "stop: stopped:domain_budget (field support fills the domain; "
+                    "coarseness floor / regrid budget spent)"
+                )
+                return 0
+            if caction == "regrid_coarser":
+                new_dr = cur_grid.dr * 2.0
+                ok, _, state = do_regrid(spec, root, state, binary, step_no, new_dr)
+                if ok:
+                    state = replace(
+                        state,
+                        grid=GridPosition(dr=new_dr, N=current_grid(state, spec).N),
+                        widenings_left=widenings_left - 1,
+                    )
+                    step_no += 1
+                    save_state(spec, state)
+                    continue  # re-check exit conditions on the new grid
+                # A rejected widening is not retried blindly; the pre-step
+                # boundary guard ends the campaign when the support no
+                # longer fits.
+                state = replace(state, widenings_left=widenings_left - 1)
+                save_state(spec, state)
+                logger.warning("coarsening rejected; continuing on dr=%.5E", cur_grid.dr)
+
         # Retry loop (decision-table rules 2-3, core subset): on Newton
         # non-convergence (exit 1) shrink the step and retry from the last
         # good solution. A step killed by a signal (code < 0, e.g. SIGSEGV —
@@ -2073,6 +2316,36 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 reverted = True
                 break
 
+            # Boundary-class failure: the last good solution's support
+            # already fills the domain — the failure is boundary-driven and
+            # the campaign ends cleanly at the best achievable grid
+            # (stopped:boundary) instead of recording a solver failure.
+            last_good = next(
+                (s for s in reversed(state.steps) if s.exit_code == 0 and s.r99 is not None),
+                None,
+            )
+            if last_good is not None and boundary_failure_stop(
+                last_good.r99,
+                last_good.dr,
+                last_good.N,
+                spec.grid.order,
+                spec.adaptivity.boundary_fraction,
+            ):
+                state = replace(
+                    state,
+                    status=Status.STOPPED,
+                    stop_reason=StopReason.STOPPED_BOUNDARY,
+                )
+                save_state(spec, state)
+                logger.warning(
+                    "step %d failed at the boundary (support r99=%.3g of the %.3g boundary, "
+                    "refinement budget spent); stopping cleanly",
+                    step_no,
+                    last_good.r99,
+                    (int(last_good.N or 0) + 2 * ghost_of(spec.grid.order))
+                    * float(last_good.dr or 0.0),
+                )
+                return 0
             state = replace(
                 state,
                 status=Status.FAILED,
@@ -2089,7 +2362,8 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
 
         # ----- refinement decision (design §5, v2) --------------------------
         a = spec.adaptivity
-        dr = current_grid(state, spec).dr
+        cur_grid = current_grid(state, spec)
+        dr = cur_grid.dr
         diag = StepDiagnostics(
             hwl=last.hwl,
             rr_phi_max=last.rr_phi_max,
@@ -2102,16 +2376,22 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
         action = decide_action(diag)
 
         if action == Action.REGGRID_FINER:
-            # Irreversible refinement (dr ÷2, domain shrinks, N fixed): the
-            # interpolated re-solve at the same ψ₀ is committed immediately,
-            # and the next continuation step doubles as its verification —
-            # verify-then-commit.
-            new_dr = dr / 2.0
-            ok, _, state = do_regrid(spec, root, state, binary, step_no, new_dr)
+            # Refinement (dr ÷2): with refine_keeps_domain the N doubles so
+            # the DOMAIN IS KEPT (the runbook's refinement primitive — the
+            # legacy fixed-N ladder shrinks the domain and becomes
+            # self-defeating at high M/R, 2026-09 §4.1). The interpolated
+            # re-solve at the same ψ₀ is committed immediately, and the next
+            # continuation step doubles as its verification — verify-then-
+            # commit.
+            if a.refine_keeps_domain:
+                new_dr, new_n = dr / 2.0, cur_grid.N * 2
+            else:
+                new_dr, new_n = dr / 2.0, cur_grid.N
+            ok, _, state = do_regrid(spec, root, state, binary, step_no, new_dr, new_n)
             if ok:
                 state = replace(
                     state,
-                    grid=replace(current_grid(state, spec), dr=new_dr),
+                    grid=GridPosition(dr=new_dr, N=new_n),
                     refinements_left=diag.refinements_left - 1,
                     pending_refinement=PendingRefinement(
                         from_dr=dr,

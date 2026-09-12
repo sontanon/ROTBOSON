@@ -8,6 +8,7 @@ turning-point detection.
 """
 
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import numpy as np
@@ -26,19 +27,25 @@ from sweep_driver import (  # noqa: E402
     GridSpec,
     OutputFormat,
     OutputSpec,
+    RegridInfo,
     SeedPolicy,
     SeedSpec,
     SolverSpec,
     Spec,
+    SpecError,
     StepDiagnostics,
     StepMode,
     StepRecord,
+    boundary_failure_stop,
+    coarsening_acceptable,
     decide_action,
+    decide_coarsening,
     detect_turning_point,
     finished,
     ghost_of,
     newtonian_limit_stop,
     turning_point_estimate,
+    would_amputate,
 )
 
 
@@ -98,7 +105,7 @@ class TestDecideActionV2:
 
 
 def spec_down(direction: str = "down", **adaptivity) -> Spec:
-    adapt = {
+    adapt: dict[str, float | int | bool] = {
         "hwl_min": 8,
         "max_refinements": 2,
         "newtonian_delta": 1.0e-2,
@@ -118,7 +125,16 @@ def spec_down(direction: str = "down", **adaptivity) -> Spec:
         grid=GridSpec(dr=0.125, N=128, dr_max=0.5, order=4),
         solver=SolverSpec(),
         output=OutputSpec(root=Path("/tmp/spec-down-test"), format=OutputFormat.HDF5),
-        adaptivity=AdaptivitySpec(**adapt),
+        adaptivity=AdaptivitySpec(
+            hwl_min=float(adapt["hwl_min"]),
+            max_refinements=int(adapt["max_refinements"]),
+            newtonian_delta=float(adapt["newtonian_delta"]),
+            boundary_fraction=float(adapt["boundary_fraction"]),
+            refine_keeps_domain=bool(adapt.get("refine_keeps_domain", False)),
+            regrid_rtol=float(adapt.get("regrid_rtol", 2.0e-2)),
+            support_fraction=float(adapt.get("support_fraction", 0.85)),
+            max_widenings=int(adapt.get("max_widenings", 2)),
+        ),
         spec_hash="test",
     )
 
@@ -185,8 +201,22 @@ class TestBoundaryStop:
         )
 
     def test_boundary_grazing_tail_stops_down_campaign(self):
-        # r99/domain = 16/16.5 = 0.97 > 0.95
-        assert finished(self.state_at(16.0), spec_down()) == "stopped:boundary"
+        # r99/domain = 16/16.5 = 0.97 > 0.95 — but the guard now YIELDS to
+        # available coarsening (dr×2=0.25 ≤ dr_max, budget left): widening
+        # is tried first (SAN-30). It stops only when widening is spent.
+        assert finished(self.state_at(16.0), spec_down()) is None
+        state = self.state_at(16.0)
+        state = replace(state, widenings_left=0)
+        assert finished(state, spec_down()) == "stopped:boundary"
+        # ... or when the coarseness floor blocks the widening outright
+        spec = replace(spec_down(), grid=replace(spec_down().grid, dr_max=0.2))
+        assert finished(self.state_at(16.0), spec) == "stopped:boundary"
+
+    def test_coarsening_budget_roundtrip(self):
+        # the budget is honored from state (a resumed campaign's remaining
+        # widenings), not re-defaulted
+        state = replace(self.state_at(16.0), widenings_left=1)
+        assert finished(state, spec_down()) is None
 
     def test_comfortable_support_does_not_stop(self):
         # r99/domain = 10/16.5 = 0.61
@@ -302,3 +332,134 @@ class TestTurningPointEstimate:
 def test_ghost_of():
     assert ghost_of(2) == 1
     assert ghost_of(4) == 2
+
+
+# ---------------------------------------------------------------------------
+# SAN-30 driver controls: domain-keeping refinement, coarsening + budgets,
+# boundary-class failure classification
+# ---------------------------------------------------------------------------
+class TestAdaptivityNewKnobs:
+    def test_defaults(self):
+        a = AdaptivitySpec.parse({})
+        assert a.refine_keeps_domain is False
+        assert a.regrid_rtol == pytest.approx(2.0e-2)
+        assert a.support_fraction == pytest.approx(0.85)
+        assert a.max_widenings == 2
+
+    def test_parse(self):
+        a = AdaptivitySpec.parse(
+            {
+                "refine_keeps_domain": True,
+                "regrid_rtol": 1e-3,
+                "support_fraction": 0.8,
+                "max_widenings": 3,
+            }
+        )
+        assert a.refine_keeps_domain is True
+        assert a.regrid_rtol == pytest.approx(1e-3)
+        assert a.support_fraction == pytest.approx(0.8)
+        assert a.max_widenings == 3
+
+    def test_support_fraction_must_precede_boundary_stop(self):
+        with pytest.raises(SpecError, match="support_fraction"):
+            AdaptivitySpec.parse({"support_fraction": 0.95, "boundary_fraction": 0.95})
+        with pytest.raises(SpecError, match="support_fraction"):
+            AdaptivitySpec.parse({"support_fraction": 0.99})
+
+    def test_regrid_rtol_validation(self):
+        with pytest.raises(SpecError, match="regrid_rtol"):
+            AdaptivitySpec.parse({"regrid_rtol": 0.0})
+
+
+class TestWouldAmputate:
+    """The refinement-support guard: only domain-shrinking regrids."""
+
+    def test_legacy_shrink_amputates(self):
+        # source: dr=0.125, N=128, r99=15.6 (94.5% of the 16.5 boundary,
+        # the driver's (N+2·ghost)·dr convention); legacy refinement
+        # dr=0.0625 at N=128 → boundary 8.25, far inside the support.
+        assert would_amputate(15.6, 0.125, 128, 0.0625, 128, 4, 0.95)
+
+    def test_keep_domain_never_amputates(self):
+        # N×2 with dr÷2 keeps the interior domain (16 = 16); the ghost-incl.
+        # boundary moves 16.5 → 16.25 but the support fits outright.
+        assert not would_amputate(15.6, 0.125, 128, 0.0625, 256, 4, 0.95)
+        # even the seed's 96%-of-boundary support (r99=15.685 of 16.25)
+        assert not would_amputate(15.685, 0.125, 128, 0.0625, 256, 4, 0.95)
+
+    def test_fit_shrink_ok(self):
+        # a compact field fits the smaller domain
+        assert not would_amputate(4.0, 0.125, 128, 0.0625, 128, 4, 0.95)
+
+    def test_unknown_support_is_safe(self):
+        assert not would_amputate(None, 0.125, 128, 0.0625, 128, 4, 0.95)
+
+
+class TestCoarseningAcceptable:
+    def test_within_rtol(self):
+        assert coarsening_acceptable({"omega": 1e-4, "M_Komar": 2e-3}, 2e-2)
+
+    def test_beyond_rtol(self):
+        assert not coarsening_acceptable({"omega": 5e-2}, 2e-2)
+
+    def test_empty_is_reject(self):
+        assert not coarsening_acceptable({}, 2e-2)
+
+
+class TestDecideCoarsening:
+    def test_support_below_trigger(self):
+        assert decide_coarsening(0.5, 0.85, 0.125, 0.5, 2) == "ok"
+        assert decide_coarsening(None, 0.85, 0.125, 0.5, 2) == "ok"
+
+    def test_support_over_trigger_widens(self):
+        assert decide_coarsening(0.9, 0.85, 0.125, 0.5, 2) == "regrid_coarser"
+
+    def test_dr_floor_stops(self):
+        # dr×2 would exceed the coarseness floor
+        assert decide_coarsening(0.9, 0.85, 0.4, 0.5, 2) == "stop_budget"
+        assert decide_coarsening(0.9, 0.85, 0.25, 0.5, 2) == "regrid_coarser"
+
+    def test_budget_exhausted_stops(self):
+        assert decide_coarsening(0.9, 0.85, 0.125, 0.5, 0) == "stop_budget"
+
+
+class TestBoundaryFailureStop:
+    def test_support_fills_domain(self):
+        # r99=15.9 of the 16.5 boundary (N=128, dr=0.125, order 4): 96% > 95%
+        assert boundary_failure_stop(15.9, 0.125, 128, 4, 0.95)
+
+    def test_support_fits(self):
+        assert not boundary_failure_stop(13.1, 0.125, 128, 4, 0.95)
+
+    def test_unknown_support(self):
+        assert not boundary_failure_stop(None, 0.125, 128, 4, 0.95)
+        assert not boundary_failure_stop(15.6, None, 128, 4, 0.95)
+        assert not boundary_failure_stop(15.6, 0.125, None, 4, 0.95)
+
+
+class TestNewStateFieldsRoundTrip:
+    def test_regrid_to_n_roundtrip(self):
+        info = RegridInfo(
+            from_dr=0.125,
+            to_dr=0.0625,
+            source="src",
+            rel_diff={"omega": 1e-4},
+            accepted=True,
+            to_n=256,
+        )
+        d = info.to_dict()
+        assert d["to_n"] == 256
+        assert RegridInfo.from_dict(d).to_n == 256
+
+    def test_regrid_to_n_omitted_for_legacy(self):
+        info = RegridInfo(from_dr=0.125, to_dr=0.0625, source=None, rel_diff={}, accepted=True)
+        assert "to_n" not in info.to_dict()
+        assert RegridInfo.from_dict(info.to_dict()).to_n is None
+
+    def test_widenings_left_omitted_when_unset(self):
+        state = CampaignState(spec_hash="t")
+        assert "widenings_left" not in state.to_dict()
+        state2 = CampaignState(spec_hash="t", widenings_left=3)
+        d = state2.to_dict()
+        assert d["widenings_left"] == 3
+        assert CampaignState.from_dict(d).widenings_left == 3
