@@ -123,6 +123,20 @@ Also: `tests/test_output.c` (CTest) pins the ASCII writer's byte output and
 path-awareness; all three presets (release, umfpack, asan-ubsan) build and
 pass CTest.
 
+## 8. Catalogue rebuild & paper verification (2026-09)
+
+The full pipeline (single-solution C solver + Python sweep driver + HDF5)
+regenerated the rotating-boson-star catalogue and verified the published
+results (arXiv:2103.13993, Table IX.1 critical points) for l=1..4: critical
+points agree with the paper to ≤0.03% (l=1,2) and ≤1.2% (l=3,4, resolution-
+limited folds), with every discrepancy traced to resolution/domain effects —
+not physics. Full session report, campaign inventory, physics findings and
+driver-bug post-mortems: `docs/milestone-report-2026-09.md`; verification
+figures in `docs/figures/` (regenerate with
+`uv run tools/plot_verification.py`). The l=5/6 coarse campaigns validated
+the cross-l seeding technique and were descoped by decision (2026-09-12);
+report §7 records the stop state.
+
 ## SAN-10 — single-solution strip (2026-08-30)
 
 Removed `sweep_advance()` and the in-C sweep/ladder machinery (keys `sweep`,

@@ -30,6 +30,7 @@ summary tables:
 | `hdf5_roundtrip.py` | Exports an HDF5 `solution.h5` back to the legacy `.asc` layout and/or compares it against a legacy ASCII reference — pins the two output backends to each other. |
 | `reconstruct_grv.py` | Python reconstruction of the GRV2/GRV3 virial identities from a solution directory, cross-checking `src/analysis.c`. |
 | `ladder_continue.py` | Re-applies the archived l=2 fixedPhi ladder template (scale_u4 = 1.125) step by step from a seed solution — the historical validation workflow, now largely superseded by `sweep_driver.py` in `fixedPhi` mode. |
+| `plot_verification.py` | Generates the 2026-09 paper-verification figures (M(ω)/J(ω)/ω-vs-ψ₀ branch curves, Table IX.1 deviation bars, grid study) from campaign `state.json` files into `docs/figures/`. Requires `matplotlib` (dev dependency). |
 
 ## Symbolic derivation & code generation
 

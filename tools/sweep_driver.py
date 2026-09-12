@@ -1285,8 +1285,8 @@ def do_regrid(
     Seeds through the C interpolator (readInitialData = 3) from the last good
     solution and constrains ψ(fixedPhi point) = ψ₀ as usual.
 
-    Geometry note (2026-09-10, post-mortem of the failed SAN-14..21-style
-    refinements): the fixedPhi point (R,Z) = (2,2) sits at r = 0.5·dr, and
+    Geometry note (2026-09-10, post-mortem of the failed in-campaign
+    refinement attempts): the fixedPhi point (R,Z) = (2,2) sits at r = 0.5·dr, and
     the r/θ grids are STAGGERED — after dr → dr/2 no target node coincides
     with a source node. The interpolated seed at the fine (2,2) therefore
     reads ~ψ'(0)·dr/2 ≈ +0.85% higher than the coarse ψ₀ *for the same
@@ -1296,7 +1296,7 @@ def do_regrid(
     "drift correction" (rescaling by achieved/ψ₀) treated this geometric
     offset as error and actively pinned the fine solution ~0.85% off-branch,
     which is why every in-campaign refinement failed verification and was
-    reverted (SAN-21..26 campaigns). We no longer rescale: scale_u4 = 1.0,
+    reverted across the 2026-09 fold campaigns. We no longer rescale: scale_u4 = 1.0,
     single attempt. The accepted regrid's ψ₀ is re-labelled on the fine
     grid's fixed point (parameterization jump ≈ +0.85% per ÷2; the branch
     point itself is unchanged — ω, M_Komar, J_Komar comparisons vs the
@@ -1970,8 +1970,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 last_good.dr is not None
                 and last_good.N is not None
                 and (
-                    abs(last_good.dr - spec_eff.grid.dr) > 1.0e-12
-                    or last_good.N != spec_eff.grid.N
+                    abs(last_good.dr - spec_eff.grid.dr) > 1.0e-12 or last_good.N != spec_eff.grid.N
                 )
             ):
                 initial_grid = InitialGrid(
@@ -1983,7 +1982,12 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                     dz_i=last_good.dr,
                 )
             params = render_params(
-                spec_eff, root, step_no, scale_u4=scale_u4, seed_dir=root / "seed", initial_grid=initial_grid
+                spec_eff,
+                root,
+                step_no,
+                scale_u4=scale_u4,
+                seed_dir=root / "seed",
+                initial_grid=initial_grid,
             )
 
             stale = root / initial_dirname(spec_eff)

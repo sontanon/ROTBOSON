@@ -5,9 +5,11 @@ Numerical initial-data generation for rotating boson stars in axisymmetry
 system of six coupled nonlinear elliptic PDEs plus the scalar-field frequency ω
 via global Newton methods and the PARDISO sparse direct solver.
 
-See `PLAN.md` for the modernization roadmap and `VALIDATION.md` for the
-Phase 0 fidelity results against the published data
-(arXiv:2103.13993, Class. Quantum Grav. **38** 154003 (2021)).
+See `PLAN.md` for the modernization roadmap and `VALIDATION.md` for validation
+results against the published data (arXiv:2103.13993, Class. Quantum Grav.
+**38** 154003 (2021)) — Phase 0 golden fidelity plus the 2026-09 catalogue
+rebuild & paper verification (l=1..4; session report
+`docs/milestone-report-2026-09.md`, figures `docs/figures/`).
 
 ## Prerequisites
 
