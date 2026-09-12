@@ -1,0 +1,29 @@
+# l=6 branch (down): from the mid-branch seed (omega=0.7, cross-l from l=5).
+# To the dilute end: stops at psi0 ~ the omega=0.9 seed value.
+[campaign]
+l = 6
+direction = "down"
+psi0_target = 2.200e-08
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 300
+stop_at_turning_point = false
+
+[adaptivity]
+max_refinements = 0
+
+[seed]
+policy = "solution"
+source = "/workspace/rotboson/out/gold5/l=6,w=7.00000E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.125
+N = 128
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "/workspace/rotboson/out/campaigns/sweep-l6-down"
+format = "hdf5"
