@@ -1,0 +1,39 @@
+# Runbook: l=1 down-campaign (SAN-31) — from the starter seed (w=0.95)
+# toward the fold. One HWL-triggered refinement that KEEPS the domain
+# (N 128 -> 256; N=512 would not fit in 8 GB, hence max_refinements=1).
+# stop_at_turning_point stops the campaign 1-2 steps past the vertex;
+# --summarize localizes w_min (degree-4 fit, paper section IX).
+#
+# Run from the repo root:
+#   uv run tools/sweep_driver.py configs/runbook_l1_down.toml
+#   uv run tools/sweep_driver.py configs/runbook_l1_down.toml --summarize
+
+[campaign]
+l = 1
+direction = "up"
+psi0_target = 0.6
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 300
+stop_at_turning_point = true
+
+[adaptivity]
+max_refinements = 1
+refine_keeps_domain = true
+hwl_min = 8
+
+[seed]
+policy = "solution"
+source = "../out/l=1,w=9.50000E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.125
+N = 128
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/runbook-l1"
+format = "hdf5"
