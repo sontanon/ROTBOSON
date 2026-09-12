@@ -1,0 +1,32 @@
+# Fold campaign l=3 on 324@0.08/domain 25.6 (E grid), max_refinements=0
+# (no domain runaway), turning-point detector on. Seeded ~6 steps before the
+# branch fold (dr=0.0625 segment of sweep-l3-final) so the campaign has a
+# genuine descent phase for the detector. psi0 = origin-referenced label
+# (psi0_origin_estimate) — grid-independent.
+[campaign]
+l = 3
+direction = "up"
+psi0_target = 1.494
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 60
+stop_at_turning_point = true
+
+[adaptivity]
+max_refinements = 0
+
+[seed]
+policy = "solution"
+source = "/workspace/rotboson/out/campaigns/sweep-l3-final/l=3,w=4.56398E-01,dr=6.25000E-02,N=0128"
+
+[grid]
+dr = 0.08
+N = 320
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "/workspace/rotboson/out/campaigns/fold-l3-E"
+format = "hdf5"

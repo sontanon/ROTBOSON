@@ -987,6 +987,27 @@ def psi_at_fixed_point(psi: np.ndarray, spec: Spec) -> float:
     return float(psi[c.fixedPhiR, c.fixedPhiZ])
 
 
+def psi0_origin_estimate(psi: np.ndarray) -> float:
+    """ψ₀ as the extrapolated value at the physical origin (grid-independent).
+
+    ψ is even and smooth at the axis (φ = r^l·ψ), so near the origin
+    ψ = a + b·u² + c·v² with u,v the staggered-grid offsets (i−1.5, j−1.5);
+    the fit is evaluated at (0,0) — the physical origin, which lies between
+    grid nodes. Unlike ψ at the fixedPhi node (whose radius is 0.5·dr and
+    therefore changes on every dr÷2 regrid, making ψ₀ labels jump ~+0.85%),
+    this estimate is a property of the *solution*, not of the grid.
+    """
+    idx = np.arange(2, 5)  # first three interior nodes per axis
+    u = idx - 1.5
+    U, V = np.meshgrid(u, u, indexing="ij")
+    A = np.column_stack(
+        [np.ones(U.size), (U**2).ravel().astype(float), (V**2).ravel().astype(float)]
+    )
+    y = np.asarray(psi)[np.ix_(idx, idx)].ravel().astype(float)
+    coef, *_ = np.linalg.lstsq(A, y, rcond=None)
+    return float(coef[0])
+
+
 # ---------------------------------------------------------------------------
 # Seed rendering (design §3.4): linear extrapolation in ψ₀ + exact rescale
 # ---------------------------------------------------------------------------
@@ -1050,7 +1071,7 @@ def render_seed(
         assert cur.omega is not None
         w_guess = cur.omega
 
-    psi_fixed = psi_at_fixed_point(fields["psi_f.asc"], spec)
+    psi_fixed = psi0_origin_estimate(fields["psi_f.asc"])
     if psi_fixed == 0:
         raise SystemExit("seed ψ at the fixedPhi point is zero; cannot rescale")
     scale_u4 = psi0_target / psi_fixed
@@ -1452,7 +1473,7 @@ def _probe_psi0(sol: Path, spec: Spec) -> float | None:
     """ψ₀ achieved by a regrid probe (None when fields are unreadable)."""
     try:
         fields = solution_fields(sol)
-        return psi_at_fixed_point(fields["psi_f.asc"], spec)
+        return psi0_origin_estimate(fields["psi_f.asc"])
     except Exception:  # noqa: BLE001 — probe diagnostics only
         return None
 
@@ -1514,7 +1535,7 @@ def record_step(
         try:
             # ψ₀ from the field at the fixedPhi point (the constraint value).
             fields = solution_fields(sol_dir)
-            psi0 = psi_at_fixed_point(fields["psi_f.asc"], spec)
+            psi0 = psi0_origin_estimate(fields["psi_f.asc"])
         except Exception:  # noqa: BLE001 — a failed step may lack field data
             psi0 = None
         step = replace(
@@ -1819,7 +1840,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 dr=seed_dr,
                 N=seed_n,
                 omega=scalars.get("w_f.asc"),
-                psi0=psi_at_fixed_point(fields["psi_f.asc"], spec),
+                psi0=psi0_origin_estimate(fields["psi_f.asc"]),
                 M_Komar=scalars.get("M_Komar1.asc"),
                 J_Komar=scalars.get("J_Komar1.asc"),
                 rr_phi_max=scalars.get("rr_phi_max.asc"),
