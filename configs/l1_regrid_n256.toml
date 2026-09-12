@@ -1,0 +1,50 @@
+# l=1 regrid example — the runbook's grid/refinement step (SAN-29).
+#
+# Takes the starter seed (configs/l1_seed.toml, N=128/dr=0.125, domain 16.4)
+# and re-solves the SAME branch point on a finer grid that KEEPS the domain:
+# N=256 at dr=0.0625. The driver interpolates the seed across grids
+# (readInitialData = 3) and lands psi0 exactly (the fixedPhi clamp), so the
+# result is the same physical solution at higher resolution.
+#
+# This is one command; the campaign runs the seed load plus exactly one
+# solve (max_steps counts the seed step) and stops on done:psi0_target. The psi0_target is the seed's origin-referenced psi0
+# plus a 2e-9 absolute nudge: the driver requires psi0_step > 0 and compares
+# the seed's psi0 against the target before the first solve, so an exactly-
+# equal target would stop the campaign after the seed load without solving
+# (the comparison tolerance is 1e-9 absolute; the nudge must exceed it). The nudge is a ~4e-6 relative
+# amplitude shift — negligible vs the regrid's own resolution change. Recompute
+# after re-running the seed with:
+#   uv run python -c "import sys; sys.path.insert(0,'tools'); \
+#     from pathlib import Path; from sweep_driver import solution_fields, \
+#     psi0_origin_estimate; print(psi0_origin_estimate( \
+#     solution_fields(Path('out/l=1,w=9.50000E-01,dr=1.25000E-01,N=0128'))['psi_f.asc']))"
+#
+# Run from the repo root (after the seed has produced its solution dir):
+#   uv run tools/sweep_driver.py configs/l1_regrid_n256.toml
+
+[campaign]
+l = 1
+direction = "up"
+psi0_target = 0.00283882887900032
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_steps = 2
+stop_at_turning_point = false
+
+[adaptivity]
+max_refinements = 0
+
+[seed]
+policy = "solution"
+source = "../out/l=1,w=9.50000E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.0625
+N = 256
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/regrid-l1-n256"
+format = "hdf5"

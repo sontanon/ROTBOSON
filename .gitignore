@@ -18,11 +18,16 @@ VSC_Workspace
 __pycache__/
 .ipynb_checkpoints/
 
-# Phase 0 curated data: large golden dataset from the backup drive.
-# See PLAN.md and data/golden/README.md. Small provenance files under
-# data/summaries, data/params, and data/convergence ARE tracked.
+# Archived publication data from the backup drive (see PLAN.md and
+# data/golden/README.md): golden solutions, summary tables, and the
+# old-pipeline parameter templates/convergence configs. Only data/paper/
+# and small test fixtures are tracked; everything else is restored from
+# the archive drive when needed (git history keeps the retired configs).
 data/golden/
 data/seeds/
+data/summaries/
+data/params/
+data/convergence/
 
 # Re-derived symbolic notebooks are tracked under derivations/notebooks
 # (stripped of outputs); raw notebook files are ignored everywhere else.

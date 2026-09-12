@@ -238,21 +238,22 @@ the packages above -- no curated data required:
   UMFPACK fallback smoke runs in seconds) and its HDF5
   variant (`out/l1_from_scratch_hdf5.toml`), plus the continuation config
   (`out/l1_from_initial_data.toml`);
-- all catalogue/convergence/stability parameter templates
-  (`data/params/`, `data/convergence/`, `data/paper/`); the Catalogue2
-  summary tables (`data/summaries/`, expected by
-  `tools/check_against_summary.py`) are restored together with the golden
-  dataset;
+- `data/paper/` (the published paper's text and Table IX.1 critical
+  points) and the runbook configs (`configs/`);
 - the derivation notebooks (`derivations/`) and all Python tooling.
 
-Two things are **not** in the repo (gitignored; 4.7 GB, restored from the
-backup drive -- see `data/golden/README.md` for provenance and
-`data/golden/MANIFEST.sha256` for checksums):
+The archived publication dataset is **not** in the repo (gitignored;
+4.7 GB, restored from the backup drive -- see `data/golden/README.md` for
+provenance and `data/golden/MANIFEST.sha256` for checksums):
 
 - `data/golden/` -- the archived publication solutions (the §4c regression
   gate compares against them);
 - `data/seeds/` -- the interpolation seeds referenced by
-  `data/params/regeneration/*.toml` (which use paths relative to `out/`).
+  `data/params/regeneration/*.toml` (which use paths relative to `out/`);
+- `data/summaries/`, `data/params/`, `data/convergence/` -- the Catalogue2
+  summary tables and the old-pipeline parameter templates/convergence
+  studies (no longer tracked; restored with the archive, or recovered from
+  git history).
 
 Without them you can still build, run CTest, solve from scratch, and use HDF5
 output; you only cannot re-run the golden-regeneration validation chain.
