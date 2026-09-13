@@ -104,11 +104,26 @@ Raw log: `out/profile_seed.log` (not tracked).
 
 ## Next experiments (proposed order)
 
-1. `iparm[3]=0`, `iparm[7]=2` (default IR): expect solve phase 2747 ms →
-   tens of ms; Newton wall −70%+. Validate identical solutions (M_Komar
-   match, branch agreement) vs this baseline.
-2. N=256 run (`l1_regrid_n256.toml`) for the fill-growth exponent and
-   RSS curve — the number that sizes every memory option.
+1. ~~iparm[3]=0, iparm[7]=2~~ — DONE 2026-09-13, mixed verdict:
+   - Master seed (cold start, 17 solves / 4 factors): 58 s → 42 s (−28%),
+     **bit-identical solution** (M_Komar/J/ω equal to display precision).
+   - Full l=1 runbook campaign (169 steps, regrid at 165, turning point
+     stop): 2778 s (M2 ref) → 3825 s (+38%) — **direct mode is a net loss
+     for continuation**. Near-fold Newton matrices are near-singular:
+     direct factorization costs 56 s/call at N=256 fold steps (vs 14 s at
+     the healthy N=256 regrid), while CGS mode reuses the stale LU cheaply
+     (ref fold steps ≈ 20 s total).
+   - Correctness of the new-mode campaign confirmed: ω equal to ~1e-15
+     relative at steps 20/60/100/140/160/164; psi_f/log_alpha_f/beta_f
+     equal to ~1e-14; fold vertex estimate 0.6455295 (poly3, 5 points) vs
+     paper 0.64561 → −0.012% (M2/C-GS estimate: +0.068%, poly2).
+   - Resolution: keep iparm[3]=61 (CGS) as the campaign default — it is a
+     deliberate, load-bearing algorithm choice. New env switch
+     ROTBOSON_PARDISO_DIRECT=1 opts into direct+IR solves (worth it for
+     cold-start seeds and standalone N=256 regrids, −28% to −40%).
+   - Open follow-up: iparm[3]=31 (CGS, tolerance 1e-3) — cheaper CGS
+     iterations; must check branch accuracy vs the 1e-6 baseline.
+2. N=256 run — DONE: see "N=256 scaling run" above.
 3. fp32 factors (iparm[27-1]=1, requires matrix in single precision) +
    double-precision IR: ~40% factor memory saving; accuracy recovery via
    refinement to be demonstrated.

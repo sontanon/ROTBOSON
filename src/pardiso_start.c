@@ -41,7 +41,7 @@ void solver_start(const MKL_INT matrix_dim)
     iparm[5 - 1] = 0; // No user fill-in reducing permutation.
     iparm[6 - 1] = 0; // Do not write solution into RHS.
     iparm[7 - 1] = 0; // Not in use.
-    iparm[8 - 1] = 0; // Max numbers of iterative refinement steps.
+    iparm[8 - 1] = 2; // Max numbers of iterative refinement steps (direct solve).
     iparm[9 - 1] = 0; // Not in use.
     iparm[10 - 1] = 13; // Perturb the pivot elements with 1E-13.
     iparm[11 - 1] = 1; // Use nonsymmetric permutation and scaling MPS.

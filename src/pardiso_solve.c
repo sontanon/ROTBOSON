@@ -43,8 +43,23 @@ void solver_solve(double *u, // Solution array.
         // Analysis phase has been completed.
         A->analysis_phase = 1;
 
-        // Enable CG preconditioning.
-        iparm[3] = 61;
+        // iparm[3]=61 turns every phase-33 solve into an LU-preconditioned CGS
+        // iteration loop (stopping criterion 1e-6) instead of a direct
+        // back-substitution, and phase-22 then REUSES the previous LU as
+        // preconditioner instead of refactorizing.
+        //
+        // Measured (data/summaries/profile-baseline.md):
+        //   - direct mode wins on solves-per-factor-heavy problems: master
+        //     seed 58 s -> 42 s (-28%), solutions bit-identical;
+        //   - direct mode LOSES on continuation campaigns: full l=1 runbook
+        //     campaign 2778 s -> 3825 s (+38%), because near-fold Newton
+        //     matrices are near-singular and direct refactorization blows up
+        //     (56 s/factor at N=256 fold steps vs ~20 s total per step in CGS
+        //     mode with a stale-LU preconditioner).
+        // Default remains CGS (proven by the M2 catalogue); opt into direct
+        // mode (exact solves, no stale-LU reuse) with ROTBOSON_PARDISO_DIRECT=1.
+        if (getenv("ROTBOSON_PARDISO_DIRECT") == NULL)
+            iparm[3] = 61;
 
         prof_end(PROF_ANALYSIS);
     }
