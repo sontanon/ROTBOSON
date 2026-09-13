@@ -2,6 +2,7 @@
 #include "pardiso_param.h"
 #include "pardiso.h"
 #include "exit_codes.h"
+#include "profile.h"
 
 void solver_solve(double *u, // Solution array.
                   csr_matrix *A, // Matrix system to solve: Au = f.
@@ -10,6 +11,7 @@ void solver_solve(double *u, // Solution array.
     // Reordering and symbolic factorization.
     if (!(A->analysis_phase))
     {
+        prof_begin(PROF_ANALYSIS);
         phase = 11;
         pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, A->a, A->ia, A->ja, perm, &nrhs, iparm,
                    &msglvl, &ddum, &ddum, &error);
@@ -38,19 +40,17 @@ void solver_solve(double *u, // Solution array.
                MAX(iparm[14], iparm[15] + iparm[62]));
         printf("\n");
 
-        printf("PARDISO FACTOR DIAGNOSTICS\n");
-        printf("iparm[17] : % 9lld : Number of nonzeros in factors.\n", iparm[18 - 1]);
-        printf("iparm[18] : % 9lld : Number of factorization MFLOPS.\n", iparm[19 - 1]);
-        printf("\n");
-
         // Analysis phase has been completed.
         A->analysis_phase = 1;
 
         // Enable CG preconditioning.
         iparm[3] = 61;
+
+        prof_end(PROF_ANALYSIS);
     }
 
     // Numerical factorization.
+    prof_begin(PROF_FACTOR);
     phase = 22;
     pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, A->a, A->ia, A->ja, perm, &nrhs, iparm,
                &msglvl, &ddum, &ddum, &error);
@@ -62,12 +62,20 @@ void solver_solve(double *u, // Solution array.
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
         exit(RB_EXIT_SOLVER);
     }
+    prof_end(PROF_FACTOR);
+
+    // Factor diagnostics are filled by the numerical factorization phase.
+    printf("PARDISO FACTOR DIAGNOSTICS\n");
+    printf("iparm[17] : % 9lld : Number of nonzeros in factors.\n", iparm[18 - 1]);
+    printf("iparm[18] : % 9lld : Number of factorization MFLOPS.\n", iparm[19 - 1]);
+    printf("\n");
 
 #ifdef VERBOSE
     printf("PARDISO: Factorization completed.\n");
 #endif
 
     // Back substitution and iterative refinement.
+    prof_begin(PROF_SOLVE);
     phase = 33;
     pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, A->a, A->ia, A->ja, perm, &nrhs, iparm,
                &msglvl, f, u, &error);
@@ -79,6 +87,12 @@ void solver_solve(double *u, // Solution array.
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
         exit(RB_EXIT_SOLVER);
     }
+    prof_end(PROF_SOLVE);
+
+    // CGS diagnostics (iparm[19] is set by the solution phase when iparm[3] > 0).
+    printf("PARDISO SOLVE DIAGNOSTICS\n");
+    printf("iparm[19]: % 9lld : CGS/CG diagnostics (iterations*10 - error, <0 failed).\n", iparm[19]);
+    printf("\n");
 
     // Return.
     return;
@@ -207,6 +221,7 @@ void solver_repeated_solve(double *u, // Solution array.
     */
 
     // Back substitution and iterative refinement.
+    prof_begin(PROF_SOLVE);
     phase = 33;
     pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, A->a, A->ia, A->ja, perm, &nrhs, iparm,
                &msglvl, f, u, &error);
@@ -218,6 +233,7 @@ void solver_repeated_solve(double *u, // Solution array.
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
         exit(RB_EXIT_SOLVER);
     }
+    prof_end(PROF_SOLVE);
 
     // Return.
     return;

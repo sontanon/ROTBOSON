@@ -52,8 +52,8 @@ void solver_start(const MKL_INT matrix_dim)
     iparm[15 - 1] = 0; // Not in use.
     iparm[16 - 1] = 0; // Not in use.
     iparm[17 - 1] = 0; // Not in use.
-    iparm[18 - 1] = 0; // No Output: Number of nonzeros in the factor LU.
-    iparm[19 - 1] = 0; // No Output: Mflops for LU factorization.
+    iparm[18 - 1] = -1; // Output: Number of nonzeros in the factor LU (report if < 0).
+    iparm[19 - 1] = -1; // Output: Mflops for LU factorization (report if < 0).
     iparm[20 - 1] = 0; // Output: Numbers of CG Iterations.
     iparm[24 - 1] = 1; // Parallel Numerical Factorization.
     iparm[25 - 1] = 0; // Parallel Forward/Backward Solve.

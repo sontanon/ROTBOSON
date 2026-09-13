@@ -7,6 +7,7 @@
 #include "rhs_vars.h"
 #include "cart_to_pol.h"
 #include "analysis.h"
+#include "profile.h"
 
 // All functions are even about the equator and the axis.
 #define EVEN 1
@@ -17,6 +18,8 @@
 
 void rhs(rb_context *ctx, double *f, double *u)
 {
+    prof_begin(PROF_RHS);
+
     // Local alias for the IDX macro, which indexes by row-major stride NzTotal.
     const MKL_INT NzTotal = ctx->NzTotal;
 
@@ -232,6 +235,8 @@ void rhs(rb_context *ctx, double *f, double *u)
 
     // Omega constraint.
     f[ctx->w_idx] = 0.0;
+
+    prof_end(PROF_RHS);
 
     // All done.
     return;

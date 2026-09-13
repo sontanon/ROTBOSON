@@ -1,6 +1,8 @@
 #include "tools.h"
 #include "context.h"
 
+#include "profile.h"
+
 #define GRID_VARIABLE_START 1
 #define GRID_VARIABLE_END 6
 
@@ -91,7 +93,10 @@ double dot_all_variables(const rb_context *ctx, double *x, double *y)
 
 double norm2_all_variables(const rb_context *ctx, double *x)
 {
+    prof_begin(PROF_NORMS);
     double sum = dot_all_variables(ctx, x, x);
+    double result = sqrt(sum);
+    prof_end(PROF_NORMS);
 
-    return sqrt(sum);
+    return result;
 }

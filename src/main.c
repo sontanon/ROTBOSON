@@ -16,6 +16,7 @@
 #include "vector_algebra.h"
 #include "cart_to_pol.h"
 #include "analysis.h"
+#include "profile.h"
 
 // ---------------------------------------------------------------------------
 // Driver helpers. main() below is a thin driver; each stage is a named unit
@@ -271,6 +272,9 @@ static void run_analysis(rb_context *ctx, solution_writer *w, double **u, double
 
 int main(int argc, char *argv[])
 {
+    // Profiling: ROTBOSON_PROFILE=1 enables timers + RSS; registers report via atexit.
+    prof_init();
+
     // Integer counter.
     MKL_INT i = 0, j = 0;
 
