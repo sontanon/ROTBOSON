@@ -4,8 +4,8 @@
 // observables are written. Two backends implement it:
 //
 //   - ASCII  (default): one file per field, "<dirname>/<name>.asc", in the
-//     legacy `%9.18E` tab-separated format. This is byte-identical to the
-//     pre-Phase-5 output and is what the golden-data regression gate checks.
+//     legacy `%9.18E` tab-separated format, byte-identical to the
+//     pre-Phase-5 output (compatibility with the historical catalogue).
 //   - HDF5:   a single self-describing file "<dirname>/solution.h5". Datasets
 //     are named "<name>.asc" (1:1 with the ASCII files) so the two formats
 //     round-trip through the same Python readers. Parameters, solver settings

@@ -6,7 +6,7 @@ grid) that pins the HDF5 output schema and provides the roundtrip gate.
 Regenerate via configs/l1_smoke_n64_hdf5.toml (see its header).
 
 These tests run in CI's python-checks job; they require only h5py — no
-golden data, no solver build.
+solver build, no archived data.
 """
 
 from __future__ import annotations

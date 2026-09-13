@@ -3,7 +3,7 @@
 
 Usage:
     uv run tools/plot_verification.py --campaigns runbook-l1,runbook-l2,...
-    uv run tools/plot_verification.py --campaigns runbook-l1 --outdir docs/figures
+    uv run tools/plot_verification.py --campaigns runbook-l1 --outdir out/figures
 
 ``--campaigns`` is a manifest: the explicit list of campaign names (under
 ``out/campaigns/``) feeding the figures. This is deliberate — exploratory
@@ -21,7 +21,7 @@ dr=0.02/N=320 chain samples — off-branch, 2026-09 §4.1):
   sample maximum is a lower bound).
 
 Reads only campaign ``state.json`` files and ``data/paper/table_ix1.csv``;
-no HDF5 field data. Writes PNGs to ``docs/figures/``.
+no HDF5 field data. Writes PNGs to ``out/figures/`` by default.
 """
 
 from __future__ import annotations
@@ -330,7 +330,7 @@ def main() -> None:
         help="comma-separated campaign names (manifest): exactly the campaigns "
         "feeding the figures, e.g. runbook-l1,runbook-l2,runbook-l3,runbook-l4",
     )
-    ap.add_argument("--outdir", type=Path, default=REPO / "docs" / "figures")
+    ap.add_argument("--outdir", type=Path, default=REPO / "out" / "figures")
     args = ap.parse_args()
     outdir = args.outdir
     outdir.mkdir(parents=True, exist_ok=True)

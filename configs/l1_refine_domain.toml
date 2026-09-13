@@ -1,4 +1,4 @@
-# l=1 domain-keeping refinement demo (SAN-30).
+# l=1 domain-keeping refinement demo.
 #
 # Exercises the N×2 refinement end-to-end: the seed is re-solved at its own
 # ψ₀ on N=256/dr=0.0625 with the domain KEPT at 16.4 — the exact regrid the

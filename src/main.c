@@ -438,7 +438,7 @@ int main(int argc, char *argv[])
 
     // Single solve: one invocation = one Newton solve = one solution
     // directory. Sweep/continuation orchestration lives in the Python driver
-    // (docs/sweep-driver-design.md).
+    // (tools/sweep_driver.py).
     {
 
     // Open the solution writer (path-aware; no chdir).

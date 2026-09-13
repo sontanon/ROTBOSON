@@ -25,12 +25,12 @@ REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "out"
 
 # CMake build dirs (single-config presets); the binary lives in the configured
-# build tree. Keep support for the legacy Makefile binary at the repo root.
+# build tree. Keep support for a legacy root-level binary as a fallback.
 BUILD_PRESETS = ("release", "umfpack", "dev", "asan-ubsan")
 
 # Progress/diagnostics go through logging (stderr); the final observables
 # block is this tool's stdout product and stays on plain prints (logsetup's
-# convention note) so CI `tail` and VALIDATION.md keep their shape.
+# convention note) so CI `tail` keeps its shape.
 logger = get_logger(__name__)
 
 

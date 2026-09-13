@@ -1,7 +1,7 @@
 // Minimal, dependency-free test harness for the Phase 3 C tests.
 //
 // Deliberately tiny (no framework): a test binary calls CHECK* and returns 0 on
-// success / nonzero on failure, which CTest understands. The rich golden-data
+// success / nonzero on failure, which CTest understands. The richer solution
 // comparisons live in the Python tools instead.
 #ifndef ROTBOSON_TEST_H
 #define ROTBOSON_TEST_H

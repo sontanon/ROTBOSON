@@ -1,3 +1,9 @@
+# CI smoke config: l=1, w=0.95, from scratch, on a COARSE grid.
+# Same physical domain extent (~16) and identical solver setup as the
+# historical full-resolution smoke, but at dr=dz=0.25, N=64 so the
+# UMFPACK fallback backend converges in seconds instead of ~30 minutes.
+# Used by .github/workflows/ci.yml (both backends, per PR).
+
 # This parameter file will generate initial data for l=1.
 # This is a weak / scattered scalar field (frequency close to the mass),
 # and will serve as the "seed" to generate the rest of the l=1 data.
@@ -11,10 +17,10 @@
 # NrInterior: Number of interior points in the rho direction.
 # NzInterior: Number of interior points in the z direction.
 # order: Finite difference order. Can be 2 or 4.
-dr = 6.25000E-02
-dz = 6.25000E-02
-NrInterior = 256
-NzInterior = 256
+dr = 2.50000E-01
+dz = 2.50000E-01
+NrInterior = 64
+NzInterior = 64
 order = 4
 
 # INITIAL DATA
@@ -74,6 +80,3 @@ useLowRank = 0
 
 # BOUNDARY TYPES.
 # Radiative boundaries.
-
-# OUTPUT
-outputFormat = "hdf5"

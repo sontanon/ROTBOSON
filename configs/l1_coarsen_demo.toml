@@ -1,4 +1,4 @@
-# l=1 coarsening demo (SAN-30): the up-leg's widening machinery.
+# l=1 coarsening demo: the up-leg's widening machinery.
 #
 # A down-campaign (ψ₀ shrinking, ω rising toward the dilute end) from the
 # ω=0.95 seed. The seed's support already fills the domain (r99 fraction

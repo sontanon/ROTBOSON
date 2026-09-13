@@ -50,7 +50,7 @@ jobs:
       - name: Smoke test (l=1, w=0.95, coarse grid)
         run: |
           source /opt/intel/oneapi/setvars.sh
-          uv run tools/smoke.py out/l1_smoke_ci.toml --skip-build 2>&1 | tail -20
+          uv run tools/smoke.py configs/l1_smoke_ci.toml --skip-build 2>&1 | tail -20
 
   build-and-test-umfpack:
     name: Build + smoke test (UMFPACK fallback)
@@ -78,7 +78,7 @@ jobs:
         run: ctest --test-dir build/umfpack --output-on-failure
 
       - name: Smoke test (l=1, w=0.95, coarse grid)
-        run: uv run tools/smoke.py out/l1_smoke_ci.toml --skip-build --binary build/umfpack/ROTBOSON 2>&1 | tail -20
+        run: uv run tools/smoke.py configs/l1_smoke_ci.toml --skip-build --binary build/umfpack/ROTBOSON 2>&1 | tail -20
 
   python-checks:
     name: Python checks (ruff + ty, 3.14)
