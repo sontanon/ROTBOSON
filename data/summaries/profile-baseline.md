@@ -33,6 +33,37 @@ Run 2026-09-13, exit 0, converged in 8 Newton iterations.
 (the nleq_err trial loop re-solves with a frozen factorization via
 `solver_repeated_solve`).
 
+## N=256 scaling run (2026-09-13)
+
+`sweep_driver` + `configs/l1_regrid_n256.toml` (domain-keeping regrid,
+405,601 rows, 13.5M nnz, 5 Newton iterations, wall 130.3 s):
+
+| metric | N=128 | N=256 | ratio | exponent |
+|---|---|---|---|---|
+| rows | 104,545 | 405,601 | 3.88× | — |
+| LU nnz | 87.0M | 445.3M | 5.11× | **1.20** |
+| PARDISO peak internal | 1.02 GB | 4.73 GB | 4.63× | 1.11 |
+| process peak RSS | 1.33 GB | 5.07 GB | 3.81× | 1.07 |
+| factor ms/call | 1,482 | 14,115 | 9.5× | ~1.6 (memory-bound) |
+| solve ms/call (CGS) | 2,747 | 4,785 | 1.74× | ~0.4 |
+| wall total | 58 s | 130 s | 2.25× | — |
+
+At N=256 the phase split shifts: factor (43.3%) ≈ solve (44.1%) — at
+larger N the **factorization becomes the dominant cost and the dominant
+memory item**. Extrapolating LU nnz ~ rows^1.20:
+
+| N | rows | LU nnz est. | factor values | est. peak RSS |
+|---|---|---|---|---|
+| 384 | 903k | ~1.2G | ~9.3 GB | ~11–13 GB (does NOT fit 8 GB) |
+| 512 | 1.60M | ~2.3G | ~18 GB | ~19–22 GB |
+
+Note: N=256 at 5.07 GB already runs against the 8 GB container limit
+(system-wide peak ~7.1 GB). fp32 factors (÷2 on values) make N=384
+borderline-feasible (~6 GB) but not N=512 (~10 GB). Reaching the paper's
+N=400 and beyond in doubles on this box requires compression (BLR/MUMPS),
+OOC factors, hybrid/GPU memory — or M4 non-uniform grids to cut unknowns
+at equal accuracy.
+
 ## Findings
 
 1. **The solve phase dominates (80%), and it is not a triangular solve.**
