@@ -1,4 +1,0 @@
-# This directory is where object files are stored for compilation.
-# Ignore everything except this .gitignore file.
-*
-!.gitignore

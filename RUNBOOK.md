@@ -156,7 +156,7 @@ support fills the domain (`support_fraction`) and stops cleanly at the
 uv run tools/plot_verification.py --campaigns runbook-l1,runbook-l2,runbook-l3,runbook-l4
 ```
 
-Writes `docs/figures/`: M_Komar(ω) and J_Komar(ω) branch curves with the
+Writes `out/figures/`: M_Komar(ω) and J_Komar(ω) branch curves with the
 paper's Table IX.1 critical points, ω vs ψ₀ with the folds marked, the
 Table IX.1 deviation bars, and the grid study. Branch segments are colored
 per grid (N), so a refinement kink is visible per branch. The tool reads

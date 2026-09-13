@@ -23,6 +23,6 @@ add_test(NAME output COMMAND test_output)
 add_executable(test_exit_codes test_exit_codes.c)
 target_compile_definitions(
     test_exit_codes PRIVATE ROTBOSON_BIN="$<TARGET_FILE:ROTBOSON>"
-                            ROTBOSON_SMOKE_CONFIG="${CMAKE_SOURCE_DIR}/out/l1_smoke_ci.toml")
+                            ROTBOSON_SMOKE_CONFIG="${CMAKE_SOURCE_DIR}/configs/l1_smoke_ci.toml")
 
 add_test(NAME exit_codes COMMAND test_exit_codes)

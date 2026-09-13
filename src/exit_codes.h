@@ -1,8 +1,8 @@
 // Process exit codes for the ROTBOSON binary (single-solution contract).
 //
-// One invocation = one Newton solve. The Python sweep driver (see
-// docs/sweep-driver-design.md) keys its decision table off these codes, so
-// they are part of the binary's public contract: do not renumber.
+// One invocation = one Newton solve. The Python sweep driver keys its
+// decision table off these codes, so they are part of the binary's public
+// contract: do not renumber.
 
 #ifndef ROTBOSON_EXIT_CODES_H
 #define ROTBOSON_EXIT_CODES_H

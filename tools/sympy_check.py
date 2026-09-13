@@ -1,7 +1,7 @@
 """Cross-check the SymPy re-derivation against the codegen notebook.
 
 Parses the 6x31 Jacobian strings stored in
-``derivations/notebooks/Mathematica CSR Code Generation.ipynb`` (produced in
+``derivations/Mathematica CSR Code Generation.ipynb`` (produced in
 Mathematica and pasted by hand) and compares them numerically against the
 independent SymPy Jacobian from :mod:`tools.sympy_system`, at a few hundred
 random sample points.  Exit code 0 iff every entry agrees.
@@ -20,8 +20,7 @@ import sympy_system as ss
 from logsetup import configure, get_logger
 
 NB_PATH = str(
-    Path(__file__).resolve().parent.parent
-    / "derivations/notebooks/Mathematica CSR Code Generation.ipynb"
+    Path(__file__).resolve().parent.parent / "derivations/Mathematica CSR Code Generation.ipynb"
 )
 
 

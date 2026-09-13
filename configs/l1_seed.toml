@@ -1,4 +1,4 @@
-# l=1 starter seed — the runbook's entry point (SAN-29).
+# l=1 starter seed — the runbook's entry point
 #
 # From-scratch analytical ansatz, fixed-omega solve: converges on-branch
 # (verified 2026-09-12: M_Komar1 = M_Komar2, exit 0, ~1 min on 4 cores).

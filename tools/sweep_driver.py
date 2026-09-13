@@ -1810,7 +1810,7 @@ def finished(state: CampaignState, spec: Spec) -> str | None:
         # it, so stop instead of regridding. The practical default is to end
         # down campaigns at omega_target = 0.9 first (paper convention).
         #
-        # SAN-30: the guard YIELDS to available coarsening — the support
+        # The guard YIELDS to available coarsening — the support
         # fraction of a just-started dilute campaign can sit marginally over
         # the threshold while widening is still possible (dr×2 ≤ dr_max,
         # regrid budget left); stopping there would be self-defeating. The

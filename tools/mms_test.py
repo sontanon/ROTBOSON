@@ -8,8 +8,8 @@ C code uses -- recovers ``S`` at the design order on the interior.
 
 This is the direct, local validation the Phase 3 component layer wanted and
 deferred to Phase 4 (it needs ``L`` to exist first).  It catches off-axis and
-mutually-cancelling sign/factor errors that the golden data can only probe
-indirectly.
+mutually-cancelling sign/factor errors that end-to-end solution comparisons
+probe only indirectly.
 
 Usage:
     uv run tools/mms_test.py

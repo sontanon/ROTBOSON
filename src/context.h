@@ -11,7 +11,8 @@
 //   - "State" (derivative buffers, spherical interpolation arrays, analysis
 //     outputs, seed, output directory names) is mutated across the solve.
 //   - MKL_INT is used for integer parameters to match the MKL ILP64 backend;
-//     see PLAN.md Phase 6 for the eventual de-MKL-ification.
+//     de-MKL-ification (a portable sparse backend everywhere) is a possible
+//     future direction, not scheduled.
 #ifndef ROTBOSON_CONTEXT_H
 #define ROTBOSON_CONTEXT_H
 

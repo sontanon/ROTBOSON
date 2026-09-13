@@ -203,7 +203,7 @@ class TestBoundaryStop:
     def test_boundary_grazing_tail_stops_down_campaign(self):
         # r99/domain = 16/16.5 = 0.97 > 0.95 — but the guard now YIELDS to
         # available coarsening (dr×2=0.25 ≤ dr_max, budget left): widening
-        # is tried first (SAN-30). It stops only when widening is spent.
+        # is tried first. It stops only when widening is spent.
         assert finished(self.state_at(16.0), spec_down()) is None
         state = self.state_at(16.0)
         state = replace(state, widenings_left=0)
@@ -335,7 +335,7 @@ def test_ghost_of():
 
 
 # ---------------------------------------------------------------------------
-# SAN-30 driver controls: domain-keeping refinement, coarsening + budgets,
+# Driver controls: domain-keeping refinement, coarsening + budgets,
 # boundary-class failure classification
 # ---------------------------------------------------------------------------
 class TestAdaptivityNewKnobs:

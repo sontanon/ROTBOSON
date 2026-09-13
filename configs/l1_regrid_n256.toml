@@ -1,4 +1,4 @@
-# l=1 regrid example — the runbook's grid/refinement step (SAN-29).
+# l=1 regrid example — the runbook's grid/refinement step
 #
 # Takes the starter seed (configs/l1_seed.toml, N=128/dr=0.125, domain 16.4)
 # and re-solves the SAME branch point on a finer grid that KEEPS the domain:

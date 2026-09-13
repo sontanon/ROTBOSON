@@ -7,4 +7,4 @@ single-file C99 TOML parser (MIT license).
 - Files: `toml.h`, `toml.c`
 
 See the `LICENSE` header in each file for the MIT license text. This library
-replaces libconfig for ROTBOSON parameter parsing (Phase 2 of `PLAN.md`).
+replaces libconfig for ROTBOSON parameter parsing.

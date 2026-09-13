@@ -2,8 +2,8 @@
 
 Convention:
 - **print() is a tool's stdout product** — final reports and verdicts that a
-  human or CI consumes as data (e.g. `compare_solutions` reports,
-  `generate_kernels --check` verdict). Keep those as plain prints.
+  human or CI consumes as data (e.g. `generate_kernels --check` verdict).
+  Keep those as plain prints.
 - **logging is operational diagnostics** — progress, retries, skips, errors —
   emitted to *stderr* so stdout stays clean for the report product.
 

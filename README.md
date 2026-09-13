@@ -5,11 +5,11 @@ Numerical initial-data generation for rotating boson stars in axisymmetry
 system of six coupled nonlinear elliptic PDEs plus the scalar-field frequency ω
 via global Newton methods and the PARDISO sparse direct solver.
 
-See `PLAN.md` for the modernization roadmap and `VALIDATION.md` for validation
-results against the published data (arXiv:2103.13993, Class. Quantum Grav.
-**38** 154003 (2021)) — Phase 0 golden fidelity plus the 2026-09 catalogue
-rebuild & paper verification (l=1..4; session report
-`docs/milestone-report-2026-09.md`, figures `docs/figures/`).
+**Start here: [`RUNBOOK.md`](RUNBOOK.md)** — the complete, top-to-bottom path
+from a fresh clone to the four-branch catalogue (l = 1..4) and its
+verification against the published data (arXiv:2103.13993, Class. Quantum
+Grav. **38** 154003 (2021), Table IX.1). This README covers the build, the
+tooling, and the repository layout.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ Linux with GCC, CMake (>= 3.20), and a C compiler with OpenMP. Two libraries:
 
 ### oneMKL (Intel Math Kernel Library)
 
-oneMKL is now free (no license/serial) and installable via package managers.
+oneMKL is free (no license/serial) and installable via package managers.
 
 Fedora:
 ```bash
@@ -55,9 +55,8 @@ source /opt/intel/oneapi/setvars.sh
 ### Configuration (TOML)
 
 Parameter files are TOML, parsed by a vendored `tomlc99` (see
-`third_party/tomlc99/`); libconfig is no longer a dependency. Unknown keys are
-rejected and wrong types are hard errors. Legacy `.par` files can be converted
-with `uv run tools/par_to_toml.py`.
+`third_party/tomlc99/`); libconfig is not a dependency. Unknown keys are
+rejected and wrong types are hard errors.
 
 Two extra keys control output:
 - `outputFormat = "hdf5"` writes a single self-describing `solution.h5` per
@@ -66,19 +65,17 @@ Two extra keys control output:
   the Python tooling reads it natively.
 - `outputFormat = "ascii"` (default) writes the legacy one-file-per-field
   `.asc` layout, byte-identical to the 2020-era catalogue output. It is a
-  **compatibility backend**, kept so the golden-regression validation chain
-  (which compares archived solutions byte-for-byte) runs unchanged. New
-  workflows should prefer HDF5; the ASCII default stays until the HDF5
-  catalogue rebuild makes the regression chain format-independent.
+  compatibility backend, kept so solutions remain interchangeable with the
+  historical pipeline.
 - `loglevel = "error" | "warn" | "info" (default) | "debug"` sets the
   verbosity of the progress/banner output.
 
 ### Single-solution contract & exit codes
 
 The binary does one thing: **one invocation = one Newton solve = one solution
-directory.** Sweep/continuation orchestration lives in the Python driver (see
-`docs/sweep-driver-design.md`); the old in-C `sweep_advance`/ladder machinery
-was removed. The process exit code is part of the public contract
+directory.** Sweep/continuation orchestration lives in the Python driver
+(see the sweep-driver section below); the old in-C `sweep_advance`/ladder
+machinery was removed. The process exit code is part of the public contract
 (`src/exit_codes.h`):
 
 | code | meaning                                          |
@@ -126,26 +123,54 @@ cmake --preset release                # or: dev (asan/ubsan), asan-ubsan, umfpac
 cmake --build --preset release -j
 ```
 
-This produces `build/release/ROTBOSON`. A legacy GNU Makefile is kept at the
-repo root but is deprecated.
+This produces `build/release/ROTBOSON`.
+
+## Running a solve
+
+The binary writes the solution directory under the process working directory,
+so run it from a scratch/output directory (`out/` is the convention; it exists
+in the repo as a stub):
+
+```bash
+cd out && ../build/release/ROTBOSON ../configs/l1_seed.toml && cd ..
+```
+
+`configs/` holds the ready-made specs: the starter seed, the regrid template,
+the four runbook down-campaigns, the cross-l seed specs, and demo specs for
+the driver's refinement/coarsening machinery. The runbook walks them in
+order — that is the intended usage path, not ad-hoc parameter editing.
 
 ## Python tooling
 
-Analysis/validation tools live under `tools/` (see `tools/README.md` for the
-full inventory) and are managed with `uv`:
+Tooling lives under `tools/` (see `tools/README.md` for the per-tool
+reference) and is managed with `uv`:
 
 ```bash
 uv sync --dev
-uv run tools/smoke.py out/l1_from_scratch.toml
 ```
+
+The final list: `sweep_driver.py` (continuation campaigns), `smoke.py`
+(build + run + extract observables), `plot_verification.py` (the
+verification figures from campaign state files), `hdf5_roundtrip.py`
+(HDF5 ⇄ ASCII roundtrip), `rotboson_io.py` + `logsetup.py` (shared
+helpers), and the symbolic/codegen chain `sympy_system.py`,
+`generate_kernels.py`, `sympy_check.py`, `mms_test.py`.
+
+The generated C kernels (`src/rhs_vars.c`, `src/csr_vars.c`) are checked in;
+CI regenerates them and asserts byte-identical output — the codegen gate is
+
+```bash
+uv run tools/generate_kernels.py --check
+```
+
+Run it locally after touching `sympy_system.py` or the notebook.
 
 ### Sweep driver
 
 `tools/sweep_driver.py` runs continuation campaigns: the C binary solves one
 solution per step, Python orchestrates. The continuation parameter is **ψ₀**
 (the field value at the fixedPhi grid point); Newton solves ω as an eigenvalue
-each step, so the branch crosses the minimum-ω turning point naturally (design:
-`docs/sweep-driver-design.md`).
+each step, so the branch crosses the minimum-ω turning point naturally.
 
 ```toml
 # campaign spec (TOML; unknown keys rejected)
@@ -155,8 +180,8 @@ direction = "up"          # amplitude growing (ω → ω_min) or "down" (ψ₀ �
 psi0_target = 0.008       # stop when ψ₀ crosses this
 omega_target = 0.85       # optional ω stop
 psi0_step = 0.03          # per-step ratio, ψ₀ → ψ₀·(1 ± psi0_step) — the
-                          # default mode (golden-ladder-like, scale-free);
-                          # psi0_step_mode = "absolute" switches to fixed Δψ₀
+                          # default mode (scale-free); psi0_step_mode =
+                          # "absolute" switches to fixed Δψ₀
 max_retries = 3           # on Newton failure the step shrinks ×½ and retries
 max_steps = 20
 
@@ -211,7 +236,7 @@ changed spec aborts resume). Solutions are read back via `tools/rotboson_io.py`
 `rr_phi_max`, `r99`, `hwl_resolution` and the Newton health (iteration count,
 tail damping λ, final ‖f‖).
 
-Adaptive behaviour (design §4–6):
+Adaptive behaviour:
 
 - **Step-size control** — a persistent step factor grows (×1.25) after fast,
   healthy convergence and shrinks (×½) after grudging convergence or failure;
@@ -242,64 +267,55 @@ The decision logic lives in pure functions (`decide_action`,
 `detect_turning_point`, `turning_point_estimate`), unit-tested in
 `tests/test_driver_decisions.py` (`uv run pytest`).
 
+## Repository layout
+
+```
+src/            the C solver (elliptic system, Newton, PARDISO/UMFPACK backends,
+                HDF5/ASCII output, analysis diagnostics)
+tests/          CTest executables + Python tests (incl. pinned HDF5/JSON fixtures)
+configs/        the 13 campaign/seed/demo specs (TOML; the runbook walks them)
+tools/          the 10 Python tools (see tools/README.md)
+derivations/    the Mathematica codegen notebook (source of the checked-in kernels)
+data/paper/     the published paper (text + Table IX.1 critical points as CSV)
+cmake/          FindMKL
+third_party/    vendored tomlc99
+.github/        CI (both backends + Python checks, per PR)
+out/            run outputs (gitignored except the .gitkeep stub)
+RUNBOOK.md      the usage path: fresh clone → catalogue → verification
+```
+
 ## What a fresh clone gets you
 
-Everything needed to build, run and test works out of the box after installing
-the packages above -- no curated data required:
+Everything needed to build, run the runbook, and test works out of the box
+after installing the packages above — no curated data required:
 
 - the full source tree, CMake presets, vendored `tomlc99`, tests and CI config;
-- the from-scratch smoke config (`out/l1_from_scratch.toml`), its coarse-grid
-  CI variant (`out/l1_smoke_ci.toml`, used by `.github/workflows/ci.yml` so the
-  UMFPACK fallback smoke runs in seconds) and its HDF5
-  variant (`out/l1_from_scratch_hdf5.toml`), plus the continuation config
-  (`out/l1_from_initial_data.toml`);
-- `data/paper/` (the published paper's text and Table IX.1 critical
-  points) and the runbook configs (`configs/`);
-- the derivation notebooks (`derivations/`) and all Python tooling.
+- `configs/` — the runbook specs, including the coarse CI smoke spec
+  (`configs/l1_smoke_ci.toml`, used by `.github/workflows/ci.yml` so the
+  UMFPACK fallback smoke runs in seconds);
+- `data/paper/` (the published paper's text and Table IX.1 critical points);
+- the codegen notebook (`derivations/`) and all Python tooling;
+- an empty `out/` stub — the solver and the driver write all outputs there,
+  nothing under it is tracked.
 
-The archived publication dataset is **not** in the repo (gitignored;
-4.7 GB, restored from the backup drive -- see `data/golden/README.md` for
-provenance and `data/golden/MANIFEST.sha256` for checksums):
+There is no golden/archived dataset in the repo and no `docs/` directory:
+the historical validation narrative lives in git history, and the archived
+publication solutions (4.7 GB) live on the backup drive. You can build, run
+CTest, solve from scratch, use HDF5 output, and reproduce the full catalogue
+via the runbook from a fresh clone alone.
 
-- `data/golden/` -- the archived publication solutions (the §4c regression
-  gate compares against them);
-- `data/seeds/` -- the interpolation seeds referenced by
-  `data/params/regeneration/*.toml` (which use paths relative to `out/`);
-- `data/summaries/`, `data/params/`, `data/convergence/` -- the Catalogue2
-  summary tables and the old-pipeline parameter templates/convergence
-  studies (no longer tracked; restored with the archive, or recovered from
-  git history).
+## Known issue: GRV2/GRV3 for the l=2 Catalogue2 copy
 
-Without them you can still build, run CTest, solve from scratch, and use HDF5
-output; you only cannot re-run the golden-regeneration validation chain.
-`tools/smoke.py` and `tools/hdf5_roundtrip.py` work on freshly generated
-solutions alone.
-
-## Generating l=1 data
-
-Two parameter files generate $l=1$ data in `out`. Run from `out/` (output
-directories are created under the process working directory; ROTBOSON no
-longer `chdir`s into them):
-
-```bash
-cd out
-../build/release/ROTBOSON l1_from_scratch.toml
-```
-
-For the single-file HDF5 output, run the `l1_from_scratch_hdf5.toml` variant
-from a scratch directory and inspect `solution.h5` with
-`uv run tools/hdf5_roundtrip.py` (exports back to `.asc` and/or compares
-against a legacy `.asc` reference).
-
-This generates initial data for $l=1$, $m=1$, $\omega=0.95$ in a directory named
-`l=1,w=9.50000E-01,dr=6.25000E-02,N=0256` (parameters unchanged).
-
-Then use the other parameter file to generate many more solutions by
-continuation from the previous "seed":
-
-```bash
-../build/release/ROTBOSON l1_from_initial_data.toml
-```
-
-This runs for a while (up to $\omega = 0.675222$, where it stops because the
-scalar field is too "spiky" for the grid resolution).
+The only mismatch ever found against the archived publication data is in the
+`GRV2.asc`/`GRV3.asc` virial-identity diagnostics of the l=2 solution at
+w=8.74062E-01 **as copied into Catalogue2** — the fields and all physical
+observables there still agree to ~1e-13. Root cause (git archaeology): the
+Catalogue2 files predate commit `fe80330` ("Fix modulus calculation",
+2020-10-30), which changed the Kerr-extrapolation correction in `analysis.c`
+from a local `rInf = sph_rr[last]` to the global `rr_inf` (and the Catalogue2
+run itself used a still-earlier analysis build); the virial integrands
+themselves are unchanged across the entire history. The **publication**
+dataset (StandarizedOutput) is unaffected: its GRV2/GRV3 match master to
+~1e-12 (verified for l=1). The tool that recomputes GRV2/GRV3 from saved
+spherical data was retired with the golden chain and is recoverable from git
+history.

@@ -1,43 +1,47 @@
 # Build artifacts
-obj/*.o
-ROTBOSON
-ooc_*
-out/*/*
-out/*.log
-*.egg-info/
 build/
 compile_commands.json
+ROTBOSON
+ooc_*
+*.egg-info/
 
 # Editor / IDE
 .vscode/
-VSC_Workspace
 *.swp
 
 # Python tooling (uv)
 .venv/
 __pycache__/
 .ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
 
-# Archived publication data from the backup drive (see PLAN.md and
-# data/golden/README.md): golden solutions, summary tables, and the
-# old-pipeline parameter templates/convergence configs. Only data/paper/
-# and small test fixtures are tracked; everything else is restored from
-# the archive drive when needed (git history keeps the retired configs).
+# Run outputs: the runbook's step (a) cds into out/, so the directory keeps a
+# tracked .gitkeep stub; everything the solver and the driver write there is
+# local-only.
+out/*
+!out/.gitkeep
+
+# Archived publication data from the backup drive (4.7 GB, not tracked):
+# golden solutions, summary tables, and the old-pipeline parameter
+# templates/convergence configs. Recoverable from the archive drive or git
+# history; only data/paper/ and the test fixtures are tracked.
 data/golden/
 data/seeds/
 data/summaries/
 data/params/
 data/convergence/
 
-# Re-derived symbolic notebooks are tracked under derivations/notebooks
-# (stripped of outputs); raw notebook files are ignored everywhere else.
-*.ipynb
-!derivations/notebooks/*.ipynb
-
-# Raw outputs and configs (legacy formats)
+# Solution data and legacy formats — HDF5 is tracked only as the pinned
+# roundtrip fixture; the only tracked notebook is the codegen notebook under
+# derivations/.
+*.h5
+!tests/fixtures/*.h5
+*.par
 *.asc
 *.cfg
 *.json
 !CMakePresets.json
-# Round-trip test fixtures are deliberate, versioned state.json snapshots
 !tests/fixtures/*.json
+*.ipynb
+!derivations/*.ipynb
