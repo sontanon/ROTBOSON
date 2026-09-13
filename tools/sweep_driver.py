@@ -770,13 +770,19 @@ class PendingRefinement:
     from_dr: float
     regrid_step: int
     measurement: FoldMeasurement
+    # N of the pre-regrid grid (the domain-keeping refinement's revert target;
+    # None = the legacy fixed-N refinement, where from_dr alone suffices).
+    from_n: int | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        out: dict[str, object] = {
             "from_dr": self.from_dr,
             "regrid_step": self.regrid_step,
             "measurement": self.measurement.to_dict(),
         }
+        if self.from_n is not None:
+            out["from_n"] = self.from_n
+        return out
 
     @classmethod
     def from_dict(cls, raw: Mapping[str, object]) -> Self:
@@ -784,6 +790,7 @@ class PendingRefinement:
         return cls(
             from_dr=_st_float(raw.get("from_dr", 0.0)),
             regrid_step=_st_int(raw.get("regrid_step", 0)),
+            from_n=_st_opt_int(raw.get("from_n")),
             measurement=(
                 FoldMeasurement.from_dict(measurement)
                 if isinstance(measurement, Mapping)
@@ -2199,8 +2206,12 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
             # not the spec's initial grid: after an accepted regrid the two
             # differ, and rendering the continuation with the old dr while
             # seeding from fine-grid fields stretches the configuration 2×
-            # (‖du‖₀ ≈ 4, immediate PARDISO −4).
-            spec_eff = spec.with_grid(current_grid(state, spec).dr)
+            # (‖du‖₀ ≈ 4, immediate PARDISO −4). Both dr AND N come from the
+            # tracked grid — patching only the dr reverts a domain-keeping
+            # refinement to the spec's N on the next step (the 2026-09
+            # self-defeating-parameter trap, found live in the runbook runs).
+            g_eff = current_grid(state, spec)
+            spec_eff = spec.with_grid(g_eff.dr, g_eff.N)
             # Cross-grid campaign seed: if the previous good solution lives on
             # a different grid than the campaign's current grid (e.g. a fold
             # campaign seeded from another branch's refined-grid solution),
@@ -2302,7 +2313,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 ).with_fold_measurement(measurement)
                 state = replace(
                     state,
-                    grid=replace(current_grid(state, spec), dr=pending.from_dr),
+                    grid=GridPosition(dr=pending.from_dr, N=pending.from_n or cur_grid.N),
                     refinements_left=0,
                     pending_refinement=None,
                 )
@@ -2395,6 +2406,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                     refinements_left=diag.refinements_left - 1,
                     pending_refinement=PendingRefinement(
                         from_dr=dr,
+                        from_n=cur_grid.N if a.refine_keeps_domain else None,
                         regrid_step=step_no,
                         measurement=FoldMeasurement(
                             psi0=state.steps[-1].psi0,

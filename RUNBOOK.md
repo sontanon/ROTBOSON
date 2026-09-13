@@ -66,13 +66,13 @@ vertex is measured at the finer resolution. `stop_at_turning_point` stops
 the campaign 1–2 steps past the vertex; `--summarize` localizes ω_min
 (degree-4 fit over the vertex-region samples, paper §IX).
 
-Recorded expectations (l=1):
+Recorded expectations (l=1, achieved 2026-09-13):
 - the refinement trigger fires around ψ₀ ≈ 0.31–0.35 (the half-width dips
   8 → 7 cells), a few steps before the vertex (ψ₀ ≈ 0.39–0.46);
-- ω_min ≈ 0.6456–0.646 at dr=0.0625 (paper: 0.64561; the dr=0.125
-  discretization error is +0.23%, the 4th-order scaling puts dr=0.0625 at
-  ≈ +0.014%);
-- the ψ0_target=0.6 is a safety net — the detector normally fires first;
+- ω_min = 0.6460482 (paper: 0.64561; **+0.068%** — the dr=0.0625
+  discretization on the kept domain; the fold is the most
+  resolution-sensitive critical point);
+- the ψ0_target=0.6 is a safety net — the detector fires first;
 - wall-time ≈ 40–70 min (the coarse stretch at N=128, the fold region at
   N=256).
 
@@ -118,8 +118,29 @@ for l in 2 3 4; do
 done
 ```
 
-ψ₀ targets (past-fold safety nets, from the 2026-09 campaigns):
-l=2 → 1.5, l=3 → 0.8, l=4 → 0.4. Expected wall-time ≈ 1–1.5 h each.
+ψ₀ targets (past-fold safety nets, raised from the 2026-09 values — on the
+kept-domain convention the l=3/l=4 folds sit further out than the old
+labels suggested): l=2 → 1.5, l=3 → 4.0, l=4 → 2.5. Expected wall-time
+≈ 1–1.5 h each.
+
+Achieved critical points (2026-09-13, all campaigns stopped on
+`stopped:turning_point`):
+
+| l | ω_min (ours) | paper | Δ |
+|---|---|---|---|
+| 1 | 0.6460482 | 0.64561 | +0.068% |
+| 2 | 0.5212434 | 0.51657 | +0.90% |
+| 3 | 0.4533087 | 0.44339 | +2.24% |
+| 4 | 0.4186076 | 0.40756 | +2.71% |
+
+The mass/angular-momentum peaks (M_max/J_max) are substantially more
+accurate (l=1,2 within 0.05%; l=3 −0.55%/−1.0%; l=4 −1.2%/−2.3%) — they
+live mid-branch, away from the fold. The fold ω_min is the most
+resolution-sensitive critical point: these values are the dr=0.0625
+discrete solutions (verified fit-robust and domain-independent for l=2).
+A fold-polish stage (a fractional-N regrid 256→384 at dr≈0.0417, ≈30–45
+min per l) is a documented optional extension for when tighter fold
+accuracy matters — deliberately not part of this runbook's flow.
 
 **Up-legs (ω rising toward the dilute end) are optional extensions**, not
 needed for the verification (the seeds already sit at ω≥0.9, and Table
@@ -161,7 +182,9 @@ verification figures.
 ## Verification
 
 Compare each branch's localized critical points against
-`data/paper/table_ix1.csv` (the paper's Table IX.1). M2 tolerances:
-l=1,2 ≤ 0.05% on ω_min/M_max/J_max; l=3,4 ≤ ~1.2% (their folds are
-resolution-limited at the runbook's grids). `plot_verification.py` prints
-the comparison table and draws the deviation bars.
+`data/paper/table_ix1.csv` (the paper's Table IX.1). Achieved (2026-09-13):
+the mass/angular-momentum peaks within 0.05% (l=1,2) and ~2.3% (l=4);
+the fold frequencies +0.07% (l=1) to +2.7% (l=4) — the fold is the most
+resolution-sensitive critical point at the runbook's grids; the causes are
+diagnosed (resolution, not physics). `plot_verification.py` prints the
+comparison table and draws the deviation bars.

@@ -11,7 +11,7 @@
 [campaign]
 l = 3
 direction = "up"
-psi0_target = 0.8
+psi0_target = 4.0
 psi0_step = 0.03
 psi0_step_mode = "relative"
 max_retries = 4

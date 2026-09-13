@@ -165,8 +165,10 @@ def fig_branch_curves(
         pts = samples_by_l.get(l) or []
         if not pts:
             continue
-        for (dr, n), seg in _segments(pts):
+        segs = _segments(pts)
+        for seg_i, ((_dr, n), seg) in enumerate(segs):
             style = N_STYLES.get(n, "solid")
+            first = seg_i == 0
             if mode == "psi0":
                 ax.plot(
                     [s["psi0"] for s in seg],
@@ -174,7 +176,7 @@ def fig_branch_curves(
                     color=COLORS[l],
                     lw=1.8,
                     ls=style,
-                    label=f"l = {l}" if (dr, n) == _segments(pts)[0][0] else None,
+                    label=f"l = {l}" if first else None,
                 )
             else:
                 ykey = "M_Komar" if mode == "m" else "J_Komar"
@@ -184,7 +186,7 @@ def fig_branch_curves(
                     color=COLORS[l],
                     lw=1.8,
                     ls=style,
-                    label=f"l = {l}" if (dr, n) == _segments(pts)[0][0] else None,
+                    label=f"l = {l}" if first else None,
                 )
                 ref = paper[l]["M_max" if mode == "m" else "J_max"]
                 ax.plot(
@@ -195,7 +197,7 @@ def fig_branch_curves(
                     lw=1.0,
                     alpha=0.6,
                     label=("paper Table IX.1 " + ("M_max" if mode == "m" else "J_max"))
-                    if l == 1
+                    if l == 1 and first
                     else None,
                 )
         if mode == "psi0":
@@ -214,8 +216,9 @@ def fig_branch_curves(
                     label="ω_min (ours, sampled)" if l == 1 else None,
                 )
     handles, labels = ax.get_legend_handles_labels()
+    used_n = {int(s.get("N") or 0) for pts in samples_by_l.values() for s in pts}
     for n, style in sorted(N_STYLES.items()):
-        if any(n in s for pts in samples_by_l.values() for s in pts):
+        if n in used_n:
             handles.append(Line2D([], [], color="0.4", lw=1.5, ls=style))
             labels.append(f"N={n} segment")
     ax.set_xscale("log") if mode == "psi0" else None
