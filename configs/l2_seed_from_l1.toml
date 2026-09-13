@@ -1,0 +1,35 @@
+# EXPERIMENT: l=2 cross-l seed straight from the l=1 w=0.95 starter.
+# Recipe: previous-branch solution + amplitude rescale x0.0738 (the
+# cross-l ratio measured at w=0.9). RESULT: lands ON the l=2 branch at
+# w=0.9696 (M_Komar1=M_Komar2=0.7749, converged) — the seed sits above
+# w=0.95, so the l=2 branch needs no increasing-omega leg.
+
+[campaign]
+l = 2
+direction = "down"
+psi0_target = 0.000209507423670223
+psi0_step = 0.00262932145533009
+psi0_step_mode = "absolute"
+max_steps = 2
+stop_at_turning_point = false
+
+[adaptivity]
+max_refinements = 0
+max_widenings = 0
+support_fraction = 0.98
+boundary_fraction = 0.99
+
+[seed]
+policy = "solution"
+source = "../out/l=1,w=9.50000E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.125
+N = 128
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/l2-seed-from-l1"
+format = "hdf5"

@@ -137,6 +137,34 @@ figures in `docs/figures/` (regenerate with
 the cross-l seeding technique and were descoped by decision (2026-09-12);
 report §7 records the stop state.
 
+## 9. Runbook-based catalogue regeneration (2026-09-13)
+
+The unified runbook (`RUNBOOK.md`) was executed end-to-end: the l=1 starter
+seed, the cross-l seed ladder (l=2..4, one solve per arrow — the ω≈0.9
+amplitude ratios 0.0738/0.0726/0.0790), and four down-campaigns (one per
+l, each ending on `stopped:turning_point` with one HWL-triggered,
+domain-keeping refinement N 128→256). Campaign inventory:
+`out/campaigns/runbook-l{1..4}` (state.json + summary.json with the ω_min
+fits; untracked outputs).
+
+Critical points vs the paper's Table IX.1 (`data/paper/table_ix1.csv`):
+
+| l | ω_min (ours) | paper | Δ | M_max Δ | J_max Δ |
+|---|---|---|---|---|---|
+| 1 | 0.6460482 | 0.64561 | +0.068% | −0.015% | −0.03% |
+| 2 | 0.5212434 | 0.51657 | +0.90% | −0.045% | −0.02% |
+| 3 | 0.4533087 | 0.44339 | +2.24% | −0.55% | −1.0% |
+| 4 | 0.4186076 | 0.40756 | +2.71% | −1.19% | −2.27% |
+
+Diagnosis: the mass/angular-momentum peaks (mid-branch) are near-exact;
+the fold frequencies carry the dr=0.0625 discretization of the runbook's
+single domain-keeping refinement — verified fit-robust (degree 2–4) and
+domain-independent (l=2), i.e. resolution, not physics. The 2026-09
+session's 320-grids chains (dr≈0.04) reached paper-exact folds at the
+cost of a second refinement stage; a memory-feasible fractional-N polish
+(256→384 @ dr≈0.0417) is documented in RUNBOOK.md as an optional
+extension. Figures: `docs/figures/` (branch segments colored per N).
+
 ## SAN-10 — single-solution strip (2026-08-30)
 
 Removed `sweep_advance()` and the in-C sweep/ladder machinery (keys `sweep`,

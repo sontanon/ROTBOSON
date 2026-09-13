@@ -1,4 +1,5 @@
 """psi0_origin_estimate: grid-independent ψ₀ label (even quadratic fit)."""
+
 import sys
 from pathlib import Path
 

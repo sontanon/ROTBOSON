@@ -1,0 +1,32 @@
+# EXPERIMENT: l=4 cross-l seed AT w=0.9 (donor: the l=3 seed solution;
+# target: the l=4 branch's measured psi0 there — ratio 0.0790).
+
+[campaign]
+l = 4
+direction = "down"
+psi0_target = 3.19003030447583e-06
+psi0_step = 3.72455396955242e-05
+psi0_step_mode = "absolute"
+max_steps = 2
+stop_at_turning_point = false
+
+[adaptivity]
+max_refinements = 0
+max_widenings = 0
+support_fraction = 0.98
+boundary_fraction = 0.99
+
+[seed]
+policy = "solution"
+source = "../out/campaigns/l3-seed-at-w09/l=3,w=8.99792E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.125
+N = 128
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/l4-seed-at-w09"
+format = "hdf5"

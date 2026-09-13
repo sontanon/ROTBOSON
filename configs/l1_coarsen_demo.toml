@@ -1,0 +1,43 @@
+# l=1 coarsening demo (SAN-30): the up-leg's widening machinery.
+#
+# A down-campaign (ψ₀ shrinking, ω rising toward the dilute end) from the
+# ω=0.95 seed. The seed's support already fills the domain (r99 fraction
+# ≈ 0.95 > support_fraction=0.85), so the coarsening trigger fires after
+# the first step: dr ×2 → 0.25 (domain 33), bounded by dr_max=0.5 and
+# max_widenings=1. The widening is accepted only if ω/M_Komar/J_Komar
+# stay within regrid_rtol=2e-2 of the source (the truncation proxy).
+#
+# Run from the repo root (after configs/l1_seed.toml has produced its
+# solution dir under out/):
+#   uv run tools/sweep_driver.py configs/l1_coarsen_demo.toml
+
+[campaign]
+l = 1
+direction = "down"
+psi0_target = 1.0e-6
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_steps = 4
+stop_at_turning_point = false
+
+[adaptivity]
+max_refinements = 0
+support_fraction = 0.85
+max_widenings = 1
+regrid_rtol = 0.02
+
+[seed]
+policy = "solution"
+source = "../out/l=1,w=9.50000E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.125
+N = 128
+dr_max = 0.5
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/l1-coarsen-demo"
+format = "hdf5"

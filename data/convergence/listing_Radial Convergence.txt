@@ -1,4 +1,0 @@
-Analysis Notebook 2020.02.17, l=6, w=0.70000, dr=0.125, Nr=1024.ipynb
-Convergence.ipynb
-IIData
-l=6,w=0.70000,dr=0.125,N=1024

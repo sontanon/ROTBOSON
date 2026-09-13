@@ -1,0 +1,32 @@
+# EXPERIMENT: the l=2 branch's w=0.9 waypoint — along-branch amplitude
+# jump from the w=0.9696 cross-l seed to the measured psi0(0.9).
+
+[campaign]
+l = 2
+direction = "up"
+psi0_target = 0.000555733907097508
+psi0_step = 0.000346226907097508
+psi0_step_mode = "absolute"
+max_steps = 2
+stop_at_turning_point = false
+
+[adaptivity]
+max_refinements = 0
+max_widenings = 0
+support_fraction = 0.98
+boundary_fraction = 0.99
+
+[seed]
+policy = "solution"
+source = "../out/campaigns/l2-seed-from-l1/l=2,w=9.69569E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.125
+N = 128
+
+[solver]
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/l2-waypoint-w09"
+format = "hdf5"
