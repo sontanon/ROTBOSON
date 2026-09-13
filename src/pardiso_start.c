@@ -1,6 +1,7 @@
 // PARDISO global parameters header.
 #define PARDISO_MAIN_FILE
 #include "pardiso_param.h"
+#include <string.h>
 
 #undef DEBUG
 
@@ -59,6 +60,17 @@ void solver_start(const MKL_INT matrix_dim)
     iparm[25 - 1] = 0; // Parallel Forward/Backward Solve.
     iparm[27 - 1] = 0; // Matrix check.
     iparm[60 - 1] = getenv("ROTBOSON_PARDISO_OOC") != NULL ? 2 : 0; // OOC: 2 = keep factors on disk (MKL_PARDISO_OOC_* env vars).
+    // Single-precision mode (Stage 1 of the M3 fp32 plan): ROTBOSON_PRECISION=32
+    // sets iparm[28]=1. The value is stored in the solver handle and can only
+    // be set during phase 11, so it is fixed here, before any solver call.
+    // With this mode the arrays a, x, b handed to pardiso_64 must be float
+    // (pardiso_solve.c does the conversion; Newton-side stays double).
+    if (getenv("ROTBOSON_PRECISION") != NULL &&
+        strcmp(getenv("ROTBOSON_PRECISION"), "32") == 0)
+    {
+        iparm[28 - 1] = 1;
+        printf("PARDISO: SINGLE PRECISION MODE (ROTBOSON_PRECISION=32).\n");
+    }
     maxfct = 1; // Maximum number of numerical factorizations.
     mnum = 1; // Which factorization to use.
     msglvl = MESSAGE_LEVEL; // Print statistical information in file.

@@ -102,6 +102,36 @@ each solve.
 
 Raw log: `out/profile_seed.log` (not tracked).
 
+## Stage 1 fp32 (2026-09-13) — PASSED
+
+`ROTBOSON_PRECISION=32` (pardiso_solve.c float conversion, iparm[28]=1 set
+in solver_start; Newton/assembly/output stay double). Master seed,
+CGS default:
+
+| metric | double | fp32 | Δ |
+|---|---|---|---|
+| PARDISO internal peak (iparm 15+16) | 1.02 GB | 0.65 GB | −36% |
+| factor+workspace (iparm[16]) | 746 MB | 381 MB | **−49% (predicted −50%)** |
+| process peak RSS | 1.356 GB | 0.979 GB | −28% |
+| wall (CGS default) | 58 s | 55 s | −5% |
+| M_Komar1 vs double | — | 7.89310e-01 | **1.3e-5 rel** |
+
+fp32 + direct (ROTBOSON_PARDISO_DIRECT=1), bonus probe:
+
+| metric | double baseline | fp32 direct |
+|---|---|---|
+| wall | 58 s | **28.7 s (−50%)** |
+| solve ms/call | 2747 | 389 |
+| M_Komar1/M_Komar2 | 7.89309e-01 | 7.89309e-01 (match at 6 digits) |
+| Newton | 8 iters | converged (7) |
+
+Verdict: memory win is exactly as predicted; robustness OK in both modes;
+Newton's own double-precision convergence test acts as an outer corrector,
+so fp32+direct already lands on-branch. Residual accuracy (~1e-5 mass
+under CGS-fp32) is exactly what Stage 2 (double-residual IR) targets.
+Next: Stage 2 IR, then N=256 and N=384 probes (fp32 factor memory at
+N=384 ≈ 4.7 GB → peak ~7-8 GB: the go/no-go number).
+
 ## Next experiments (proposed order)
 
 1. ~~iparm[3]=0, iparm[7]=2~~ — DONE 2026-09-13, mixed verdict:

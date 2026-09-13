@@ -3,17 +3,112 @@
 #include "pardiso.h"
 #include "exit_codes.h"
 #include "profile.h"
+#include <string.h>
+
+// ---------------------------------------------------------------------------
+// Single-precision solve mode (ROTBOSON_PRECISION=32).
+//
+// With iparm[28]=1 MKL PARDISO keeps all internal data (and the LU factors)
+// in float, halving factor memory; the CSR index arrays stay int64. The
+// caller-side matrix/RHS/solution stay double (Newton, assembly, output);
+// only the arrays handed to pardiso_64 are converted. Precision mode is
+// stored in the handle and can only be set during phase 11, so the flag is
+// read once in solver_start (pardiso_start.c).
+//
+// Accuracy note: a plain fp32 solve carries ~1e-7 relative error. Newton-
+// level iterative refinement in double (Stage 2 of the M3 fp32 plan,
+// data/summaries/profile-baseline.md) recovers near-double accuracy; these
+// helpers only do the Stage-1 plumbing.
+// ---------------------------------------------------------------------------
+static float *fp32_a = NULL;      // float copy of CSR values
+static float *fp32_b = NULL;      // float copy of RHS
+static float *fp32_x = NULL;      // float solution buffer
+static MKL_INT fp32_a_cap = 0;    // capacity of fp32_a (floats)
+static MKL_INT fp32_vec_cap = 0;  // capacity of fp32_b / fp32_x
+
+static int fp32_enabled(void)
+{
+    const char *env = getenv("ROTBOSON_PRECISION");
+    return env && strcmp(env, "32") == 0;
+}
+
+// Lazily grow the fp32 buffers; returns 0 on allocation failure.
+static int fp32_ensure(MKL_INT nnz, MKL_INT n)
+{
+    if (fp32_a_cap < nnz)
+    {
+        float *p = (float *)realloc(fp32_a, (size_t)nnz * sizeof(float));
+        if (!p) return 0;
+        fp32_a = p;
+        fp32_a_cap = nnz;
+    }
+    if (fp32_vec_cap < n)
+    {
+        float *b = (float *)realloc(fp32_b, (size_t)n * sizeof(float));
+        if (!b) return 0;
+        fp32_b = b;
+        float *x = (float *)realloc(fp32_x, (size_t)n * sizeof(float));
+        if (!x) return 0;
+        fp32_x = x;
+        fp32_vec_cap = n;
+    }
+    return 1;
+}
+
+// Release the fp32 buffers (called from solver_stop).
+void solver_fp32_cleanup(void)
+{
+    free(fp32_a); fp32_a = NULL; fp32_a_cap = 0;
+    free(fp32_b); fp32_b = NULL;
+    free(fp32_x); fp32_x = NULL; fp32_vec_cap = 0;
+}
+
+// Convert the double CSR values and RHS into the fp32 buffers, and return
+// the pointers to hand to pardiso_64. Per the MKL C prototype the pointers
+// are typed double*; when fp32 is enabled they actually point at float
+// arrays (iparm[28]=1 makes PARDISO interpret them as single precision).
+static void fp32_convert(csr_matrix *A, double *f, double **a_out, double **b_out,
+                         double **x_out)
+{
+    MKL_INT nnz = A->nnz;
+    for (MKL_INT k = 0; k < nnz; ++k)
+        fp32_a[k] = (float)A->a[k];
+    for (MKL_INT k = 0; k < n; ++k)
+        fp32_b[k] = (float)f[k];
+    *a_out = (double *)fp32_a;
+    *b_out = (double *)fp32_b;
+    *x_out = (double *)fp32_x;
+}
 
 void solver_solve(double *u, // Solution array.
                   csr_matrix *A, // Matrix system to solve: Au = f.
                   double *f) // RHS array.
 {
+    // Stage 1 fp32 plumbing: convert the matrix values and RHS once per call
+    // and hand float arrays to pardiso_64 (iparm[28]=1, set in solver_start).
+    double *sa, *sb, *sx;
+    if (fp32_enabled())
+    {
+        if (!fp32_ensure(A->nnz, n))
+        {
+            printf("ERROR: fp32 buffer allocation failed.\n");
+            exit(RB_EXIT_SOLVER);
+        }
+        fp32_convert(A, f, &sa, &sb, &sx);
+    }
+    else
+    {
+        sa = A->a;
+        sb = f;
+        sx = u;
+    }
+
     // Reordering and symbolic factorization.
     if (!(A->analysis_phase))
     {
         prof_begin(PROF_ANALYSIS);
         phase = 11;
-        pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, A->a, A->ia, A->ja, perm, &nrhs, iparm,
+        pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, sa, A->ia, A->ja, perm, &nrhs, iparm,
                    &msglvl, &ddum, &ddum, &error);
 
         if (error != 0)
@@ -67,7 +162,7 @@ void solver_solve(double *u, // Solution array.
     // Numerical factorization.
     prof_begin(PROF_FACTOR);
     phase = 22;
-    pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, A->a, A->ia, A->ja, perm, &nrhs, iparm,
+    pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, sa, A->ia, A->ja, perm, &nrhs, iparm,
                &msglvl, &ddum, &ddum, &error);
 
     if (error != 0)
@@ -92,8 +187,8 @@ void solver_solve(double *u, // Solution array.
     // Back substitution and iterative refinement.
     prof_begin(PROF_SOLVE);
     phase = 33;
-    pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, A->a, A->ia, A->ja, perm, &nrhs, iparm,
-               &msglvl, f, u, &error);
+    pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, sa, A->ia, A->ja, perm, &nrhs, iparm,
+               &msglvl, sb, sx, &error);
 
     if (error != 0)
     {
@@ -102,6 +197,9 @@ void solver_solve(double *u, // Solution array.
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
         exit(RB_EXIT_SOLVER);
     }
+    if (fp32_enabled())
+        for (MKL_INT k = 0; k < n; ++k)
+            u[k] = (double)fp32_x[k];
     prof_end(PROF_SOLVE);
 
     // CGS diagnostics (iparm[19] is set by the solution phase when iparm[3] > 0).
@@ -217,6 +315,24 @@ void solver_repeated_solve(double *u, // Solution array.
                            csr_matrix *A, // Matrix system to solve: Au = f.
                            double *f) // RHS array.
 {
+    // Stage 1 fp32 plumbing (same conversion as solver_solve).
+    double *sa, *sb, *sx;
+    if (fp32_enabled())
+    {
+        if (!fp32_ensure(A->nnz, n))
+        {
+            printf("ERROR: fp32 buffer allocation failed.\n");
+            exit(RB_EXIT_SOLVER);
+        }
+        fp32_convert(A, f, &sa, &sb, &sx);
+    }
+    else
+    {
+        sa = A->a;
+        sb = f;
+        sx = u;
+    }
+
     /*
     // Numerical factorization.
     phase = 22;
@@ -238,8 +354,8 @@ void solver_repeated_solve(double *u, // Solution array.
     // Back substitution and iterative refinement.
     prof_begin(PROF_SOLVE);
     phase = 33;
-    pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, A->a, A->ia, A->ja, perm, &nrhs, iparm,
-               &msglvl, f, u, &error);
+    pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, sa, A->ia, A->ja, perm, &nrhs, iparm,
+               &msglvl, sb, sx, &error);
 
     if (error != 0)
     {
@@ -248,6 +364,9 @@ void solver_repeated_solve(double *u, // Solution array.
             printf("iparm(%lld) = %lld\n", k + 1, iparm[k]);
         exit(RB_EXIT_SOLVER);
     }
+    if (fp32_enabled())
+        for (MKL_INT k = 0; k < n; ++k)
+            u[k] = (double)fp32_x[k];
     prof_end(PROF_SOLVE);
 
     // Return.
