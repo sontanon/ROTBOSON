@@ -1,0 +1,48 @@
+# M3 Stage 3 probe: master l=1 seed at N=512 (fp32 memory-wall test).
+#
+# Identical physics to configs/l1_seed.toml; grid refined to N=512 with the
+# domain kept (dr*N = 16, cf. seed's 0.125*128). Purpose: decide whether
+# single precision unlocks N>=384 on this 8 GB box:
+#   ROTBOSON_PROFILE=1 ROTBOSON_PRECISION=32 ROTBOSON_PARDISO_DIRECT=1 \
+#     ../build/release/ROTBOSON ../configs/probe_l1_n384.toml
+# Extrapolation: ~903k unknowns, fp32 factors ~1.2G nnz -> peak ~7-8 GB,
+# right at the container budget. Record peak RSS + wall + exit code in
+# data/summaries/profile-baseline.md (Stage 3 section).
+
+# GRID
+dr = 3.12500000E-02
+dz = 3.12500000E-02
+NrInterior = 512
+NzInterior = 512
+order = 4
+
+# INITIAL DATA
+readInitialData = 0
+
+# SCALAR FIELD PROPERTIES
+l = 1
+m = 1.0
+psi0 = 0.01
+sigmaR = 4.0
+sigmaZ = 4.0
+rExt = 12.0
+
+# INITIAL FREQUENCY.
+w0 = 9.50000E-01
+
+# FIXED VARIABLE.
+fixedPhi = 0
+fixedPhiR = 0
+fixedPhiZ = 0
+fixedOmega = 1
+
+# SOLVER PARAMETERS.
+solverType = 1
+localSolver = 1
+epsilon = 1.0E-8
+maxNewtonIter = 20
+lambda0 = 1.0E-03
+lambdaMin = 1.0E-05
+useLowRank = 0
+
+outputFormat = "hdf5"

@@ -192,15 +192,27 @@ Master seed, fixed ω=0.95, 6·388²+1 = 903k unknowns, fp32+direct+IR:
 - Peak RSS **7.79 GB vs the container's exact 8 GiB cgroup cap — fits
   with ~0.2 GB headroom** (razor-thin; swap/other processes could kill it).
 
+### M3 decision input (cap raised 8→12 GiB, 2026-09-14)
+
+With the container cap at 12 GiB (host 16 GB, other containers live):
+
+| probe | unknowns | LU nnz | wall | peak RSS | verdict |
+|---|---|---|---|---|---|
+| N=384 (earlier) | 903k | 1.14G | 556 s | 7.79 GB | fits 8 GiB |
+| **N=400 (paper grid)** | 970k | 1.28G | 583 s | **8.97 GB** | **fits 12 GiB (≈3 GB headroom)** |
+| N=512 | 1.60M | — | — | **OOM-killed** | does NOT fit 12 GiB (`oom_kill 1`, cgroup memory.events) |
+
+Both N=400 and N=384 converged (12 NLEQ iters, on-branch invariant
+M_Komar1=M_Komar2 preserved). N=512 dies during the first PARDISO
+factorization. So the fp32 frontier at 12 GiB is **N≈400–450**; the paper's
+N=400 is reachable in-core, N=512 is not without BLR/OOC/GPU/16-GiB.
+
 ### M3 decision input
 
-fp32+direct+IR reaches **N≈384–390 within 8 GiB** (the paper's N=400 is
-~8.4 GB projected — just out of reach at the current cap). `free` shows the
-host has 16 GB: raising the container cap to ~12–16 GB makes **N=512
-(~11.5–12 GB projected fp32) feasible without any new solver code**; BLR/
-MUMPS or OOC are then only needed to push beyond ~512 or to run big grids
-side-by-side with other work. This strengthens the M4 case: non-uniform
-grids remain the algorithmic answer to the resolution-vs-domain tension.
+fp32+direct+IR reaches the paper's N=400 at 12 GiB. Reaching N=512 needs
+either a bigger cap (~16 GiB; host has 16 but shares with other containers)
+or memory compression (BLR/MUMPS) / OOC / GPU hybrid. M4 non-uniform grids
+remain the algorithmic answer to the resolution-vs-domain tension.
 
 ## Next experiments (proposed order)
 
