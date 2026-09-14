@@ -26,6 +26,11 @@ static float *fp32_x = NULL;      // float solution buffer
 static MKL_INT fp32_a_cap = 0;    // capacity of fp32_a (floats)
 static MKL_INT fp32_vec_cap = 0;  // capacity of fp32_b / fp32_x
 
+// Stage 2 IR buffers (see fp32_ir_refine below).
+static double *ir_r = NULL;       // double residual buffer
+static double *ir_du_bak = NULL;  // tentative-update rollback buffer
+static MKL_INT ir_cap = 0;
+
 static int fp32_enabled(void)
 {
     const char *env = getenv("ROTBOSON_PRECISION");
@@ -61,6 +66,8 @@ void solver_fp32_cleanup(void)
     free(fp32_a); fp32_a = NULL; fp32_a_cap = 0;
     free(fp32_b); fp32_b = NULL;
     free(fp32_x); fp32_x = NULL; fp32_vec_cap = 0;
+    free(ir_r); ir_r = NULL;
+    free(ir_du_bak); ir_du_bak = NULL; ir_cap = 0;
 }
 
 // Convert the double CSR values and RHS into the fp32 buffers, and return
@@ -78,6 +85,135 @@ static void fp32_convert(csr_matrix *A, double *f, double **a_out, double **b_ou
     *a_out = (double *)fp32_a;
     *b_out = (double *)fp32_b;
     *x_out = (double *)fp32_x;
+}
+
+// ---------------------------------------------------------------------------
+// Stage 2: double-residual iterative refinement (IR) for the fp32+direct
+// path (M3 fp32 plan; design and gates in data/summaries/profile-baseline.md).
+//
+// A plain fp32 solve carries ~1e-7 relative error; near folds that is enough
+// to turn Newton convergence marginal (measured: the post-regrid fold step
+// stalls ~50 min in fp32-CGS, cf. 20 s double-CGS). IR recovers double-grade
+// solves at ~one extra back-substitution per step:
+//
+//   r = f - A·du      (double matvec against the untouched double Jacobian)
+//   A·delta = r       (extra phase-33 call reusing the SAME fp32 factors)
+//   du += delta       (double accumulate; accept only if ||r|| strictly drops)
+//
+// Each accepted step multiplies the solve error by ~kappa·u_f; for the
+// well-conditioned bulk that is ~1e-7 -> ~1e-12 in two steps. Stagnation
+// (kappa·u_f ~ 1, deep fold) degrades gracefully to the Stage-1 result.
+// Default ROTBOSON_FP32_IR=2; 0 disables. Only active with fp32 + direct
+// (CGS already inverts to 1e-6 in double and has its own pathology there).
+// ---------------------------------------------------------------------------
+static int fp32_direct_enabled(void)
+{
+    return fp32_enabled() && getenv("ROTBOSON_PARDISO_DIRECT") != NULL;
+}
+
+static int fp32_ir_steps(void)
+{
+    const char *env = getenv("ROTBOSON_FP32_IR");
+    int steps = 2;
+    if (env && *env)
+    {
+        steps = atoi(env);
+        if (steps < 0)
+            steps = 0;
+        if (steps > 4)
+            steps = 4;
+    }
+    return steps;
+}
+
+static int ir_ensure(MKL_INT dim)
+{
+    if (ir_cap >= dim)
+        return 1;
+    double *r = (double *)realloc(ir_r, (size_t)dim * sizeof(double));
+    if (!r)
+        return 0;
+    ir_r = r;
+    double *bak = (double *)realloc(ir_du_bak, (size_t)dim * sizeof(double));
+    if (!bak)
+        return 0;
+    ir_du_bak = bak;
+    ir_cap = dim;
+    return 1;
+}
+
+// r = A x in double (1-based CSR, BASE convention; matches pardiso indexing).
+static void csr_matvec_double(const csr_matrix *A, const double *x, double *r)
+{
+#pragma omp parallel for schedule(static)
+    for (MKL_INT i = 0; i < n; ++i)
+    {
+        double s = 0.0;
+        MKL_INT p0 = A->ia[i] - BASE;
+        MKL_INT p1 = A->ia[i + 1] - BASE;
+        for (MKL_INT p = p0; p < p1; ++p)
+            s += A->a[p] * x[A->ja[p] - BASE];
+        r[i] = s;
+    }
+}
+
+// Refine du (approximate solution of A du = f held in double) in place.
+// a_f: float values array already handed to PARDISO (typed double* per the
+// prototype). Residual ladder is printed when profiling is enabled.
+static void fp32_ir_refine(csr_matrix *A, double *f, double *du, double *a_f, int R)
+{
+    if (R <= 0 || !ir_ensure(n))
+        return;
+
+    double bn = cblas_dnrm2(n, f, 1);
+
+    csr_matvec_double(A, du, ir_r);
+    for (MKL_INT k = 0; k < n; ++k)
+        ir_r[k] = f[k] - ir_r[k];
+    double rn = cblas_dnrm2(n, ir_r, 1);
+    double r0 = rn;
+    int steps = 0;
+
+    prof_begin(PROF_IR);
+    for (int it = 0; it < R; ++it)
+    {
+        // Already at the fp32-to-double noise floor.
+        if (rn <= 1e-14 * (bn > 1.0 ? bn : 1.0))
+            break;
+
+        // Correction solve A delta = r, reusing the existing fp32 factors.
+        for (MKL_INT k = 0; k < n; ++k)
+            fp32_b[k] = (float)ir_r[k];
+        phase = 33;
+        pardiso_64(pt, &maxfct, &mnum, &mtype, &phase, &n, a_f, A->ia, A->ja, perm, &nrhs, iparm,
+                   &msglvl, (double *)fp32_b, (double *)fp32_x, &error);
+        if (error != 0)
+            break;
+
+        // Tentative update, re-check the residual in double; revert if no gain.
+        for (MKL_INT k = 0; k < n; ++k)
+        {
+            ir_du_bak[k] = du[k];
+            du[k] += (double)fp32_x[k];
+        }
+        csr_matvec_double(A, du, ir_r);
+        for (MKL_INT k = 0; k < n; ++k)
+            ir_r[k] = f[k] - ir_r[k];
+        double rn_new = cblas_dnrm2(n, ir_r, 1);
+        if (rn_new >= rn)
+        {
+            for (MKL_INT k = 0; k < n; ++k)
+                du[k] = ir_du_bak[k];
+            break;
+        }
+        rn = rn_new;
+        steps++;
+    }
+    prof_end(PROF_IR);
+
+    if (prof_enabled())
+        printf("PARDISO IR DIAGNOSTICS: ||b||=%.3e ||r0||=%.3e ||r_final||=%.3e ir_steps=%d\n", bn,
+               r0, rn, steps);
 }
 
 void solver_solve(double *u, // Solution array.
@@ -201,6 +337,10 @@ void solver_solve(double *u, // Solution array.
         for (MKL_INT k = 0; k < n; ++k)
             u[k] = (double)fp32_x[k];
     prof_end(PROF_SOLVE);
+
+    // Stage 2: double-residual refinement of the fp32+direct solve.
+    if (fp32_direct_enabled())
+        fp32_ir_refine(A, f, u, sa, fp32_ir_steps());
 
     // CGS diagnostics (iparm[19] is set by the solution phase when iparm[3] > 0).
     printf("PARDISO SOLVE DIAGNOSTICS\n");
@@ -368,6 +508,10 @@ void solver_repeated_solve(double *u, // Solution array.
         for (MKL_INT k = 0; k < n; ++k)
             u[k] = (double)fp32_x[k];
     prof_end(PROF_SOLVE);
+
+    // Stage 2: double-residual refinement of the fp32+direct solve.
+    if (fp32_direct_enabled())
+        fp32_ir_refine(A, f, u, sa, fp32_ir_steps());
 
     // Return.
     return;

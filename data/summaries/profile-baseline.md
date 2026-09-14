@@ -132,6 +132,40 @@ under CGS-fp32) is exactly what Stage 2 (double-residual IR) targets.
 Next: Stage 2 IR, then N=256 and N=384 probes (fp32 factor memory at
 N=384 ≈ 4.7 GB → peak ~7-8 GB: the go/no-go number).
 
+## Stage 2 fp32: double-residual IR (2026-09-14) — PASSED
+
+`ROTBOSON_FP32_IR=0..4` (default 2), active only with fp32 + direct
+(`ROTBOSON_PRECISION=32 ROTBOSON_PARDISO_DIRECT=1`). Mechanism: after each
+fp32 solve, r = f - A·du in double (OpenMP CSR matvec), correction solve
+reusing the same fp32 factors (extra phase-33), accept only on strict
+residual drop. Implemented in pardiso_solve.c; PROF_IR bucket added.
+
+Gates (references: fresh double seed run; banked `runbook-l1-direct-ref`):
+
+| gate | case | result |
+|---|---|---|
+| G1 | seed, fp32+direct+IR(2) | scalars rel ~1e-13, fields ~1e-15 vs double; wall 40.5 s (vs 58 double) PASS |
+| G2 | fold step (post-regrid, N=256) | converges 98 s (vs the ~50-min fp32-CGS stall); see fold-noise note PASS |
+| G2b | healthy N=256 regrid | scalars ~1e-12, fields ~1e-14 vs double PASS |
+| G3 | IR ladder, seed | IR=1 → ‖r‖~1e-7; IR=2 → ~1e-10; IR=3 → ~3e-13 (wall 34/40.5/43 s). Contraction ~1e-4/step; IR=2 is the right default |
+| G4 | CTest 4/4; double path untouched | PASS |
+
+Fold-noise note (G2): at the near-singular fold step, fp32+direct+IR and a
+fresh DOUBLE-direct run differ from the banked double reference by
+*identical* amounts (worst field 1e-4, ω rel 6e-8): the fold's κ amplifies
+run-to-run solver noise identically for any method. fp32+IR adds zero error
+over double-direct there; a strict 1e-10 agreement at fold steps is
+unreachable by any solver, and the documented catalogue fold sensitivity
+(M2: vertex ±1e-4 across legit grids) dominates anyway.
+
+Incidents found while testing (both pre-existing, not Stage-2):
+1. **Missing initial-data file segfaults** the binary during allocation
+   instead of erroring (initial-read path; worth hardening later).
+2. **Final-dir rename collision is silent**: if the final solution dir
+   already exists, the write lands in the placeholder dir
+   (`l=1,w=X.XXXXXE-01...`) with no warning — campaign output hygiene
+   relies on externally removing stale dirs.
+
 ## Next experiments (proposed order)
 
 1. ~~iparm[3]=0, iparm[7]=2~~ — DONE 2026-09-13, mixed verdict:
@@ -154,8 +188,11 @@ N=384 ≈ 4.7 GB → peak ~7-8 GB: the go/no-go number).
    - Open follow-up: iparm[3]=31 (CGS, tolerance 1e-3) — cheaper CGS
      iterations; must check branch accuracy vs the 1e-6 baseline.
 2. N=256 run — DONE: see "N=256 scaling run" above.
-3. fp32 factors (iparm[27-1]=1, requires matrix in single precision) +
-   double-precision IR: ~40% factor memory saving; accuracy recovery via
-   refinement to be demonstrated.
+3. ~~fp32 factors + double IR~~ — DONE in two stages (see Stage 1/2
+   sections). Production recipe for fp32:
+   `ROTBOSON_PRECISION=32 ROTBOSON_PARDISO_DIRECT=1` (IR default 2).
+   Stage 3 remains: full l=1 campaign in that mode (vs both banked double
+   campaigns) + the N=384 feasibility probe (~7–8 GB predicted with fp32).
 4. MUMPS-BLR evaluation against the 87M-nnz LU (target: factor nnz
-   reduction ≥2× at comparable wall time).
+   reduction ≥2× at comparable wall time) — only if Stage 3 shows fp32
+   alone cannot reach the target N.

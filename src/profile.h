@@ -23,6 +23,7 @@ typedef enum
     PROF_SOLVE,
     PROF_RHS,
     PROF_NORMS,
+    PROF_IR,
     PROF_COUNT
 } prof_phase;
 

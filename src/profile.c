@@ -26,6 +26,7 @@ static const char *phase_names[PROF_COUNT] = {
     "pardiso solve",
     "rhs residual",
     "norms",
+    "fp32 IR",
 };
 
 void prof_init(void)
