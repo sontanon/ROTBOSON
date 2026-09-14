@@ -247,3 +247,65 @@ remain the algorithmic answer to the resolution-vs-domain tension.
    the N=512 probe + an l=4/5 high-resolution validation at fp32.
 6. Housekeeping tickets: SAN-32 (robustness: segfault + rename collision);
    optional CGS-vs-direct default reconsideration for N≥256 campaigns.
+
+## UMFPACK head-to-head at production size (2026-09-??) — NOT A PATH
+
+Rule (Santiago): kill if UMFPACK wall exceeds 1.5× the PARDISO baseline.
+Single cold-start fixed-ω solve, N=256 (405,601 rows, 13.5M nnz),
+identical config both backends (`configs/probe_l1_umfp_n256.toml`).
+
+| backend | threads | wall | result |
+|---|---|---|---|
+| **PARDISO** (MKL, release) | 8 (first run) | 216 s | exit 0, converged |
+| **PARDISO** (MKL, release) | 4 (best) | **92 s** | exit 0, converged |
+| **UMFPACK** (SuiteSparse) | 8 | **>330 s killed** | never reached first solve |
+
+UMFPACK stalled right after CSR allocation (405k rows/13.5M nnz logged) and
+had not completed its first Newton factorization/solve within 330 s. Even
+against PARDISO's *best* 4-thread run (92 s), failure to reach a first solve
+in 330 s is >3.5×. It never printed a profile summary or solution.
+
+Verdict: UMFPACK at production size is far beyond the 1.5× gate and is **not
+an exploration path** — consistent with the historical small-grid experience
+(weaker ordering at 2D mesh fill + single-threaded factor). This closes the
+"is PARDISO worth its dependency" question with evidence: **PARDISO stays**,
+and the 8-thread 216 s figure is itself the oversubscription artifact
+reported below (UMFPACK was run at 8 threads for an apples-to-apples env,
+but PARDISO's fair comparison is 92 s @ 4 threads).
+
+## OpenMP thread scaling sweep (2026-09-15) — SURPRISING FINDING
+
+Production N=256 probe, single cold-start solve, OMP_NUM_THREADS=1/2/4/8
+(sequential runs to avoid cross-contention), `ROTBOSON_PROFILE=1`.
+
+| threads | wall | assembly | analysis | factor | solve | peak RSS |
+|---|---|---|---|---|---|---|
+| 1 | 138 s | 2.66 s | 8.77 s | 35.99 s | 89.79 s | 4.87 GB |
+| 2 | 100 s | 1.31 s | 5.46 s | 22.91 s | 70.49 s | 4.89 GB |
+| **4** | **92 s** | **0.71 s** | **4.19 s** | **17.80 s** | **68.94 s** | 4.95 GB |
+| 8 | **228 s** | 2.52 s | 11.98 s | 46.00 s | 165.54 s | 5.10 GB |
+
+**The finding: 8 threads is 2.5× SLOWER than 4 threads (228 s vs 92 s), and
+every phase degrades** (assembly 3.5×, analysis 2.9×, factor 2.6×, solve
+2.4× worse than the 4-thread run). Cause — verified at the kernel/cgroup
+level:
+
+- Container cgroup v2 `cpu.max` = `400000 100000` → **CPU quota = 4**.
+- Host = i7-6700HQ: **4 physical cores / 8 hyperthreads** (`cpu cores: 4`,
+  `siblings: 8`). `nproc=8` counts hyperthreads, not the cap.
+- Nothing in the repo sets `OMP_NUM_THREADS` (grep: zero hits), so every run
+  silently defaults to `nproc=8` → oversubscribes the 4-CPU quota → thrash.
+
+The user's "~67% load on all 8 cores" is the oversubscription signature: 8
+threads contending for 4 CPUs.
+
+**Actionable: pin `OMP_NUM_THREADS=4` (or `MKL_DYNAMIC=FALSE`) for solver
+runs.** On this box that is a ~2.5× free speedup at N=256. The RUNBOOK's
+"4 cores" premise is correct but nothing enforces it. Recommended: set the
+thread count in the sweep driver / runbook and re-verify the N=400 probe
+(if the earlier 583 s N=400 run used the 8-thread default, it too was
+oversubscribed and would run ~2.5× faster at 4 threads).
+its MKL dependency is paying for exactly the hard part. The UMFPACK backend
+remains only as the MKL-free fallback (bit-equivalent at smoke sizes).
+
+

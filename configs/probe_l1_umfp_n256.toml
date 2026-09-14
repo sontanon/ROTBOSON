@@ -1,0 +1,46 @@
+# M3 UMFPACK head-to-head probe: master l=1 seed at N=256.
+#
+# Identical physics to configs/l1_seed.toml; grid refined to N=256 with the
+# domain kept (dr*N = 16, cf. seed's 0.125*128). Production-representative
+# single-solve cold start for the PARDISO-vs-UMFPACK comparison:
+#   ROTBOSON_PROFILE=1 ../build/release/ROTBOSON  ../configs/probe_l1_umfp_n256.toml   (PARDISO baseline)
+#   ROTBOSON_PROFILE=1 ../build/umfpack/ROTBOSON  ../configs/probe_l1_umfp_n256.toml   (UMFPACK)
+# UMFPACK rule (Santiago): kill if wall exceeds 1.5x the PARDISO baseline.
+
+# GRID
+dr = 6.25000000E-02
+dz = 6.25000000E-02
+NrInterior = 256
+NzInterior = 256
+order = 4
+
+# INITIAL DATA
+readInitialData = 0
+
+# SCALAR FIELD PROPERTIES
+l = 1
+m = 1.0
+psi0 = 0.01
+sigmaR = 4.0
+sigmaZ = 4.0
+rExt = 12.0
+
+# INITIAL FREQUENCY.
+w0 = 9.50000E-01
+
+# FIXED VARIABLE.
+fixedPhi = 0
+fixedPhiR = 0
+fixedPhiZ = 0
+fixedOmega = 1
+
+# SOLVER PARAMETERS.
+solverType = 1
+localSolver = 1
+epsilon = 1.0E-8
+maxNewtonIter = 20
+lambda0 = 1.0E-03
+lambdaMin = 1.0E-05
+useLowRank = 0
+
+outputFormat = "hdf5"
