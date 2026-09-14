@@ -166,6 +166,42 @@ Incidents found while testing (both pre-existing, not Stage-2):
    (`l=1,w=X.XXXXXE-01...`) with no warning — campaign output hygiene
    relies on externally removing stale dirs.
 
+## Stage 3: full fp32 campaign + N=384 probe (2026-09-14) — GO
+
+Production recipe: `ROTBOSON_PRECISION=32 ROTBOSON_PARDISO_DIRECT=1`
+(IR default 2). Campaign: fresh `runbook_l1_down.toml`, zero retries/warnings
+across all 169 steps incl. the fold regrid (the fp32-CGS attempt had stalled).
+
+| metric | M2 CGS (double) | direct (double) | **fp32+direct+IR** |
+|---|---|---|---|
+| total binary wall | 2778 s | 3825 s | **3233 s** |
+| fold steps (166–168) | ~20 s ea | 138 s ea | **~100 s ea** |
+| peak RSS, fold step | (ref: 5.07 GB @ N=256) | 5.14 GB | **3.38 GB (−34%)** |
+| retries / stalls | 1 retry (step 65) | 0 | **0** |
+| fold vertex ω_min | 0.6460482 (poly2) | 0.6455295 (poly3) | **0.64552950 (poly3)** — agrees to 1e-16 with the direct-double campaign |
+
+### N=384 feasibility probe (configs/probe_l1_n384.toml)
+
+Master seed, fixed ω=0.95, 6·388²+1 = 903k unknowns, fp32+direct+IR:
+
+- **Converged** (12 NLEQ iterations, 4 factors, 17 solves, on-branch
+  invariant M_Komar1 = M_Komar2 = 0.789975 preserved), exit 0.
+- Wall **556 s**; factor 99.6 s/call (near-singular ~3× healthy cost);
+  IR adds 4.6 s × ~2 × 17 = 78 s; analysis 27 s.
+- LU fill **1.14 G-nnz** (matches the rows^1.20 extrapolation).
+- Peak RSS **7.79 GB vs the container's exact 8 GiB cgroup cap — fits
+  with ~0.2 GB headroom** (razor-thin; swap/other processes could kill it).
+
+### M3 decision input
+
+fp32+direct+IR reaches **N≈384–390 within 8 GiB** (the paper's N=400 is
+~8.4 GB projected — just out of reach at the current cap). `free` shows the
+host has 16 GB: raising the container cap to ~12–16 GB makes **N=512
+(~11.5–12 GB projected fp32) feasible without any new solver code**; BLR/
+MUMPS or OOC are then only needed to push beyond ~512 or to run big grids
+side-by-side with other work. This strengthens the M4 case: non-uniform
+grids remain the algorithmic answer to the resolution-vs-domain tension.
+
 ## Next experiments (proposed order)
 
 1. ~~iparm[3]=0, iparm[7]=2~~ — DONE 2026-09-13, mixed verdict:
@@ -188,11 +224,14 @@ Incidents found while testing (both pre-existing, not Stage-2):
    - Open follow-up: iparm[3]=31 (CGS, tolerance 1e-3) — cheaper CGS
      iterations; must check branch accuracy vs the 1e-6 baseline.
 2. N=256 run — DONE: see "N=256 scaling run" above.
-3. ~~fp32 factors + double IR~~ — DONE in two stages (see Stage 1/2
-   sections). Production recipe for fp32:
-   `ROTBOSON_PRECISION=32 ROTBOSON_PARDISO_DIRECT=1` (IR default 2).
-   Stage 3 remains: full l=1 campaign in that mode (vs both banked double
-   campaigns) + the N=384 feasibility probe (~7–8 GB predicted with fp32).
-4. MUMPS-BLR evaluation against the 87M-nnz LU (target: factor nnz
-   reduction ≥2× at comparable wall time) — only if Stage 3 shows fp32
-   alone cannot reach the target N.
+3. ~~fp32 + IR + full campaign + N=384 probe~~ — DONE (see Stage 3
+   section). Production recipe: `ROTBOSON_PRECISION=32
+   ROTBOSON_PARDISO_DIRECT=1`.
+4. MUMPS-BLR: **deprioritized by Stage 3** — fp32 alone covers N=384 at
+   8 GiB and projected N=512 at a 12–16 GiB cap (host has 16 GB; container
+   cap is the only blocker). Revisit BLR/MUMPS only if N>512 in-core, or
+   side-by-side large-grid concurrency, becomes a requirement.
+5. Ask the user to raise the container memory cap (~12–16 GiB), then run
+   the N=512 probe + an l=4/5 high-resolution validation at fp32.
+6. Housekeeping tickets: SAN-32 (robustness: segfault + rename collision);
+   optional CGS-vs-direct default reconsideration for N≥256 campaigns.
