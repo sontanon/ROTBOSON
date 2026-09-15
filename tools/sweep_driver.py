@@ -41,6 +41,7 @@ unit-tested in `tests/test_driver_decisions.py`.
 import argparse
 import hashlib
 import json
+import os
 import re
 import signal
 import subprocess
@@ -298,6 +299,7 @@ KNOWN: Final[Mapping[str, set[str]]] = {
         "lambda0",
         "lambdaMin",
         "useLowRank",
+        "numThreads",
     },
     _Tables.OUTPUT: {"root", "format"},
     _Tables.ADAPTIVITY: {
@@ -444,6 +446,10 @@ class SolverSpec:
     lambda0: float = 1.0e-3
     lambdaMin: float = 1.0e-5
     useLowRank: int = 0
+    # OpenMP thread count for each C invocation. Default 4 = the measured
+    # sweet spot on this box (4 physical cores / 8 hyperthreads, cgroup CPU
+    # quota 4); 8 threads oversubscribes and is ~2.5x slower (M3 profile).
+    numThreads: int = 4
 
     @classmethod
     def parse(cls, raw: Mapping[str, object]) -> Self:
@@ -456,6 +462,7 @@ class SolverSpec:
             lambda0=_num(t, "lambda0", raw.get("lambda0", 1.0e-3)),
             lambdaMin=_num(t, "lambdaMin", raw.get("lambdaMin", 1.0e-5)),
             useLowRank=_int(t, "useLowRank", raw.get("useLowRank", 0)),
+            numThreads=_int(t, "numThreads", raw.get("numThreads", 4)),
         )
 
 
@@ -1268,6 +1275,7 @@ def run_binary(
     step: int,
     label: str | None = None,
     timeout_s: float = 3600.0,
+    num_threads: int | None = None,
 ) -> tuple[int, Path]:
     """Run ROTBOSON from the campaign root; returns (exit code, log path).
 
@@ -1283,10 +1291,18 @@ def run_binary(
             f"# ROTBOSON {binary} {params}\n# start {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n"
         )
         lf.flush()
+        # Thread count as an explicit solver config: default to the spec's
+        # numThreads (4), overriding any inherited nproc default. MKL honors
+        # OMP_NUM_THREADS directly; set it explicitly for clarity.
+        env = dict(os.environ)
+        if num_threads is not None and num_threads > 0:
+            env["OMP_NUM_THREADS"] = str(num_threads)
+            env["MKL_NUM_THREADS"] = str(num_threads)
         try:
             proc = subprocess.run(
                 [str(binary), str(params)],
                 cwd=root,
+                env=env,
                 stdout=lf,
                 stderr=subprocess.STDOUT,
                 timeout=timeout_s,
@@ -1541,6 +1557,7 @@ def do_regrid(
         root,
         step_no,
         label=f"{step_no:04d}_probe0",
+        num_threads=spec2.solver.numThreads,
     )
     sol = new_solution_dir(root, before, spec2, step_no)
     probe = RegridProbe(
@@ -2057,7 +2074,7 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
         else:
             params = render_params(spec, root, 0)
             before = set(find_solution_dirs(root))
-            code, _ = run_binary(binary, params, root, 0)
+            code, _ = run_binary(binary, params, root, 0, num_threads=spec.solver.numThreads)
             sol = new_solution_dir(root, before, spec, 0)
             record_step(state, spec, 0, sol, code)
             state = replace(state, stop_reason=finished(state, spec))
@@ -2250,7 +2267,9 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
 
                 shutil.rmtree(stale)
             before = set(find_solution_dirs(root))
-            code, log = run_binary(binary, params, root, step_no)
+            code, log = run_binary(
+                binary, params, root, step_no, num_threads=spec_eff.solver.numThreads
+            )
             sol = new_solution_dir(root, before, spec_eff, step_no)
             last = record_step(state, spec_eff, step_no, sol, code, psi0_target=psi0_target)
             save_state(spec, state)

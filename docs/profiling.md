@@ -120,7 +120,7 @@ library call" — assessed as no headroom, so deliberately skipped.
 
 | # | recommendation | expected gain | status |
 |---|---|---|---|
-| 1 | Pin `OMP_NUM_THREADS=4` in driver/runbook | ~2.5× wall speedup on this box | **action** |
+| 1 | Pin `OMP_NUM_THREADS=4` (now `[solver] numThreads`, default 4) | ~2.5× wall speedup on this box | **implemented** |
 | 2 | Adopt fp32+IR as production recipe for N≥256 | N=400 in-core, −34% memory | **adopted** |
 | 3 | Keep PARDISO/MKL (dependency justified) | — | **decision** |
 | 4 | UMFPACK swap: no-go (killed) | — | **closed** |

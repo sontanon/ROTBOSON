@@ -1,6 +1,7 @@
 #include "tools.h"
 #include "context.h"
 #include "exit_codes.h"
+#include <errno.h>
 
 #include "parser.h"
 #include "log.h"
@@ -612,7 +613,24 @@ int main(int argc, char *argv[])
     // Rename directory to include w.
     snprintf(ctx.final_dirname, MAX_STR_LEN, "l=%lld,w=%.5E,dr=%.5E,N=%04lld", ctx.l, w, ctx.dr,
              ctx.NrInterior);
-    rename(ctx.initial_dirname, ctx.final_dirname);
+    // Refuse a silent rename collision: a stale dir shadowing fresh output
+    // caused a mis-validated comparison (SAN-32). Fail loudly instead.
+    struct stat st;
+    if (stat(ctx.final_dirname, &st) == 0)
+    {
+        rb_log(RB_LOG_ERROR,
+               "REFUSING: final output dir '%s' already exists; remove it first "
+               "(the runbook workflow expects stale dirs to be cleaned externally).",
+               ctx.final_dirname);
+        return RB_EXIT_IO;
+    }
+    if (rename(ctx.initial_dirname, ctx.final_dirname) != 0)
+    {
+        rb_log(RB_LOG_ERROR,
+               "FAILED to rename output dir '%s' -> '%s' (errno %d: %s).",
+               ctx.initial_dirname, ctx.final_dirname, errno, strerror(errno));
+        return RB_EXIT_IO;
+    }
     } // end single-solve block
 
     // Clear memory.

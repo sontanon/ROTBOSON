@@ -139,7 +139,7 @@ double-CGS for low-N smoke/CI where it is fine.
 | Rust rewrite | **NO-GO (now)** | ~0 (optimizes the 1%) | high | revisit post-M4 |
 | Python hybrid | **NO-GO** | ~0 | med | — |
 | **fp32+IR recipe** | **GO** | N=400 in-core, −34% mem | low | adopted |
-| **Pin `OMP_NUM_THREADS=4`** | **GO** | ~2.5× wall on this box | trivial | add to driver/runbook |
+| **Pin `OMP_NUM_THREADS=4`** | **GO** | ~2.5× wall on this box | trivial | **implemented** (`[solver] numThreads`, default 4) |
 | **M4 multigrid** | **PRIORITIZE** | real resolution/domain lever | — | M4 track |
 
 **Bottom line:** keep C + PARDISO, adopt fp32+IR for N≥256, and put the
