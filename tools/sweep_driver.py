@@ -300,6 +300,9 @@ KNOWN: Final[Mapping[str, set[str]]] = {
         "lambdaMin",
         "useLowRank",
         "numThreads",
+        "precision",
+        "direct",
+        "fp32_ir",
     },
     _Tables.OUTPUT: {"root", "format"},
     _Tables.ADAPTIVITY: {
@@ -450,10 +453,23 @@ class SolverSpec:
     # sweet spot on this box (4 physical cores / 8 hyperthreads, cgroup CPU
     # quota 4); 8 threads oversubscribes and is ~2.5x slower (M3 profile).
     numThreads: int = 4
+    # Production precision recipe (M3): precision=32 + direct=1 + fp32_ir
+    # halves factor memory and reaches the paper's N=400 in-core. These map
+    # onto the C env vars ROTBOSON_PRECISION / ROTBOSON_PARDISO_DIRECT /
+    # ROTBOSON_FP32_IR, set per C invocation by run_binary.
+    precision: int = 64  # 64 = double (default), 32 = single (fp32)
+    direct: bool = False  # ROTBOSON_PARDISO_DIRECT (direct+IR solves)
+    fp32_ir: int = 2  # iterative-refinement passes; only with fp32+direct
 
     @classmethod
     def parse(cls, raw: Mapping[str, object]) -> Self:
         t = _Tables.SOLVER
+        precision = _int(t, "precision", raw.get("precision", 64))
+        if precision not in (32, 64):
+            raise SpecError(f"[{t}] precision must be 32 or 64")
+        fp32_ir = _int(t, "fp32_ir", raw.get("fp32_ir", 2))
+        if fp32_ir < 0:
+            raise SpecError(f"[{t}] fp32_ir must be >= 0")
         return cls(
             solverType=_int(t, "solverType", raw.get("solverType", 1)),
             localSolver=_int(t, "localSolver", raw.get("localSolver", 1)),
@@ -463,6 +479,9 @@ class SolverSpec:
             lambdaMin=_num(t, "lambdaMin", raw.get("lambdaMin", 1.0e-5)),
             useLowRank=_int(t, "useLowRank", raw.get("useLowRank", 0)),
             numThreads=_int(t, "numThreads", raw.get("numThreads", 4)),
+            precision=precision,
+            direct=bool(raw.get("direct", False)),
+            fp32_ir=fp32_ir,
         )
 
 
@@ -1276,6 +1295,9 @@ def run_binary(
     label: str | None = None,
     timeout_s: float = 3600.0,
     num_threads: int | None = None,
+    precision: int = 64,
+    direct: bool = False,
+    fp32_ir: int = 2,
 ) -> tuple[int, Path]:
     """Run ROTBOSON from the campaign root; returns (exit code, log path).
 
@@ -1298,6 +1320,17 @@ def run_binary(
         if num_threads is not None and num_threads > 0:
             env["OMP_NUM_THREADS"] = str(num_threads)
             env["MKL_NUM_THREADS"] = str(num_threads)
+        # fp32+direct+IR production recipe from the solver config.
+        if precision == 32:
+            env["ROTBOSON_PRECISION"] = "32"
+            env["ROTBOSON_FP32_IR"] = str(fp32_ir)
+        else:
+            env.pop("ROTBOSON_PRECISION", None)
+            env.pop("ROTBOSON_FP32_IR", None)
+        if direct:
+            env["ROTBOSON_PARDISO_DIRECT"] = "1"
+        else:
+            env.pop("ROTBOSON_PARDISO_DIRECT", None)
         try:
             proc = subprocess.run(
                 [str(binary), str(params)],
@@ -1558,6 +1591,9 @@ def do_regrid(
         step_no,
         label=f"{step_no:04d}_probe0",
         num_threads=spec2.solver.numThreads,
+        precision=spec2.solver.precision,
+        direct=spec2.solver.direct,
+        fp32_ir=spec2.solver.fp32_ir,
     )
     sol = new_solution_dir(root, before, spec2, step_no)
     probe = RegridProbe(
@@ -2074,7 +2110,16 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
         else:
             params = render_params(spec, root, 0)
             before = set(find_solution_dirs(root))
-            code, _ = run_binary(binary, params, root, 0, num_threads=spec.solver.numThreads)
+            code, _ = run_binary(
+                binary,
+                params,
+                root,
+                0,
+                num_threads=spec.solver.numThreads,
+                precision=spec.solver.precision,
+                direct=spec.solver.direct,
+                fp32_ir=spec.solver.fp32_ir,
+            )
             sol = new_solution_dir(root, before, spec, 0)
             record_step(state, spec, 0, sol, code)
             state = replace(state, stop_reason=finished(state, spec))
@@ -2268,7 +2313,14 @@ def run_campaign(spec: Spec, fresh: bool, dry_run: bool) -> int:
                 shutil.rmtree(stale)
             before = set(find_solution_dirs(root))
             code, log = run_binary(
-                binary, params, root, step_no, num_threads=spec_eff.solver.numThreads
+                binary,
+                params,
+                root,
+                step_no,
+                num_threads=spec_eff.solver.numThreads,
+                precision=spec_eff.solver.precision,
+                direct=spec_eff.solver.direct,
+                fp32_ir=spec_eff.solver.fp32_ir,
             )
             sol = new_solution_dir(root, before, spec_eff, step_no)
             last = record_step(state, spec_eff, step_no, sol, code, psi0_target=psi0_target)

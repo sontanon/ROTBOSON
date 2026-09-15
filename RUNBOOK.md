@@ -188,3 +188,41 @@ the fold frequencies +0.07% (l=1) to +2.7% (l=4) — the fold is the most
 resolution-sensitive critical point at the runbook's grids; the causes are
 diagnosed (resolution, not physics). `plot_verification.py` prints the
 comparison table and draws the deviation bars.
+
+---
+
+## g. The N400 campaign (M3 / SAN-33): fold at the paper's resolution
+
+M3 unlocked the paper's original N=400 in-core (fp32+direct+IR at the
+12 GiB cap), so the fold ω_min can now be localized at the paper's
+resolution instead of N=256. This is the closure of Table IX.1.
+
+**Design (2026-09-15):**
+
+- Base grid **N=200** (dr=0.08, domain kept at 16) for the cheap smooth
+  stretch (~33 s/step @ 4 threads vs 220 s at N=400).
+- **One domain-keeping N×2 refinement → N=400** near the fold, triggered by
+  `hwl_min = 14` (it is a *cell count*: 8@N=128 meant physical width 1.0;
+  at N=200 that is ~12.5, so 14 fires ~8 steps before the vertex — the old
+  8 never fires at N=200).
+- **Production recipe**: `[solver] precision=32, direct=true, fp32_ir=2`
+  (fp32 + direct + IR), 4 threads — baked into the driver's `[solver]`
+  config, no env vars needed.
+
+Run each campaign (l=1..4):
+
+```bash
+uv run tools/sweep_driver.py configs/runbook_l${L}_n400.toml
+uv run tools/sweep_driver.py configs/runbook_l${L}_n400.toml --summarize
+```
+
+For overnight, sequential orchestration is in
+`tools/run_n400_overnight.sh` (tmux session `n400`); it waits for l=1,
+then runs l=2,3,4 one after another, writing `out/n400_overnight.log` and
+per-campaign `.STATUS` markers.
+
+**Achieved l=1 (2026-09-15):** ω_min = 0.6456114 (poly3, 5 pts at N=400)
+vs paper 0.64561 → **+0.0002%** (M2 at N=256: +0.068%; ~340× better).
+
+**l=5/6 note:** seeds are not ready (the N=128 cross5/cross6 attempts
+failed with PARDISO −4). Deferred pending seed work at N=200.
