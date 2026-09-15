@@ -48,13 +48,6 @@ wait_terminal() {  # wait until a campaign state.json reaches terminal status
     done
 }
 
-notify() {  # best-effort Telegram ping via a pi sub-turn
-    local msg="$1"
-    if command -v pi >/dev/null 2>&1; then
-        pi --print "Use the telegram_message tool to send this exact text to the paired Telegram chat: $msg" >/dev/null 2>&1 &
-    fi
-}
-
 run_campaign() {
     local L="$1"
     local CFG="$CONFIG_DIR/runbook_l${L}_n400.toml"
@@ -67,7 +60,9 @@ run_campaign() {
     line="$(status_line "$CAMDIR/state.json")"
     echo "== l=${L} exit=$ec $line $(date '+%F %T') ==" >> "$LOG"
     echo "l=${L} $line" > "$CAMDIR/.STATUS"
-    notify "[ROTBOSON N400] l=${L} campaign finished: $line"
+    # No explicit Telegram ping: the user receives all agent updates on
+    # Telegram automatically, and spawning `pi --print` sub-turns would
+    # compete with the running campaigns for the 4-CPU budget.
 }
 
 # ---- wait for l=1 (currently running in the background) ----------------
@@ -75,7 +70,6 @@ echo "waiting for l=1 to reach terminal..." >> "$LOG"
 wait_terminal "$OUT_DIR/runbook-n400-l1"
 l1="$(status_line "$OUT_DIR/runbook-n400-l1/state.json")"
 echo "== l=1 terminal: $l1 $(date '+%F %T') ==" >> "$LOG"
-notify "[ROTBOSON N400] l=1 finished: $l1"
 
 # ---- run l=2,3,4 sequentially ------------------------------------------
 for L in 2 3 4; do
@@ -83,4 +77,3 @@ for L in 2 3 4; do
 done
 
 echo "=== ALL N400 CAMPAIGNS DONE $(date '+%F %T') ===" >> "$LOG"
-notify "[ROTBOSON N400] All l=2,3,4 campaigns complete. See $ROOT/out/n400_overnight.log"
