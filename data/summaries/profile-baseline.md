@@ -273,6 +273,26 @@ and the 8-thread 216 s figure is itself the oversubscription artifact
 reported below (UMFPACK was run at 8 threads for an apples-to-apples env,
 but PARDISO's fair comparison is 92 s @ 4 threads).
 
+## N=400 @ 4 threads verified (2026-09-15) — 2.65× gain confirmed
+
+Production recipe (fp32+direct+IR), master l=1 seed, fixed ω=0.95, N=400
+(970k unknowns), `OMP_NUM_THREADS=4`:
+
+| metric | @8 thr (prior) | **@4 thr (verified)** | Δ |
+|---|---|---|---|
+| wall | 583 s | **220 s** | **2.65× faster** |
+| exit | 0 | **0** | — |
+| Newton | 12 iters | **12 iters** | same |
+| peak RSS | 8.97 GB | **8.86 GB** | fits 12 GiB (≈3 GB headroom) |
+| M_Komar1/M_Komar2 | 0.789975 | **7.89988e-01 = 7.89988e-01** | on-branch |
+| factor | — | 151.8 s (69%) | dominant |
+| fp32 IR | — | 35.1 s | — |
+
+This confirms the OpenMP finding at the paper grid: the earlier 583 s N=400
+was oversubscribed (8 threads default); at the 4-thread sweet spot the same
+paper-grid solve is **220 s**. The full l=1..6 N=400 campaign can now be
+planned at this 4-thread recipe (~2.6× cheaper than the historical estimate).
+
 ## OpenMP thread scaling sweep (2026-09-15) — SURPRISING FINDING
 
 Production N=256 probe, single cold-start solve, OMP_NUM_THREADS=1/2/4/8
