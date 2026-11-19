@@ -150,9 +150,11 @@ First-class from day one (ADR 0001 decision 6):
   these).
 - **HDF5 export** (`rbs-io::Hdf5Writer`, feature `hdf5`): mirrors the C
   writer's self-describing contract — `<field>.asc` datasets with
-  `(nr, nz)` C-order layout and root attributes — so
-  `tools/rotboson_io.py` reads Rust output **unchanged**; the format
-  contract is already pinned on the C side by the fixture roundtrip test.
+  `(nr, nz)` C-order layout, `r`/`z` meshgrids, and the full root
+  attribute set — so `tools/rotboson_io.py` reads Rust output
+  **unchanged**; the format contract is pinned on the C side by the
+  fixture roundtrip test and on the Rust side by the SAN-55 parity
+  fixture (`ng/rbs-io/tests/fixtures/l1_smoke_n64_rust.h5`).
 - **Animation pipeline** (`rbs-viz`, placeholder): field movies along
   continuation campaigns, fold-approach visualizations, and
   collapse-threshold sequences — the campaign driver writes VTRs as it
@@ -165,7 +167,7 @@ First-class from day one (ADR 0001 decision 6):
 | `rbs-core` | grids, fields, stencils, index maps (C-convention ports) | real, tested |
 | `rbs-elliptic` | residual/Jacobian assembly, Newton, ω constraint | kernels generated (SAN-56); assembly/Newton are the SAN-62 port target |
 | `rbs-linalg` | `LinearSolver` trait + faer LU + MG-Krylov placeholder | real, tested |
-| `rbs-io` | HDF5 + VTR writers behind `FieldWriter` | VTR real; HDF5 feature-gated, roundtrip-tested locally |
+| `rbs-io` | HDF5 + VTR writers behind `FieldWriter` | real, parity-pinned (HDF5 C-contract mirror, feature-gated; VTR VTK-order-correct) |
 | `rbs-driver` | continuation campaigns | parameter skeleton; port target |
 | `rbs-evolve` | 1D-first evolution | formulation roster only |
 | `rbs-viz` | animation/streaming pipeline | placeholder |
