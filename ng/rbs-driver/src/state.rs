@@ -127,32 +127,34 @@ fn st_str_key(raw: &Jv, key: &str, default: &str) -> Result<String, StateError> 
 }
 
 fn st_opt_float(raw: &Jv, key: &str) -> Result<Option<f64>, StateError> {
+    // Python's raw.get(key) yields None for a MISSING key *and* for a
+    // present null — both load as None.
     match raw.get(key) {
-        None => Ok(None),
+        None | Some(Jv::Null) => Ok(None),
         Some(v) => st_float(v).map(Some),
     }
 }
 
 fn st_opt_int(raw: &Jv, key: &str) -> Result<Option<i64>, StateError> {
     match raw.get(key) {
-        None => Ok(None),
+        None | Some(Jv::Null) => Ok(None),
         Some(v) => st_int(v).map(Some),
     }
 }
 
 fn st_opt_str(raw: &Jv, key: &str) -> Result<Option<String>, StateError> {
     match raw.get(key) {
-        None => Ok(None),
+        None | Some(Jv::Null) => Ok(None),
         Some(v) => st_str(v).map(Some),
     }
 }
 
 fn st_opt_i32(raw: &Jv, key: &str) -> Result<Option<i32>, StateError> {
     match st_opt_int(raw, key)? {
+        None => Ok(None),
         Some(i) => i32::try_from(i).map(Some).map_err(|_| {
             StateError::Corrupt(format!("state.json: exit code {i} out of range"))
         }),
-        None => Ok(None),
     }
 }
 
