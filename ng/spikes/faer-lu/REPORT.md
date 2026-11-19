@@ -33,6 +33,20 @@ binding decision** (KLU/UMFPACK; the C line already carries a UMFPACK backend,
 bit-equivalent at smoke sizes but ruled out at N≥256 by the C evaluation — this
 breaks pure-Rust-from-day-one and needs an explicit owner call).
 
+> **SAN-67 update (2026-11-19): the fallback is now the N1 backend —
+> implemented, measured, and adopted.** See
+> `REPORT-BACKEND.md` in this directory: `rbs-linalg::BlockFieldKrylov`
+> (field-blocked LU/LDLT preconditioner + hand FGMRES, stale-block
+> campaign entry) measures ~12× faster than PARDISO's cold solve at
+> N=256 and ~22× per stale campaign step at 1.88 GiB, with N-independent
+> iteration counts and end-to-end Newton solves that reproduce the
+> oracle fixture. The row-equilibration rescue proposed below was also
+> tested and is a measured no-op on real Jacobians — the accuracy
+> collapse recorded in §3 was a value-model artifact of this spike's
+> representative interior values, not a property of the real assembly
+> (real systems: 6.4e-12 at N=64, 7.1e-11 at N=128, 1.0e-9 at the
+> N=256 spacing).
+
 The 2D-mesh fill law measured here (≈ rows^1.45 over N=16→64, vs PARDISO's
 rows^1.20) puts the **Rust LU wall at or below N≈128 on this box even ignoring
 the accuracy wall** — the guarded N=256 projection lands at ~22 GiB of factor
