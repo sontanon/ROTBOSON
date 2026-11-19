@@ -15,16 +15,32 @@
 //!
 //! Gates asserted:
 //!
-//! * convergence of the damped global Newton (the C's normalized
-//!   `||du|| < eps * ||u||` exit);
+//! * convergence of the NLEQ-ERR + QNERR machinery (the C's normalized
+//!   `||du|| < eps * ||u||` family of exits) on the smoke spec's
+//!   `epsilon = 1e-8`, with the C oracle's ITERATION PATH: the k = 0
+//!   REJECT B damping growth (lambda0 = 1e-3 -> 0.128601), the k = 1
+//!   prediction recovery (lambda = 0.662003), the k = 2 QNERR entry,
+//!   and the CONVERGED C exit — 12 iterations, exactly the oracle's
+//!   count (SAN-52);
 //! * the initial residual at the ansatz matches the oracle's logged
 //!   `||f0||..||f5||` to 10 digits (the strongest single check that the
 //!   whole residual chain — derivatives, regularization auxiliaries,
 //!   kernels, boundary rows — is the C's);
-//! * every field matches the oracle solution: per-field relative
-//!   deviation (max |diff| / field scale) below 1e-10, absolute below
-//!   5e-14.  Per-point relative deviation is printed for the record;
-//!   its worst value sits on near-zero axis points of `lambda` where an
+//! * the SOLUTION fields match the oracle at the exit points:
+//!   - at `epsilon = 1e-12` (the deeper exit: the QNERR tail's
+//!     Theta-increase restart, then the CONVERGED B on a fresh-J
+//!     second solve at `||du_bar||/||u|| ~ 2e-14`) to the original
+//!     tight gates — field-relative below 1e-10, absolute below
+//!     5e-14 (measured: 2.9e-14 / 1.5e-15);
+//!   - at the smoke spec's `epsilon = 1e-8` (the C's own 12-iteration
+//!     CONVERGED C exit) to 1e-8 / 1e-9 gates: that exit applies a
+//!     stale-J *corrected* step at `||du|| ~ 1e-9`, and the alpha
+//!     correction chain amplifies faer-vs-PARDISO solve rounding to
+//!     the ~1e-10 level (measured: 7.0e-10) — the C's own exit
+//!     state carries the same-order error in ITS backend's rounding,
+//!     which is why the tight pin lives at the deeper exit;
+//! * per-point relative deviation is printed for the record; its worst
+//!   value sits on near-zero axis points of `lambda` where an
 //!   absolute ~1.5e-15 difference is a large relative number and means
 //!   nothing;
 //! * the faer linear backend's solve residual `||Ax - b|| / ||b||` on
@@ -40,7 +56,7 @@ use rbs_elliptic::assembly::{
     assemble_jacobian, assemble_residual, JacobianPattern, ProblemParams, Workspace,
 };
 use rbs_elliptic::initial::{initial_guess, InitialGuess, SolveState};
-use rbs_elliptic::newton::{solve, NewtonConfig, NewtonStatus};
+use rbs_elliptic::newton::{solve, NewtonConfig, NewtonEvent, NewtonStatus};
 use rbs_linalg::faer_lu::FaerSparseLu;
 use rbs_linalg::LinearSolver;
 
@@ -162,7 +178,8 @@ fn n64_l1_smoke_matches_the_c_oracle() {
         assert!(rel < 1e-10, "faer solve residual too large: {rel:.3e}");
     }
 
-    // The solve.
+    // The solve: the smoke spec's epsilon = 1e-8 first (the C's own
+    // 12-iteration exit path).
     let mut solver = FaerSparseLu::new();
     let t0 = std::time::Instant::now();
     let (status, log) = solve(
@@ -176,8 +193,13 @@ fn n64_l1_smoke_matches_the_c_oracle() {
     let elapsed = t0.elapsed();
     for entry in &log {
         eprintln!(
-            "iter {:2}: norm_du {:.3e} lambda {:.3e} theta {:.3e}",
-            entry.iter, entry.norm_du, entry.lambda, entry.theta
+            "iter {:2}: norm_du {:.3e} lambda {:.3e} theta {:.3e} lambda' {:.3e} {}",
+            entry.iter,
+            entry.norm_du,
+            entry.lambda,
+            entry.theta,
+            entry.lambda_prime,
+            entry.event.status_str()
         );
     }
     let iterations = match status {
@@ -186,6 +208,30 @@ fn n64_l1_smoke_matches_the_c_oracle() {
     };
     eprintln!(
         "converged in {iterations} iterations, {elapsed:?} wall (C oracle: 12 at epsilon=1e-8)"
+    );
+
+    // The oracle's iteration path (SAN-52): the REJECT B growth out of
+    // lambda0 = 1e-3, the damped first step, the prediction recovery,
+    // the QNERR entry, and the CONVERGED C exit after 12 iterations.
+    assert_eq!(iterations, 12, "the C oracle exits after 12 iterations");
+    let events: Vec<_> = log.iter().map(|r| r.event).collect();
+    assert_eq!(
+        events[..4],
+        [
+            NewtonEvent::RejectB,
+            NewtonEvent::Accept,
+            NewtonEvent::Accept,
+            NewtonEvent::EnterQnerr,
+        ],
+        "events: {events:?}"
+    );
+    assert_eq!(events.last(), Some(&NewtonEvent::ConvergedC));
+    // The oracle's k = 0 row: lambda' = 0.128601 (the mu-prime
+    // regularization capping the REJECT B growth).
+    assert!(
+        (log[0].lambda_prime - 0.128601).abs() < 1e-3 * 0.128601,
+        "k=0 lambda' {} vs oracle 0.128601",
+        log[0].lambda_prime
     );
 
     // Field-by-field parity vs the pinned oracle solution.
@@ -217,17 +263,25 @@ fn n64_l1_smoke_matches_the_c_oracle() {
             max_abs,
             worst_point_rel
         );
+        // Relaxed gates for the eps = 1e-8 exit: that exit applies a
+        // stale-J CORRECTED step at ||du|| ~ 1e-9 and the alpha
+        // correction chain amplifies faer-vs-PARDISO solve rounding
+        // to the ~1e-10 level (measured 7.0e-10); the tight pin lives
+        // at the eps = 1e-12 exit below.
         assert!(
-            max_abs / scale < 1e-10,
-            "{name}: field-relative deviation {} exceeds the gate",
+            max_abs / scale < 1e-8,
+            "{name}: field-relative deviation {} exceeds the eps=1e-8 exit gate",
             max_abs / scale
         );
-        assert!(max_abs < 5e-14, "{name}: absolute deviation {max_abs:.3e}");
+        assert!(
+            max_abs < 1e-9,
+            "{name}: absolute deviation {max_abs:.3e} exceeds the eps=1e-8 exit gate"
+        );
         worst_field_rel = worst_field_rel.max(max_abs / scale);
         worst_abs = worst_abs.max(max_abs);
     }
     eprintln!(
-        "gate: worst field-rel {worst_field_rel:.3e}, worst abs {worst_abs:.3e} (gate 1e-10 / 5e-14)"
+        "eps=1e-8 exit: worst field-rel {worst_field_rel:.3e}, worst abs {worst_abs:.3e} (gate 1e-8 / 1e-9)"
     );
 
     // Omega is pinned by the constraint row; both solvers carry it
@@ -235,4 +289,74 @@ fn n64_l1_smoke_matches_the_c_oracle() {
     let w = rbs_elliptic::omega::omega_calc(state.xi, 1.0);
     assert!((w - fix.omega).abs() < 1e-15, "omega drifted: {w} vs {}", fix.omega);
     let _ = JacobianPattern::build(&grid, &params);
+
+    // The tight solution pin at the deeper exit: epsilon = 1e-12 (the
+    // same spec, the QNERR Theta-increase restart the C oracle walks
+    // to a CONVERGED B after 15 iterations). The final state there is
+    // a fresh-J du_bar update at ||du_bar||/||u|| ~ 2e-14 —
+    // machine-level — so the ORIGINAL SAN-62 gates hold with full
+    // margin (measured: worst field-rel 2.9e-14, worst abs 1.5e-15).
+    let mut state12: SolveState = initial_guess(&grid, &InitialGuess::l1_smoke());
+    let t12 = std::time::Instant::now();
+    let (status12, log12) = solve(
+        &mut FaerSparseLu::new(),
+        &grid,
+        &mut state12,
+        &params,
+        &NewtonConfig {
+            epsilon: 1e-12,
+            ..NewtonConfig::default()
+        },
+    )
+    .expect("linear backend ok");
+    let iterations12 = match status12 {
+        NewtonStatus::Converged { iterations, .. } => iterations,
+        other => panic!("eps=1e-12 solve did not converge: {other:?}"),
+    };
+    eprintln!(
+        "eps=1e-12: converged in {iterations12} iterations, {:?} wall (C oracle: 15, CONVERGED B)",
+        t12.elapsed()
+    );
+    assert_eq!(iterations12, 15, "the C oracle exits after 15 iterations");
+    let events12: Vec<_> = log12.iter().map(|r| r.event).collect();
+    // 4 NLEQ rows, 11 QNERR rows (the last the Theta-increase EXIT),
+    // then the restarted iteration's CONVERGED B.
+    assert_eq!(events12.len(), 16, "events: {events12:?}");
+    assert_eq!(events12[3], NewtonEvent::EnterQnerr);
+    assert_eq!(events12[14], NewtonEvent::ExitQnerr, "the l = 10 restart");
+    assert_eq!(events12.last(), Some(&NewtonEvent::ConvergedB));
+
+    let mut worst_field_rel12 = 0.0_f64;
+    let mut worst_abs12 = 0.0_f64;
+    for (k, name) in names.iter().enumerate() {
+        let oracle = &fix.fields[k];
+        let mine = state12.fields.field(k);
+        let scale = oracle.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
+        let mut max_abs = 0.0_f64;
+        for idx in 0..dim {
+            max_abs = max_abs.max((mine[idx] - oracle[idx]).abs());
+        }
+        eprintln!(
+            "{name:12}: eps=1e-12 field-rel {:.3e}, max|diff| {:.3e}",
+            max_abs / scale,
+            max_abs
+        );
+        assert!(
+            max_abs / scale < 1e-10,
+            "{name}: field-relative deviation {} exceeds the tight gate",
+            max_abs / scale
+        );
+        assert!(max_abs < 5e-14, "{name}: absolute deviation {max_abs:.3e}");
+        worst_field_rel12 = worst_field_rel12.max(max_abs / scale);
+        worst_abs12 = worst_abs12.max(max_abs);
+    }
+    eprintln!(
+        "eps=1e-12 gate: worst field-rel {worst_field_rel12:.3e}, worst abs {worst_abs12:.3e} (gate 1e-10 / 5e-14)"
+    );
+    let w12 = rbs_elliptic::omega::omega_calc(state12.xi, 1.0);
+    assert!(
+        (w12 - fix.omega).abs() < 1e-15,
+        "omega drifted: {w12} vs {}",
+        fix.omega
+    );
 }

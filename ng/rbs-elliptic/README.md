@@ -9,8 +9,10 @@ Jacobian, and drives Newton with the frequency eigenvalue folded in.
 
 **Parity target:** the C oracle's elliptic solve — same residual vector
 (`src/rhs.c` calling `src/rhs_vars.c` + `rhs_bdry`), same Jacobian
-(`src/csr_gen_jacobian` calling `src/csr_vars.c`), same Newton semantics
-(`src/newton.c`, `src/qnerr.c`), same omega constraint
+(`src/csr_gen_jacobian` calling `src/csr_vars.c`), same Newton machinery
+(SAN-52: `src/nleq_err.c` + `src/qnerr.c`, `src/nleq_res.c` +
+`src/qnres.c`, and `src/newton.c` behind the `NewtonConfig::kind`
+switch), same omega constraint
 (`src/omega_calc.c`, `src/csr_omega_constraint.c`).
 
 **Gates** (`ng/docs/architecture.md` §4): oracle parity at N=64 and N=128
