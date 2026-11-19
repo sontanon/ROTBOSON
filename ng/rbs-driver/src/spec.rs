@@ -928,12 +928,12 @@ mod tests {
         let runbook = include_str!("../../../configs/runbook_l1_down.toml");
         assert_eq!(
             spec_hash(runbook),
-            "83206a2604f626a06ff16c44c8486ffea8c9086407054f143671d879d2e8fb25"
+            "f4fe0ab13ce3629f58e33695698e063a60835b5d5888e31075b0cf5bf6539898"
         );
         let waypoint = include_str!("../../../configs/l2_waypoint_w09.toml");
         assert_eq!(
             spec_hash(waypoint),
-            "3113a87166d8a761551cf4508c350c921e8775e53732eff4f97e9831b2aa6582"
+            "67e056c2b7ab7befc84cdce89f12d20c546746a1b68a6c718eec0ffdf8bd0fb1"
         );
     }
 
