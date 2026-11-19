@@ -1,0 +1,12 @@
+[package]
+name = "rbs-elliptic"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+rbs-core = { path = "../rbs-core" }
+rbs-linalg = { path = "../rbs-linalg" }

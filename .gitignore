@@ -5,6 +5,10 @@ ROTBOSON
 ooc_*
 *.egg-info/
 
+# Rust (ng/ workspace)
+ng/target/
+ng/Cargo.lock.orig
+
 # Editor / IDE
 .vscode/
 *.swp
