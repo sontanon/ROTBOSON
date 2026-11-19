@@ -47,6 +47,17 @@ similar_names = "allow"
 # indices are bounded far below f64's 2^52 exact-integer mantissa. Allowed
 # once at workspace level rather than per line across every grid loop.
 cast_precision_loss = "allow"
+# The kernel/assembly side mirrors the C oracle verbatim: the C's wide
+# function signatures (too_many_arguments), its single-character variable
+# names (many_single_char_names — these ARE the port contract, cf. the
+# grid-name note above), and its signed stencil-offset index arithmetic
+# (usize <-> i64: offsets are bounded by the stencil radius, indices by
+# the grid — both far inside either type on every supported target).
+too_many_arguments = "allow"
+many_single_char_names = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+cast_possible_truncation = "allow"
 
 [profile.release]
 # Debug assertions stay on for parity campaigns: the oracle reproduces
