@@ -903,5 +903,57 @@ mod tests {
         let (cp, ri, _v) = csr_to_csc(&jac);
         assert_eq!(cp.last().copied().unwrap() as usize, jac.col_idx.len());
         assert_eq!(ri.len(), jac.col_idx.len());
+
+        // CSR and CSC describe the same matrix: sort (row, col) pairs of both
+        // and compare with values.
+        let mut a: Vec<(u32, u32, f64)> = Vec::with_capacity(jac.col_idx.len());
+        for r in 0..jac.row_ptr.len() - 1 {
+            for p in jac.row_ptr[r] as usize..jac.row_ptr[r + 1] as usize {
+                a.push((r as u32, jac.col_idx[p], jac.vals[p]));
+            }
+        }
+        let mut b: Vec<(u32, u32, f64)> = Vec::with_capacity(jac.col_idx.len());
+        for c in 0..cp.len() - 1 {
+            for p in cp[c] as usize..cp[c + 1] as usize {
+                b.push((ri[p], c as u32, _v[p]));
+            }
+        }
+        a.sort_unstable_by_key(|t: &(u32, u32, f64)| (t.0, t.1));
+        b.sort_unstable_by_key(|t: &(u32, u32, f64)| (t.0, t.1));
+        assert_eq!(a.len(), b.len());
+        for (x, y) in a.iter().zip(b.iter()) {
+            assert_eq!(x.0, y.0);
+            assert_eq!(x.1, y.1);
+            assert_eq!(x.2, y.2);
+        }
+    }
+}
+
+#[cfg(test)]
+mod extra_checks {
+    use super::*;
+    #[test]
+    fn csr_csc_equal_at_n64() {
+        let jac = build_jacobian(64, 8.0);
+        let (cp, ri, v) = csr_to_csc(&jac);
+        let mut a: Vec<(u32, u32, f64)> = Vec::with_capacity(jac.col_idx.len());
+        for r in 0..jac.row_ptr.len() - 1 {
+            for p in jac.row_ptr[r] as usize..jac.row_ptr[r + 1] as usize {
+                a.push((r as u32, jac.col_idx[p], jac.vals[p]));
+            }
+        }
+        let mut b: Vec<(u32, u32, f64)> = Vec::with_capacity(jac.col_idx.len());
+        for c in 0..cp.len() - 1 {
+            for p in cp[c] as usize..cp[c + 1] as usize {
+                b.push((ri[p], c as u32, v[p]));
+            }
+        }
+        a.sort_unstable_by_key(|t: &(u32, u32, f64)| (t.0, t.1));
+        b.sort_unstable_by_key(|t: &(u32, u32, f64)| (t.0, t.1));
+        assert_eq!(a.len(), b.len());
+        for (x, y) in a.iter().zip(b.iter()) {
+            assert_eq!((x.0, x.1), (y.0, y.1));
+            assert_eq!(x.2, y.2);
+        }
     }
 }
