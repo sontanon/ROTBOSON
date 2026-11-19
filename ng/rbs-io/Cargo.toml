@@ -1,0 +1,19 @@
+[package]
+name = "rbs-io"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# HDF5 writer backend. Requires a native libhdf5 on the build host
+# (hdf5-sys); deliberately OFF in CI to keep the runners dependency-light —
+# the C CI already exercises the HDF5 contract via the fixture roundtrip.
+# Build locally with: cargo build -p rbs-io --features hdf5
+hdf5 = ["dep:hdf5"]
+
+[dependencies]
+hdf5 = { workspace = true, optional = true }

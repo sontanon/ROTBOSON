@@ -1,0 +1,49 @@
+[workspace]
+resolver = "2"
+members = [
+    "rbs-core",
+    "rbs-elliptic",
+    "rbs-linalg",
+    "rbs-io",
+    "rbs-driver",
+    "rbs-evolve",
+    "rbs-viz",
+]
+# Standalone spike crate (PR #21): its own [workspace] table, not a member.
+# Excluded so the root workspace never tries to adopt it.
+exclude = ["spikes/faer-lu"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+
+[workspace.dependencies]
+# Transitional sparse-direct backend (N <= 128 parity gates only, ADR 0001).
+faer = { version = "0.24", features = ["sparse"] }
+# Optional HDF5 writer backend for rbs-io (native libhdf5 dep; off in CI).
+# The `optional` flag lives on rbs-io's dependency declaration.
+# NOTE: the original `hdf5` crate (0.8.1) rejects modern system HDF5
+# (build.rs: "Invalid H5_VERSION: 1.14.5"), so we use the maintained fork
+# under the same import name.
+hdf5 = { package = "hdf5-metno", version = "0.15" }
+
+[workspace.lints.rust]
+# The ng code is pure safe Rust; any future `unsafe` (e.g. the HDF5 FFI
+# wrapper) must be small, documented, and reviewed.
+unsafe_code = "warn"
+# Every public item carries a doc comment: the crates are the port contract.
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "warn"
+# The grid names mirror the C oracle verbatim (NrTotal/NzTotal, dr/dz,
+# dr_off/dz_off): these pairs are the port contract, not sloppiness.
+similar_names = "allow"
+
+[profile.release]
+# Debug assertions stay on for parity campaigns: the oracle reproduces
+# solutions to ~1e-13 and we want the same safety nets while matching it.
+debug-assertions = true
