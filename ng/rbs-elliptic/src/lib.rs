@@ -6,5 +6,9 @@
 //! crate README; the parity gates live in `ng/docs/architecture.md`.
 
 pub mod assembly;
+pub mod generated;
 pub mod newton;
 pub mod omega;
+
+#[cfg(test)]
+mod kernel_parity;
