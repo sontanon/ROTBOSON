@@ -273,6 +273,9 @@ version = "0.1.0"
 dependencies = [
  "dyn-stack",
  "faer",
+ "rbs-core",
+ "rbs-elliptic",
+ "rbs-linalg",
 ]
 
 [[package]]
@@ -945,6 +948,26 @@ checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
+]
+
+[[package]]
+name = "rbs-core"
+version = "0.1.0"
+
+[[package]]
+name = "rbs-elliptic"
+version = "0.1.0"
+dependencies = [
+ "libm",
+ "rbs-core",
+ "rbs-linalg",
+]
+
+[[package]]
+name = "rbs-linalg"
+version = "0.1.0"
+dependencies = [
+ "faer",
 ]
 
 [[package]]
