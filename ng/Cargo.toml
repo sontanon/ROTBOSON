@@ -42,6 +42,11 @@ undocumented_unsafe_blocks = "warn"
 # The grid names mirror the C oracle verbatim (NrTotal/NzTotal, dr/dz,
 # dr_off/dz_off): these pairs are the port contract, not sloppiness.
 similar_names = "allow"
+# Grid-index -> coordinate conversions (the `i as f64` family, the C
+# oracle's r = dr*(i + 0.5 - ghost) idiom) are exact by construction:
+# indices are bounded far below f64's 2^52 exact-integer mantissa. Allowed
+# once at workspace level rather than per line across every grid loop.
+cast_precision_loss = "allow"
 
 [profile.release]
 # Debug assertions stay on for parity campaigns: the oracle reproduces
