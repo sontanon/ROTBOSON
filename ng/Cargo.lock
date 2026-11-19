@@ -1135,6 +1135,9 @@ version = "0.1.0"
 name = "rbs-driver"
 version = "0.1.0"
 dependencies = [
+ "rbs-core",
+ "rbs-elliptic",
+ "rbs-linalg",
  "serde",
  "serde_json",
  "toml",
