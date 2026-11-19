@@ -1,0 +1,23 @@
+# RBS-NG continuation driver — pure (solver-independent) half.
+#
+# Standalone cargo package on purpose (SAN-60): the RBS-NG workspace root is
+# being scaffolded by a parallel agent and will ADOPT this crate at merge
+# time (see README.md, "Integration notes"). `cargo test` must work from
+# inside this directory alone — do not add a [workspace] section here until
+# the merge agent decides where the workspace root lives.
+[package]
+name = "rbs-driver"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Rust port of the ROTBOSON continuation driver's pure logic (spec parsing, state.json model, adaptive decisions, fold summarize)"
+publish = false
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+# "preserve_order" keeps serde_json::Map keys in document order, and
+# "float_roundtrip" makes float parsing correctly rounded (the default
+# parser can be 1 ulp off on 16+-digit mantissas, which would break the
+# byte-identical state.json round-trip). Do not drop either feature.
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+toml = "0.9"
