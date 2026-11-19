@@ -15,6 +15,17 @@
 # N=400/dr=0.05 (domain 20) — slightly coarser than the paper's fold grid
 # but wider, which the dilute l=4 tail needs.
 #
+# fix2 (SAN-59): domain 20 alone is not enough — the only dilute l=4 seed
+# lives on a domain-16.5 grid with an undecayed tail (r99 15.9 ~= 16.5), so
+# the cross-grid interpolation must EXTRAPOLATE the outer ~3.9 units flat
+# ("Extrapolating: i_inf_1 = 163 < 204"), and Newton starts at ||du|| ~ 0.5
+# and dies in all 4 retries (preserved at runbook-n400-l4-failed2,
+# stopped:boundary at step 1). Re-seeded from the M2 walk's step-90 solution
+# (psi0 4.56e-5, omega 0.713, r99 10.98): its tail is decayed inside its own
+# 16.5 domain, so the extrapolated rim is ~vacuum. Cost: the N400 branch
+# curve starts at omega ~= 0.71; the 0.90 -> 0.71 dilute segment remains
+# covered by the M2 N=128 walk (out/campaigns/sweep-l4-final) only.
+#
 # Run from the repo root:
 #   uv run tools/sweep_driver.py configs/runbook_l4_n400.toml
 #   uv run tools/sweep_driver.py configs/runbook_l4_n400.toml --summarize
@@ -26,12 +37,11 @@ psi0_target = 2.5
 psi0_step = 0.03
 psi0_step_mode = "relative"
 max_retries = 4
-# fix1: 400 ladder steps from the dilute seed (psi0 = 3.19e-6 at 3%/step)
-# only reach psi0 ~= 0.44 — and the N=128 reference walk (sweep-l4-final)
-# was still descending at psi0 = 0.40, omega 0.4136 (paper fold 0.40756).
-# The fold sits past step 400 on every wide-domain estimate; 500 covers
-# psi0 ~= 7.7, far beyond any fold location on the table. The turning-point
-# stop fires first.
+# fix1: from the fix2 seed (psi0 = 4.56e-5 at 3%/step) any fold estimate
+# (psi0 0.4-0.9, per sweep-l4-final still descending at psi0 = 0.40 /
+# omega 0.4136 vs paper fold 0.40756) is ~110-160 ladder steps away; 500
+# leaves 3x headroom for retries and later-than-expected vertices.
+# The turning-point stop fires first.
 max_steps = 500
 stop_at_turning_point = true
 
@@ -40,15 +50,20 @@ max_refinements = 1
 refine_keeps_domain = true
 # hwl is a CELL count: physical trigger width ~= hwl_min * dr. Keep the
 # M2-matched ~1.1-1.2 width at the dr=0.10 base grid (12 ~= 1.2/0.10;
-# the first attempt used 14 ~= 1.12/0.08). The l=4 branch narrows fast —
-# the trigger fires around omega ~= 0.6, so the Nx2 refinement intentionally
-# spends most of the campaign on the N=400 grid (l=4 is resolution-hungry:
+# the first attempt used 14 ~= 1.12/0.08). On the l=4 branch the field's
+# half-width crosses 1.2 near psi0 ~= 5e-3 (omega ~= 0.50, from
+# sweep-l4-final's hwl@dr=0.125 data), so the Nx2 refinement intentionally
+# spends the fold approach on the N=400 grid (l=4 is resolution-hungry:
 # omega moved ~0.013 between the N=128 and N=320/dr=0.08 grids).
 hwl_min = 12
 
 [seed]
 policy = "solution"
-source = "../out/campaigns/l4-seed-at-w09/l=4,w=8.99874E-01,dr=1.25000E-01,N=0128"
+# fix2: mid-branch re-seed (see header). The dilute tip
+# (l4-seed-at-w09/l=4,w=8.99874E-01,...) cannot be interpolated onto a
+# domain-20 grid: its r99 ~= 15.9 ~= its own domain, so the extrapolated
+# rim carries full-strength field values and Newton dies (failed2).
+source = "../out/campaigns/sweep-l4-final/l=4,w=7.13291E-01,dr=1.25000E-01,N=0128"
 
 [grid]
 dr = 0.10
