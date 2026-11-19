@@ -1,10 +1,12 @@
-# RBS-NG continuation driver — pure (solver-independent) half.
+# RBS-NG continuation driver.
 #
-# Standalone cargo package on purpose (SAN-60): the RBS-NG workspace root is
-# being scaffolded by a parallel agent and will ADOPT this crate at merge
-# time (see README.md, "Integration notes"). `cargo test` must work from
-# inside this directory alone — do not add a [workspace] section here until
-# the merge agent decides where the workspace root lives.
+# Two halves live here: the pure campaign logic (SAN-60 — spec parsing,
+# state.json model, adaptive decisions, fold summarize) and the vertical-
+# slice runner binary (SAN-62) that drives a single solve through
+# rbs-elliptic + rbs-linalg. The solver-facing campaign loop is SAN-65.
+#
+# Adopted as a workspace member at the PR #19 integration rebase (the
+# pre-merge "standalone by design" note is history).
 [package]
 name = "rbs-driver"
 version = "0.1.0"
@@ -14,6 +16,9 @@ description = "Rust port of the ROTBOSON continuation driver's pure logic (spec 
 publish = false
 
 [dependencies]
+rbs-core = { path = "../rbs-core" }
+rbs-elliptic = { path = "../rbs-elliptic" }
+rbs-linalg = { path = "../rbs-linalg" }
 serde = { version = "1", features = ["derive"] }
 # "preserve_order" keeps serde_json::Map keys in document order, and
 # "float_roundtrip" makes float parsing correctly rounded (the default
