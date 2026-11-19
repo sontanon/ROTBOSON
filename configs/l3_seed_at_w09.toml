@@ -25,6 +25,7 @@ dr = 0.125
 N = 128
 
 [solver]
+numThreads = 4
 maxNewtonIter = 60
 
 [output]

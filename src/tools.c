@@ -1,5 +1,6 @@
 // Headers.
 #include "arch.h"
+#include "exit_codes.h"
 #include <stdio.h>
 #include <stdlib.h>
 #define _USE_MATH_DEFINES
@@ -116,6 +117,15 @@ void read_single_file_1d(double *u, const char *fname, const MKL_INT dim, const 
     // Open file.
     FILE *fp = fopen(fname, "r");
 
+    // Refuse to dereference a missing file: a NULL fp segfaulted here (SAN-32).
+    if (fp == NULL)
+    {
+        fprintf(stderr, "CRITICAL: cannot open initial-data file \"%s\" "
+                        "(missing or unreadable); called from %s.%lld.\n",
+                fname, source_file, source_line);
+        exit(RB_EXIT_IO);
+    }
+
     // Loop over values.
     for (i = 0; i < dim; ++i)
     {
@@ -147,6 +157,15 @@ void read_single_file_2d(double *u, const char *fname, const MKL_INT NrTotal, co
 
     // Open file.
     FILE *fp = fopen(fname, "r");
+
+    // Refuse to dereference a missing file: a NULL fp segfaulted here (SAN-32).
+    if (fp == NULL)
+    {
+        fprintf(stderr, "CRITICAL: cannot open initial-data file \"%s\" "
+                        "(missing or unreadable); called from %s.%lld.\n",
+                fname, source_file, source_line);
+        exit(RB_EXIT_IO);
+    }
 
     MKL_INT small_dim_r = MIN(NrTotalInitial, NrTotal);
     MKL_INT small_dim_z = MIN(NzTotalInitial, NzTotal);

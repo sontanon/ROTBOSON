@@ -4,6 +4,7 @@
 #include "csr_grid_fill.h"
 #include "csr_vars.h"
 #include "csr_omega_constraint.h"
+#include "profile.h"
 
 #define EVEN 1
 #define ODD -1
@@ -100,6 +101,8 @@ MKL_INT nnz_jacobian(const rb_context *ctx)
 
 void csr_gen_jacobian(rb_context *ctx, csr_matrix A, double *u, const MKL_INT print)
 {
+    prof_begin(PROF_JACOBIAN);
+
     // Number of elements we have filled in.
     MKL_INT offset = 0;
 
@@ -193,6 +196,8 @@ void csr_gen_jacobian(rb_context *ctx, csr_matrix A, double *u, const MKL_INT pr
     // PRINT MATRIX.
     if (print)
         csr_print(&A, "a.asc", "ia.asc", "ja.asc");
+
+    prof_end(PROF_JACOBIAN);
 
     // All done.
     return;

@@ -1,0 +1,48 @@
+# Runbook: l=3 N400 down-campaign (M3, full paper-resolution closure).
+#
+# Goal: full decreasing-omega branch from the cross-l seed down to the fold,
+# vertex (w_min) localized at the paper's original N=400.
+#
+# Strategy (M3 design): base grid N=200 (cheap smooth stretch) + ONE
+# domain-keeping Nx2 refinement -> N=400 near the fold (hwl_min trigger).
+# Production recipe: fp32+direct+IR, 4 threads.
+#
+# Run from the repo root:
+#   uv run tools/sweep_driver.py configs/runbook_l3_n400.toml
+#   uv run tools/sweep_driver.py configs/runbook_l3_n400.toml --summarize
+
+[campaign]
+l = 3
+direction = "up"
+psi0_target = 6.0
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 400
+stop_at_turning_point = true
+
+[adaptivity]
+max_refinements = 1
+refine_keeps_domain = true
+# hwl is a CELL count: at the N=200 base grid raise the threshold so the
+# refinement fires at the same physical width as M2's 8@N=128 (14 ≈ 1.0/0.08).
+hwl_min = 14
+
+[seed]
+policy = "solution"
+source = "../out/campaigns/l3-seed-at-w09/l=3,w=8.99792E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.08
+N = 200
+
+[solver]
+numThreads = 4
+precision = 32
+direct = true
+fp32_ir = 2
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/runbook-n400-l3"
+format = "hdf5"

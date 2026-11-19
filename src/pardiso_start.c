@@ -1,6 +1,7 @@
 // PARDISO global parameters header.
 #define PARDISO_MAIN_FILE
 #include "pardiso_param.h"
+#include <string.h>
 
 #undef DEBUG
 
@@ -41,7 +42,7 @@ void solver_start(const MKL_INT matrix_dim)
     iparm[5 - 1] = 0; // No user fill-in reducing permutation.
     iparm[6 - 1] = 0; // Do not write solution into RHS.
     iparm[7 - 1] = 0; // Not in use.
-    iparm[8 - 1] = 0; // Max numbers of iterative refinement steps.
+    iparm[8 - 1] = 2; // Max numbers of iterative refinement steps (direct solve).
     iparm[9 - 1] = 0; // Not in use.
     iparm[10 - 1] = 13; // Perturb the pivot elements with 1E-13.
     iparm[11 - 1] = 1; // Use nonsymmetric permutation and scaling MPS.
@@ -52,13 +53,24 @@ void solver_start(const MKL_INT matrix_dim)
     iparm[15 - 1] = 0; // Not in use.
     iparm[16 - 1] = 0; // Not in use.
     iparm[17 - 1] = 0; // Not in use.
-    iparm[18 - 1] = 0; // No Output: Number of nonzeros in the factor LU.
-    iparm[19 - 1] = 0; // No Output: Mflops for LU factorization.
+    iparm[18 - 1] = -1; // Output: Number of nonzeros in the factor LU (report if < 0).
+    iparm[19 - 1] = -1; // Output: Mflops for LU factorization (report if < 0).
     iparm[20 - 1] = 0; // Output: Numbers of CG Iterations.
     iparm[24 - 1] = 1; // Parallel Numerical Factorization.
     iparm[25 - 1] = 0; // Parallel Forward/Backward Solve.
     iparm[27 - 1] = 0; // Matrix check.
     iparm[60 - 1] = getenv("ROTBOSON_PARDISO_OOC") != NULL ? 2 : 0; // OOC: 2 = keep factors on disk (MKL_PARDISO_OOC_* env vars).
+    // Single-precision mode (Stage 1 of the M3 fp32 plan): ROTBOSON_PRECISION=32
+    // sets iparm[28]=1. The value is stored in the solver handle and can only
+    // be set during phase 11, so it is fixed here, before any solver call.
+    // With this mode the arrays a, x, b handed to pardiso_64 must be float
+    // (pardiso_solve.c does the conversion; Newton-side stays double).
+    if (getenv("ROTBOSON_PRECISION") != NULL &&
+        strcmp(getenv("ROTBOSON_PRECISION"), "32") == 0)
+    {
+        iparm[28 - 1] = 1;
+        printf("PARDISO: SINGLE PRECISION MODE (ROTBOSON_PRECISION=32).\n");
+    }
     maxfct = 1; // Maximum number of numerical factorizations.
     mnum = 1; // Which factorization to use.
     msglvl = MESSAGE_LEVEL; // Print statistical information in file.

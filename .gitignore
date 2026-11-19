@@ -28,7 +28,8 @@ out/*
 # history; only data/paper/ and the test fixtures are tracked.
 data/golden/
 data/seeds/
-data/summaries/
+data/summaries/*
+!data/summaries/profile-baseline.md
 data/params/
 data/convergence/
 

@@ -1,0 +1,51 @@
+# Runbook: l=1 N400 down-campaign (M3, full paper-resolution closure).
+#
+# Goal: full decreasing-omega branch from the w=0.95 starter down to the
+# fold, with the vertex (w_min) localized at the paper's original N=400.
+#
+# Strategy (M3 design): base grid N=200 (cheap smooth stretch, ~33 s/step at
+# 4 threads) + ONE domain-keeping Nx2 refinement -> N=400 near the fold
+# (hwl_min trigger). Production recipe: fp32+direct+IR, 4 threads
+# (precision=32, direct=true, fp32_ir=2) - reaches N=400 in-core at 12 GiB.
+#
+# Run from the repo root:
+#   uv run tools/sweep_driver.py configs/runbook_l1_n400.toml
+#   uv run tools/sweep_driver.py configs/runbook_l1_n400.toml --summarize
+
+[campaign]
+l = 1
+direction = "up"
+psi0_target = 0.6
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+max_steps = 300
+stop_at_turning_point = true
+
+[adaptivity]
+max_refinements = 1
+refine_keeps_domain = true
+# hwl is a CELL count: at the N=200 base grid the field's half-width stays
+# above the old 8 (it drops to ~11 at the vertex), so the M2 threshold never
+# fires. Raise it to fire at the SAME physical width as M2's 8@N=128
+# (8*0.125=1.0 -> 1.0/0.08=12.5): 14 fires ~8 steps before the vertex.
+hwl_min = 14
+
+[seed]
+policy = "solution"
+source = "../out/l=1,w=9.50000E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.08
+N = 200
+
+[solver]
+numThreads = 4
+precision = 32
+direct = true
+fp32_ir = 2
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/runbook-n400-l1"
+format = "hdf5"

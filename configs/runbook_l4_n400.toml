@@ -1,0 +1,99 @@
+# Runbook: l=4 N400 down-campaign (M3, full paper-resolution closure).
+#
+# Goal: full decreasing-omega branch from the cross-l seed down to the fold,
+# vertex (w_min) localized at the paper's original N=400.
+#
+# Strategy (M3 design): base grid N=200 (cheap smooth stretch) + ONE
+# domain-keeping Nx2 refinement -> N=400 near the fold (hwl_min trigger).
+# Production recipe: fp32+direct+IR, 4 threads.
+#
+# fix1 (SAN-59): the first attempt (dr=0.08, domain 16, preserved at
+# out/campaigns/runbook-n400-l4-failed1) died at step 6 — the DILUTE seed
+# (r99 ~= 15.9) fills 99.6% of a domain-16 grid, the field jams against the
+# boundary and Newton's damping factor collapses.
+#
+# fix2 (SAN-59): widening to domain 20 (N=200, dr=0.10) does not fix that
+# seed: the only dilute l=4 solution lives on a domain-16.5 grid with an
+# undecayed tail (r99 15.9 ~= 16.5), so the cross-grid interpolation
+# EXTRAPOLATES the outer ~3.9 units flat ("Extrapolating: i_inf_1 = 163 <
+# 204") and Newton dies (failed2); re-seeding mid-branch (fix2b, failed3)
+# let step 1 converge, but the relaxed rim poisons step 2's Jacobian —
+# Theta ~= 1.02 at every damping scale, collapse in 1 iteration, and the
+# failed step's unmoved omega collides with step 1's output dir name -> the
+# binary's no-clobber guard exits 4 (I/O) and the campaign dies failed:io.
+#
+# fix3 (SAN-59): the mid-branch seed makes the wide domain unnecessary.
+# At psi0 = 4.56e-5 the field's r99 = 10.98 (67% of domain 16.32) and the
+# branch only CONTRACTS from there (fold r99 ~= 1.2), so the campaign runs
+# the SAME grid as the l=1..3 campaigns that matched the paper: base
+# N=200/dr=0.08 (domain 16.32 — the seed interpolation now TRUNCATES a
+# decayed tail instead of extrapolating), fold refinement N=400/dr=0.04.
+# Cost: the N400 branch curve starts at omega ~= 0.71; the 0.90 -> 0.71
+# dilute segment stays covered by the M2 N=128 walk (sweep-l4-final) only.
+#
+# OUTCOME (2026-11-19): fix3 also died at step 2 with the same signature
+# (Theta > 1 at every damping scale -> unmoved omega -> name collision ->
+# exit 4; preserved at runbook-n400-l4-failed4). failed3 vs failed4
+# isolates the cause: the extrapolated rim only changes the size of the
+# initial defect, not the outcome — the fp32 recipe's first Jacobian
+# solve at l=4 psi0 ~= 5e-5 is already non-descent on both grids, while
+# fp64 M2 walked this exact segment (sweep-l4-final, N=128). l=4 N400 is
+# DESCOPED per SAN-59: reopening it needs a fp64/mixed-precision path for
+# the l=4 mid-branch and/or a no-clobber guard that does not turn an
+# unmoved-omega Newton failure into a fatal exit 4.
+#
+# Run from the repo root:
+#   uv run tools/sweep_driver.py configs/runbook_l4_n400.toml
+#   uv run tools/sweep_driver.py configs/runbook_l4_n400.toml --summarize
+
+[campaign]
+l = 4
+direction = "up"
+psi0_target = 2.5
+psi0_step = 0.03
+psi0_step_mode = "relative"
+max_retries = 4
+# fix3: from the mid-branch seed (psi0 = 4.56e-5 at 3%/step) any fold
+# estimate (psi0 0.4-0.9, per sweep-l4-final still descending at
+# psi0 = 0.40 / omega 0.4136 vs paper fold 0.40756) is ~110-160 ladder
+# steps past the hwl refinement; 500 leaves ~2x headroom for retries and
+# a later-than-expected vertex. The turning-point stop fires first.
+max_steps = 500
+stop_at_turning_point = true
+
+[adaptivity]
+max_refinements = 1
+refine_keeps_domain = true
+# hwl is a CELL count: physical trigger width ~= hwl_min * dr. M2-matched
+# 1.12 width at the dr=0.08 base grid (14 ~= 1.12/0.08). On the l=4 branch
+# the field's half-width crosses 1.12 near psi0 ~= 6e-3 (omega ~= 0.50,
+# from sweep-l4-final's hwl@dr=0.125 data), so the Nx2 refinement
+# intentionally spends the fold approach on the N=400 grid (l=4 is
+# resolution-hungry: omega moved ~0.013 between the N=128 and N=320/dr=0.08
+# grids).
+hwl_min = 14
+
+[seed]
+policy = "solution"
+# fix3: mid-branch re-seed (see header). The dilute tip
+# (l4-seed-at-w09/l=4,w=8.99874E-01,...) cannot start this campaign: its
+# r99 ~= 15.9 jams any domain-16 grid and extrapolates garbage onto wider
+# ones. The M2 walk's step-90 solution (psi0 4.56e-5, omega 0.713,
+# r99 10.98) fits the domain-16.32 base grid at 67% and its decayed tail
+# truncates harmlessly.
+source = "../out/campaigns/sweep-l4-final/l=4,w=7.13291E-01,dr=1.25000E-01,N=0128"
+
+[grid]
+dr = 0.08
+N = 200
+
+[solver]
+numThreads = 4
+precision = 32
+direct = true
+fp32_ir = 2
+maxNewtonIter = 60
+
+[output]
+root = "../out/campaigns/runbook-n400-l4"
+format = "hdf5"

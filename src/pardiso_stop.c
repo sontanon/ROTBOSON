@@ -25,6 +25,11 @@ void solver_stop(void)
     // Free diff vector.
     if (!diff)
         free(diff);
+    // Free the single-precision (ROTBOSON_PRECISION=32) buffers.
+    {
+        void solver_fp32_cleanup(void);
+        solver_fp32_cleanup();
+    }
 #ifdef VERBOSE
     printf("PARDISO: All memory clear.\n");
 #endif

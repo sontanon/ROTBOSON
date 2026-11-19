@@ -1,0 +1,46 @@
+# M3 N400-campaign probe: master l=1 seed at N=200 (the campaign base grid).
+#
+# Base grid for the full l=1..6 N=400 campaign: N=200, dr=0.08, domain kept
+# at 16 (cf. seed 0.125*128). Production recipe (fp32+direct+IR, 4 threads):
+#   OMP_NUM_THREADS=4 ROTBOSON_PROFILE=1 ROTBOSON_PRECISION=32 \
+#     ROTBOSON_PARDISO_DIRECT=1 ../build/release/ROTBOSON \
+#     ../configs/probe_l1_n200.toml
+# Confirms the cheap smooth-stretch step cost before the full campaign.
+
+# GRID
+dr = 8.00000000E-02
+dz = 8.00000000E-02
+NrInterior = 200
+NzInterior = 200
+order = 4
+
+# INITIAL DATA
+readInitialData = 0
+
+# SCALAR FIELD PROPERTIES
+l = 1
+m = 1.0
+psi0 = 0.01
+sigmaR = 4.0
+sigmaZ = 4.0
+rExt = 12.0
+
+# INITIAL FREQUENCY.
+w0 = 9.50000E-01
+
+# FIXED VARIABLE.
+fixedPhi = 0
+fixedPhiR = 0
+fixedPhiZ = 0
+fixedOmega = 1
+
+# SOLVER PARAMETERS.
+solverType = 1
+localSolver = 1
+epsilon = 1.0E-8
+maxNewtonIter = 20
+lambda0 = 1.0E-03
+lambdaMin = 1.0E-05
+useLowRank = 0
+
+outputFormat = "hdf5"
