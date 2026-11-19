@@ -1,0 +1,70 @@
+name: Rust (ng)
+
+# The RBS-NG workspace gates (ADR 0001): build + test + clippy on ng/, plus
+# the Rust codegen byte-identity gate.  Kept deliberately cheap: one Rust
+# job, one uv job, no matrix, no native deps (the hdf5 feature stays off;
+# its native-libhdf5 quirk is documented in ng/rbs-io/Cargo.toml).
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "ng/**"
+      - "tools/generate_rust_kernels.py"
+      - "tools/sympy_system.py"
+      - ".github/workflows/rust.yml"
+  pull_request:
+    paths:
+      - "ng/**"
+      - "tools/generate_rust_kernels.py"
+      - "tools/sympy_system.py"
+      - ".github/workflows/rust.yml"
+
+concurrency:
+  group: rust-ng-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workspace:
+    name: Build + test + clippy (ng/)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ng
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ng
+
+      - name: Build
+        run: cargo build --workspace
+
+      - name: Unit tests (incl. kernel parity fixture)
+        run: cargo test --workspace
+
+      - name: Clippy (pedantic, warnings are errors)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+  codegen-gate:
+    name: Rust kernels == checked-in generated files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Sync Python tooling
+        run: uv sync --dev
+
+      # Mirrors the C gate (`generate_kernels.py --check` in ci.yml): the
+      # checked-in kernels.rs and parity fixture must be exactly what the
+      # SymPy chain regenerates.
+      - name: Regenerated Rust kernels == checked-in
+        run: uv run tools/generate_rust_kernels.py --check
