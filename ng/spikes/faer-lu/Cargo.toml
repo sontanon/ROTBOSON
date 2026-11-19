@@ -1,0 +1,20 @@
+[package]
+name = "faer-lu-spike"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "SAN-54: faer sparse-LU envelope measurement on the ROTBOSON 6-field Jacobian pattern"
+
+# Standalone on purpose: this spike must not be absorbed by the ng/ workspace
+# that is being scaffolded in parallel. An empty [workspace] table makes this
+# package its own workspace root, so it merges trivially later.
+[workspace]
+
+[dependencies]
+faer = "0.24"
+dyn-stack = { version = "0.13", default-features = false, features = ["core-error", "alloc"] }
+
+[profile.release]
+debug = false
+lto = "thin"
+codegen-units = 1
