@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import re
 
+ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 MSG_RE = re.compile(r"^(?:error|warning)(?:\[[^\]]*\])?: (.*)$")
 LOC_RE = re.compile(r"^\s*--> ([^:\s]+):(\d+):(\d+)")
-TAIL_RE = re.compile(r"^\s+")
+CLUE_RE = re.compile(r"(panicked|Killed|signal|error\[|could not compile|fatal)", re.I)
 
 MAX_ANNOTATIONS = 10  # workflow-command cap per step
 
@@ -21,9 +22,10 @@ MAX_ANNOTATIONS = 10  # workflow-command cap per step
 def main() -> int:
     msg: str | None = None
     seen = 0
-    lines = open("clippy.log", errors="replace").read().splitlines()
+    raw = open("clippy.log", errors="replace").read().splitlines()
+    lines = [ANSI_RE.sub("", l).rstrip() for l in raw]
     for line in lines:
-        m = MSG_RE.match(line.rstrip())
+        m = MSG_RE.match(line)
         if m:
             msg = m.group(1)
             # Cargo/toolchain-level errors carry no location: surface them too.
@@ -46,11 +48,13 @@ def main() -> int:
             if seen >= MAX_ANNOTATIONS:
                 return 0
     if seen == 0:
-        # No diagnostics matched at all — dump the log head as one annotation
-        # so the failure mode is visible from outside (logs are admin-gated).
-        head = [l for l in lines if l.strip()][:8]
-        print("::error::clippy produced no parseable diagnostics; log head: "
-              + " | ".join(h.strip()[:60] for h in head)[:220])
+        # No located diagnostics: failure modes live at the log TAIL —
+        # prefer panic/kill/compile-error clue lines, else the last lines.
+        clue = [l for l in lines if CLUE_RE.search(l)][:8]
+        body = clue if clue else [l for l in lines if l.strip()][-10:]
+        joined = " | ".join(l.strip()[:70] for l in body)[:240]
+        print(f"::error::clippy produced no parseable diagnostics; "
+              f"{'clue lines' if clue else 'log tail'}: {joined}")
     return 0
 
 
