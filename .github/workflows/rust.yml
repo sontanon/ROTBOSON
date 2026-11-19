@@ -51,8 +51,34 @@ jobs:
 
       - name: Clippy (pedantic, warnings are errors)
         run: |
-          echo "::add-matcher::${GITHUB_WORKSPACE}/.github/problem-matchers/rust-clippy.json"
-          cargo clippy --workspace --all-targets -- -D warnings
+          echo "::add-matcher::.github/problem-matchers/rust-clippy.json"
+          set +e
+          cargo clippy --workspace --all-targets -- -D warnings > clippy.log 2>&1
+          status=$?
+          cat clippy.log
+          if [ $status -ne 0 ]; then
+            python3 - <<'PY'
+import re
+msg = None
+seen = 0
+for line in open("clippy.log", errors="replace"):
+    m = re.match(r"^(?:error|warning)(?:\[[^]]*\])?: (.*)$", line.rstrip())
+    if m:
+        msg = m.group(1)
+        continue
+    m2 = re.match(r"^\s*--> ([^:\s]+):(\d+):(\d+)", line)
+    if m2 and msg:
+        path = m2.group(1)
+        if not path.startswith("ng/"):
+            path = "ng/" + path
+        print(f"::error file={path},line={m2.group(2)},col={m2.group(3)}::{msg[:240]}")
+        msg = None
+        seen += 1
+        if seen >= 10:
+            break
+PY
+          fi
+          exit $status
 
   codegen-gate:
     name: Rust kernels == checked-in generated files
