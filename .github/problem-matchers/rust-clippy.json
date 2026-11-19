@@ -1,0 +1,36 @@
+{
+  "problemMatcher": [
+    {
+      "owner": "clippy-error",
+      "severity": "error",
+      "pattern": [
+        {
+          "regexp": "^error: (.+)$",
+          "message": 1
+        },
+        {
+          "regexp": "^\\s+-->\\s+([^:\\s]+):(\\d+):(\\d+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "owner": "clippy-warning",
+      "severity": "warning",
+      "pattern": [
+        {
+          "regexp": "^warning: (.+)$",
+          "message": 1
+        },
+        {
+          "regexp": "^\\s+-->\\s+([^:\\s]+):(\\d+):(\\d+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3
+        }
+      ]
+    }
+  ]
+}

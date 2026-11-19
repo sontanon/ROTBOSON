@@ -50,7 +50,9 @@ jobs:
         run: cargo test --workspace
 
       - name: Clippy (pedantic, warnings are errors)
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: |
+          echo "::add-matcher::${GITHUB_WORKSPACE}/.github/problem-matchers/rust-clippy.json"
+          cargo clippy --workspace --all-targets -- -D warnings
 
   codegen-gate:
     name: Rust kernels == checked-in generated files
