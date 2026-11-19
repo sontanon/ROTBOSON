@@ -197,10 +197,11 @@ M3 unlocked the paper's original N=400 in-core (fp32+direct+IR at the
 12 GiB cap), so the fold ω_min can now be localized at the paper's
 resolution instead of N=256. This is the closure of Table IX.1.
 
-**Design (2026-09-15):**
+**Design (as run, 2026-09-15):**
 
 - Base grid **N=200** (dr=0.08, domain kept at 16) for the cheap smooth
-  stretch (~33 s/step @ 4 threads vs 220 s at N=400).
+  stretch (~16–20 s/step @ 4 threads; the N×2 refinement is where the
+  cost lives — see the wall-time note below).
 - **One domain-keeping N×2 refinement → N=400** near the fold, triggered by
   `hwl_min = 14` (it is a *cell count*: 8@N=128 meant physical width 1.0;
   at N=200 that is ~12.5, so 14 fires ~8 steps before the vertex — the old
@@ -208,6 +209,10 @@ resolution instead of N=256. This is the closure of Table IX.1.
 - **Production recipe**: `[solver] precision=32, direct=true, fp32_ir=2`
   (fp32 + direct + IR), 4 threads — baked into the driver's `[solver]`
   config, no env vars needed.
+- **Fold-cutoff nets**: `psi0_target` is only a safety net —
+  `stop_at_turning_point` is the real terminator — but the M2-era values
+  cut l=2 and l=3 short of their vertices and had to be raised
+  (l=2: 1.5→2.5, l=3: 4.0→6.0).
 
 Run each campaign (l=1..4):
 
@@ -221,8 +226,67 @@ For overnight, sequential orchestration is in
 then runs l=2,3,4 one after another, writing `out/n400_overnight.log` and
 per-campaign `.STATUS` markers.
 
-**Achieved l=1 (2026-09-15):** ω_min = 0.6456114 (poly3, 5 pts at N=400)
-vs paper 0.64561 → **+0.0002%** (M2 at N=256: +0.068%; ~340× better).
+**Achieved l=1..3 (SAN-33; `--summarize` poly3 over the last 5 pts at
+N=400):**
 
-**l=5/6 note:** seeds are not ready (the N=128 cross5/cross6 attempts
-failed with PARDISO −4). Deferred pending seed work at N=200.
+| l | ω_min (N400) | paper (IX.1) | deviation | steps | fold ψ₀ |
+|---|--------------|--------------|-----------|-------|---------|
+| 1 | 0.6456114    | 0.64561      | +0.0002%  | 170   | 0.393   |
+| 2 | 0.5164051    | 0.51657      | −0.032%   | 320   | 2.395   |
+| 3 | 0.4433731    | 0.44339      | −0.0038%  | 398   | 4.690   |
+
+For comparison, l=1 at M2/N=256 was +0.068% — the N400 fold is ~340×
+closer to the paper.
+
+**Wall time:** the base-grid stretch is cheap; everything after the hwl
+refinement runs at N=400 and dominates — l=1 ~130 s/step, l=2 ~168
+s/step, l=3 ~475 s/step (its post-refinement tail alone, 155 steps, is
+~20 h). These are overnight-to-day campaigns, not hours; plan the
+4-core box accordingly.
+
+**l=4: descoped (SAN-59).** Four attempts are preserved under
+`out/campaigns/runbook-n400-l4-failed{1..4}` — the evidence trail:
+
+- *failed1* (dr=0.08, dilute seed ψ₀=3.19e-6): walked 4 steps, died at
+  the 5th — the dilute field (r99 ≈ 15.9) fills 99.6% of the domain-16
+  grid; Newton's damping collapses against the boundary (each earlier step
+  already needed retries), and the failed retry's unmoved ω collides with
+  the previous step's output dir name → the binary's no-clobber guard
+  exits 4 (I/O) → `stopped:boundary`.
+- *failed2* (dr=0.10, domain 20, same seed): died at step 1 — the C
+  loader flat-extrapolates the seed's undecayed tail over the extra ~3.9
+  units ("Extrapolating: i_inf_1 = 163 < 204"); Newton starts at
+  ‖du‖ ≈ 0.5 and burns all retries. A dilute l≥4 seed cannot be widened:
+  its tail is undecayed at its own domain edge.
+- *failed3* (dr=0.10, re-seeded mid-branch from `sweep-l4-final` step 90:
+  ψ₀=4.56e-5, r99=10.98, decayed tail): step 1 converges cleanly
+  (residuals ~1e-13), step 2 dies at its first linear solve — the computed
+  Newton direction is non-descent (Θ ≈ 1.02 > 1 at every damping scale),
+  the attempt's unmoved ω collides with step 1's dir → exit 4 →
+  `failed:io`.
+- *failed4* (dr=0.08 — the same grid as l=1..3, truncation instead of
+  extrapolation): step 1 converges in 4 iters; step 2 dies identically
+  (Θ ≈ 1.004 > 1 as λ → 0, unmoved ω, exit 4).
+
+failed3 vs failed4 is the decisive pair: the extrapolated rim only
+changes the size of the initial defect, not the outcome. The wall is the
+solver, not the grid — the fp32 production recipe walks the l=4 dilute
+tip (failed1's four steps) and all of l=1..3, but at l=4 ψ₀ ≈ 4.7e-5 its
+first Jacobian solve is already non-descent on both grids, while M2
+walked this exact segment (and the fold) at fp64 (`sweep-l4-final`,
+N=128; `fold-l4-E`, N=320/dr=0.08). The l=4 Jacobian's conditioning
+crosses the fp32 reliability floor somewhere between ψ₀ ≈ 4e-6 and
+5e-5 — one l short of the l=5/6 PARDISO −4 wall at N=128. Two
+solver-side fixes would un-descope l=4 (both outside the runbook's
+jurisdiction): a fp64/mixed-precision path for the l=4 mid-branch, and a
+no-clobber guard that does not turn a Newton failure with unmoved ω
+into a fatal exit 4. The N400 l=4 fold remains unverified: M2's best
+fp64 point (N=128/dr=0.0625) reached ω = 0.41361 still descending at
+ψ₀ = 0.40, and the l=4 branch is strongly grid-sensitive (Δω ≈ 0.013
+between M2 grids), so paper IX.1's 0.40756 is neither confirmed nor
+refuted.
+
+**l=5/6: descoped.** The dilute seeds exceed any uniform-grid domain the
+in-core recipe can hold (PARDISO −4 at N=128 — the l=4 trail above shows
+the same wall one l earlier, from the inside). The NG program owns l=5/6
+— and l=4's uniform-grid closure — now.

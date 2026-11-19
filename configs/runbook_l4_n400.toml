@@ -31,6 +31,17 @@
 # Cost: the N400 branch curve starts at omega ~= 0.71; the 0.90 -> 0.71
 # dilute segment stays covered by the M2 N=128 walk (sweep-l4-final) only.
 #
+# OUTCOME (2026-11-19): fix3 also died at step 2 with the same signature
+# (Theta > 1 at every damping scale -> unmoved omega -> name collision ->
+# exit 4; preserved at runbook-n400-l4-failed4). failed3 vs failed4
+# isolates the cause: the extrapolated rim only changes the size of the
+# initial defect, not the outcome — the fp32 recipe's first Jacobian
+# solve at l=4 psi0 ~= 5e-5 is already non-descent on both grids, while
+# fp64 M2 walked this exact segment (sweep-l4-final, N=128). l=4 N400 is
+# DESCOPED per SAN-59: reopening it needs a fp64/mixed-precision path for
+# the l=4 mid-branch and/or a no-clobber guard that does not turn an
+# unmoved-omega Newton failure into a fatal exit 4.
+#
 # Run from the repo root:
 #   uv run tools/sweep_driver.py configs/runbook_l4_n400.toml
 #   uv run tools/sweep_driver.py configs/runbook_l4_n400.toml --summarize
