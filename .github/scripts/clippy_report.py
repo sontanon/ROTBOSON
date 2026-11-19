@@ -28,11 +28,6 @@ def main() -> int:
         m = MSG_RE.match(line)
         if m:
             msg = m.group(1)
-            # Cargo/toolchain-level errors carry no location: surface them too.
-            print(f"::error::clippy: {msg[:240]}")
-            seen += 1
-            if seen >= MAX_ANNOTATIONS:
-                return 0
             continue
         loc = LOC_RE.match(line)
         if loc and msg:
