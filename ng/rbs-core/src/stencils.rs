@@ -132,7 +132,7 @@ pub const STENCIL_4TH_CS: [StencilPoint; 10] = [
 
 /// 4th-order semi-onesided-r / centered-z stencil (`STENCILS_4TH["sc"]`).
 pub const STENCIL_4TH_SC: [StencilPoint; 10] = [
-    p(-4, 0, [0.0, 0.0, 0.0, 0.0, 1.0 / 12.0]),
+    p(-4, 0, [0.0, 0.0, 0.0, 1.0 / 12.0, 0.0]),
     p(-3, 0, [0.0, -1.0 / 12.0, 0.0, -1.0 / 2.0, 0.0]),
     p(-2, 0, [0.0, 1.0 / 2.0, 0.0, 7.0 / 6.0, 0.0]),
     p(-1, 0, [0.0, -3.0 / 2.0, 0.0, -1.0 / 3.0, 0.0]),
@@ -146,7 +146,7 @@ pub const STENCIL_4TH_SC: [StencilPoint; 10] = [
 
 /// 4th-order semi-onesided / semi-onesided stencil (`STENCILS_4TH["ss"]`).
 pub const STENCIL_4TH_SS: [StencilPoint; 11] = [
-    p(-4, 0, [0.0, 0.0, 0.0, 0.0, 1.0 / 12.0]),
+    p(-4, 0, [0.0, 0.0, 0.0, 1.0 / 12.0, 0.0]),
     p(-3, 0, [0.0, -1.0 / 12.0, 0.0, -1.0 / 2.0, 0.0]),
     p(-2, 0, [0.0, 1.0 / 2.0, 0.0, 7.0 / 6.0, 0.0]),
     p(-1, 0, [0.0, -3.0 / 2.0, 0.0, -1.0 / 3.0, 0.0]),
@@ -236,6 +236,34 @@ mod tests {
         let d_zzu = st.apply_subtype(SUBTYPE_DZZ, &zs);
         assert!((d_zu - 3.0 * z0 * z0 * dz).abs() < 1e-14);
         assert!((d_zzu - 6.0 * z0 * dz * dz).abs() < 1e-14);
+    }
+
+    /// The one-sided second-derivative tails of the sc/ss tables carry
+    /// their `S2` weights in the `dRRu` slot (a transposition at the
+    /// `(-4, 0)` point once dropped Jacobian entries — regression
+    /// guard).
+    #[test]
+    fn one_sided_second_derivative_tails_are_exact_on_quartics() {
+        let dr = 0.3_f64;
+        let r0 = 7.0_f64;
+        let sample = |off: f64| (r0 + off * dr).powi(4);
+        for st in [stencil_4th_sc(), stencil_4th_ss()] {
+            let samples: Vec<f64> = st
+                .points
+                .iter()
+                .map(|p| sample(f64::from(p.dr_off)))
+                .collect();
+            let d_rru = st.apply_subtype(SUBTYPE_DRR, &samples);
+            // d2/dr2 r^4 = 12 r^2 -> dr^2 * d2 = 12 r^2 dr^2.
+            assert!(
+                (d_rru - 12.0 * r0 * r0 * dr * dr).abs() < 1e-9,
+                "stencil {} dRRu: {d_rru}",
+                st.name
+            );
+            // The z-tail of the same points must be silent.
+            let d_zzu = st.apply_subtype(SUBTYPE_DZZ, &samples);
+            assert!(d_zzu.abs() < 1e-12, "stencil {} dZZu: {d_zzu}", st.name);
+        }
     }
 
     /// Value weights reproduce the function itself at the center point.

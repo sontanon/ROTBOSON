@@ -7,6 +7,7 @@
 
 pub mod assembly;
 pub mod generated;
+pub mod initial;
 pub mod newton;
 pub mod omega;
 

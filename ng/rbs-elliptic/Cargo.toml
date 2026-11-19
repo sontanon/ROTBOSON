@@ -10,3 +10,6 @@ workspace = true
 [dependencies]
 rbs-core = { path = "../rbs-core" }
 rbs-linalg = { path = "../rbs-linalg" }
+# Double-precision erf for the ansatz cutoff (musl's libm port; std's
+# f64::erf is nightly-only).  Already a transitive dependency via faer.
+libm = "0.2.16"

@@ -6,6 +6,7 @@
 //! field-major storage, and the step-scaled Fornberg stencils emitted by
 //! the kernel generators.
 
+pub mod diff;
 pub mod fields;
 pub mod grid;
 pub mod stencils;
