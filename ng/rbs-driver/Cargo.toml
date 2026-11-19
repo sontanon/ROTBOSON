@@ -15,8 +15,9 @@ publish = false
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-# "preserve_order" keeps serde_json::Map keys in document order; the
-# state.json round-trip is byte-identical against the Python writer only
-# with it enabled. Do not drop it.
-serde_json = { version = "1", features = ["preserve_order"] }
+# "preserve_order" keeps serde_json::Map keys in document order, and
+# "float_roundtrip" makes float parsing correctly rounded (the default
+# parser can be 1 ulp off on 16+-digit mantissas, which would break the
+# byte-identical state.json round-trip). Do not drop either feature.
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 toml = "0.9"
