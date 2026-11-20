@@ -149,29 +149,54 @@ where
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CampaignSpec {
+    /// Azimuthal harmonic order of the scalar field (C param `l`) — the
+    /// φ ∝ r^l power law at the axis.
     pub l: i64,
+    /// The branch's stepping direction in ψ₀: up from the seed, or down
+    /// toward ω = m.
     pub direction: Direction,
+    /// Terminal ψ₀ — the campaign's constraint value; targets are
+    /// clamped to land on it exactly (see [`crate::decide::next_target`]).
     pub psi0_target: f64,
+    /// Step between consecutive ψ₀ targets (relative by default:
+    /// `target = ψ₀·(1 ± step)`).
     pub psi0_step: f64,
+    /// Theory mass parameter `m` (C param `m`) — the down branch's ω
+    /// ceiling: ω → m as ψ₀ → 0.
     #[serde(default = "d_one_f")]
     pub m: f64,
+    /// Optional ω terminal value — the campaign also stops once ω
+    /// crosses it in the campaign's direction.
     #[serde(default)]
     pub omega_target: Option<f64>,
+    /// How `psi0_step` is applied — relative (the default) or absolute.
     #[serde(default = "d_relative")]
     pub psi0_step_mode: Psi0StepMode,
+    /// Failed-attempt retries per step: same target, plain rescaled
+    /// seed (extrapolation dropped — the rescale converges where the
+    /// extrapolation diverges).
     #[serde(default = "d_max_retries")]
     pub max_retries: i64,
+    /// Hard cap on recorded steps (`done:max_steps`).
     #[serde(default = "d_max_steps")]
     pub max_steps: i64,
+    /// R index of the fixedPhi grid point whose ψ the C constraint pins
+    /// to the target (param `fixedPhiR`).
     #[serde(rename = "fixedPhiR", default = "d_two_i")]
     pub fixed_phi_r: i64,
+    /// Z index of the same point (param `fixedPhiZ`).
     #[serde(rename = "fixedPhiZ", default = "d_two_i")]
     pub fixed_phi_z: i64,
+    /// Stop the up campaign at the detected minimum-ω turning point
+    /// (`stopped:turning_point`).
     #[serde(default = "d_true")]
     pub stop_at_turning_point: bool,
 }
 
 impl CampaignSpec {
+    /// The semantic checks of Python `CampaignSpec.parse`
+    /// (sweep_driver.py L345-353): `psi0_step > 0` — written in the
+    /// negated form so NaN rejects — and `max_retries >= 0`.
     pub fn validate(&self) -> Result<(), SpecError> {
         // sweep_driver.py L345-353: `if not psi0_step > 0` (NaN rejected)
         // and `if max_retries < 0`.
@@ -191,17 +216,28 @@ impl CampaignSpec {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SeedSpec {
+    /// How the first solve is seeded: analytic from_scratch (a fixed-ω
+    /// step 0) or an existing solution directory.
     pub policy: SeedPolicy,
+    /// Amplitude/ψ₀ of the analytic seed profile (step-0 param `psi0`).
     #[serde(default = "d_seed_psi0")]
     pub psi0: f64,
+    /// Gaussian width of the seed in R (param `sigmaR`).
     #[serde(rename = "sigmaR", default = "d_sigma")]
     pub sigma_r: f64,
+    /// Gaussian width of the seed in Z (param `sigmaZ`).
     #[serde(rename = "sigmaZ", default = "d_sigma")]
     pub sigma_z: f64,
+    /// Radial extent of the seed profile (param `rExt`).
     #[serde(rename = "rExt", default = "d_r_ext")]
     pub r_ext: f64,
+    /// The solution directory a `solution` seed starts from —
+    /// resolved to an absolute path and validated by
+    /// [`SeedSpec::resolve_source`].
     #[serde(default)]
     pub source: Option<String>,
+    /// Fixed ω for the from_scratch step-0 seed solve (required for
+    /// that policy, unused otherwise).
     #[serde(default)]
     pub w0: Option<f64>,
 }
@@ -259,9 +295,15 @@ struct GridRaw {
 /// `[grid]`, finalized: `dr_max` defaults to `4.0 * dr`.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridSpec {
+    /// Radial spacing (the C side sets dz = dr).
     pub dr: f64,
+    /// Interior points per axis (C params `NrInterior = NzInterior = N`).
     pub n: i64,
+    /// Coarseness floor — the widest dr a coarsening regrid may reach;
+    /// defaults to 4× the seed dr (the §6.1 two-widening budget).
     pub dr_max: f64,
+    /// Finite-difference order (2 or 4); sets the ghost-cell count via
+    /// [`crate::decide::ghost_of`].
     pub order: i64,
 }
 
@@ -296,18 +338,25 @@ impl GridSpec {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SolverSpec {
+    /// C solver-type selector (param `solverType`).
     #[serde(rename = "solverType", default = "d_one_i")]
     pub solver_type: i64,
+    /// C local (block) solver selector (param `localSolver`).
     #[serde(rename = "localSolver", default = "d_one_i")]
     pub local_solver: i64,
+    /// Newton convergence tolerance (param `epsilon`).
     #[serde(default = "d_epsilon")]
     pub epsilon: f64,
+    /// Newton iteration cap (param `maxNewtonIter`).
     #[serde(rename = "maxNewtonIter", default = "d_50_i")]
     pub max_newton_iter: i64,
+    /// Initial Newton damping λ (param `lambda0`).
     #[serde(default = "d_lambda0")]
     pub lambda0: f64,
+    /// Damping floor (param `lambdaMin`).
     #[serde(default = "d_lambda_min")]
     pub lambda_min: f64,
+    /// C low-rank switch (param `useLowRank`).
     #[serde(rename = "useLowRank", default = "d_zero_i")]
     pub use_low_rank: i64,
     /// OpenMP thread count for each C invocation. Default 4 = the measured
@@ -322,8 +371,12 @@ pub struct SolverSpec {
     /// and ROTBOSON_FP32_IR env vars (sweep_driver.py L456-462).
     #[serde(default = "d_precision")]
     pub precision: i64,
+    /// Direct+IR PARDISO path (ROTBOSON_PARDISO_DIRECT); coerced with
+    /// Python truthiness — `direct = 1` is true.
     #[serde(default, deserialize_with = "de_py_bool")]
     pub direct: bool,
+    /// Iterative-refinement passes for the fp32+direct recipe (param
+    /// `fp32_ir`); only meaningful with `precision = 32` + `direct`.
     #[serde(rename = "fp32_ir", default = "d_fp32_ir")]
     pub fp32_ir: i64,
 }
@@ -347,6 +400,9 @@ impl Default for SolverSpec {
 }
 
 impl SolverSpec {
+    /// The post-parse checks of Python `SolverSpec.parse`
+    /// (sweep_driver.py L466-472): `precision` ∈ {32, 64} and
+    /// `fp32_ir >= 0`.
     pub fn validate(&self) -> Result<(), SpecError> {
         // sweep_driver.py L466-472.
         if self.precision != 32 && self.precision != 64 {
@@ -366,24 +422,40 @@ impl SolverSpec {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AdaptivitySpec {
+    /// Under-resolution threshold: refine when the field's half-max width
+    /// drops below this many points.
     #[serde(default = "d_hwl_min")]
     pub hwl_min: f64,
+    /// The campaign's dr ÷2 refinement budget (irreversible,
+    /// verify-then-commit).
     #[serde(rename = "max_refinements", default = "d_two_i")]
     pub max_refinements: i64,
+    /// Down-branch tolerance: an exit-2 failure with ω within this of m
+    /// is the branch's physical end (`stopped:newtonian_limit`).
     #[serde(rename = "newtonian_delta", default = "d_newtonian_delta")]
     pub newtonian_delta: f64,
+    /// Support fraction at which the campaign stops for the boundary
+    /// (r99/r_bdy; the down-direction boundary stop).
     #[serde(rename = "boundary_fraction", default = "d_boundary_fraction")]
     pub boundary_fraction: f64,
+    /// Keep the interior domain when refining (the legacy fixed-N
+    /// refinement shrinks it); coerced with Python truthiness.
     #[serde(
         rename = "refine_keeps_domain",
         default,
         deserialize_with = "de_py_bool"
     )]
     pub refine_keeps_domain: bool,
+    /// Truncation gate: a widening (dr ×2) is only adopted when the
+    /// coarser solve reproduces ω/M_Komar/J_Komar within this relative
+    /// tolerance.
     #[serde(rename = "regrid_rtol", default = "d_regrid_rtol")]
     pub regrid_rtol: f64,
+    /// Support fraction that triggers a widening (r99/r_bdy; must stay
+    /// below `boundary_fraction` so coarsening fires before the stop).
     #[serde(rename = "support_fraction", default = "d_support_fraction")]
     pub support_fraction: f64,
+    /// The campaign's dr ×2 widening budget.
     #[serde(rename = "max_widenings", default = "d_two_i")]
     pub max_widenings: i64,
 }
@@ -464,7 +536,12 @@ struct OutputRaw {
 /// sweep_driver.py L544-562).
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputSpec {
+    /// Campaign root: state.json, summary.json, step param files and
+    /// solutions live under it. Defaults to
+    /// `<repo>/out/campaigns/<spec-stem>`; relatives resolve against the
+    /// spec file's directory.
     pub root: PathBuf,
+    /// On-disk solution format — `hdf5` (default) or `ascii`.
     pub format: OutputFormat,
 }
 
@@ -553,12 +630,23 @@ fn d_hdf5() -> OutputFormat {
 /// A fully-validated campaign spec (Python `Spec`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Spec {
+    /// `[campaign]` — direction, targets, stepping and step budgets.
     pub campaign: CampaignSpec,
+    /// `[seed]` — how the first solve is seeded.
     pub seed: SeedSpec,
+    /// `[grid]` — the initial grid (dr drifts via regrids; see
+    /// [`crate::state::current_grid`]).
     pub grid: GridSpec,
+    /// `[solver]` — C-solver knobs (defaults apply when the table is
+    /// absent).
     pub solver: SolverSpec,
+    /// `[output]` — campaign root and solution format.
     pub output: OutputSpec,
+    /// `[adaptivity]` — regrid gates and budgets.
     pub adaptivity: AdaptivitySpec,
+    /// The resume guard: SHA-256 of the canonicalized spec text (see
+    /// [`spec_hash`]) — a state.json carrying a different hash refuses to
+    /// resume.
     pub spec_hash: String,
 }
 
