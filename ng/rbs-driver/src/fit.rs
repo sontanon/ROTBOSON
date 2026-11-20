@@ -1,7 +1,7 @@
 //! A small least-squares polynomial fit, implemented by hand (no math
 //! framework) — the numerical core of the fold summarize
 //! (`--summarize`), replacing `numpy.polyfit`/`np.polyval`
-//! (tools/sweep_driver.py `turning_point_estimate`).
+//! (`tools/sweep_driver.py` `turning_point_estimate`).
 //!
 //! The x axis is affinely mapped to `[-1, 1]` before building the normal
 //! equations; a degree-4 Vandermonde over a raw ψ₀ window of width ~0.1

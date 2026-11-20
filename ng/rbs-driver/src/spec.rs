@@ -1,5 +1,5 @@
 //! Campaign-spec model: frozen structs parsed + validated in one place
-//! (port of tools/sweep_driver.py's `Spec` dataclasses, SAN-60).
+//! (port of `tools/sweep_driver.py`'s `Spec` dataclasses, SAN-60).
 //!
 //! Contract carried over from the Python:
 //!
@@ -14,9 +14,9 @@
 //! * **The spec hash** (resume guard) is SHA-256 over the spec text with
 //!   `max_steps`/`max_retries` lines and `#` comment lines removed —
 //!   raising a runtime limit or editing commentary must not invalidate a
-//!   running campaign's physics state (sweep_driver.py `load_spec`).
+//!   running campaign's physics state (`sweep_driver.py` `load_spec`).
 //!
-//! Line references cite tools/sweep_driver.py at the SAN-59 head
+//! Line references cite `tools/sweep_driver.py` at the SAN-59 head
 //! (`06b4ff2`), the revision this port was specified against; master
 //! (`1ca850b`) is identical except that it lacks the `[solver]`
 //! numThreads/precision/direct/fp32_ir extension (see `SolverSpec`).
@@ -145,7 +145,7 @@ where
 // Spec tables
 // ---------------------------------------------------------------------------
 
-/// `[campaign]` (Python `CampaignSpec`, sweep_driver.py L321-371).
+/// `[campaign]` (Python `CampaignSpec`, `sweep_driver.py` L321-371).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CampaignSpec {
@@ -195,7 +195,7 @@ pub struct CampaignSpec {
 
 impl CampaignSpec {
     /// The semantic checks of Python `CampaignSpec.parse`
-    /// (sweep_driver.py L345-353): `psi0_step > 0` — written in the
+    /// (`sweep_driver.py` L345-353): `psi0_step > 0` — written in the
     /// negated form so NaN rejects — and `max_retries >= 0`.
     pub fn validate(&self) -> Result<(), SpecError> {
         // sweep_driver.py L345-353: `if not psi0_step > 0` (NaN rejected)
@@ -210,7 +210,7 @@ impl CampaignSpec {
     }
 }
 
-/// `[seed]` (Python `SeedSpec`, sweep_driver.py L374-414). `source` is
+/// `[seed]` (Python `SeedSpec`, `sweep_driver.py` L374-414). `source` is
 /// resolved against the spec's directory and validated to be an existing
 /// solution directory by [`SeedSpec::resolve_source`].
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -244,7 +244,7 @@ pub struct SeedSpec {
 
 impl SeedSpec {
     /// Validate the seed and resolve `source` (Python `SeedSpec.parse`,
-    /// sweep_driver.py L384-414): `policy = "solution"` requires a source
+    /// `sweep_driver.py` L384-414): `policy = "solution"` requires a source
     /// that is an existing solution directory; `policy = "from_scratch"`
     /// requires `w0` (the fixedOmega seed solve). Relative sources are
     /// resolved against `base_dir` (the spec file's directory).
@@ -279,7 +279,7 @@ impl SeedSpec {
     }
 }
 
-/// `[grid]` (Python `GridSpec`, sweep_driver.py L417-440).
+/// `[grid]` (Python `GridSpec`, `sweep_driver.py` L417-440).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct GridRaw {
@@ -308,7 +308,7 @@ pub struct GridSpec {
 }
 
 impl GridSpec {
-    /// Python `GridSpec.parse` (sweep_driver.py L425-440): `dr_max`
+    /// Python `GridSpec.parse` (`sweep_driver.py` L425-440): `dr_max`
     /// defaults to 4× the seed dr — the domain-growth budget of design
     /// §6.1 (two coarsening regrids; going beyond requires an explicit
     /// override) — and must be `>= dr` (comparison exactly as the Python
@@ -327,7 +327,7 @@ impl GridSpec {
     }
 }
 
-/// `[solver]` (Python `SolverSpec`, sweep_driver.py L443-485 at the
+/// `[solver]` (Python `SolverSpec`, `sweep_driver.py` L443-485 at the
 /// SAN-59 head).
 ///
 /// The `numThreads`/`precision`/`direct`/`fp32_ir` knobs postdate master
@@ -362,13 +362,13 @@ pub struct SolverSpec {
     /// OpenMP thread count for each C invocation. Default 4 = the measured
     /// sweet spot on this box (4 physical cores / 8 hyperthreads, cgroup
     /// CPU quota 4); 8 threads oversubscribes and is ~2.5x slower
-    /// (sweep_driver.py L453-456).
+    /// (`sweep_driver.py` L453-456).
     #[serde(rename = "numThreads", default = "d_threads")]
     pub num_threads: i64,
     /// Production precision recipe (M3): `precision = 32`, `direct = 1`,
     /// `fp32_ir` — halves factor memory and reaches the paper's N=400
     /// in-core. Maps onto the ROTBOSON_PRECISION, ROTBOSON_PARDISO_DIRECT
-    /// and ROTBOSON_FP32_IR env vars (sweep_driver.py L456-462).
+    /// and ROTBOSON_FP32_IR env vars (`sweep_driver.py` L456-462).
     #[serde(default = "d_precision")]
     pub precision: i64,
     /// Direct+IR PARDISO path (ROTBOSON_PARDISO_DIRECT); coerced with
@@ -401,7 +401,7 @@ impl Default for SolverSpec {
 
 impl SolverSpec {
     /// The post-parse checks of Python `SolverSpec.parse`
-    /// (sweep_driver.py L466-472): `precision` ∈ {32, 64} and
+    /// (`sweep_driver.py` L466-472): `precision` ∈ {32, 64} and
     /// `fp32_ir >= 0`.
     pub fn validate(&self) -> Result<(), SpecError> {
         // sweep_driver.py L466-472.
@@ -415,7 +415,7 @@ impl SolverSpec {
     }
 }
 
-/// `[adaptivity]` (Python `AdaptivitySpec`, sweep_driver.py L488-541).
+/// `[adaptivity]` (Python `AdaptivitySpec`, `sweep_driver.py` L488-541).
 /// Design §5: defaults start conservative at the historical C sweep
 /// thresholds so early behaviour matches what the old in-C sweep
 /// tolerated.
@@ -486,7 +486,7 @@ impl AdaptivitySpec {
         Ok(a)
     }
 
-    /// sweep_driver.py L503-528. Each comparison is written exactly as
+    /// `sweep_driver.py` L503-528. Each comparison is written exactly as
     /// the Python wrote it, which matters for NaN: the `<=`/`<` forms let
     /// NaN through (faithful to the Python), the `not a < b < c` forms
     /// reject it.
@@ -533,7 +533,7 @@ struct OutputRaw {
 }
 
 /// `[output]`, finalized: `root` resolved (Python `OutputSpec`,
-/// sweep_driver.py L544-562).
+/// `sweep_driver.py` L544-562).
 #[derive(Debug, Clone, PartialEq)]
 pub struct OutputSpec {
     /// Campaign root: state.json, summary.json, step param files and
@@ -684,7 +684,7 @@ struct RawSpec {
 }
 
 /// Load and validate a campaign spec (Python `load_spec`,
-/// sweep_driver.py L584-616): unknown tables/keys rejected first, then
+/// `sweep_driver.py` L584-616): unknown tables/keys rejected first, then
 /// each table parsed and validated in the Python's order, then the
 /// spec hash computed over the canonicalized text.
 ///
@@ -819,7 +819,7 @@ fn resolve_output(
 // ---------------------------------------------------------------------------
 
 /// The campaign spec's content hash, matching the Python byte-for-byte
-/// (sweep_driver.py L608-616): SHA-256 over the spec text with
+/// (`sweep_driver.py` L608-616): SHA-256 over the spec text with
 /// `max_steps`/`max_retries` lines and comment lines removed. Raising a
 /// runtime limit must not invalidate the physics state of a running
 /// campaign; any physics-affecting change does.

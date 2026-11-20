@@ -1,7 +1,7 @@
 //! A JSON value model with a **Python-`json.dumps`-byte-compatible** writer.
 //!
 //! `state.json` is part of the Python driver's on-disk contract
-//! (tools/sweep_driver.py `save_state` writes
+//! (`tools/sweep_driver.py` `save_state` writes
 //! `json.dumps(state.to_dict(), indent=2) + "\n"`, and the round-trip test
 //! asserts byte identity against an archived state.json). The Rust port
 //! must be able to reproduce those bytes exactly, which stock `serde_json`
@@ -325,6 +325,10 @@ pub fn python_repr_f64(f: f64) -> String {
 
 #[cfg(test)]
 mod tests {
+    // Python-repr parity fixtures: the raw long digit strings ARE the
+    // test data — they mirror the exact repr output being asserted.
+    #![allow(clippy::unreadable_literal)]
+
     use super::*;
 
     #[test]

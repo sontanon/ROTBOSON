@@ -1,5 +1,5 @@
-//! `--summarize`: localize ω_min from a finished campaign (design §6.2)
-//! — port of tools/sweep_driver.py's `summarize`.
+//! `--summarize`: localize `ω_min` from a finished campaign (design §6.2)
+//! — port of `tools/sweep_driver.py`'s `summarize`.
 //!
 //! Post-processing only: reads state.json, fits a low-order polynomial
 //! to ω(ψ₀) over the samples bracketing the smallest sampled ω (the
@@ -62,7 +62,7 @@ impl Summary {
     }
 }
 
-/// The pure core of `summarize` (Python sweep_driver.py L2514-2542):
+/// The pure core of `summarize` (Python `sweep_driver.py` L2514-2542):
 /// build the report from the state's steps. Errors when no step records
 /// ω ("no completed steps record ω; nothing to summarize").
 pub fn summarize(spec: &Spec, state: &CampaignState) -> Result<Summary, SummarizeError> {

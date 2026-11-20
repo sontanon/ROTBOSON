@@ -1,5 +1,5 @@
 //! Adaptive decision layer (design §4–6) — the pure functions of
-//! tools/sweep_driver.py, unit-tested there in
+//! `tools/sweep_driver.py`, unit-tested there in
 //! `tests/test_driver_decisions.py` and ported case-for-case in
 //! `tests/driver_decisions.rs`.
 //!
@@ -8,7 +8,7 @@
 //! widening, turning-point detection across the last three branch
 //! points). The semantics — including the quirks — are preserved
 //! exactly; tuned constants are cited against the Python source
-//! (sweep_driver.py at the SAN-59 head `06b4ff2`).
+//! (`sweep_driver.py` at the SAN-59 head `06b4ff2`).
 
 use crate::error::DriverError;
 use crate::fit::polyfit;
@@ -17,7 +17,7 @@ use crate::state::{omega_of_last, CampaignState, RelDiff, StepRecord};
 use crate::vocab::{signal_name, Direction, StepMode, StopReason, TIMEOUT_EXIT};
 
 /// Ghost-cell count for a finite-difference order (C: order 2 → 1,
-/// 4 → 2). Python `ghost_of` (sweep_driver.py L1914-1916).
+/// 4 → 2). Python `ghost_of` (`sweep_driver.py` L1914-1916).
 pub fn ghost_of(order: i64) -> i64 {
     order / 2
 }
@@ -67,7 +67,7 @@ impl std::fmt::Display for Action {
 }
 
 /// Decision policy: exactly one active rule — refine when the field's
-/// peak is under-resolved (sweep_driver.py `decide_action`, L1944-1976).
+/// peak is under-resolved (`sweep_driver.py` `decide_action`, L1944-1976).
 ///
 /// Under-resolution means either the half-max width of the field drops
 /// below `hwl_min` points (spikes), or the peak sits closer to the axis
@@ -103,7 +103,7 @@ pub fn decide_action(diag: &StepDiagnostics) -> Action {
 // Coarsening (down-campaign widening) and boundary classification
 // ---------------------------------------------------------------------------
 
-/// Down-campaign coarsening decision (sweep_driver.py
+/// Down-campaign coarsening decision (`sweep_driver.py`
 /// `decide_coarsening`, L1423-1443). When the field's support fills the
 /// domain (r99/r_bdy > `support_fraction`), widen the grid (dr ×2,
 /// domain grows) — unless the coarseness floor (`dr_max`) or the regrid
@@ -131,7 +131,7 @@ impl std::fmt::Display for CoarseningDecision {
 }
 
 /// Classify a down-campaign step against the widening policy (Python
-/// `decide_coarsening`, sweep_driver.py L1423-1443). `r99_fraction` is the
+/// `decide_coarsening`, `sweep_driver.py` L1423-1443). `r99_fraction` is the
 /// field's support relative to the boundary (r99/r_bdy); `None` means the
 /// scalars were unreadable — full support cannot be proven, so the
 /// answer is [`CoarseningDecision::Ok`]. Support over
@@ -162,14 +162,14 @@ pub fn decide_coarsening(
 /// solve must reproduce ω/M_Komar/J_Komar within `regrid_rtol` — widening
 /// is only adopted when it did not corrupt the solution. Refinement has
 /// no such gate (its purpose is to reduce the old grid's error, which is
-/// recorded). Python `coarsening_acceptable` (sweep_driver.py
+/// recorded). Python `coarsening_acceptable` (`sweep_driver.py`
 /// L1413-1420): an empty map rejects (unreadable scalars ⇒ no proof).
 pub fn coarsening_acceptable(rel: &RelDiff, regrid_rtol: f64) -> bool {
     !rel.is_empty() && rel.iter().all(|(_, v)| *v <= regrid_rtol)
 }
 
 /// Would a finer regrid amputate the field's support? (Python
-/// `would_amputate`, sweep_driver.py L1382-1410.) Two cases, deliberately
+/// `would_amputate`, `sweep_driver.py` L1382-1410.) Two cases, deliberately
 /// asymmetric — the guard decoupling:
 ///
 /// * **Domain-keeping refinement** (new_n > src_n: dr ÷2 with N×2): the
@@ -203,7 +203,7 @@ pub fn would_amputate(
 }
 
 /// Should a failed step be classified as a boundary end? (Python
-/// `boundary_failure_stop`, sweep_driver.py L1446-1463.) The last GOOD
+/// `boundary_failure_stop`, `sweep_driver.py` L1446-1463.) The last GOOD
 /// solution's support already fills the domain — the failure is
 /// boundary-driven (the field has no room; refinement is spent) and the
 /// campaign ends cleanly at the best achievable grid instead of
@@ -231,7 +231,7 @@ pub fn boundary_failure_stop(
 // ---------------------------------------------------------------------------
 
 /// Design §6.2: has the branch's minimum-ω turning point been crossed?
-/// (Python `detect_turning_point`, sweep_driver.py L1979-2001.)
+/// (Python `detect_turning_point`, `sweep_driver.py` L1979-2001.)
 ///
 /// Looks at the last three fixedPhi/seed steps with distinct increasing
 /// ψ₀ and checks that the central slope dω/dψ₀ changed sign (decreasing
@@ -348,7 +348,7 @@ impl TurningPointReport {
 /// Design §6.2 localization: fit a low-order polynomial ω(ψ₀) over the
 /// samples bracketing the smallest sampled ω and take its extremum (the
 /// paper used a 4th-degree spline). Python `turning_point_estimate`
-/// (sweep_driver.py L2004-2037): pairs are formed index-wise (the
+/// (`sweep_driver.py` L2004-2037): pairs are formed index-wise (the
 /// shorter input truncates), sorted, the window is the up-to-7 samples
 /// `[k-3, k+4)` around the minimum, and the fit is sampled on a 4001-point
 /// grid. Returns `None` for no usable pairs (the Python's `{}`).
@@ -451,7 +451,7 @@ pub fn turning_point_estimate(
 // ---------------------------------------------------------------------------
 
 /// Is a failed step the branch's physical Newtonian end? (Python
-/// `newtonian_limit_stop`, sweep_driver.py L1807-1832.)
+/// `newtonian_limit_stop`, `sweep_driver.py` L1807-1832.)
 ///
 /// In the down direction ω → m as ψ₀ → 0; the field extends without
 /// bound and the Jacobian becomes singular, so the solver exits 2 near
@@ -479,7 +479,7 @@ pub fn newtonian_limit_stop(state: &CampaignState, spec: &Spec) -> Option<StopRe
 
 /// Fixed-grid subset of the §6.1 exit conditions: the stop-reason
 /// classifier for the campaign loop (Python `finished`,
-/// sweep_driver.py L1835-1906). Returns `Ok(None)` while the campaign
+/// `sweep_driver.py` L1835-1906). Returns `Ok(None)` while the campaign
 /// should keep stepping.
 ///
 /// Order matters and mirrors the Python exactly:
@@ -599,7 +599,7 @@ pub fn round15(x: f64) -> f64 {
 }
 
 /// ψ₀ target for the next step (Python `next_target`,
-/// sweep_driver.py L2152-2163): fixed relative stepping —
+/// `sweep_driver.py` L2152-2163): fixed relative stepping —
 /// `target = ψ₀·(1 ± psi0_step)` (or the absolute form), the
 /// golden-ladder semantics, rounded to 15 decimals and clamped to land
 /// exactly on `psi0_target`.
@@ -618,7 +618,7 @@ pub fn next_target(c: &CampaignSpec, base_psi0: f64) -> f64 {
 }
 
 /// Retry classification for a failed step (Python `run_campaign`'s
-/// retry-loop condition, sweep_driver.py L2334-2336): on Newton
+/// retry-loop condition, `sweep_driver.py` L2334-2336): on Newton
 /// non-convergence (exit 1), solver error (exit 2) or a signal kill,
 /// retry from the last good solution with the plain rescaled seed; a
 /// timeout also retries; a step already classified as the branch's
@@ -628,13 +628,13 @@ pub fn step_retryable(code: i32, near_limit: bool) -> bool {
 }
 
 /// `near_limit` for the retry decision: exit 2 classified as the
-/// branch's Newtonian end (sweep_driver.py L2334).
+/// branch's Newtonian end (`sweep_driver.py` L2334).
 pub fn near_newtonian_limit(state: &CampaignState, spec: &Spec, code: i32) -> bool {
     code == 2 && newtonian_limit_stop(state, spec).is_some()
 }
 
 /// Helper mirroring the Python loop's status transition on a stop reason
-/// (`run_campaign`, sweep_driver.py L2166-2175): `done` → Done,
+/// (`run_campaign`, `sweep_driver.py` L2166-2175): `done` → Done,
 /// `stopped` → Stopped (clean stop), `failed` → Failed.
 pub fn status_for_stop(reason: &StopReason) -> crate::vocab::Status {
     use crate::vocab::Status;

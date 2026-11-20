@@ -1,7 +1,7 @@
 //! Hand-rolled SHA-256 (FIPS 180-4).
 //!
 //! The spec hash in `state.json` is `hashlib.sha256(...).hexdigest()` on the
-//! Python side (tools/sweep_driver.py `load_spec`); rather than pull in a
+//! Python side (`tools/sweep_driver.py` `load_spec`); rather than pull in a
 //! crypto framework for one hash we implement the ~100-line standard
 //! algorithm here and pin it with NIST test vectors.
 

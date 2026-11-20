@@ -31,10 +31,10 @@
 //! See `README.md` for the ported/deferred inventory and the
 //! workspace-merge notes.
 //!
-//! Python line references throughout cite tools/sweep_driver.py at the
+//! Python line references throughout cite `tools/sweep_driver.py` at the
 //! SAN-59 head (`06b4ff2`) — the revision this port was specified
 //! against; the master worktree base (`1ca850b`) is identical except
-//! that it lacks the `[solver]` numThreads/precision/direct/fp32_ir
+//! that it lacks the `[solver]` `numThreads`/`precision`/`direct`/`fp32_ir`
 //! knobs, which are included here so the repo's runbook configs parse.
 
 pub mod decide;

@@ -1,5 +1,5 @@
 //! state.json model (design §3.2): atomic writes, spec-hash-guarded
-//! resume — port of the frozen-dataclass layer in tools/sweep_driver.py.
+//! resume — port of the frozen-dataclass layer in `tools/sweep_driver.py`.
 //!
 //! Two contracts live here:
 //!

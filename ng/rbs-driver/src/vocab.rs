@@ -1,7 +1,7 @@
 //! Closed vocabularies: the string sets that cross the JSON/TOML boundaries.
 //!
 //! Every `Display` spelling matches the Python `StrEnum` values in
-//! tools/sweep_driver.py **exactly** — they are part of the state.json /
+//! `tools/sweep_driver.py` **exactly** — they are part of the state.json /
 //! summary.json / param-file contract (resume and rendering stay
 //! byte-compatible).
 
@@ -9,7 +9,7 @@ use serde::Deserialize;
 use std::fmt;
 
 /// Sentinel exit code for a step that hit the run wall-clock timeout
-/// (tools/sweep_driver.py `TIMEOUT_EXIT = -999`; not a real signal —
+/// (`tools/sweep_driver.py` `TIMEOUT_EXIT = -999`; not a real signal —
 /// chosen far from any errno/signal value).
 pub const TIMEOUT_EXIT: i32 = -999;
 

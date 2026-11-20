@@ -3,7 +3,7 @@
 use std::fmt;
 
 /// Invalid campaign spec (Python: `SpecError(ValueError)` in
-/// tools/sweep_driver.py). Message text of the `Invalid`/`UnknownTables`/
+/// `tools/sweep_driver.py`). Message text of the `Invalid`/`UnknownTables`/
 /// `UnknownKeys` variants matches the Python raisers verbatim.
 #[derive(Debug)]
 pub enum SpecError {
