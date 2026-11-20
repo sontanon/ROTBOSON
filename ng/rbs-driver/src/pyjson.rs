@@ -25,42 +25,56 @@ use serde_json::Value as Json;
 /// emission order (byte-identity requirement).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Jv {
+    /// JSON `null` (Python `None`).
     Null,
+    /// JSON `true`/`false`.
     Bool(bool),
     /// A JSON number that was an integer — stays an integer on re-write.
     Int(i64),
     /// A JSON number that was a float — re-writes in Python `repr` style.
     Float(f64),
+    /// A JSON string.
     Str(String),
+    /// A JSON array (element order preserved).
     Arr(Vec<Jv>),
+    /// A JSON object as insertion-ordered pairs — Python dicts emit in
+    /// insertion order and the byte-identity contract pins it.
     Obj(Vec<(String, Jv)>),
 }
 
 impl Jv {
     // ---- constructors ---------------------------------------------------
 
+    /// An object from `(&str, Jv)` pairs, in the given order.
     pub fn obj(pairs: Vec<(&str, Jv)>) -> Jv {
         Jv::Obj(pairs.into_iter().map(|(k, v)| (k.to_string(), v)).collect())
     }
 
+    /// An array of items.
     pub fn arr(items: Vec<Jv>) -> Jv {
         Jv::Arr(items)
     }
 
+    /// `Some(v)` as a float, `None` as `null` — the Python stores `None`
+    /// when a scalar was unreadable.
     pub fn opt_float(v: Option<f64>) -> Jv {
         v.map(Jv::Float).unwrap_or(Jv::Null)
     }
 
+    /// `Some(v)` as an integer, `None` as `null`.
     pub fn opt_int(v: Option<i64>) -> Jv {
         v.map(Jv::Int).unwrap_or(Jv::Null)
     }
 
+    /// `Some(v)` as a string, `None` as `null`.
     pub fn opt_str<S: Into<String>>(v: Option<S>) -> Jv {
         v.map(|s| Jv::Str(s.into())).unwrap_or(Jv::Null)
     }
 
     // ---- accessors ------------------------------------------------------
 
+    /// The value stored under `key` (first match); `None` on a non-object
+    /// or a missing key — the analogue of Python `raw.get(key)`.
     pub fn get(&self, key: &str) -> Option<&Jv> {
         match self {
             Jv::Obj(pairs) => pairs.iter().find(|(k, _)| k == key).map(|(_, v)| v),
@@ -68,6 +82,7 @@ impl Jv {
         }
     }
 
+    /// The object's pairs; `None` for any other kind.
     pub fn as_obj(&self) -> Option<&Vec<(String, Jv)>> {
         match self {
             Jv::Obj(pairs) => Some(pairs),
@@ -75,6 +90,7 @@ impl Jv {
         }
     }
 
+    /// The array's items; `None` for any other kind.
     pub fn as_arr(&self) -> Option<&Vec<Jv>> {
         match self {
             Jv::Arr(items) => Some(items),
@@ -82,6 +98,7 @@ impl Jv {
         }
     }
 
+    /// The string's contents; `None` for any other kind.
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Jv::Str(s) => Some(s),
