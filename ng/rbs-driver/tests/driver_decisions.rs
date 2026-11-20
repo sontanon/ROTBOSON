@@ -1,6 +1,6 @@
 //! Port of `tests/test_driver_decisions.py` — the unit tests for the v2
 //! adaptive decision layer (design §4–6 rev 2), case for case, same
-//! inputs, same expected outcomes. Rust-only additions (next_target /
+//! inputs, same expected outcomes. Rust-only additions (`next_target` /
 //! retry policy / status mapping, marked "Rust addition") cover pure
 //! helpers the Python exercised only through the campaign loop.
 
@@ -546,15 +546,15 @@ mod test_adaptivity_new_knobs {
     fn test_support_fraction_must_precede_boundary_stop() {
         let err = AdaptivitySpec::parse_str("support_fraction = 0.95\nboundary_fraction = 0.95\n")
             .unwrap_err();
-        assert!(err.to_string().contains("support_fraction"), "{}", err);
+        assert!(err.to_string().contains("support_fraction"), "{err}");
         let err = AdaptivitySpec::parse_str("support_fraction = 0.99\n").unwrap_err();
-        assert!(err.to_string().contains("support_fraction"), "{}", err);
+        assert!(err.to_string().contains("support_fraction"), "{err}");
     }
 
     #[test]
     fn test_regrid_rtol_validation() {
         let err = AdaptivitySpec::parse_str("regrid_rtol = 0.0\n").unwrap_err();
-        assert!(err.to_string().contains("regrid_rtol"), "{}", err);
+        assert!(err.to_string().contains("regrid_rtol"), "{err}");
     }
 }
 
