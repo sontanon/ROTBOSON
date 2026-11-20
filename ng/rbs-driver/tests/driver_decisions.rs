@@ -4,6 +4,11 @@
 //! retry policy / status mapping, marked "Rust addition") cover pure
 //! helpers the Python exercised only through the campaign loop.
 
+// Python-parity fixtures: the raw long digit strings ARE the test data
+// (ported from the Python suite verbatim — psi0/omega values, round15
+// cases); digit separators would obscure the exact values under test.
+#![allow(clippy::unreadable_literal)]
+
 use rbs_driver::decide::turning_point_estimate;
 use rbs_driver::spec::{AdaptivitySpec, CampaignSpec, GridSpec, OutputSpec, SeedSpec, SolverSpec, Spec};
 use rbs_driver::state::{CampaignState, RegridInfo, RelDiff, StepRecord};
@@ -450,7 +455,7 @@ mod test_turning_point_estimate {
 
     #[test]
     fn test_quadratic_bowl_localization() {
-        let psi0s: Vec<Option<f64>> = (0..7).map(|i| Some(0.40 + 0.02 * i as f64)).collect();
+        let psi0s: Vec<Option<f64>> = (0..7).map(|i| Some(0.40 + 0.02 * f64::from(i))).collect();
         let omegas: Vec<Option<f64>> = psi0s
             .iter()
             .map(|p| p.map(|x| 0.65 + 50.0 * (x - 0.46).powi(2)))

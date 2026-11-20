@@ -64,7 +64,7 @@ fn spec_with_root(root: &std::path::Path) -> Spec {
 /// at ψ₀ = 0.46, ω = 0.65 (the Python localization test's known
 /// minimum), including the noise-free slope flip the detector needs.
 fn bowl_state() -> CampaignState {
-    let psi0s: Vec<f64> = (0..7).map(|i| 0.40 + 0.02 * i as f64).collect();
+    let psi0s: Vec<f64> = (0..7).map(|i| 0.40 + 0.02 * f64::from(i)).collect();
     let omegas: Vec<f64> = psi0s
         .iter()
         .map(|&x| 0.65 + 50.0 * (x - 0.46).powi(2))
