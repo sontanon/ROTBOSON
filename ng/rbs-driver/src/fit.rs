@@ -149,7 +149,7 @@ mod tests {
     /// `--summarize` localization test.
     #[test]
     fn quartic_fit_recovers_exact_quadratic() {
-        let xs: Vec<f64> = (0..7).map(|i| 0.40 + 0.02 * i as f64).collect();
+        let xs: Vec<f64> = (0..7).map(|i| 0.40 + 0.02 * f64::from(i)).collect();
         let ys: Vec<f64> = xs.iter().map(|&x| 0.65 + 50.0 * (x - 0.46).powi(2)).collect();
         let fit = polyfit(&xs, &ys, 4).expect("fit converges");
         for (&x, &y) in xs.iter().zip(&ys) {
@@ -159,7 +159,7 @@ mod tests {
         let mut best = f64::INFINITY;
         let mut best_x = 0.0;
         for i in 0..=4000 {
-            let x = 0.40 + 0.12 * i as f64 / 4000.0;
+            let x = 0.40 + 0.12 * f64::from(i) / 4000.0;
             let v = fit.eval(x);
             if v < best {
                 best = v;

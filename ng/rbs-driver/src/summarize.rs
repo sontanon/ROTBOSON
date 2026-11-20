@@ -73,7 +73,7 @@ impl Summary {
 /// exit-1 path.
 pub fn summarize(spec: &Spec, state: &CampaignState) -> Result<Summary, SummarizeError> {
     let omegas: Vec<Option<f64>> = state.steps.iter().map(|s| s.omega).collect();
-    if !omegas.iter().any(|w| w.is_some()) {
+    if !omegas.iter().any(Option::is_some) {
         return Err(SummarizeError::NoOmegas);
     }
     let psi0s: Vec<Option<f64>> = state.steps.iter().map(|s| s.psi0).collect();
