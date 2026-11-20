@@ -575,7 +575,7 @@ struct OutputRaw {
 
 /// `[output]`, finalized: `root` resolved (Python `OutputSpec`,
 /// `sweep_driver.py` L544-562).
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputSpec {
     /// Campaign root: state.json, summary.json, step param files and
     /// solutions live under it. Defaults to
@@ -751,9 +751,8 @@ pub fn load_spec(path: &Path, repo_root: &Path) -> Result<Spec, SpecError> {
     // (sweep_driver.py L598-605). A missing table is the Python's
     // "missing required key" path for tables with required fields;
     // solver/output/adaptivity are fully defaulted.
-    let campaign = match raw.campaign {
-        Some(c) => c,
-        None => return Err(invalid("[campaign] missing required key 'l'")),
+    let Some(campaign) = raw.campaign else {
+        return Err(invalid("[campaign] missing required key 'l'"));
     };
     campaign.validate()?;
 
@@ -999,7 +998,7 @@ pub fn absolute_lexical(p: &Path) -> Result<PathBuf, SpecError> {
     Ok(out)
 }
 
-/// Solution-directory name check (rotboson_io.py `SOLUTION_DIR_RE`:
+/// Solution-directory name check (`rotboson_io.py`'s `SOLUTION_DIR_RE`:
 /// `^l=\d+,w=[\d.Ee+-]+,dr=[\d.Ee+-]+,N=\d+$`), used to validate
 /// `[seed] source`.
 pub fn is_solution_dir(name: &str) -> bool {
