@@ -435,7 +435,7 @@ pub struct AdaptivitySpec {
     #[serde(rename = "newtonian_delta", default = "d_newtonian_delta")]
     pub newtonian_delta: f64,
     /// Support fraction at which the campaign stops for the boundary
-    /// (r99/r_bdy; the down-direction boundary stop).
+    /// (`r99/r_bdy`; the down-direction boundary stop).
     #[serde(rename = "boundary_fraction", default = "d_boundary_fraction")]
     pub boundary_fraction: f64,
     /// Keep the interior domain when refining (the legacy fixed-N
@@ -447,11 +447,11 @@ pub struct AdaptivitySpec {
     )]
     pub refine_keeps_domain: bool,
     /// Truncation gate: a widening (dr ×2) is only adopted when the
-    /// coarser solve reproduces ω/M_Komar/J_Komar within this relative
+    /// coarser solve reproduces `ω/M_Komar/J_Komar` within this relative
     /// tolerance.
     #[serde(rename = "regrid_rtol", default = "d_regrid_rtol")]
     pub regrid_rtol: f64,
-    /// Support fraction that triggers a widening (r99/r_bdy; must stay
+    /// Support fraction that triggers a widening (`r99/r_bdy`; must stay
     /// below `boundary_fraction` so coarsening fires before the stop).
     #[serde(rename = "support_fraction", default = "d_support_fraction")]
     pub support_fraction: f64,

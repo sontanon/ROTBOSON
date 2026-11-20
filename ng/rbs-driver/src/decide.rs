@@ -18,6 +18,7 @@ use crate::vocab::{signal_name, Direction, StepMode, StopReason, TIMEOUT_EXIT};
 
 /// Ghost-cell count for a finite-difference order (C: order 2 → 1,
 /// 4 → 2). Python `ghost_of` (`sweep_driver.py` L1914-1916).
+#[must_use]
 pub fn ghost_of(order: i64) -> i64 {
     order / 2
 }
@@ -81,6 +82,7 @@ impl std::fmt::Display for Action {
 /// Everything else is fixed relative stepping: no growth, no damping
 /// statistics, no boundary regrids. `refinements_left` bounds the dr ÷2
 /// refinements per campaign (irreversible, verify-then-commit).
+#[must_use]
 pub fn decide_action(diag: &StepDiagnostics) -> Action {
     if diag.refinements_left <= 0 {
         return Action::Ok;
@@ -105,7 +107,7 @@ pub fn decide_action(diag: &StepDiagnostics) -> Action {
 
 /// Down-campaign coarsening decision (`sweep_driver.py`
 /// `decide_coarsening`, L1423-1443). When the field's support fills the
-/// domain (r99/r_bdy > `support_fraction`), widen the grid (dr ×2,
+/// domain (`r99/r_bdy` > `support_fraction`), widen the grid (dr ×2,
 /// domain grows) — unless the coarseness floor (`dr_max`) or the regrid
 /// budget (`widenings_left`) is exhausted, in which case the campaign
 /// stops cleanly: `stopped:domain_budget`.
@@ -132,12 +134,13 @@ impl std::fmt::Display for CoarseningDecision {
 
 /// Classify a down-campaign step against the widening policy (Python
 /// `decide_coarsening`, `sweep_driver.py` L1423-1443). `r99_fraction` is the
-/// field's support relative to the boundary (r99/r_bdy); `None` means the
+/// field's support relative to the boundary (`r99/r_bdy`); `None` means the
 /// scalars were unreadable — full support cannot be proven, so the
 /// answer is [`CoarseningDecision::Ok`]. Support over
 /// `support_fraction` widens (dr ×2) unless dr ×2 would exceed the
 /// coarseness floor `dr_max` or the `widenings_left` budget is spent,
 /// either of which stops the campaign.
+#[must_use]
 pub fn decide_coarsening(
     r99_fraction: Option<f64>,
     support_fraction: f64,
@@ -159,11 +162,12 @@ pub fn decide_coarsening(
 }
 
 /// Truncation-proxy gate for a COARSENING regrid (dr ×2): the coarser
-/// solve must reproduce ω/M_Komar/J_Komar within `regrid_rtol` — widening
+/// solve must reproduce `ω/M_Komar/J_Komar` within `regrid_rtol` — widening
 /// is only adopted when it did not corrupt the solution. Refinement has
 /// no such gate (its purpose is to reduce the old grid's error, which is
 /// recorded). Python `coarsening_acceptable` (`sweep_driver.py`
 /// L1413-1420): an empty map rejects (unreadable scalars ⇒ no proof).
+#[must_use]
 pub fn coarsening_acceptable(rel: &RelDiff, regrid_rtol: f64) -> bool {
     !rel.is_empty() && rel.iter().all(|(_, v)| *v <= regrid_rtol)
 }
@@ -172,7 +176,7 @@ pub fn coarsening_acceptable(rel: &RelDiff, regrid_rtol: f64) -> bool {
 /// `would_amputate`, `sweep_driver.py` L1382-1410.) Two cases, deliberately
 /// asymmetric — the guard decoupling:
 ///
-/// * **Domain-keeping refinement** (new_n > src_n: dr ÷2 with N×2): the
+/// * **Domain-keeping refinement** (`new_n` > `src_n`: dr ÷2 with N×2): the
 ///   interior domain is unchanged — the field fits by construction.
 ///   Only outright amputation blocks it; the `boundary_fraction` margin
 ///   would be self-defeating here (the ghost-inclusive boundary moves
