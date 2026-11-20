@@ -189,6 +189,12 @@ impl GridPosition {
 
     /// Read a `grid` dict; missing keys default like the Python
     /// `from_dict` (dr 0.0, N 0).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StateError::Corrupt`] when `raw` is not an object, or
+    /// a present `dr`/`N` has the wrong JSON kind — the Python `_st_*`
+    /// coercion errors (`state.json: expected a number, got str`).
     pub fn from_jv(raw: &Jv) -> Result<GridPosition, StateError> {
         Ok(GridPosition {
             dr: st_num_key(raw, "dr", 0.0)?,
@@ -244,6 +250,12 @@ impl RegridInfo {
 
     /// Read a `regrid` dict; defaults match the Python `from_dict`
     /// (missing `rel_diff` ⇒ empty, `accepted` default false).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StateError::Corrupt`] when `raw` is not an object, a
+    /// present key has the wrong JSON kind, or a `rel_diff` value is
+    /// not a number — the `_st_*` coercion errors.
     pub fn from_jv(raw: &Jv) -> Result<RegridInfo, StateError> {
         let rel_diff = match raw.get("rel_diff") {
             Some(v) => match obj_pairs(v) {
@@ -268,8 +280,8 @@ impl RegridInfo {
 
 /// A rejected/skipped regrid attempt (`rejected_regrids`). Two legacy
 /// shapes share this model: a solved-but-rejected probe
-/// (scale_u4/log/sol_dir/scalars/psi0) and a support-fit skip
-/// (skipped/from_dr/to_dr); `to_jv` emits present fields in the legacy
+/// (`scale_u4/log/sol_dir/scalars/psi0`) and a support-fit skip
+/// (`skipped/from_dr/to_dr`); `to_jv` emits present fields in the legacy
 /// insertion order so both round-trip byte-compatibly.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RegridProbe {
@@ -280,7 +292,7 @@ pub struct RegridProbe {
     pub mode: StepMode,
     /// Exit code of the probe solve, when it ran.
     pub exit_code: Option<i32>,
-    /// The ψ₀ rescale factor the probe applied (render_seed's
+    /// The ψ₀ rescale factor the probe applied (`render_seed`'s
     /// `scale_u4`).
     pub scale_u4: Option<f64>,
     /// The probe solve's captured solver log.
@@ -310,7 +322,7 @@ impl RegridProbe {
         let mut out = vec![
             ("i", Jv::Int(self.i)),
             ("mode", Jv::Str(self.mode.to_string())),
-            ("exit_code", Jv::opt_int(self.exit_code.map(|c| c as i64))),
+            ("exit_code", Jv::opt_int(self.exit_code.map(i64::from))),
         ];
         if self.sol_dir.is_some() {
             // psi0 is always written once a solution exists (null on read
@@ -348,6 +360,12 @@ impl RegridProbe {
 
     /// Read a `rejected_regrids[i]` entry; `mode` defaults to
     /// `regrid-probe` like the Python `from_dict`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StateError::Corrupt`] when `mode` is not a closed
+    /// vocabulary spelling, a `scalars` value has the wrong JSON kind,
+    /// or another present key fails the `_st_*` coercion.
     pub fn from_jv(raw: &Jv) -> Result<RegridProbe, StateError> {
         let mode_str = st_str_key(raw, "mode", "regrid-probe")?;
         let mode = StepMode::from_name(&mode_str)
@@ -413,6 +431,12 @@ impl FoldMeasurement {
 
     /// Read a fold-measurement dict; defaults match the Python
     /// `from_dict` (dr 0.0, empty `sol_dir`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StateError::Corrupt`] when `raw` is not an object, or
+    /// a present key has the wrong JSON kind — the `_st_*` coercion
+    /// errors.
     pub fn from_jv(raw: &Jv) -> Result<FoldMeasurement, StateError> {
         Ok(FoldMeasurement {
             psi0: st_opt_float(raw, "psi0")?,
@@ -458,6 +482,12 @@ impl PendingRefinement {
 
     /// Read a `pending_refinement` dict; a non-object `measurement`
     /// degrades to the empty [`FoldMeasurement`] like the Python.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StateError::Corrupt`] when a present key has the
+    /// wrong JSON kind, or the `measurement` object does (propagated
+    /// from [`FoldMeasurement::from_jv`]).
     pub fn from_jv(raw: &Jv) -> Result<PendingRefinement, StateError> {
         let measurement = match raw.get("measurement") {
             Some(v @ Jv::Obj(_)) => FoldMeasurement::from_jv(v)?,
@@ -480,9 +510,9 @@ impl PendingRefinement {
 
 /// One campaign step (`steps[i]`). Optional scalars are `None` exactly
 /// when the legacy writer omitted the key: a failed step records only
-/// (i, exit_code, mode [+ psi0_target]); a step with a solution directory
-/// always carries the scalar block (values may be null when a file was
-/// unreadable).
+/// (`i`, `exit_code`, `mode` [+ `psi0_target`]); a step with a
+/// solution directory always carries the scalar block (values may be
+/// null when a file was unreadable).
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StepRecord {
     /// Step index (0 = the seed solve).
@@ -534,7 +564,7 @@ impl StepRecord {
     pub fn to_jv(&self) -> Jv {
         let mut out = vec![
             ("i", Jv::Int(self.i)),
-            ("exit_code", Jv::Int(self.exit_code as i64)),
+            ("exit_code", Jv::Int(i64::from(self.exit_code))),
             ("mode", Jv::Str(self.mode.to_string())),
         ];
         if self.sol_dir.is_some() {
@@ -568,6 +598,13 @@ impl StepRecord {
 
     /// Read a `steps[i]` entry; defaults match the Python `from_dict`
     /// (missing `i`/`exit_code` ⇒ 0, `mode` ⇒ `fixedPhi`).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StateError::Corrupt`] when `mode` is not a closed
+    /// vocabulary spelling, `exit_code` does not fit an `i32`, or a
+    /// present key has the wrong JSON kind — the `_st_*` coercion
+    /// errors.
     pub fn from_jv(raw: &Jv) -> Result<StepRecord, StateError> {
         let mode_str = st_str_key(raw, "mode", "fixedPhi")?;
         let mode = StepMode::from_name(&mode_str).ok_or_else(|| {
@@ -711,6 +748,13 @@ impl CampaignState {
     /// Read a state.json top level — lenient like the Python
     /// `from_dict`: missing keys default, unknown keys drop, and legacy
     /// files keep `grid`/budgets `None` (the spec's values stand in).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`StateError::Corrupt`] when `status` is not a closed
+    /// vocabulary spelling, a top-level scalar has the wrong JSON kind,
+    /// or any step/probe/fold/`pending_refinement` element fails its
+    /// own `from_jv` coercion.
     pub fn from_jv(raw: &Jv) -> Result<CampaignState, StateError> {
         // Legacy files (pre-regrid format) lack grid/refinements_left and
         // the provenance lists: they stay None and the effective values
@@ -799,7 +843,16 @@ pub fn state_path(spec: &crate::spec::Spec) -> PathBuf {
 }
 
 /// Load state.json if it exists; a spec-hash mismatch aborts resume
-/// (Python `load_state`).
+/// (Python `load_state`). Returns `Ok(None)` when no state.json exists
+/// under the campaign root — a fresh campaign.
+///
+/// # Errors
+///
+/// Returns [`StateError::Io`] on read failure, [`StateError::Corrupt`]
+/// when the text is not JSON or the top level is not an object (the
+/// Python's uncaught `ValueError`/`JSONDecodeError`), and
+/// [`StateError::SpecHashMismatch`] when the stored `spec_hash` is not
+/// the spec's — the Python `SystemExit`, the abort-resume contract.
 pub fn load_state(spec: &crate::spec::Spec) -> Result<Option<CampaignState>, StateError> {
     let p = state_path(spec);
     if !p.exists() {
@@ -823,6 +876,12 @@ pub fn load_state(spec: &crate::spec::Spec) -> Result<Option<CampaignState>, Sta
 
 /// Atomically write state.json: write `state.json.tmp`, then rename over
 /// the target (Python `save_state`).
+///
+/// # Errors
+///
+/// Returns [`StateError::Io`] when creating the parent directory,
+/// writing the temp file, or the rename fails — the Python's uncaught
+/// `OSError` from `open`/`write`, made typed here.
 pub fn save_state(
     spec: &crate::spec::Spec,
     state: &CampaignState,
@@ -863,8 +922,15 @@ pub fn current_grid(state: &CampaignState, spec: &crate::spec::Spec) -> GridPosi
     })
 }
 
-/// The last completed step's ψ₀ (Python `psi0_of_last`; the SystemExit
+/// The last completed step's ψ₀ (Python `psi0_of_last`; the `SystemExit`
 /// message becomes the error Display).
+///
+/// # Errors
+///
+/// Returns [`crate::error::DriverError::NoCompletedPsi0`] when no step
+/// has both a ψ₀ and exit code 0 — the Python's
+/// "no completed step records ψ₀; cannot continue" crash, made typed
+/// here.
 pub fn psi0_of_last(state: &CampaignState) -> Result<f64, crate::error::DriverError> {
     for step in state.steps.iter().rev() {
         if let (Some(psi0), 0) = (step.psi0, step.exit_code) {
@@ -875,6 +941,13 @@ pub fn psi0_of_last(state: &CampaignState) -> Result<f64, crate::error::DriverEr
 }
 
 /// The last completed step's ω (Python `omega_of_last`).
+///
+/// # Errors
+///
+/// Returns [`crate::error::DriverError::NoCompletedOmega`] when no step
+/// has both an ω and exit code 0 — the Python's
+/// "no completed step records ω; cannot continue" crash, made typed
+/// here.
 pub fn omega_of_last(state: &CampaignState) -> Result<f64, crate::error::DriverError> {
     for step in state.steps.iter().rev() {
         if let (Some(omega), 0) = (step.omega, step.exit_code) {
