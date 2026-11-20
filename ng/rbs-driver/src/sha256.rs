@@ -31,6 +31,8 @@ pub fn sha256_hex(data: &[u8]) -> String {
     out
 }
 
+/// SHA-256 digest of `data` as 32 raw bytes (FIPS 180-4); the spec-hash
+/// contract uses the hex spelling of [`sha256_hex`].
 pub fn sha256(data: &[u8]) -> [u8; 32] {
     let mut h = H0;
 
