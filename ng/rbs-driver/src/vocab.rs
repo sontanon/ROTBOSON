@@ -16,11 +16,11 @@ pub const TIMEOUT_EXIT: i32 = -999;
 macro_rules! str_enum {
     (
         $(#[$meta:meta])*
-        $name:ident { $($variant:ident => $s:expr),+ $(,)? }
+        $name:ident { $($(#[$vmeta:meta])* $variant:ident => $s:expr),+ $(,)? }
     ) => {
         $(#[$meta])*
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-        pub enum $name { $($variant),+ }
+        pub enum $name { $($(#[$vmeta])* $variant),+ }
 
         impl $name {
             /// Parse the exact closed-vocabulary string; `None` for any
@@ -51,12 +51,20 @@ macro_rules! str_enum {
 /// The Python-verbatim error message emitted when a spec deserializer meets
 /// a vocabulary miss.
 pub trait BadVocab {
+    /// The Python-verbatim error text for a vocabulary miss (used by the
+    /// generated `Deserialize`).
     fn bad_vocab_message() -> String;
 }
 
 str_enum! {
     /// `[campaign] direction` (Python `Direction`).
-    Direction { Up => "up", Down => "down" }
+    Direction {
+        /// ψ₀ climbs from the seed toward the branch's turning point /
+        /// strong-field end.
+        Up => "up",
+        /// ψ₀ descends toward 0; ω rises monotonically toward m.
+        Down => "down",
+    }
 }
 impl BadVocab for Direction {
     fn bad_vocab_message() -> String {
@@ -66,7 +74,14 @@ impl BadVocab for Direction {
 
 str_enum! {
     /// `[seed] policy` (Python `SeedPolicy`).
-    SeedPolicy { FromScratch => "from_scratch", Solution => "solution" }
+    SeedPolicy {
+        /// Step 0 renders the analytic Gaussian seed and solves at fixed
+        /// ω (`w0`) — requires `w0`.
+        FromScratch => "from_scratch",
+        /// The campaign starts from an existing solution directory
+        /// (`source`) — requires `source`.
+        Solution => "solution",
+    }
 }
 impl BadVocab for SeedPolicy {
     fn bad_vocab_message() -> String {
@@ -76,7 +91,13 @@ impl BadVocab for SeedPolicy {
 
 str_enum! {
     /// `[campaign] psi0_step_mode` (Python `Psi0StepMode`).
-    Psi0StepMode { Absolute => "absolute", Relative => "relative" }
+    Psi0StepMode {
+        /// `psi0_step` is an additive increment: `target = ψ₀ ± step`.
+        Absolute => "absolute",
+        /// `psi0_step` is a relative factor: `target = ψ₀·(1 ± step)`
+        /// (the default).
+        Relative => "relative",
+    }
 }
 impl BadVocab for Psi0StepMode {
     fn bad_vocab_message() -> String {
@@ -86,7 +107,12 @@ impl BadVocab for Psi0StepMode {
 
 str_enum! {
     /// `[output] format` (Python `OutputFormat`).
-    OutputFormat { Hdf5 => "hdf5", Ascii => "ascii" }
+    OutputFormat {
+        /// Solutions as a single `solution.h5` (the default).
+        Hdf5 => "hdf5",
+        /// Solutions as one `.asc` file per field.
+        Ascii => "ascii",
+    }
 }
 impl BadVocab for OutputFormat {
     fn bad_vocab_message() -> String {
@@ -98,9 +124,13 @@ str_enum! {
     /// How a step was produced (state.json `mode`; Python `StepMode`).
     /// `Regrid` mirrors the Python spelling quirk (`REGGRID = "regrid"`).
     StepMode {
+        /// A ψ₀-targeted solve at fixed φ (`fixedPhi`).
         FixedPhi => "fixedPhi",
+        /// The step-0 fixed-ω seed solve.
         Seed => "seed",
+        /// A regrid solve (the Python's `REGGRID` spelling quirk).
         Regrid => "regrid",
+        /// A rejected/skipped regrid probe.
         RegridProbe => "regrid-probe",
     }
 }
@@ -124,7 +154,16 @@ impl Default for StepMode {
 
 str_enum! {
     /// Campaign lifecycle status (state.json `status`; Python `Status`).
-    Status { Running => "running", Done => "done", Stopped => "stopped", Failed => "failed" }
+    Status {
+        /// Still stepping.
+        Running => "running",
+        /// A `done:*` terminal state.
+        Done => "done",
+        /// A clean `stopped:*` terminal state.
+        Stopped => "stopped",
+        /// A `failed:*` terminal state.
+        Failed => "failed",
+    }
 }
 impl BadVocab for Status {
     fn bad_vocab_message() -> String {
@@ -143,17 +182,34 @@ impl BadVocab for Status {
 /// all carry them.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StopReason {
+    /// The ψ₀ ladder landed on `psi0_target` (`done:psi0_target`).
     DonePsi0Target,
+    /// ω crossed `omega_target` in the campaign's direction
+    /// (`done:omega_target`).
     DoneOmegaTarget,
+    /// `steps` reached `[campaign] max_steps` (`done:max_steps`).
     DoneMaxSteps,
+    /// The down branch's physical end: exit 2 with the last completed ω
+    /// within `newtonian_delta` of m (`stopped:newtonian_limit`).
     StoppedNewtonianLimit,
+    /// Down-direction weak-field boundary stop: support fills the domain
+    /// and widening cannot help (`stopped:boundary`).
     StoppedBoundary,
+    /// The up branch crossed its minimum-ω turning point
+    /// (`stopped:turning_point`).
     StoppedTurningPoint,
+    /// Widening blocked by the `dr_max` floor or the `max_widenings`
+    /// budget (`stopped:domain_budget`).
     StoppedDomainBudget,
+    /// A step hit the run wall-clock timeout (`failed:timeout`).
     FailedTimeout,
+    /// Newton non-convergence — exit 1 (`failed:newton`).
     FailedNewton,
+    /// Solver error — exit 2 (`failed:solver`).
     FailedSolver,
+    /// Bad per-step configuration — exit 3 (`failed:config`).
     FailedConfig,
+    /// I/O error inside the solve — exit 4 (`failed:io`).
     FailedIo,
     /// `failed:sig{name}` with the lowercase name without the `SIG` prefix
     /// (e.g. `failed:sigsegv`).
