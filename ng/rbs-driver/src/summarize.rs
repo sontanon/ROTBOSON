@@ -65,6 +65,12 @@ impl Summary {
 /// The pure core of `summarize` (Python `sweep_driver.py` L2514-2542):
 /// build the report from the state's steps. Errors when no step records
 /// ω ("no completed steps record ω; nothing to summarize").
+///
+/// # Errors
+///
+/// Returns [`SummarizeError::NoOmegas`] when no step carries an ω —
+/// the Python's "no completed steps record ω; nothing to summarize"
+/// exit-1 path.
 pub fn summarize(spec: &Spec, state: &CampaignState) -> Result<Summary, SummarizeError> {
     let omegas: Vec<Option<f64>> = state.steps.iter().map(|s| s.omega).collect();
     if !omegas.iter().any(|w| w.is_some()) {
@@ -84,6 +90,13 @@ pub fn summarize(spec: &Spec, state: &CampaignState) -> Result<Summary, Summariz
 /// state.json under the campaign root, summarize, write
 /// `<root>/summary.json` (indent 2, trailing newline — the Python
 /// writer's byte shape).
+///
+/// # Errors
+///
+/// Returns [`SummarizeError::NoState`] when no state.json exists under
+/// the campaign root, or propagates the `load_state`/`summarize` errors
+/// (I/O, corrupt state.json, spec-hash mismatch, no recorded ω) and any
+/// I/O failure while writing summary.json.
 pub fn summarize_campaign(spec: &Spec) -> Result<Summary, SummarizeError> {
     let state = load_state(spec)?.ok_or(SummarizeError::NoState)?;
     let summary = summarize(spec, &state)?;
