@@ -32,17 +32,28 @@ pub fn ghost_of(order: i64) -> i64 {
 /// `None` means "do not refine".
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct StepDiagnostics {
+    /// Half-max width of the field in grid points straddling the peak
+    /// (C scalar `hwl_resolution`).
     pub hwl: Option<f64>,
+    /// Radius of the φ peak (C scalar `rr_phi_max`) — the axis-hug
+    /// input.
     pub rr_phi_max: Option<f64>,
+    /// Current grid spacing; the axis-hug rule compares the peak radius
+    /// against `(hwl/2)·dr`.
     pub dr: f64,
+    /// Refinements left in the campaign's dr ÷2 budget; ≤ 0 disables the
+    /// rule.
     pub refinements_left: i64,
+    /// `[adaptivity] hwl_min` — the under-resolution threshold in points.
     pub hwl_min: f64,
 }
 
 /// Adaptive decision layer output (`decide_action`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Action {
+    /// Keep stepping on the current grid.
     Ok,
+    /// Refine: regrid at dr ÷2 before the next solve.
     RegridFiner,
 }
 
@@ -100,8 +111,12 @@ pub fn decide_action(diag: &StepDiagnostics) -> Action {
 /// stops cleanly: `stopped:domain_budget`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CoarseningDecision {
+    /// Support still fits; keep stepping.
     Ok,
+    /// Widen: regrid at dr ×2 (the domain grows).
     RegridCoarser,
+    /// Support fills the domain but the coarseness floor or the regrid
+    /// budget blocks widening — stop (`stopped:domain_budget`).
     StopBudget,
 }
 
@@ -115,6 +130,14 @@ impl std::fmt::Display for CoarseningDecision {
     }
 }
 
+/// Classify a down-campaign step against the widening policy (Python
+/// `decide_coarsening`, sweep_driver.py L1423-1443). `r99_fraction` is the
+/// field's support relative to the boundary (r99/r_bdy); `None` means the
+/// scalars were unreadable — full support cannot be proven, so the
+/// answer is [`CoarseningDecision::Ok`]. Support over
+/// `support_fraction` widens (dr ×2) unless dr ×2 would exceed the
+/// coarseness floor `dr_max` or the `widenings_left` budget is spent,
+/// either of which stops the campaign.
 pub fn decide_coarsening(
     r99_fraction: Option<f64>,
     support_fraction: f64,
@@ -247,13 +270,21 @@ pub fn detect_turning_point(steps: &[StepRecord]) -> bool {
 /// dict; the JSON key order matches the Python insertion order).
 #[derive(Debug, Clone, PartialEq)]
 pub struct TurningPointReport {
+    /// ψ₀ of the window sample with the smallest ω.
     pub psi0_sample_min: f64,
+    /// The smallest sampled ω in the window.
     pub omega_sample_min: f64,
+    /// Samples in the fit window (up to 7: `[k-3, k+4)` around the
+    /// minimum).
     pub n_points: usize,
     /// The polynomial extremum, when a fit localized it
     /// (`method = "polyN"`); `None` means `method = "sample"`.
     pub psi0: Option<f64>,
+    /// The polynomial's value at its extremum; `None` alongside a
+    /// `None` [`psi0`](Self::psi0).
     pub omega: Option<f64>,
+    /// `"sample"` (extremum read off the samples) or `"poly{deg}"`
+    /// (localized by the polynomial fit) — the Python's `method` value.
     pub method: String,
 }
 
@@ -282,6 +313,11 @@ impl TurningPointReport {
         pairs
     }
 
+    /// Inverse of [`TurningPointReport::to_jv`]: read a report dict the
+    /// Python wrote (`summary.json` / state.json `turning_point`). An
+    /// absent or null `psi0`/`omega` reads as `None`, a present integer
+    /// coerces to float; `None` when a required key is missing or has the
+    /// wrong JSON kind.
     pub fn from_jv(raw: &crate::pyjson::Jv) -> Option<TurningPointReport> {
         use crate::pyjson::Jv;
         let g = |k: &str| -> Option<Option<f64>> {
