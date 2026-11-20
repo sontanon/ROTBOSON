@@ -248,12 +248,12 @@ fn write_json_string(out: &mut String, s: &str) {
             c => {
                 let cp = c as u32;
                 if cp <= 0xFFFF {
-                    out.push_str(&format!("\\u{cp:04x}"));
+                    let _ = write!(out, "\\u{cp:04x}");
                 } else {
                     let cp = cp - 0x1_0000;
                     let hi = 0xD800 + (cp >> 10);
                     let lo = 0xDC00 + (cp & 0x3FF);
-                    out.push_str(&format!("\\u{hi:04x}\\u{lo:04x}"));
+                    let _ = write!(out, "\\u{hi:04x}\\u{lo:04x}");
                 }
             }
         }
@@ -267,6 +267,13 @@ fn write_json_string(out: &mut String, s: &str) {
 /// decimal exponent is in `[-4, 16)`, scientific otherwise; scientific
 /// form always signs the exponent and pads it to at least two digits
 /// (`1e-05`, `1e+16`); fixed form always shows a fractional part (`15.0`).
+/// `python_repr_f64` — CPython's `repr(float)` as exact bytes.
+///
+/// # Panics
+///
+/// Panics only if Rust's `LowerExp` formatting fails to produce an
+/// exponent marker — practically unreachable; the function is total
+/// over finite and non-finite `f64`.
 pub fn python_repr_f64(f: f64) -> String {
     if f.is_nan() {
         return "NaN".to_string();

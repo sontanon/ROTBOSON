@@ -5,6 +5,8 @@
 //! crypto framework for one hash we implement the ~100-line standard
 //! algorithm here and pin it with NIST test vectors.
 
+use std::fmt::Write as _;
+
 const K: [u32; 64] = [
     0x428a_2f98, 0x7137_4491, 0xb5c0_fbcf, 0xe9b5_dba5, 0x3956_c25b, 0x59f1_11f1, 0x923f_82a4, 0xab1c_5ed5,
     0xd807_aa98, 0x1283_5b01, 0x2431_85be, 0x550c_7dc3, 0x72be_5d74, 0x80de_b1fe, 0x9bdc_06a7, 0xc19b_f174,
@@ -26,7 +28,7 @@ pub fn sha256_hex(data: &[u8]) -> String {
     let digest = sha256(data);
     let mut out = String::with_capacity(64);
     for b in digest {
-        out.push_str(&format!("{b:02x}"));
+        let _ = write!(out, "{b:02x}");
     }
     out
 }

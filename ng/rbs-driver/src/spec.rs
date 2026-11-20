@@ -19,7 +19,7 @@
 //! Line references cite `tools/sweep_driver.py` at the SAN-59 head
 //! (`06b4ff2`), the revision this port was specified against; master
 //! (`1ca850b`) is identical except that it lacks the `[solver]`
-//! numThreads/precision/direct/fp32_ir extension (see `SolverSpec`).
+//! `numThreads`/`precision`/`direct`/`fp32_ir` extension (see `SolverSpec`).
 
 use crate::error::SpecError;
 use crate::sha256::sha256_hex;
@@ -96,6 +96,11 @@ fn invalid(msg: impl Into<String>) -> SpecError {
 /// fields the Python coerces with `bool(raw.get(...))` rather than the
 /// strict `_bool` helper (`SolverSpec.direct`,
 /// `AdaptivitySpec.refine_keeps_domain`) — `direct = 1` is `true` there.
+///
+/// # Errors
+///
+/// Returns the deserializer's error when the TOML value is not a scalar
+/// (the Python `bool(v)` accepts everything; serde requires the case).
 pub fn de_py_bool<'de, D>(d: D) -> Result<bool, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -197,6 +202,12 @@ impl CampaignSpec {
     /// The semantic checks of Python `CampaignSpec.parse`
     /// (`sweep_driver.py` L345-353): `psi0_step > 0` — written in the
     /// negated form so NaN rejects — and `max_retries >= 0`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SpecError`](crate::error::SpecError) with the
+    /// Python-verbatim messages when `psi0_step <= 0` (NaN rejected)
+    /// or `max_retries < 0`.
     pub fn validate(&self) -> Result<(), SpecError> {
         // sweep_driver.py L345-353: `if not psi0_step > 0` (NaN rejected)
         // and `if max_retries < 0`.
@@ -216,7 +227,7 @@ impl CampaignSpec {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SeedSpec {
-    /// How the first solve is seeded: analytic from_scratch (a fixed-ω
+    /// How the first solve is seeded: analytic `from_scratch` (a fixed-ω
     /// step 0) or an existing solution directory.
     pub policy: SeedPolicy,
     /// Amplitude/ψ₀ of the analytic seed profile (step-0 param `psi0`).
@@ -236,7 +247,7 @@ pub struct SeedSpec {
     /// [`SeedSpec::resolve_source`].
     #[serde(default)]
     pub source: Option<String>,
-    /// Fixed ω for the from_scratch step-0 seed solve (required for
+    /// Fixed ω for the `from_scratch` step-0 seed solve (required for
     /// that policy, unused otherwise).
     #[serde(default)]
     pub w0: Option<f64>,
@@ -248,6 +259,13 @@ impl SeedSpec {
     /// that is an existing solution directory; `policy = "from_scratch"`
     /// requires `w0` (the fixedOmega seed solve). Relative sources are
     /// resolved against `base_dir` (the spec file's directory).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SpecError`](crate::error::SpecError) when
+    /// `policy = "solution"` has no `source`, the source is not an
+    /// existing solution directory, or `policy = "from_scratch"` lacks
+    /// `w0` — each with the Python-verbatim message.
     pub fn resolve_source(&mut self, base_dir: &Path) -> Result<(), SpecError> {
         if self.policy == SeedPolicy::Solution {
             let Some(source) = self.source.clone() else {
@@ -313,6 +331,11 @@ impl GridSpec {
     /// §6.1 (two coarsening regrids; going beyond requires an explicit
     /// override) — and must be `>= dr` (comparison exactly as the Python
     /// wrote it).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SpecError`](crate::error::SpecError) when
+    /// `dr_max < dr`.
     pub fn new(dr: f64, n: i64, dr_max: Option<f64>, order: i64) -> Result<GridSpec, SpecError> {
         let dr_max = dr_max.unwrap_or(4.0 * dr);
         if dr_max < dr {
@@ -403,6 +426,12 @@ impl SolverSpec {
     /// The post-parse checks of Python `SolverSpec.parse`
     /// (`sweep_driver.py` L466-472): `precision` ∈ {32, 64} and
     /// `fp32_ir >= 0`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SpecError`](crate::error::SpecError) with the
+    /// Python-verbatim messages when `precision` is not 32 or 64, or
+    /// `fp32_ir < 0`.
     pub fn validate(&self) -> Result<(), SpecError> {
         // sweep_driver.py L466-472.
         if self.precision != 32 && self.precision != 64 {
@@ -479,6 +508,12 @@ impl AdaptivitySpec {
     /// Parse a bare `[adaptivity]` table body (TOML keys, no table
     /// header) — the analogue of the Python unit tests calling
     /// `AdaptivitySpec.parse({...})` with a dict.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SpecError`](crate::error::SpecError) when the body is
+    /// not valid TOML for the table (type errors, unknown keys) or when
+    /// validation fails.
     pub fn parse_str(body: &str) -> Result<AdaptivitySpec, SpecError> {
         let a: AdaptivitySpec = toml::from_str(body)
             .map_err(|e| SpecError::TomlParse(e.to_string()))?;
@@ -490,6 +525,13 @@ impl AdaptivitySpec {
     /// the Python wrote it, which matters for NaN: the `<=`/`<` forms let
     /// NaN through (faithful to the Python), the `not a < b < c` forms
     /// reject it.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SpecError`](crate::error::SpecError) with the
+    /// Python-verbatim message for each violated range check
+    /// (`hwl_min`, `newtonian_delta`, `boundary_fraction`,
+    /// `support_fraction`, `regrid_rtol`, and the fraction ordering).
     pub fn validate(&self) -> Result<(), SpecError> {
         if self.hwl_min <= 0.0 {
             return Err(invalid("[adaptivity] hwl_min must be > 0"));
@@ -691,6 +733,12 @@ struct RawSpec {
 /// `repo_root` is the repository root (the Python derives it from its own
 /// file location, `REPO = Path(__file__).resolve().parent.parent`); it
 /// only feeds the default output root `<repo>/out/campaigns/<stem>`.
+///
+/// # Errors
+///
+/// Returns [`SpecError`](crate::error::SpecError) on I/O failure reading
+/// the spec file, invalid TOML, unknown tables/keys, or any table's
+/// validation failure — each with the Python-verbatim message.
 pub fn load_spec(path: &Path, repo_root: &Path) -> Result<Spec, SpecError> {
     let raw_bytes = std::fs::read(path)?;
     let text = std::str::from_utf8(&raw_bytes).map_err(|_| SpecError::NonUtf8)?;
