@@ -180,7 +180,7 @@ impl BadVocab for Status {
 /// carry runtime values and are built by the constructors below. `Display`
 /// strings are the contract — `state.json`, `summary.json` and the logs
 /// all carry them.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StopReason {
     /// The ψ₀ ladder landed on `psi0_target` (`done:psi0_target`).
     DonePsi0Target,
@@ -240,13 +240,15 @@ impl StopReason {
     /// `'done' / 'stopped' / 'failed'` — the component before the first
     /// `':'` of the stored string (Python `stop_family`).
     pub fn family(&self) -> &'static str {
-        use StopReason::*;
         match self {
-            DonePsi0Target | DoneOmegaTarget | DoneMaxSteps => "done",
-            StoppedNewtonianLimit | StoppedBoundary | StoppedTurningPoint
-            | StoppedDomainBudget => "stopped",
-            FailedTimeout | FailedNewton | FailedSolver | FailedConfig | FailedIo
-            | Signal(_) | ExitCode(_) | SeedExit(_) => "failed",
+            StopReason::DonePsi0Target | StopReason::DoneOmegaTarget | StopReason::DoneMaxSteps => {
+                "done"
+            }
+            StopReason::StoppedNewtonianLimit | StopReason::StoppedBoundary
+            | StopReason::StoppedTurningPoint | StopReason::StoppedDomainBudget => "stopped",
+            StopReason::FailedTimeout | StopReason::FailedNewton | StopReason::FailedSolver
+            | StopReason::FailedConfig | StopReason::FailedIo | StopReason::Signal(_)
+            | StopReason::ExitCode(_) | StopReason::SeedExit(_) => "failed",
         }
     }
 }
@@ -285,7 +287,7 @@ pub fn stop_family(reason: &str) -> &str {
 /// `ValueError` there, so callers turn this into
 /// [`crate::error::DriverError::UnknownSignal`].
 ///
-/// Linux x86-64 table, matching CPython's `signal.Signals`.
+/// Linux x86-64 table, matching `CPython`'s `signal.Signals`.
 pub fn signal_name(code: i32) -> Option<&'static str> {
     Some(match code {
         1 => "hup",
