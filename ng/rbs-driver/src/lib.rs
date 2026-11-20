@@ -16,8 +16,8 @@
 //!   the stop-reason taxonomy with exact contract strings
 //!   ([`decide`] and [`vocab`] modules).
 //! * **The fold summarize** — the degree-3/4 polynomial fit over the
-//!   branch points bracketing ω_min ([`summarize`] and [`fit`]
-//!   modules).
+//!   branch points bracketing ω_min
+//!   ([`summarize`](module@crate::summarize) and [`fit`] modules).
 //!
 //! Deferred to SAN-60's solver-facing half (blocked on the Rust
 //! solver): running the binary, seed-field rendering, the regrid

@@ -31,12 +31,17 @@ pub struct Summary {
     /// `None` when no usable (ψ₀, ω) pairs existed — the Python's empty
     /// `{}` report.
     pub report: Option<TurningPointReport>,
+    /// The campaign root, as the Python's `str(spec.output.root)`.
     pub campaign: String,
+    /// The campaign's final lifecycle status (`state.json` `status`).
     pub status: Status,
+    /// The stored stop-reason string, when the campaign recorded one.
     pub stop_reason: Option<String>,
 }
 
 impl Summary {
+    /// The payload as a JSON tree, in the Python's insertion order
+    /// (report keys first, then the bookkeeping keys).
     pub fn to_jv(&self) -> Jv {
         let mut pairs: Vec<(String, Jv)> = Vec::new();
         if let Some(report) = &self.report {
