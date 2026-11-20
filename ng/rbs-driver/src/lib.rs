@@ -27,7 +27,7 @@
 // negated form is load-bearing for NaN semantics (NaN must REJECT —
 // `x <= y` would silently accept it), and that behavior is pinned by
 // the ported test suite (NaN quirks are part of the Python contract).
-#![allow(clippy::neg_cmp_ops_on_partial_ord)]
+#![allow(clippy::neg_cmp_op_on_partial_ord)]
 //! See `README.md` for the ported/deferred inventory and the
 //! workspace-merge notes.
 //!
