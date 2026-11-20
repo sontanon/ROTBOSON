@@ -500,7 +500,7 @@ mod test_turning_point_estimate {
         let rep = turning_point_estimate(&psi0s, &omegas, 4).unwrap();
         approx(
             rep.omega.unwrap(),
-            omegas.iter().flatten().cloned().fold(f64::INFINITY, f64::min),
+            omegas.iter().flatten().copied().fold(f64::INFINITY, f64::min),
             2e-4,
         );
         let psi0 = rep.psi0.unwrap();
@@ -602,7 +602,7 @@ mod test_coarsening_acceptable {
     fn rel(pairs: &[(&str, f64)]) -> RelDiff {
         pairs
             .iter()
-            .map(|(k, v)| (k.to_string(), *v))
+            .map(|(k, v)| ((*k).to_owned(), *v))
             .collect()
     }
 
