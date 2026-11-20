@@ -267,7 +267,7 @@ fn write_json_string(out: &mut String, s: &str) {
 /// decimal exponent is in `[-4, 16)`, scientific otherwise; scientific
 /// form always signs the exponent and pads it to at least two digits
 /// (`1e-05`, `1e+16`); fixed form always shows a fractional part (`15.0`).
-/// `python_repr_f64` — CPython's `repr(float)` as exact bytes.
+/// `python_repr_f64` — `CPython`'s `repr(float)` as exact bytes.
 ///
 /// # Panics
 ///

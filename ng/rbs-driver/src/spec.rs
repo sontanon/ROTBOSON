@@ -279,8 +279,7 @@ impl SeedSpec {
             }
             let name_ok = resolved
                 .file_name()
-                .map(|n| is_solution_dir(&n.to_string_lossy()))
-                .unwrap_or(false);
+                .is_some_and(|n| is_solution_dir(&n.to_string_lossy()));
             if !name_ok || !resolved.is_dir() {
                 return Err(invalid(format!(
                     "[seed] source is not a solution directory: {text}"
@@ -390,11 +389,11 @@ pub struct SolverSpec {
     pub num_threads: i64,
     /// Production precision recipe (M3): `precision = 32`, `direct = 1`,
     /// `fp32_ir` — halves factor memory and reaches the paper's N=400
-    /// in-core. Maps onto the ROTBOSON_PRECISION, ROTBOSON_PARDISO_DIRECT
-    /// and ROTBOSON_FP32_IR env vars (`sweep_driver.py` L456-462).
+    /// in-core. Maps onto `ROTBOSON_PRECISION`, `ROTBOSON_PARDISO_DIRECT`
+    /// and `ROTBOSON_FP32_IR` env vars (`sweep_driver.py` L456-462).
     #[serde(default = "d_precision")]
     pub precision: i64,
-    /// Direct+IR PARDISO path (ROTBOSON_PARDISO_DIRECT); coerced with
+    /// Direct+IR PARDISO path (`ROTBOSON_PARDISO_DIRECT`); coerced with
     /// Python truthiness — `direct = 1` is true.
     #[serde(default, deserialize_with = "de_py_bool")]
     pub direct: bool,
@@ -695,6 +694,7 @@ pub struct Spec {
 impl Spec {
     /// Copy with the grid's dr (and optionally N) replaced — regrid
     /// rendering re-solves on a different grid (Python `Spec.with_grid`).
+    #[must_use]
     pub fn with_grid(&self, dr: f64, n: Option<i64>) -> Spec {
         let mut out = self.clone();
         out.grid.dr = dr;
@@ -757,9 +757,8 @@ pub fn load_spec(path: &Path, repo_root: &Path) -> Result<Spec, SpecError> {
     };
     campaign.validate()?;
 
-    let mut seed = match raw.seed {
-        Some(s) => s,
-        None => return Err(invalid("[seed] missing required key 'policy'")),
+    let Some(mut seed) = raw.seed else {
+        return Err(invalid("[seed] missing required key 'policy'"));
     };
     let base_dir = path.parent().unwrap_or_else(|| Path::new(""));
     seed.resolve_source(base_dir)?;
@@ -971,6 +970,11 @@ fn is_re_space(c: char) -> bool {
 /// Deviation from Python: `Path.resolve()` also resolves symlinks; this
 /// does not (state.json stores the resolved string either way, and
 /// campaign roots/seeds are not symlinked in practice).
+///
+/// # Errors
+///
+/// Never fails; the `Result` shape exists for uniform `?` handling at
+/// the call sites.
 pub fn absolute_lexical(p: &Path) -> Result<PathBuf, SpecError> {
     use std::path::Component;
     let mut abs = p.to_path_buf();
