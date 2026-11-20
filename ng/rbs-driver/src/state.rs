@@ -207,7 +207,7 @@ pub struct RegridInfo {
     /// The solution directory the regrid's seed came from (`None` when
     /// not recorded).
     pub source: Option<String>,
-    /// Truncation proxy: rel-diffs of `ω/`M_Komar`/`J_Komar`` between the
+    /// Truncation proxy: rel-diffs of `ω/M_Komar/J_Komar` between the
     /// regrid solve and its source — the `coarsening_acceptable` gate.
     pub rel_diff: RelDiff,
     /// Whether the regrid was adopted (the gate above passed); read with

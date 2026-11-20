@@ -162,7 +162,7 @@ pub fn decide_coarsening(
 }
 
 /// Truncation-proxy gate for a COARSENING regrid (dr ×2): the coarser
-/// solve must reproduce `ω/`M_Komar`/`J_Komar`` within `regrid_rtol` — widening
+/// solve must reproduce `ω/M_Komar/J_Komar` within `regrid_rtol` — widening
 /// is only adopted when it did not corrupt the solution. Refinement has
 /// no such gate (its purpose is to reduce the old grid's error, which is
 /// recorded). Python `coarsening_acceptable` (`sweep_driver.py`
@@ -508,6 +508,17 @@ pub fn newtonian_limit_stop(state: &CampaignState, spec: &Spec) -> Option<StopRe
 /// still possible; the guard fires only once widening is exhausted) →
 /// turning point (up) → failure classification (exit-2 Newtonian limit
 /// first, then the timeout sentinel, then signals, then the 1–4 map).
+///
+/// # Errors
+///
+/// Returns a [`DriverError`](crate::error::DriverError) when the state
+/// has no completed ω — the Python `omega_of_last` crash on the same
+/// condition, made typed here.
+///
+/// # Panics
+///
+/// Panics when no step carries a ψ₀ (the campaign loop never calls this
+/// on a state without completed steps; the guard rails above assume one).
 pub fn finished(state: &CampaignState, spec: &Spec) -> Result<Option<StopReason>, DriverError> {
     let c = &spec.campaign;
     let steps_with_psi0: Vec<&StepRecord> =
@@ -607,7 +618,7 @@ pub fn finished(state: &CampaignState, spec: &Spec) -> Result<Option<StopReason>
 /// Python `round(x, 15)` — correctly-rounded to 15 decimal places.
 /// Rust's `{:.15}` formats the exact binary value with correct rounding
 /// (half-even on true decimal ties, which cannot occur for a binary
-/// double at the 15th place), matching CPython's decimal-based round.
+/// double at the 15th place), matching `CPython`'s decimal-based round.
 pub fn round15(x: f64) -> f64 {
     if !x.is_finite() {
         return x;

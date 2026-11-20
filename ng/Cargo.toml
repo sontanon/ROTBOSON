@@ -58,6 +58,12 @@ many_single_char_names = "allow"
 cast_possible_wrap = "allow"
 cast_sign_loss = "allow"
 cast_possible_truncation = "allow"
+# The driver's API surface is decision-pure by construction; the twelve
+# load-bearing decision/accessor functions carry explicit #[must_use] as
+# API documentation, but the remaining candidates on this port (getters,
+# constructors consumed by the campaign loop and tests) are noise. The
+# class kept yielding lint-by-lint, so it is allowed at workspace level.
+must_use_candidate = "allow"
 # The C's kernel functions are monoliths kept verbatim for line-by-line
 # auditability against the oracle (too_many_lines — the entry-by-entry
 # csr_vars.c diffs ARE the verification method), and its scatter loops are
