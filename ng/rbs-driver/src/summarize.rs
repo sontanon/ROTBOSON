@@ -1,5 +1,5 @@
-//! `--summarize`: localize ω_min from a finished campaign (design §6.2)
-//! — port of tools/sweep_driver.py's `summarize`.
+//! `--summarize`: localize `ω_min` from a finished campaign (design §6.2)
+//! — port of `tools/sweep_driver.py`'s `summarize`.
 //!
 //! Post-processing only: reads state.json, fits a low-order polynomial
 //! to ω(ψ₀) over the samples bracketing the smallest sampled ω (the
@@ -31,12 +31,17 @@ pub struct Summary {
     /// `None` when no usable (ψ₀, ω) pairs existed — the Python's empty
     /// `{}` report.
     pub report: Option<TurningPointReport>,
+    /// The campaign root, as the Python's `str(spec.output.root)`.
     pub campaign: String,
+    /// The campaign's final lifecycle status (`state.json` `status`).
     pub status: Status,
+    /// The stored stop-reason string, when the campaign recorded one.
     pub stop_reason: Option<String>,
 }
 
 impl Summary {
+    /// The payload as a JSON tree, in the Python's insertion order
+    /// (report keys first, then the bookkeeping keys).
     pub fn to_jv(&self) -> Jv {
         let mut pairs: Vec<(String, Jv)> = Vec::new();
         if let Some(report) = &self.report {
@@ -57,12 +62,18 @@ impl Summary {
     }
 }
 
-/// The pure core of `summarize` (Python sweep_driver.py L2514-2542):
+/// The pure core of `summarize` (Python `sweep_driver.py` L2514-2542):
 /// build the report from the state's steps. Errors when no step records
 /// ω ("no completed steps record ω; nothing to summarize").
+///
+/// # Errors
+///
+/// Returns [`SummarizeError::NoOmegas`] when no step carries an ω —
+/// the Python's "no completed steps record ω; nothing to summarize"
+/// exit-1 path.
 pub fn summarize(spec: &Spec, state: &CampaignState) -> Result<Summary, SummarizeError> {
     let omegas: Vec<Option<f64>> = state.steps.iter().map(|s| s.omega).collect();
-    if !omegas.iter().any(|w| w.is_some()) {
+    if !omegas.iter().any(Option::is_some) {
         return Err(SummarizeError::NoOmegas);
     }
     let psi0s: Vec<Option<f64>> = state.steps.iter().map(|s| s.psi0).collect();
@@ -79,6 +90,13 @@ pub fn summarize(spec: &Spec, state: &CampaignState) -> Result<Summary, Summariz
 /// state.json under the campaign root, summarize, write
 /// `<root>/summary.json` (indent 2, trailing newline — the Python
 /// writer's byte shape).
+///
+/// # Errors
+///
+/// Returns [`SummarizeError::NoState`] when no state.json exists under
+/// the campaign root, or propagates the `load_state`/`summarize` errors
+/// (I/O, corrupt state.json, spec-hash mismatch, no recorded ω) and any
+/// I/O failure while writing summary.json.
 pub fn summarize_campaign(spec: &Spec) -> Result<Summary, SummarizeError> {
     let state = load_state(spec)?.ok_or(SummarizeError::NoState)?;
     let summary = summarize(spec, &state)?;

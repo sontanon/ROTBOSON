@@ -26,10 +26,6 @@ fn parse(text: &str) -> Jv {
     Jv::parse(text).expect("fixture is valid JSON")
 }
 
-fn obj<'a>(v: &'a Jv) -> &'a Vec<(String, Jv)> {
-    v.as_obj().expect("fixture top level is an object")
-}
-
 fn get<'a>(v: &'a Jv, key: &str) -> &'a Jv {
     v.get(key).expect("key present in fixture")
 }

@@ -1,7 +1,7 @@
 //! A JSON value model with a **Python-`json.dumps`-byte-compatible** writer.
 //!
 //! `state.json` is part of the Python driver's on-disk contract
-//! (tools/sweep_driver.py `save_state` writes
+//! (`tools/sweep_driver.py` `save_state` writes
 //! `json.dumps(state.to_dict(), indent=2) + "\n"`, and the round-trip test
 //! asserts byte identity against an archived state.json). The Rust port
 //! must be able to reproduce those bytes exactly, which stock `serde_json`
@@ -20,47 +20,62 @@
 //!   Python wrote) into [`Jv`] preserving key order and int/float identity.
 
 use serde_json::Value as Json;
+use std::fmt::Write as _;
 
 /// A JSON tree. `Obj` keeps insertion order, mirroring Python dict
 /// emission order (byte-identity requirement).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Jv {
+    /// JSON `null` (Python `None`).
     Null,
+    /// JSON `true`/`false`.
     Bool(bool),
     /// A JSON number that was an integer — stays an integer on re-write.
     Int(i64),
     /// A JSON number that was a float — re-writes in Python `repr` style.
     Float(f64),
+    /// A JSON string.
     Str(String),
+    /// A JSON array (element order preserved).
     Arr(Vec<Jv>),
+    /// A JSON object as insertion-ordered pairs — Python dicts emit in
+    /// insertion order and the byte-identity contract pins it.
     Obj(Vec<(String, Jv)>),
 }
 
 impl Jv {
     // ---- constructors ---------------------------------------------------
 
+    /// An object from `(&str, Jv)` pairs, in the given order.
     pub fn obj(pairs: Vec<(&str, Jv)>) -> Jv {
         Jv::Obj(pairs.into_iter().map(|(k, v)| (k.to_string(), v)).collect())
     }
 
+    /// An array of items.
     pub fn arr(items: Vec<Jv>) -> Jv {
         Jv::Arr(items)
     }
 
+    /// `Some(v)` as a float, `None` as `null` — the Python stores `None`
+    /// when a scalar was unreadable.
     pub fn opt_float(v: Option<f64>) -> Jv {
-        v.map(Jv::Float).unwrap_or(Jv::Null)
+        v.map_or(Jv::Null, Jv::Float)
     }
 
+    /// `Some(v)` as an integer, `None` as `null`.
     pub fn opt_int(v: Option<i64>) -> Jv {
-        v.map(Jv::Int).unwrap_or(Jv::Null)
+        v.map_or(Jv::Null, Jv::Int)
     }
 
+    /// `Some(v)` as a string, `None` as `null`.
     pub fn opt_str<S: Into<String>>(v: Option<S>) -> Jv {
-        v.map(|s| Jv::Str(s.into())).unwrap_or(Jv::Null)
+        v.map_or(Jv::Null, |s| Jv::Str(s.into()))
     }
 
     // ---- accessors ------------------------------------------------------
 
+    /// The value stored under `key` (first match); `None` on a non-object
+    /// or a missing key — the analogue of Python `raw.get(key)`.
     pub fn get(&self, key: &str) -> Option<&Jv> {
         match self {
             Jv::Obj(pairs) => pairs.iter().find(|(k, _)| k == key).map(|(_, v)| v),
@@ -68,6 +83,7 @@ impl Jv {
         }
     }
 
+    /// The object's pairs; `None` for any other kind.
     pub fn as_obj(&self) -> Option<&Vec<(String, Jv)>> {
         match self {
             Jv::Obj(pairs) => Some(pairs),
@@ -75,6 +91,7 @@ impl Jv {
         }
     }
 
+    /// The array's items; `None` for any other kind.
     pub fn as_arr(&self) -> Option<&Vec<Jv>> {
         match self {
             Jv::Arr(items) => Some(items),
@@ -82,6 +99,7 @@ impl Jv {
         }
     }
 
+    /// The string's contents; `None` for any other kind.
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Jv::Str(s) => Some(s),
@@ -108,6 +126,11 @@ impl Jv {
     /// Parse JSON text (any valid JSON, including everything the Python
     /// writer produced) into a [`Jv`] tree preserving key order and the
     /// int/float distinction.
+    ///
+    /// # Errors
+    ///
+    /// Returns the underlying `serde_json` error when `text` is not
+    /// valid JSON.
     pub fn parse(text: &str) -> Result<Jv, serde_json::Error> {
         let v: Json = serde_json::from_str(text)?;
         Ok(Jv::from(v))
@@ -133,10 +156,9 @@ impl From<Json> for Jv {
                 } else if let Some(u) = n.as_u64() {
                     // JSON integers beyond i64 are unheard of in state.json;
                     // degrade to float rather than lose the value.
-                    if u <= i64::MAX as u64 {
-                        Jv::Int(u as i64)
-                    } else {
-                        Jv::Float(u as f64)
+                    match i64::try_from(u) {
+                        Ok(i) => Jv::Int(i),
+                        Err(_) => Jv::Float(u as f64),
                     }
                 } else {
                     Jv::Float(n.as_f64().unwrap_or(f64::NAN))
@@ -220,18 +242,18 @@ fn write_json_string(out: &mut String, s: &str) {
             // ensure_ascii=True: everything non-ASCII is \u-escaped
             // (surrogate pairs above the BMP, like CPython's encoder).
             c if (c as u32) < 0x20 => {
-                out.push_str(&format!("\\u{:04x}", c as u32))
+                let _ = write!(out, "\\u{:04x}", c as u32);
             }
             c if (c as u32) < 0x80 => out.push(c),
             c => {
                 let cp = c as u32;
                 if cp <= 0xFFFF {
-                    out.push_str(&format!("\\u{cp:04x}"));
+                    let _ = write!(out, "\\u{cp:04x}");
                 } else {
                     let cp = cp - 0x1_0000;
                     let hi = 0xD800 + (cp >> 10);
                     let lo = 0xDC00 + (cp & 0x3FF);
-                    out.push_str(&format!("\\u{hi:04x}\\u{lo:04x}"));
+                    let _ = write!(out, "\\u{hi:04x}\\u{lo:04x}");
                 }
             }
         }
@@ -245,6 +267,13 @@ fn write_json_string(out: &mut String, s: &str) {
 /// decimal exponent is in `[-4, 16)`, scientific otherwise; scientific
 /// form always signs the exponent and pads it to at least two digits
 /// (`1e-05`, `1e+16`); fixed form always shows a fractional part (`15.0`).
+/// `python_repr_f64` — `CPython`'s `repr(float)` as exact bytes.
+///
+/// # Panics
+///
+/// Panics only if Rust's `LowerExp` formatting fails to produce an
+/// exponent marker — practically unreachable; the function is total
+/// over finite and non-finite `f64`.
 pub fn python_repr_f64(f: f64) -> String {
     if f.is_nan() {
         return "NaN".to_string();
@@ -264,9 +293,9 @@ pub fn python_repr_f64(f: f64) -> String {
     let (mant, exp_str) = sci.split_once('e').expect("LowerExp always has 'e'");
     let exp: i32 = exp_str.parse().expect("LowerExp exponent is an integer");
     let digits: String = mant.chars().filter(|c| *c != '.').collect();
-    debug_assert!(!digits.is_empty() && digits.chars().next() != Some('0'));
+    debug_assert!(!digits.is_empty() && !digits.starts_with('0'));
 
-    let body = if exp < -4 || exp >= 16 {
+    let body = if !(-4..16).contains(&exp) {
         // Scientific: d[.ddd]e±XX
         let first = &digits[..1];
         let rest = &digits[1..];
@@ -308,6 +337,10 @@ pub fn python_repr_f64(f: f64) -> String {
 
 #[cfg(test)]
 mod tests {
+    // Python-repr parity fixtures: the raw long digit strings ARE the
+    // test data — they mirror the exact repr output being asserted.
+    #![allow(clippy::unreadable_literal)]
+
     use super::*;
 
     #[test]

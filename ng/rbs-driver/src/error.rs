@@ -3,7 +3,7 @@
 use std::fmt;
 
 /// Invalid campaign spec (Python: `SpecError(ValueError)` in
-/// tools/sweep_driver.py). Message text of the `Invalid`/`UnknownTables`/
+/// `tools/sweep_driver.py`). Message text of the `Invalid`/`UnknownTables`/
 /// `UnknownKeys` variants matches the Python raisers verbatim.
 #[derive(Debug)]
 pub enum SpecError {
@@ -19,9 +19,15 @@ pub enum SpecError {
     UnknownTables(Vec<String>),
     /// Keys inside a known table not in `KNOWN[table]` — Python:
     /// `[campaign] unknown keys: ['x']` (sorted, single-quoted).
-    UnknownKeys { table: &'static str, keys: Vec<String> },
+    UnknownKeys {
+        /// The known table the offending keys were found in
+        /// (`"campaign"`, `"seed"`, …).
+        table: &'static str,
+        /// The offending keys, sorted like the Python's `sorted(extra)`.
+        keys: Vec<String>,
+    },
     /// Semantic validation failure; the string is the exact Python
-    /// SpecError message.
+    /// `SpecError` message.
     Invalid(String),
 }
 
@@ -61,6 +67,8 @@ impl From<std::io::Error> for SpecError {
 /// — the abort-resume contract); here they are one typed enum.
 #[derive(Debug)]
 pub enum StateError {
+    /// Reading or writing state.json failed at the OS level (Python:
+    /// the uncaught `OSError` from `open`/`write`).
     Io(std::io::Error),
     /// Corrupt/truncated state.json — includes the coercion messages
     /// (`state.json: expected a number, got str`).
@@ -68,7 +76,11 @@ pub enum StateError {
     /// `spec_hash` does not match the loaded spec: resume must abort
     /// (Python: `SystemExit("state.json at ... pass --fresh to discard
     /// it.")`).
-    SpecHashMismatch { path: std::path::PathBuf },
+    SpecHashMismatch {
+        /// The state.json whose hash disagrees — the abort message
+        /// names it.
+        path: std::path::PathBuf,
+    },
 }
 
 impl fmt::Display for StateError {
@@ -105,7 +117,7 @@ pub enum DriverError {
     /// "no completed step records ω; cannot continue".
     NoCompletedOmega,
     /// A negative exit code did not name a signal (Python:
-    /// `signal.Signals(-code)` raises ValueError for unknown numbers).
+    /// `signal.Signals(-code)` raises `ValueError` for unknown numbers..
     UnknownSignal(i32),
 }
 
@@ -132,7 +144,11 @@ impl std::error::Error for DriverError {}
 /// logged message).
 #[derive(Debug)]
 pub enum SummarizeError {
+    /// Reading state.json or writing summary.json failed at the OS
+    /// level.
     Io(std::io::Error),
+    /// state.json failed to load — corrupt, or a spec-hash mismatch
+    /// (the underlying message surfaces verbatim).
     State(StateError),
     /// No state.json under the campaign root — Python: "no state.json to
     /// summarize".
