@@ -316,10 +316,10 @@ pub struct SolverSpec {
     /// (sweep_driver.py L453-456).
     #[serde(rename = "numThreads", default = "d_threads")]
     pub num_threads: i64,
-    /// Production precision recipe (M3): `precision = 32` + `direct = 1`
-    /// + `fp32_ir` halves factor memory and reaches the paper's N=400
-    /// in-core; maps onto the ROTBOSON_PRECISION / ROTBOSON_PARDISO_DIRECT
-    /// / ROTBOSON_FP32_IR env vars (sweep_driver.py L456-462).
+    /// Production precision recipe (M3): `precision = 32`, `direct = 1`,
+    /// `fp32_ir` — halves factor memory and reaches the paper's N=400
+    /// in-core. Maps onto the ROTBOSON_PRECISION, ROTBOSON_PARDISO_DIRECT
+    /// and ROTBOSON_FP32_IR env vars (sweep_driver.py L456-462).
     #[serde(default = "d_precision")]
     pub precision: i64,
     #[serde(default, deserialize_with = "de_py_bool")]
@@ -863,7 +863,7 @@ pub fn absolute_lexical(p: &Path) -> Result<PathBuf, SpecError> {
 /// `^l=\d+,w=[\d.Ee+-]+,dr=[\d.Ee+-]+,N=\d+$`), used to validate
 /// `[seed] source`.
 pub fn is_solution_dir(name: &str) -> bool {
-    fn take_while<'a>(s: &'a str, pred: impl Fn(u8) -> bool) -> Option<(&'a str, &'a str)> {
+    fn take_while(s: &str, pred: impl Fn(u8) -> bool) -> Option<(&str, &str)> {
         let n = s.bytes().position(|b| !pred(b)).unwrap_or(s.len());
         (n > 0).then(|| s.split_at(n))
     }

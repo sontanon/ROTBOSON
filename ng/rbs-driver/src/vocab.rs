@@ -112,6 +112,10 @@ impl BadVocab for StepMode {
     }
 }
 
+// str_enum! has no slot for the #[default] variant attribute that
+// `#[derive(Default)]` on an enum requires — the manual impl is
+// genuinely necessary, not derivable through the macro.
+#[allow(clippy::derivable_impls)]
 impl Default for StepMode {
     fn default() -> Self {
         StepMode::FixedPhi

@@ -4,7 +4,6 @@
 //! A Rust port of the logic in `tools/sweep_driver.py` (the Python
 //! continuation driver; the Python is the specification) covering
 //! everything that does not shell out to the C solver:
-//!
 //! * **Campaign-spec TOML parsing** — closed vocabulary, unknown
 //!   tables/keys rejected as hard parse errors, wrong types hard
 //!   errors, tuned constants carried over with citations
@@ -23,6 +22,12 @@
 //! Deferred to SAN-60's solver-facing half (blocked on the Rust
 //! solver): running the binary, seed-field rendering, the regrid
 //! ladder's interpolator plumbing, end-to-end campaign execution.
+
+// The driver ports Python's `not x > y` comparisons verbatim: the
+// negated form is load-bearing for NaN semantics (NaN must REJECT —
+// `x <= y` would silently accept it), and that behavior is pinned by
+// the ported test suite (NaN quirks are part of the Python contract).
+#![allow(clippy::neg_cmp_ops_on_partial_ord)]
 //! See `README.md` for the ported/deferred inventory and the
 //! workspace-merge notes.
 //!

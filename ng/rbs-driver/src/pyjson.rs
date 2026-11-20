@@ -264,9 +264,9 @@ pub fn python_repr_f64(f: f64) -> String {
     let (mant, exp_str) = sci.split_once('e').expect("LowerExp always has 'e'");
     let exp: i32 = exp_str.parse().expect("LowerExp exponent is an integer");
     let digits: String = mant.chars().filter(|c| *c != '.').collect();
-    debug_assert!(!digits.is_empty() && digits.chars().next() != Some('0'));
+    debug_assert!(!digits.is_empty() && !digits.starts_with('0'));
 
-    let body = if exp < -4 || exp >= 16 {
+    let body = if !(-4..16).contains(&exp) {
         // Scientific: d[.ddd]e±XX
         let first = &digits[..1];
         let rest = &digits[1..];
