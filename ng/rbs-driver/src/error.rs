@@ -27,7 +27,7 @@ pub enum SpecError {
         keys: Vec<String>,
     },
     /// Semantic validation failure; the string is the exact Python
-    /// SpecError message.
+    /// `SpecError` message.
     Invalid(String),
 }
 
@@ -117,7 +117,7 @@ pub enum DriverError {
     /// "no completed step records ω; cannot continue".
     NoCompletedOmega,
     /// A negative exit code did not name a signal (Python:
-    /// `signal.Signals(-code)` raises ValueError for unknown numbers).
+    /// `signal.Signals(-code)` raises `ValueError` for unknown numbers..
     UnknownSignal(i32),
 }
 

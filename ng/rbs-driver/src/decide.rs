@@ -502,7 +502,7 @@ pub fn newtonian_limit_stop(state: &CampaignState, spec: &Spec) -> Option<StopRe
 /// Order matters and mirrors the Python exactly:
 /// ψ₀ target landing (with the 1e-9 relative tolerance — an exact
 /// landing must stop the campaign instead of re-solving the same point
-/// forever) → ω target → max_steps → the down-direction boundary guard,
+/// forever) → `ω` target → `max_steps` → the down-direction boundary guard,
 /// which **yields to available coarsening** (a just-started dilute
 /// campaign can sit marginally over the threshold while widening is
 /// still possible; the guard fires only once widening is exhausted) →

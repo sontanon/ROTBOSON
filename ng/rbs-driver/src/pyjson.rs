@@ -20,6 +20,7 @@
 //!   Python wrote) into [`Jv`] preserving key order and int/float identity.
 
 use serde_json::Value as Json;
+use std::fmt::Write as _;
 
 /// A JSON tree. `Obj` keeps insertion order, mirroring Python dict
 /// emission order (byte-identity requirement).
@@ -58,17 +59,17 @@ impl Jv {
     /// `Some(v)` as a float, `None` as `null` — the Python stores `None`
     /// when a scalar was unreadable.
     pub fn opt_float(v: Option<f64>) -> Jv {
-        v.map(Jv::Float).unwrap_or(Jv::Null)
+        v.map_or(Jv::Null, Jv::Float)
     }
 
     /// `Some(v)` as an integer, `None` as `null`.
     pub fn opt_int(v: Option<i64>) -> Jv {
-        v.map(Jv::Int).unwrap_or(Jv::Null)
+        v.map_or(Jv::Null, Jv::Int)
     }
 
     /// `Some(v)` as a string, `None` as `null`.
     pub fn opt_str<S: Into<String>>(v: Option<S>) -> Jv {
-        v.map(|s| Jv::Str(s.into())).unwrap_or(Jv::Null)
+        v.map_or(Jv::Null, |s| Jv::Str(s.into()))
     }
 
     // ---- accessors ------------------------------------------------------
@@ -125,6 +126,11 @@ impl Jv {
     /// Parse JSON text (any valid JSON, including everything the Python
     /// writer produced) into a [`Jv`] tree preserving key order and the
     /// int/float distinction.
+    ///
+    /// # Errors
+    ///
+    /// Returns the underlying `serde_json` error when `text` is not
+    /// valid JSON.
     pub fn parse(text: &str) -> Result<Jv, serde_json::Error> {
         let v: Json = serde_json::from_str(text)?;
         Ok(Jv::from(v))
@@ -150,10 +156,9 @@ impl From<Json> for Jv {
                 } else if let Some(u) = n.as_u64() {
                     // JSON integers beyond i64 are unheard of in state.json;
                     // degrade to float rather than lose the value.
-                    if u <= i64::MAX as u64 {
-                        Jv::Int(u as i64)
-                    } else {
-                        Jv::Float(u as f64)
+                    match i64::try_from(u) {
+                        Ok(i) => Jv::Int(i),
+                        Err(_) => Jv::Float(u as f64),
                     }
                 } else {
                     Jv::Float(n.as_f64().unwrap_or(f64::NAN))
@@ -237,7 +242,7 @@ fn write_json_string(out: &mut String, s: &str) {
             // ensure_ascii=True: everything non-ASCII is \u-escaped
             // (surrogate pairs above the BMP, like CPython's encoder).
             c if (c as u32) < 0x20 => {
-                out.push_str(&format!("\\u{:04x}", c as u32))
+                let _ = write!(out, "\\u{:04x}", c as u32);
             }
             c if (c as u32) < 0x80 => out.push(c),
             c => {
