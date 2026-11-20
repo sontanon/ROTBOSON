@@ -162,7 +162,7 @@ pub fn decide_coarsening(
 }
 
 /// Truncation-proxy gate for a COARSENING regrid (dr ×2): the coarser
-/// solve must reproduce `ω/M_Komar/J_Komar` within `regrid_rtol` — widening
+/// solve must reproduce `ω/`M_Komar`/`J_Komar`` within `regrid_rtol` — widening
 /// is only adopted when it did not corrupt the solution. Refinement has
 /// no such gate (its purpose is to reduce the old grid's error, which is
 /// recorded). Python `coarsening_acceptable` (`sweep_driver.py`
@@ -184,6 +184,7 @@ pub fn coarsening_acceptable(rel: &RelDiff, regrid_rtol: f64) -> bool {
 /// * **Legacy fixed-N refinement** (domain shrinks): the conservative
 ///   margin applies — never re-solve onto a domain the support barely
 ///   fits.
+#[must_use]
 pub fn would_amputate(
     src_r99: Option<f64>,
     src_dr: f64,
@@ -213,6 +214,7 @@ pub fn would_amputate(
 /// campaign ends cleanly at the best achievable grid instead of
 /// recording a solver failure. The `dr`/`N` truthiness of the Python
 /// (`not last_good_dr`) is preserved: a zero dr or N means "unknown".
+#[must_use]
 pub fn boundary_failure_stop(
     last_good_r99: Option<f64>,
     last_good_dr: Option<f64>,
@@ -245,6 +247,7 @@ pub fn boundary_failure_stop(
 /// Note (faithful to the Python): steps are filtered by mode and the
 /// presence of ψ₀/ω only — *not* by exit code; in practice failed steps
 /// carry no ψ₀.
+#[must_use]
 pub fn detect_turning_point(steps: &[StepRecord]) -> bool {
     let mut pts: Vec<(f64, f64)> = Vec::new();
     for s in steps {
@@ -296,12 +299,14 @@ impl TurningPointReport {
     /// The report dict, in the Python's key order
     /// (`psi0_sample_min`, `omega_sample_min`, `n_points`,
     /// [`psi0`, `omega`,] `method`).
+    #[must_use]
     pub fn to_jv(&self) -> crate::pyjson::Jv {
         crate::pyjson::Jv::Obj(self.to_pairs())
     }
 
     /// The report's key/value pairs in the Python insertion order (used
     /// by `summary.json`, which appends its own keys after them).
+    #[must_use]
     pub fn to_pairs(&self) -> Vec<(String, crate::pyjson::Jv)> {
         use crate::pyjson::Jv;
         let mut pairs = vec![
@@ -322,6 +327,7 @@ impl TurningPointReport {
     /// absent or null `psi0`/`omega` reads as `None`, a present integer
     /// coerces to float; `None` when a required key is missing or has the
     /// wrong JSON kind.
+    #[must_use]
     pub fn from_jv(raw: &crate::pyjson::Jv) -> Option<TurningPointReport> {
         use crate::pyjson::Jv;
         let g = |k: &str| -> Option<Option<f64>> {
@@ -356,6 +362,12 @@ impl TurningPointReport {
 /// shorter input truncates), sorted, the window is the up-to-7 samples
 /// `[k-3, k+4)` around the minimum, and the fit is sampled on a 4001-point
 /// grid. Returns `None` for no usable pairs (the Python's `{}`).
+///
+/// # Panics
+///
+/// Panics if any usable ω sample is NaN — the minimum search unwraps
+/// `partial_cmp` (the Python's `min` is equally total on floats).
+#[must_use]
 pub fn turning_point_estimate(
     psi0s: &[Option<f64>],
     omegas: &[Option<f64>],
@@ -463,7 +475,8 @@ pub fn turning_point_estimate(
 /// failure: `stopped:newtonian_limit` when the last step failed with
 /// exit 2 and the last *completed* ω sits within
 /// `[adaptivity] newtonian_delta` of m. `None` otherwise (including the
-/// up direction, whose M_max end has no clean ω-based signature).
+/// up direction, whose `M_max` end has no clean ω-based signature).
+#[must_use]
 pub fn newtonian_limit_stop(state: &CampaignState, spec: &Spec) -> Option<StopReason> {
     if spec.campaign.direction != Direction::Down {
         return None;

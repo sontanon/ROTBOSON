@@ -447,7 +447,7 @@ pub struct AdaptivitySpec {
     )]
     pub refine_keeps_domain: bool,
     /// Truncation gate: a widening (dr ×2) is only adopted when the
-    /// coarser solve reproduces `ω/M_Komar/J_Komar` within this relative
+    /// coarser solve reproduces `ω/`M_Komar`/`J_Komar`` within this relative
     /// tolerance.
     #[serde(rename = "regrid_rtol", default = "d_regrid_rtol")]
     pub regrid_rtol: f64,
