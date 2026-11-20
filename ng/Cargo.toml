@@ -58,6 +58,14 @@ many_single_char_names = "allow"
 cast_possible_wrap = "allow"
 cast_sign_loss = "allow"
 cast_possible_truncation = "allow"
+# The C's kernel functions are monoliths kept verbatim for line-by-line
+# auditability against the oracle (too_many_lines — the entry-by-entry
+# csr_vars.c diffs ARE the verification method), and its scatter loops are
+# index-form over parallel stencil-weight arrays (needless_range_loop).
+# Both policies are scoped to the port: revisit when genuinely-new code
+# (evolution, N2 grids) isn't bound by the C's shape.
+too_many_lines = "allow"
+needless_range_loop = "allow"
 
 [profile.release]
 # Debug assertions stay on for parity campaigns: the oracle reproduces
