@@ -1149,6 +1149,7 @@ version = "0.1.0"
 dependencies = [
  "libm",
  "rbs-core",
+ "rbs-io",
  "rbs-linalg",
 ]
 
