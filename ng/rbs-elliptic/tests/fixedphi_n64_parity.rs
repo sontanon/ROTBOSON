@@ -23,24 +23,15 @@
 //!   fixedPhi pipeline (pattern with the pin column, Jacobian values
 //!   with the live omega column, constraint row, Newton exit).
 //!
-//! * **Eigenvalue walk characterization**
-//!   (`..._eigenvalue_walk_is_blocked_on_the_newton_port`): the
-//!   from-scratch spec — the one the C oracle walks to
-//!   omega = 0.88325... — under THIS crate's slice Newton. The walk
-//!   is blocked: the fixedPhi eigenvalue corrections are dominated by
-//!   the `dw/dxi`-scaled column (the tanh map is flat near omega ~ m),
-//!   and the damped direction is an ASCENT direction for the slice's
-//!   full-residual-RMS merit at every lambda (measured: theta(lambda)
-//!   >= 1 for all lambda in [lambda_min, 1] from the first iterate
-//!   on), so the `theta <= 1 - lambda/4` acceptance fails and the
-//!   solve exits `Diverged`. The Jacobian itself is C-exact (see
-//!   `fixedphi_jacobian_parity.rs`: pattern, values, pin row, omega
-//!   column all match the C dump to 1e-13), so the blocker is purely
-//!   the line-search/acceptance machinery — the NLEQ-ERR/QNERR port
-//!   (SAN-52). When that lands, replace this characterization with
-//!   the real gate: converge the from-scratch spec and assert
-//!   `omega_Rust` vs the fixture's `omega` at 1e-10 plus the
-//!   field-parity gates.
+//! * **From-scratch parity** (`..._from_scratch_matches_the_c_oracle`):
+//!   start from the smoke ansatz with the frequency guess w0 = 0.95 and
+//!   let Newton find the eigenvalue, as the C oracle does (it walks
+//!   omega 0.95 -> 0.88325...). The Rust solve must converge to the
+//!   oracle's omega at 1e-10 relative and pass the same field gates.
+//!   This needs the NLEQ-ERR/QNERR Newton machinery: the simpler
+//!   residual-RMS line search cannot accept the eigenvalue-dominated
+//!   steps (the damped direction is an ascent direction for that merit
+//!   function), so it stalls.
 //!
 //! Ignored by default because the N=64 sparse LU is slow in debug builds;
 //! run the gates with:
@@ -69,6 +60,7 @@ fn oracle_solver_config() -> NewtonConfig {
         epsilon: 1e-12,
         max_iterations: 40,
         lambda_min: 1e-5,
+        ..NewtonConfig::default()
     }
 }
 
@@ -94,7 +86,7 @@ fn load_fixture(rel: &str) -> Fixture {
         }
         let mut parts = line.split_whitespace();
         match parts.next() {
-            Some("nr_total") | Some("nz_total") => {}
+            Some("nr_total" | "nz_total") | None => {}
             Some("omega") => fix.omega = parts.next().unwrap().parse().unwrap(),
             Some("field") => {
                 if let Some(done) = current.take() {
@@ -108,13 +100,50 @@ fn load_fixture(rel: &str) -> Fixture {
                     .expect("values follow a field header")
                     .push(value.parse().expect("fixture float"));
             }
-            None => {}
         }
     }
     if let Some(done) = current.take() {
         fix.fields.push(done);
     }
     fix
+}
+
+/// Asserts that every one of the six solved fields matches the oracle
+/// fixture: field-relative deviation below 1e-10 and absolute deviation
+/// below 5e-14 (the seed-solve gates).
+fn assert_fields_match_oracle(fix: &Fixture, fields: &FieldSet, dim: usize) {
+    let names = [
+        "log_alpha_f",
+        "beta_f",
+        "log_h_f",
+        "log_a_f",
+        "psi_f",
+        "lambda_f",
+    ];
+    let mut worst_field_rel = 0.0_f64;
+    let mut worst_abs = 0.0_f64;
+    for (k, name) in names.iter().enumerate() {
+        let oracle = &fix.fields[k];
+        assert_eq!(oracle.len(), dim, "{name} length");
+        let mine = fields.field(k);
+        let scale = oracle.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
+        let max_abs = mine
+            .iter()
+            .zip(oracle)
+            .fold(0.0_f64, |m, (a, b)| m.max((a - b).abs()));
+        eprintln!("{name:12}: field-rel {:.3e}, max|diff| {:.3e}", max_abs / scale, max_abs);
+        assert!(
+            max_abs / scale < 1e-10,
+            "{name}: field-relative deviation {} exceeds the gate",
+            max_abs / scale
+        );
+        assert!(max_abs < 5e-14, "{name}: absolute deviation {max_abs:.3e}");
+        worst_field_rel = worst_field_rel.max(max_abs / scale);
+        worst_abs = worst_abs.max(max_abs);
+    }
+    eprintln!(
+        "gate: worst field-rel {worst_field_rel:.3e}, worst abs {worst_abs:.3e} (gate 1e-10 / 5e-14)"
+    );
 }
 
 /// The grid and params of the canonical fixedPhi spec (the smoke
@@ -242,61 +271,24 @@ fn n64_l1_fixedphi_fixed_point_seeded_matches_the_c_oracle() {
         "the pinned node drifted: {pin_solved:.17e} vs {pin_seed:.17e}"
     );
 
-    // Field-by-field parity vs the oracle solution (the seed-solve
-    // gates).
-    let names = [
-        "log_alpha_f",
-        "beta_f",
-        "log_h_f",
-        "log_a_f",
-        "psi_f",
-        "lambda_f",
-    ];
-    let mut worst_field_rel = 0.0_f64;
-    let mut worst_abs = 0.0_f64;
-    for (k, name) in names.iter().enumerate() {
-        let oracle = &fix.fields[k];
-        assert_eq!(oracle.len(), dim, "{name} length");
-        let mine = state.fields.field(k);
-        let scale = oracle.iter().fold(0.0_f64, |m, v| m.max(v.abs()));
-        let mut max_abs = 0.0_f64;
-        for idx in 0..dim {
-            let diff = (mine[idx] - oracle[idx]).abs();
-            max_abs = max_abs.max(diff);
-        }
-        eprintln!("{name:12}: field-rel {:.3e}, max|diff| {:.3e}", max_abs / scale, max_abs);
-        assert!(
-            max_abs / scale < 1e-10,
-            "{name}: field-relative deviation {} exceeds the gate",
-            max_abs / scale
-        );
-        assert!(max_abs < 5e-14, "{name}: absolute deviation {max_abs:.3e}");
-        worst_field_rel = worst_field_rel.max(max_abs / scale);
-        worst_abs = worst_abs.max(max_abs);
-    }
-    eprintln!(
-        "gate: worst field-rel {worst_field_rel:.3e}, worst abs {worst_abs:.3e} (gate 1e-10 / 5e-14)"
-    );
+    assert_fields_match_oracle(&fix, &state.fields, dim);
 }
 
-/// SAN-58 characterization: the from-scratch fixedPhi spec — the one
-/// the C oracle walks to omega = 0.88325... — is blocked under this
-/// crate's slice Newton. See the module docs for the mechanism and
-/// the SAN-52 handoff. The C oracle's answer stays pinned as the
-/// fixture so the real gate is a one-assertion flip when the
-/// NLEQ-ERR/QNERR port lands.
+/// The from-scratch fixedPhi gate: start from the smoke ansatz with the
+/// frequency guess w0 = 0.95, pin psi at (2,2), and let Newton find the
+/// eigenvalue. The C oracle walks this spec to a clearly different
+/// omega; the Rust solve must land on the same omega and fields.
 #[test]
-#[ignore = "characterization of a known blocker (SAN-52 handoff); ~10 s in --release"]
-fn n64_l1_fixedphi_eigenvalue_walk_is_blocked_on_the_newton_port() {
+#[ignore = "slow: about 10 s in --release"]
+fn n64_l1_fixedphi_from_scratch_matches_the_c_oracle() {
     let fix = load_fixture("tests/fixtures/fixedphi_n64_solution.txt");
 
     let grid = fixedphi_grid();
-    // The from-scratch spec: the smoke ansatz, the frequency at the
-    // w0 = 0.95 guess, the constraint row pinning psi at (2,2).
     let params = fixedphi_params(rbs_elliptic::omega::inverse_omega_calc(0.95, 1.0));
     let mut state: SolveState = initial_guess(&grid, &InitialGuess::l1_smoke());
 
-    // The oracle walks this spec to a decisively different eigenvalue.
+    // The oracle's eigenvalue really moved away from the guess, so this
+    // test exercises the omega walk and not a fixed point.
     assert!(
         (fix.omega - 0.95).abs() > 1e-2,
         "the oracle fixture must hold the moved eigenvalue, got {}",
@@ -318,19 +310,15 @@ fn n64_l1_fixedphi_eigenvalue_walk_is_blocked_on_the_newton_port() {
             entry.iter, entry.norm_du, entry.lambda, entry.theta
         );
     }
-    let w = rbs_elliptic::omega::omega_calc(state.xi, params.m);
-    eprintln!(
-        "stalled at omega = {w:.16e} after {} accepted steps (oracle walks to {:.16e})",
-        log.len(),
-        fix.omega
+    assert!(
+        matches!(status, NewtonStatus::Converged { .. }),
+        "Newton did not converge: {status:?}"
     );
 
-    // The characterization: the slice's residual-RMS backtracking
-    // cannot accept any step once the corrections become
-    // eigenvalue-dominated.
-    assert_eq!(status, NewtonStatus::Diverged, "SAN-52 landed? flip this characterization into the real from-scratch parity gate (assert Converged, omega vs {:.16e} at 1e-10, field gates)", fix.omega);
-    assert!(
-        !log.is_empty(),
-        "the walk should have accepted steps before stalling"
-    );
+    let w = rbs_elliptic::omega::omega_calc(state.xi, params.m);
+    let rel = ((w - fix.omega) / fix.omega).abs();
+    eprintln!("omega: rust {w:.16e} vs oracle {:.16e}, rel {rel:.3e}", fix.omega);
+    assert!(rel < 1e-10, "omega parity failed: rel {rel:.3e}");
+
+    assert_fields_match_oracle(&fix, &state.fields, grid.dim());
 }
