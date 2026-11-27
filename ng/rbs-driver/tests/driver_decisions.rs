@@ -1,8 +1,13 @@
 //! Port of `tests/test_driver_decisions.py` — the unit tests for the v2
 //! adaptive decision layer (design §4–6 rev 2), case for case, same
-//! inputs, same expected outcomes. Rust-only additions (next_target /
+//! inputs, same expected outcomes. Rust-only additions (`next_target` /
 //! retry policy / status mapping, marked "Rust addition") cover pure
 //! helpers the Python exercised only through the campaign loop.
+
+// Python-parity fixtures: the raw long digit strings ARE the test data
+// (ported from the Python suite verbatim — psi0/omega values, round15
+// cases); digit separators would obscure the exact values under test.
+#![allow(clippy::unreadable_literal)]
 
 use rbs_driver::decide::turning_point_estimate;
 use rbs_driver::spec::{AdaptivitySpec, CampaignSpec, GridSpec, OutputSpec, SeedSpec, SolverSpec, Spec};
@@ -450,7 +455,7 @@ mod test_turning_point_estimate {
 
     #[test]
     fn test_quadratic_bowl_localization() {
-        let psi0s: Vec<Option<f64>> = (0..7).map(|i| Some(0.40 + 0.02 * i as f64)).collect();
+        let psi0s: Vec<Option<f64>> = (0..7).map(|i| Some(0.40 + 0.02 * f64::from(i))).collect();
         let omegas: Vec<Option<f64>> = psi0s
             .iter()
             .map(|p| p.map(|x| 0.65 + 50.0 * (x - 0.46).powi(2)))
@@ -495,7 +500,7 @@ mod test_turning_point_estimate {
         let rep = turning_point_estimate(&psi0s, &omegas, 4).unwrap();
         approx(
             rep.omega.unwrap(),
-            omegas.iter().flatten().cloned().fold(f64::INFINITY, f64::min),
+            omegas.iter().flatten().copied().fold(f64::INFINITY, f64::min),
             2e-4,
         );
         let psi0 = rep.psi0.unwrap();
@@ -546,15 +551,15 @@ mod test_adaptivity_new_knobs {
     fn test_support_fraction_must_precede_boundary_stop() {
         let err = AdaptivitySpec::parse_str("support_fraction = 0.95\nboundary_fraction = 0.95\n")
             .unwrap_err();
-        assert!(err.to_string().contains("support_fraction"), "{}", err);
+        assert!(err.to_string().contains("support_fraction"), "{err}");
         let err = AdaptivitySpec::parse_str("support_fraction = 0.99\n").unwrap_err();
-        assert!(err.to_string().contains("support_fraction"), "{}", err);
+        assert!(err.to_string().contains("support_fraction"), "{err}");
     }
 
     #[test]
     fn test_regrid_rtol_validation() {
         let err = AdaptivitySpec::parse_str("regrid_rtol = 0.0\n").unwrap_err();
-        assert!(err.to_string().contains("regrid_rtol"), "{}", err);
+        assert!(err.to_string().contains("regrid_rtol"), "{err}");
     }
 }
 
@@ -597,7 +602,7 @@ mod test_coarsening_acceptable {
     fn rel(pairs: &[(&str, f64)]) -> RelDiff {
         pairs
             .iter()
-            .map(|(k, v)| (k.to_string(), *v))
+            .map(|(k, v)| ((*k).to_owned(), *v))
             .collect()
     }
 

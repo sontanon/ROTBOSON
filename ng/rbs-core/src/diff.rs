@@ -286,8 +286,6 @@ mod tests {
     /// parity-reflected grid (the reflection is folded into the weights).
     #[test]
     fn axis_rules_match_reflected_centered_rules() {
-        let g = Grid2d::new(14, 9, 2, 0.25, 0.5);
-        let dim = g.dim();
         // A smooth even function and a smooth odd function.
         fn f_even(x: f64) -> f64 {
             1.0 + 0.3 * x * x + 0.05 * x.powi(4)
@@ -307,6 +305,8 @@ mod tests {
         fn ddf_odd(x: f64) -> f64 {
             -0.12 * x
         }
+        let g = Grid2d::new(14, 9, 2, 0.25, 0.5);
+        let dim = g.dim();
         for (f, df, ddf, sym) in [
             (
                 f_even as fn(f64) -> f64,
@@ -383,14 +383,14 @@ mod tests {
     /// exact on even sextics, axis rows included.
     #[test]
     fn sixth_order_axis_rules_are_exact_on_sextics() {
-        let g = Grid2d::new(16, 5, 2, 0.125, 0.25);
-        let dim = g.dim();
         fn f(x: f64) -> f64 {
             2.0 + 0.7 * x * x - 0.4 * x.powi(4) + 0.02 * x.powi(6)
         }
         fn df(x: f64) -> f64 {
             1.4 * x - 1.6 * x.powi(3) + 0.12 * x.powi(5)
         }
+        let g = Grid2d::new(16, 5, 2, 0.125, 0.25);
+        let dim = g.dim();
         let mut v = vec![0.0; dim];
         for i in 0..g.nr_total() {
             let x = g.r(i);
