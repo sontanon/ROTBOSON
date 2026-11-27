@@ -6,6 +6,7 @@
 //! crate README; the parity gates live in `ng/docs/architecture.md`.
 
 pub mod assembly;
+#[rustfmt::skip]
 pub mod generated;
 pub mod initial;
 pub mod newton;

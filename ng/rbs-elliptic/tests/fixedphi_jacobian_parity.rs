@@ -91,7 +91,9 @@ fn fixedphi_jacobian_matches_the_c_dump() {
 
     let mut fields = FieldSet::zeros(&grid);
     for k in 0..6 {
-        fields.field_mut(k).copy_from_slice(&u_c[k * dim..(k + 1) * dim]);
+        fields
+            .field_mut(k)
+            .copy_from_slice(&u_c[k * dim..(k + 1) * dim]);
     }
     let state = SolveState {
         fields,
@@ -109,7 +111,11 @@ fn fixedphi_jacobian_matches_the_c_dump() {
     // Pattern first: nnz must be the C's counting formula, then the
     // row pointers and column indices identical.
     let pattern = JacobianPattern::build(&grid, &params);
-    assert_eq!(pattern.nnz(), nnz_jacobian_4th(6, 6), "nnz vs the C formula");
+    assert_eq!(
+        pattern.nnz(),
+        nnz_jacobian_4th(6, 6),
+        "nnz vs the C formula"
+    );
     assert_eq!(pattern.nnz(), a_c.len(), "nnz vs the C dump");
 
     let mut ws = Workspace::new(&grid);
@@ -135,7 +141,10 @@ fn fixedphi_jacobian_matches_the_c_dump() {
             worst_at = n;
         }
     }
-    assert_eq!(mismatches, 0, "{mismatches} Jacobian entries beyond {TOLERANCE}");
+    assert_eq!(
+        mismatches, 0,
+        "{mismatches} Jacobian entries beyond {TOLERANCE}"
+    );
     assert!(
         worst < TOLERANCE,
         "worst Jacobian deviation {worst:.3e} at entry {worst_at}"
@@ -145,10 +154,17 @@ fn fixedphi_jacobian_matches_the_c_dump() {
     // psi column of the pinned node (`csr_omega_constraint.c` with
     // g_num = 5, i = fixedPhiR, j = fixedPhiZ).
     let w_idx = 6 * dim;
-    assert_eq!(jac.row_ptrs[w_idx + 1] - jac.row_ptrs[w_idx], 1, "omega row nnz");
+    assert_eq!(
+        jac.row_ptrs[w_idx + 1] - jac.row_ptrs[w_idx],
+        1,
+        "omega row nnz"
+    );
     let pin_col = jac.col_inds[jac.row_ptrs[w_idx]];
     assert_eq!(pin_col, 4 * dim + grid.idx(2, 2), "pin column");
-    assert!((jac.vals[jac.row_ptrs[w_idx]] - 1.0).abs() < 1e-15, "pin value");
+    assert!(
+        (jac.vals[jac.row_ptrs[w_idx]] - 1.0).abs() < 1e-15,
+        "pin value"
+    );
 
     // The omega column is live in the interior rows (the fixedPhi
     // consumer): count its structural nonzeros.

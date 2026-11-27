@@ -161,7 +161,11 @@ fn badly_scaled_jacobian_recovers_affine_invariant() {
     // damping schedule — the numeric columns to the faer-vs-PARDISO
     // rounding the 1e-6 row scaling injects into the LU (observed
     // ~2e-5 relative drift on lambda').
-    assert_eq!(log.len(), clean_log.len(), "row count changed under scaling");
+    assert_eq!(
+        log.len(),
+        clean_log.len(),
+        "row count changed under scaling"
+    );
     for (a, b) in log.iter().zip(&clean_log) {
         assert_eq!(a.event, b.event, "event mismatch");
         assert!(

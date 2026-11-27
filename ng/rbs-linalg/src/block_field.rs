@@ -279,7 +279,11 @@ impl BlockCsc {
         let mut row_idx = vec![0usize; nnz];
         let mut vals = vec![0.0; nnz];
         for r in 0..dim {
-            let d = if row_scale.is_empty() { 1.0 } else { row_scale[r] };
+            let d = if row_scale.is_empty() {
+                1.0
+            } else {
+                row_scale[r]
+            };
             for k in a.row_ptrs[base + r]..a.row_ptrs[base + r + 1] {
                 let c = a.col_inds[k];
                 if c >= base && c < base + dim {
@@ -515,19 +519,11 @@ impl BlockFieldKrylov {
         let stack = MemStack::new(&mut mem);
         let mut etree = vec![0isize; dim];
         let mut col_counts = vec![0usize; dim];
-        let etree = simplicial::prefactorize_symbolic_cholesky(
-            &mut etree,
-            &mut col_counts,
-            sym_mat,
-            stack,
-        );
-        let symbolic = simplicial::factorize_simplicial_symbolic_cholesky(
-            sym_mat,
-            etree,
-            &col_counts,
-            stack,
-        )
-        .map_err(|_| SolveError::InvalidMatrix("LDLT symbolic"))?;
+        let etree =
+            simplicial::prefactorize_symbolic_cholesky(&mut etree, &mut col_counts, sym_mat, stack);
+        let symbolic =
+            simplicial::factorize_simplicial_symbolic_cholesky(sym_mat, etree, &col_counts, stack)
+                .map_err(|_| SolveError::InvalidMatrix("LDLT symbolic"))?;
         let num_req = simplicial::factorize_simplicial_numeric_ldlt_scratch::<usize, f64>(dim);
         let mut mem =
             MemBuffer::try_new(num_req).map_err(|_| SolveError::InvalidMatrix("LDLT numeric"))?;
@@ -899,10 +895,7 @@ mod tests {
                 for (dj, w) in [(-1, below), (0, 4.2), (1, -1.0)] {
                     let j = i_i64 + i64::from(dj);
                     if (0..dim_i64).contains(&j) {
-                        rows[r].push((
-                            g * dim + usize::try_from(j).expect("j fits usize"),
-                            w,
-                        ));
+                        rows[r].push((g * dim + usize::try_from(j).expect("j fits usize"), w));
                     }
                 }
                 // Cross-field same-node coupling.
@@ -1128,7 +1121,9 @@ mod tests {
             nfields: 2,
             ..BlockKrylovConfig::default()
         });
-        solver.factor(&a).expect("low-level block LU tolerates rank deficiency");
+        solver
+            .factor(&a)
+            .expect("low-level block LU tolerates rank deficiency");
         let x = solver.solve(&b).expect("full Krylov space recovers");
         assert!(rel_residual(&a, &b, &x) < 1e-8);
     }

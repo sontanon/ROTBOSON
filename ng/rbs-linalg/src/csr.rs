@@ -79,13 +79,17 @@ impl CsrMatrix {
     pub fn validate(&self) -> Result<(), crate::SolveError> {
         use crate::SolveError;
         if self.row_ptrs.len() != self.nrows + 1 {
-            return Err(SolveError::InvalidMatrix("row_ptrs must have nrows+1 entries"));
+            return Err(SolveError::InvalidMatrix(
+                "row_ptrs must have nrows+1 entries",
+            ));
         }
         if self.row_ptrs.first() != Some(&0) {
             return Err(SolveError::InvalidMatrix("row_ptrs[0] must be 0"));
         }
         if self.col_inds.len() != self.vals.len() {
-            return Err(SolveError::InvalidMatrix("col_inds and vals must be parallel"));
+            return Err(SolveError::InvalidMatrix(
+                "col_inds and vals must be parallel",
+            ));
         }
         if self.row_ptrs[self.nrows] > self.col_inds.len() {
             return Err(SolveError::InvalidMatrix("row_ptrs[nrows] exceeds nnz"));

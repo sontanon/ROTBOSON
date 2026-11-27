@@ -69,8 +69,14 @@ fn n32_nleq_err_matches_the_oracle_path() {
     let (grid, mut state) = n32_setup();
     let params = smoke_params();
     let mut solver = FaerSparseLu::new();
-    let (status, log) =
-        solve(&mut solver, &grid, &mut state, &params, &NewtonConfig::default()).unwrap();
+    let (status, log) = solve(
+        &mut solver,
+        &grid,
+        &mut state,
+        &params,
+        &NewtonConfig::default(),
+    )
+    .unwrap();
 
     let NewtonStatus::Converged { iterations, .. } = status else {
         panic!("did not converge: {status:?}");
@@ -94,7 +100,11 @@ fn n32_nleq_err_matches_the_oracle_path() {
     // The k = 0 REJECT B: lambda0 = 1e-3, the mu-prime regularization
     // caps the growth at lambda' = 0.128233.
     assert!(close(log[0].lambda, 1e-3, 1e-9), "lambda {}", log[0].lambda);
-    assert!(close(log[0].theta, 9.98996e-1, 1e-3), "theta {}", log[0].theta);
+    assert!(
+        close(log[0].theta, 9.98996e-1, 1e-3),
+        "theta {}",
+        log[0].theta
+    );
     assert!(
         close(log[0].lambda_prime, 1.28233e-1, 1e-3),
         "lambda' {} vs oracle 0.128233",

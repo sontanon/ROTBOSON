@@ -64,10 +64,12 @@ pub fn diff1r(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                 // Main interior points (centered; the second-to-last
                 // row is plain centered, no special rule).
                 for i in g + 1..nr - 1 {
-                    out[grid.idx(i, j)] = idr * 0.5 * (v[grid.idx(i + 1, j)] - v[grid.idx(i - 1, j)]);
+                    out[grid.idx(i, j)] =
+                        idr * 0.5 * (v[grid.idx(i + 1, j)] - v[grid.idx(i - 1, j)]);
                 }
                 // Outer boundary: one-sided (3, -4, 1) / 2h.
-                out[grid.idx(nr - 1, j)] = idr * 0.5
+                out[grid.idx(nr - 1, j)] = idr
+                    * 0.5
                     * (3.0 * v[grid.idx(nr - 1, j)] - 4.0 * v[grid.idx(nr - 2, j)]
                         + v[grid.idx(nr - 3, j)]);
             }
@@ -79,7 +81,8 @@ pub fn diff1r(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                     * (-v[grid.idx(g + 2, j)] + (8.0 + s) * v[grid.idx(g + 1, j)]
                         - 8.0 * s * v[grid.idx(g, j)]);
                 out[grid.idx(g + 1, j)] = idr / 12.0
-                    * (-v[grid.idx(g + 3, j)] + 8.0 * v[grid.idx(g + 2, j)]
+                    * (-v[grid.idx(g + 3, j)]
+                        + 8.0 * v[grid.idx(g + 2, j)]
                         + (s - 8.0) * v[grid.idx(g, j)]);
                 // Main interior points.
                 for i in g + 2..nr - 2 {
@@ -90,11 +93,13 @@ pub fn diff1r(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                 // Outer boundary: semi-onesided then one-sided.
                 out[grid.idx(nr - 2, j)] = idr / 12.0
                     * (3.0 * v[grid.idx(nr - 1, j)] + 10.0 * v[grid.idx(nr - 2, j)]
-                        - 18.0 * v[grid.idx(nr - 3, j)] + 6.0 * v[grid.idx(nr - 4, j)]
+                        - 18.0 * v[grid.idx(nr - 3, j)]
+                        + 6.0 * v[grid.idx(nr - 4, j)]
                         - v[grid.idx(nr - 5, j)]);
                 out[grid.idx(nr - 1, j)] = idr / 12.0
                     * (25.0 * v[grid.idx(nr - 1, j)] - 48.0 * v[grid.idx(nr - 2, j)]
-                        + 36.0 * v[grid.idx(nr - 3, j)] - 16.0 * v[grid.idx(nr - 4, j)]
+                        + 36.0 * v[grid.idx(nr - 3, j)]
+                        - 16.0 * v[grid.idx(nr - 4, j)]
                         + 3.0 * v[grid.idx(nr - 5, j)]);
             }
         }
@@ -123,18 +128,24 @@ pub fn diff1r(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                 // Outer boundary: three one-sided rules.
                 out[grid.idx(nr - 3, j)] = idr / 60.0
                     * (v[grid.idx(nr - 7, j)] - 8.0 * v[grid.idx(nr - 6, j)]
-                        + 30.0 * v[grid.idx(nr - 5, j)] - 80.0 * v[grid.idx(nr - 4, j)]
-                        + 35.0 * v[grid.idx(nr - 3, j)] + 24.0 * v[grid.idx(nr - 2, j)]
+                        + 30.0 * v[grid.idx(nr - 5, j)]
+                        - 80.0 * v[grid.idx(nr - 4, j)]
+                        + 35.0 * v[grid.idx(nr - 3, j)]
+                        + 24.0 * v[grid.idx(nr - 2, j)]
                         - 2.0 * v[grid.idx(nr - 1, j)]);
                 out[grid.idx(nr - 2, j)] = idr / 60.0
                     * (-2.0 * v[grid.idx(nr - 7, j)] + 15.0 * v[grid.idx(nr - 6, j)]
-                        - 50.0 * v[grid.idx(nr - 5, j)] + 100.0 * v[grid.idx(nr - 4, j)]
-                        - 150.0 * v[grid.idx(nr - 3, j)] + 77.0 * v[grid.idx(nr - 2, j)]
+                        - 50.0 * v[grid.idx(nr - 5, j)]
+                        + 100.0 * v[grid.idx(nr - 4, j)]
+                        - 150.0 * v[grid.idx(nr - 3, j)]
+                        + 77.0 * v[grid.idx(nr - 2, j)]
                         + 10.0 * v[grid.idx(nr - 1, j)]);
                 out[grid.idx(nr - 1, j)] = idr / 60.0
                     * (10.0 * v[grid.idx(nr - 7, j)] - 72.0 * v[grid.idx(nr - 6, j)]
-                        + 225.0 * v[grid.idx(nr - 5, j)] - 400.0 * v[grid.idx(nr - 4, j)]
-                        + 450.0 * v[grid.idx(nr - 3, j)] - 360.0 * v[grid.idx(nr - 2, j)]
+                        + 225.0 * v[grid.idx(nr - 5, j)]
+                        - 400.0 * v[grid.idx(nr - 4, j)]
+                        + 450.0 * v[grid.idx(nr - 3, j)]
+                        - 360.0 * v[grid.idx(nr - 2, j)]
                         + 147.0 * v[grid.idx(nr - 1, j)]);
             }
         }
@@ -173,7 +184,8 @@ pub fn diff1z(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                         idz * 0.5 * (v[grid.idx(i, j + 1)] - v[grid.idx(i, j - 1)]);
                 }
                 // Outer boundary: one-sided (3, -4, 1) / 2h.
-                out[grid.idx(i, nz - 1)] = idz * 0.5
+                out[grid.idx(i, nz - 1)] = idz
+                    * 0.5
                     * (3.0 * v[grid.idx(i, nz - 1)] - 4.0 * v[grid.idx(i, nz - 2)]
                         + v[grid.idx(i, nz - 3)]);
             }
@@ -185,7 +197,8 @@ pub fn diff1z(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                     * (-v[grid.idx(i, g + 2)] + (8.0 + s) * v[grid.idx(i, g + 1)]
                         - 8.0 * s * v[grid.idx(i, g)]);
                 out[grid.idx(i, g + 1)] = idz / 12.0
-                    * (-v[grid.idx(i, g + 3)] + 8.0 * v[grid.idx(i, g + 2)]
+                    * (-v[grid.idx(i, g + 3)]
+                        + 8.0 * v[grid.idx(i, g + 2)]
                         + (s - 8.0) * v[grid.idx(i, g)]);
                 // Main interior points.
                 for j in g + 2..nz - 2 {
@@ -196,11 +209,13 @@ pub fn diff1z(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                 // Outer boundary.
                 out[grid.idx(i, nz - 2)] = idz / 12.0
                     * (3.0 * v[grid.idx(i, nz - 1)] + 10.0 * v[grid.idx(i, nz - 2)]
-                        - 18.0 * v[grid.idx(i, nz - 3)] + 6.0 * v[grid.idx(i, nz - 4)]
+                        - 18.0 * v[grid.idx(i, nz - 3)]
+                        + 6.0 * v[grid.idx(i, nz - 4)]
                         - v[grid.idx(i, nz - 5)]);
                 out[grid.idx(i, nz - 1)] = idz / 12.0
                     * (25.0 * v[grid.idx(i, nz - 1)] - 48.0 * v[grid.idx(i, nz - 2)]
-                        + 36.0 * v[grid.idx(i, nz - 3)] - 16.0 * v[grid.idx(i, nz - 4)]
+                        + 36.0 * v[grid.idx(i, nz - 3)]
+                        - 16.0 * v[grid.idx(i, nz - 4)]
                         + 3.0 * v[grid.idx(i, nz - 5)]);
             }
         }
@@ -236,40 +251,49 @@ pub fn diff2r(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                     idr2 * (v[grid.idx(g + 1, j)] + (s - 2.0) * v[grid.idx(g, j)]);
                 // Main interior points.
                 for i in g + 1..nr - 1 {
-                    out[grid.idx(i, j)] =
-                        idr2 * (v[grid.idx(i + 1, j)] - 2.0 * v[grid.idx(i, j)] + v[grid.idx(i - 1, j)]);
+                    out[grid.idx(i, j)] = idr2
+                        * (v[grid.idx(i + 1, j)] - 2.0 * v[grid.idx(i, j)] + v[grid.idx(i - 1, j)]);
                 }
                 // Outer boundary: one-sided (2, -5, 4, -1) / h^2.
                 out[grid.idx(nr - 1, j)] = idr2
                     * (2.0 * v[grid.idx(nr - 1, j)] - 5.0 * v[grid.idx(nr - 2, j)]
-                        + 4.0 * v[grid.idx(nr - 3, j)] - v[grid.idx(nr - 4, j)]);
+                        + 4.0 * v[grid.idx(nr - 3, j)]
+                        - v[grid.idx(nr - 4, j)]);
             }
         }
         4 => {
             for j in 0..nz {
                 // Axis: parity-embedded.
                 out[grid.idx(g, j)] = idr2 / 12.0
-                    * (-v[grid.idx(g + 2, j)] + (16.0 - s) * v[grid.idx(g + 1, j)]
+                    * (-v[grid.idx(g + 2, j)]
+                        + (16.0 - s) * v[grid.idx(g + 1, j)]
                         + (16.0 * s - 30.0) * v[grid.idx(g, j)]);
                 out[grid.idx(g + 1, j)] = idr2 / 12.0
                     * (-v[grid.idx(g + 3, j)] + 16.0 * v[grid.idx(g + 2, j)]
-                        - 30.0 * v[grid.idx(g + 1, j)] + (16.0 - s) * v[grid.idx(g, j)]);
+                        - 30.0 * v[grid.idx(g + 1, j)]
+                        + (16.0 - s) * v[grid.idx(g, j)]);
                 // Main interior points.
                 for i in g + 2..nr - 2 {
                     out[grid.idx(i, j)] = -idr2 / 12.0
                         * (30.0 * v[grid.idx(i, j)]
                             - 16.0 * (v[grid.idx(i + 1, j)] + v[grid.idx(i - 1, j)])
-                            + v[grid.idx(i + 2, j)] + v[grid.idx(i - 2, j)]);
+                            + v[grid.idx(i + 2, j)]
+                            + v[grid.idx(i - 2, j)]);
                 }
                 // Outer boundary.
                 out[grid.idx(nr - 2, j)] = idr2 / 12.0
-                    * (10.0 * v[grid.idx(nr - 1, j)] - 15.0 * v[grid.idx(nr - 2, j)]
-                        - 4.0 * v[grid.idx(nr - 3, j)] + 14.0 * v[grid.idx(nr - 4, j)]
-                        - 6.0 * v[grid.idx(nr - 5, j)] + v[grid.idx(nr - 6, j)]);
+                    * (10.0 * v[grid.idx(nr - 1, j)]
+                        - 15.0 * v[grid.idx(nr - 2, j)]
+                        - 4.0 * v[grid.idx(nr - 3, j)]
+                        + 14.0 * v[grid.idx(nr - 4, j)]
+                        - 6.0 * v[grid.idx(nr - 5, j)]
+                        + v[grid.idx(nr - 6, j)]);
                 out[grid.idx(nr - 1, j)] = idr2 / 12.0
                     * (45.0 * v[grid.idx(nr - 1, j)] - 154.0 * v[grid.idx(nr - 2, j)]
-                        + 214.0 * v[grid.idx(nr - 3, j)] - 156.0 * v[grid.idx(nr - 4, j)]
-                        + 61.0 * v[grid.idx(nr - 5, j)] - 10.0 * v[grid.idx(nr - 6, j)]);
+                        + 214.0 * v[grid.idx(nr - 3, j)]
+                        - 156.0 * v[grid.idx(nr - 4, j)]
+                        + 61.0 * v[grid.idx(nr - 5, j)]
+                        - 10.0 * v[grid.idx(nr - 6, j)]);
             }
         }
         other => unimplemented!("diff2r order {other}"),
@@ -303,40 +327,49 @@ pub fn diff2z(grid: &Grid2d, out: &mut [f64], v: &[f64], sym: Parity, order: u32
                     idz2 * (v[grid.idx(i, g + 1)] + (s - 2.0) * v[grid.idx(i, g)]);
                 // Main interior points.
                 for j in g + 1..nz - 1 {
-                    out[grid.idx(i, j)] =
-                        idz2 * (v[grid.idx(i, j + 1)] - 2.0 * v[grid.idx(i, j)] + v[grid.idx(i, j - 1)]);
+                    out[grid.idx(i, j)] = idz2
+                        * (v[grid.idx(i, j + 1)] - 2.0 * v[grid.idx(i, j)] + v[grid.idx(i, j - 1)]);
                 }
                 // Outer boundary: one-sided (2, -5, 4, -1) / h^2.
                 out[grid.idx(i, nz - 1)] = idz2
                     * (2.0 * v[grid.idx(i, nz - 1)] - 5.0 * v[grid.idx(i, nz - 2)]
-                        + 4.0 * v[grid.idx(i, nz - 3)] - v[grid.idx(i, nz - 4)]);
+                        + 4.0 * v[grid.idx(i, nz - 3)]
+                        - v[grid.idx(i, nz - 4)]);
             }
         }
         4 => {
             for i in 0..nr {
                 // Equator: parity-embedded.
                 out[grid.idx(i, g)] = idz2 / 12.0
-                    * (-v[grid.idx(i, g + 2)] + (16.0 - s) * v[grid.idx(i, g + 1)]
+                    * (-v[grid.idx(i, g + 2)]
+                        + (16.0 - s) * v[grid.idx(i, g + 1)]
                         + (16.0 * s - 30.0) * v[grid.idx(i, g)]);
                 out[grid.idx(i, g + 1)] = idz2 / 12.0
                     * (-v[grid.idx(i, g + 3)] + 16.0 * v[grid.idx(i, g + 2)]
-                        - 30.0 * v[grid.idx(i, g + 1)] + (16.0 - s) * v[grid.idx(i, g)]);
+                        - 30.0 * v[grid.idx(i, g + 1)]
+                        + (16.0 - s) * v[grid.idx(i, g)]);
                 // Main interior points.
                 for j in g + 2..nz - 2 {
                     out[grid.idx(i, j)] = -idz2 / 12.0
                         * (30.0 * v[grid.idx(i, j)]
                             - 16.0 * (v[grid.idx(i, j + 1)] + v[grid.idx(i, j - 1)])
-                            + v[grid.idx(i, j + 2)] + v[grid.idx(i, j - 2)]);
+                            + v[grid.idx(i, j + 2)]
+                            + v[grid.idx(i, j - 2)]);
                 }
                 // Outer boundary.
                 out[grid.idx(i, nz - 2)] = idz2 / 12.0
-                    * (10.0 * v[grid.idx(i, nz - 1)] - 15.0 * v[grid.idx(i, nz - 2)]
-                        - 4.0 * v[grid.idx(i, nz - 3)] + 14.0 * v[grid.idx(i, nz - 4)]
-                        - 6.0 * v[grid.idx(i, nz - 5)] + v[grid.idx(i, nz - 6)]);
+                    * (10.0 * v[grid.idx(i, nz - 1)]
+                        - 15.0 * v[grid.idx(i, nz - 2)]
+                        - 4.0 * v[grid.idx(i, nz - 3)]
+                        + 14.0 * v[grid.idx(i, nz - 4)]
+                        - 6.0 * v[grid.idx(i, nz - 5)]
+                        + v[grid.idx(i, nz - 6)]);
                 out[grid.idx(i, nz - 1)] = idz2 / 12.0
                     * (45.0 * v[grid.idx(i, nz - 1)] - 154.0 * v[grid.idx(i, nz - 2)]
-                        + 214.0 * v[grid.idx(i, nz - 3)] - 156.0 * v[grid.idx(i, nz - 4)]
-                        + 61.0 * v[grid.idx(i, nz - 5)] - 10.0 * v[grid.idx(i, nz - 6)]);
+                        + 214.0 * v[grid.idx(i, nz - 3)]
+                        - 156.0 * v[grid.idx(i, nz - 4)]
+                        + 61.0 * v[grid.idx(i, nz - 5)]
+                        - 10.0 * v[grid.idx(i, nz - 6)]);
             }
         }
         other => unimplemented!("diff2z order {other}"),
@@ -361,7 +394,12 @@ type Rule1d = &'static [(i32, f64)];
 const C2: Rule1d = &[(-1, -0.5), (1, 0.5)];
 
 /// Centered rule, 4th order: `(u[i-2] - 8 u[i-1] + 8 u[i+1] - u[i+2]) / 12`.
-const C4: Rule1d = &[(-2, 1.0 / 12.0), (-1, -8.0 / 12.0), (1, 8.0 / 12.0), (2, -1.0 / 12.0)];
+const C4: Rule1d = &[
+    (-2, 1.0 / 12.0),
+    (-1, -8.0 / 12.0),
+    (1, 8.0 / 12.0),
+    (2, -1.0 / 12.0),
+];
 
 /// One-sided rule at the LAST node, 2nd order: `(3 u[i] - 4 u[i-1] + u[i-2]) / 2`.
 const LAST2: Rule1d = &[(0, 1.5), (-1, -2.0), (-2, 0.5)];
@@ -851,7 +889,8 @@ mod tests {
         let mut out = vec![0.0; dim];
         v[g.idx(i0, j0)] = 1.0;
         diff2rz(&g, &mut out, &v, Parity::Even, Parity::Even, 2);
-        let at = |di: i32, dj: i32| out[g.idx((i0 as i32 + di) as usize, (j0 as i32 + dj) as usize)];
+        let at =
+            |di: i32, dj: i32| out[g.idx((i0 as i32 + di) as usize, (j0 as i32 + dj) as usize)];
         let quarter = 0.25 * idrz;
         assert!((at(1, 1) - quarter).abs() < 1e-18);
         assert!((at(1, -1) + quarter).abs() < 1e-18);
@@ -888,7 +927,8 @@ mod tests {
         let mut out = vec![0.0; dim];
         v[g.idx(i0, j0)] = 1.0;
         diff2rz(&g, &mut out, &v, Parity::Even, Parity::Even, 4);
-        let at = |di: i32, dj: i32| out[g.idx((i0 as i32 + di) as usize, (j0 as i32 + dj) as usize)];
+        let at =
+            |di: i32, dj: i32| out[g.idx((i0 as i32 + di) as usize, (j0 as i32 + dj) as usize)];
         let i48 = idrz / 48.0;
         for (di, dj) in [(1i32, 1i32), (-1, -1)] {
             assert!((at(di, dj) - 16.0 * i48).abs() < 1e-17, "({di},{dj})");
@@ -903,7 +943,16 @@ mod tests {
             assert!((at(di, dj) - i48).abs() < 1e-18, "({di},{dj})");
         }
         // No (±1, ±2) cross terms (the diagonal-only stencil).
-        for (di, dj) in [(1, 2), (2, 1), (-1, 2), (2, -1), (1, -2), (-2, 1), (-1, -2), (-2, -1)] {
+        for (di, dj) in [
+            (1, 2),
+            (2, 1),
+            (-1, 2),
+            (2, -1),
+            (1, -2),
+            (-2, 1),
+            (-1, -2),
+            (-2, -1),
+        ] {
             assert_eq!(at(di, dj), 0.0, "cross term ({di},{dj}) must vanish");
         }
     }
@@ -916,7 +965,13 @@ mod tests {
     #[test]
     fn mixed_derivative_is_exact_on_polynomial_states() {
         // (state, D_rz state, sym_r, sym_z, order)
-        type Case = (fn(f64, f64) -> f64, fn(f64, f64) -> f64, Parity, Parity, u32);
+        type Case = (
+            fn(f64, f64) -> f64,
+            fn(f64, f64) -> f64,
+            Parity,
+            Parity,
+            u32,
+        );
         let cases: [Case; 8] = [
             // (state, D_rz state, sym_r, sym_z, order)
             (
@@ -926,13 +981,7 @@ mod tests {
                 Parity::Even,
                 2,
             ),
-            (
-                |r, z| r * z,
-                |_r, _z| 1.0,
-                Parity::Odd,
-                Parity::Odd,
-                2,
-            ),
+            (|r, z| r * z, |_r, _z| 1.0, Parity::Odd, Parity::Odd, 2),
             (
                 |r, z| r + 0.5 * r * z * z,
                 |_r, z| z,
@@ -1028,9 +1077,10 @@ mod tests {
                 for j in ghost..n - ghost {
                     let e = (out[g.idx(i, j)] - want(g.r(i), g.z(j))).abs();
                     eg = eg.max(e);
-                    if i >= 2 * ghost + 2 && i <= n - 2 * ghost - 3 && j >= 2 * ghost + 2 && j <= n
-                        - 2 * ghost
-                        - 3
+                    if i >= 2 * ghost + 2
+                        && i <= n - 2 * ghost - 3
+                        && j >= 2 * ghost + 2
+                        && j <= n - 2 * ghost - 3
                     {
                         ei = ei.max(e);
                     }
@@ -1049,10 +1099,7 @@ mod tests {
                 (oi - f64::from(order)).abs() < 0.25,
                 "order {order} interior: {oi:.3}"
             );
-            assert!(
-                og > f64::from(order) - 0.8,
-                "order {order} global: {og:.3}"
-            );
+            assert!(og > f64::from(order) - 0.8, "order {order} global: {og:.3}");
         }
     }
 

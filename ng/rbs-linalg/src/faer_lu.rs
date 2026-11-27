@@ -59,13 +59,8 @@ fn csr_to_csc(a: &CsrMatrix) -> Result<CscArrays, SolveError> {
 impl LinearSolver for FaerSparseLu {
     fn factor(&mut self, a: &CsrMatrix) -> Result<(), SolveError> {
         let (col_ptrs, row_idx, vals) = csr_to_csc(a)?;
-        let symbolic = SymbolicSparseColMat::<usize>::new_checked(
-            a.nrows,
-            a.ncols,
-            col_ptrs,
-            None,
-            row_idx,
-        );
+        let symbolic =
+            SymbolicSparseColMat::<usize>::new_checked(a.nrows, a.ncols, col_ptrs, None, row_idx);
         let mat = SparseColMat::<usize, f64>::new(symbolic, vals);
         match mat.sp_lu() {
             Ok(lu) => {
@@ -151,13 +146,7 @@ mod tests {
     #[test]
     fn singular_matrix_reports_singularity() {
         // Both rows only reach column 0: structurally rank-deficient.
-        let a = CsrMatrix::new(
-            2,
-            2,
-            vec![0, 1, 2],
-            vec![0, 0],
-            vec![1.0, 2.0],
-        );
+        let a = CsrMatrix::new(2, 2, vec![0, 1, 2], vec![0, 0], vec![1.0, 2.0]);
         let mut solver = FaerSparseLu::new();
         assert_eq!(solver.factor(&a), Err(SolveError::Singular));
     }

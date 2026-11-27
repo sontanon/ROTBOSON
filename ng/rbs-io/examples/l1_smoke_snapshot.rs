@@ -60,8 +60,7 @@ fn main() -> ExitCode {
     // solution.h5 — the C-oracle HDF5 contract, behind the `hdf5` feature.
     #[cfg(feature = "hdf5")]
     {
-        let git_hash =
-            std::env::var("GIT_HASH").unwrap_or_else(|_| "unknown".to_string());
+        let git_hash = std::env::var("GIT_HASH").unwrap_or_else(|_| "unknown".to_string());
         let parfile = "configs/l1_smoke_ci.toml (epsilon=1.0E-12, maxNewtonIter=40 \
                        scratch protocol; fields: ng/rbs-elliptic parity fixture)"
             .to_string();

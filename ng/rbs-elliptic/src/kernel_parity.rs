@@ -12,8 +12,8 @@
 //! to the fixture tolerance (a few ULP, not bit-exactness).
 
 use crate::generated::kernels::{
-    jacobian_subtypes, residual_boundary, residual_interior, BoundaryPoint,
-    JacobianPoint, ResidualPoint, GNUM, JAC_COLS,
+    jacobian_subtypes, residual_boundary, residual_interior, BoundaryPoint, JacobianPoint,
+    ResidualPoint, GNUM, JAC_COLS,
 };
 
 /// One parsed fixture line: `key value...`.
@@ -29,7 +29,9 @@ fn parse_line(raw: &str) -> Option<Line> {
     }
     let mut parts = raw.split_whitespace();
     let key = parts.next()?.to_owned();
-    let values = parts.map(|t| t.parse::<f64>().expect("fixture float")).collect();
+    let values = parts
+        .map(|t| t.parse::<f64>().expect("fixture float"))
+        .collect();
     Some(Line { key, values })
 }
 

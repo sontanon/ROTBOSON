@@ -124,8 +124,7 @@ pub fn initial_guess(grid: &Grid2d, ansatz: &InitialGuess) -> SolveState {
             let core = ansatz.psi0
                 * (-0.5 * r * r / (ansatz.sigma_r * ansatz.sigma_r)).exp()
                 * (-0.5 * z * z / (ansatz.sigma_z * ansatz.sigma_z)).exp();
-            let tail = ansatz.psi0
-                * (-chi * rr).exp()
+            let tail = ansatz.psi0 * (-chi * rr).exp()
                 / rr.powi(i32::try_from(l + 1).expect("l + 1 fits i32"))
                 * (0.5 + 0.5 * libm::erf(2.0 * (rr - ansatz.r_ext) / two_over_sqrt_pi));
             fields.set(4, grid.idx(i, j), core + tail);
@@ -140,8 +139,8 @@ pub fn initial_guess(grid: &Grid2d, ansatz: &InitialGuess) -> SolveState {
         let r = grid.r(i);
         for j in g..nz {
             let idx = grid.idx(i, j);
-            let value = ((2.0 * fields.at(3, idx)).exp() - (2.0 * fields.at(2, idx)).exp())
-                / (r * r);
+            let value =
+                ((2.0 * fields.at(3, idx)).exp() - (2.0 * fields.at(2, idx)).exp()) / (r * r);
             fields.set(5, idx, value);
         }
     }
@@ -230,9 +229,7 @@ mod tests {
         let (r, z) = (grid.r(i), grid.z(j));
         let rr = (r * r + z * z).sqrt();
         let chi = (1.0_f64 - 0.95 * 0.95).sqrt();
-        let core = 0.01
-            * (-0.5 * r * r / 16.0).exp()
-            * (-0.5 * z * z / 16.0).exp();
+        let core = 0.01 * (-0.5 * r * r / 16.0).exp() * (-0.5 * z * z / 16.0).exp();
         let tail = 0.01 * (-chi * rr).exp() / rr.powi(2);
         let expect = core + tail;
         let got = state.fields.at(4, grid.idx(i, j));

@@ -66,9 +66,7 @@ impl GridTopology {
         assert!(nr > 0 && nz > 0, "grid must have points");
         // Grid sizes fit f64 without loss at every practical resolution.
         #[allow(clippy::cast_precision_loss)]
-        let lin = |n: usize, max: f64| {
-            (0..n).map(move |i| max * (i as f64) / (n as f64))
-        };
+        let lin = |n: usize, max: f64| (0..n).map(move |i| max * (i as f64) / (n as f64));
         Self {
             nr,
             nz,
@@ -110,11 +108,8 @@ pub trait FieldWriter {
     /// # Errors
     ///
     /// IO failures (path, permissions, serialization) surface here.
-    fn write_snapshot(
-        &mut self,
-        grid: &GridTopology,
-        fields: &[FieldBlock],
-    ) -> std::io::Result<()>;
+    fn write_snapshot(&mut self, grid: &GridTopology, fields: &[FieldBlock])
+        -> std::io::Result<()>;
 }
 
 #[cfg(test)]

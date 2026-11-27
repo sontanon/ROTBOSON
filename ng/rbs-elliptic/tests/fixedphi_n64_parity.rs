@@ -131,7 +131,11 @@ fn assert_fields_match_oracle(fix: &Fixture, fields: &FieldSet, dim: usize) {
             .iter()
             .zip(oracle)
             .fold(0.0_f64, |m, (a, b)| m.max((a - b).abs()));
-        eprintln!("{name:12}: field-rel {:.3e}, max|diff| {:.3e}", max_abs / scale, max_abs);
+        eprintln!(
+            "{name:12}: field-rel {:.3e}, max|diff| {:.3e}",
+            max_abs / scale,
+            max_abs
+        );
         assert!(
             max_abs / scale < 1e-10,
             "{name}: field-relative deviation {} exceeds the gate",
@@ -218,7 +222,10 @@ fn n64_l1_fixedphi_fixed_point_seeded_matches_the_c_oracle() {
             .sqrt()
             / (dim as f64).sqrt();
         eprintln!("initial ||f{k}||: {rms:.10e}");
-        assert!(rms < 1e-14, "seed state is not a fixed point: ||f{k}|| = {rms:.3e}");
+        assert!(
+            rms < 1e-14,
+            "seed state is not a fixed point: ||f{k}|| = {rms:.3e}"
+        );
     }
 
     // The solve, at the oracle's solver settings.
@@ -317,7 +324,10 @@ fn n64_l1_fixedphi_from_scratch_matches_the_c_oracle() {
 
     let w = rbs_elliptic::omega::omega_calc(state.xi, params.m);
     let rel = ((w - fix.omega) / fix.omega).abs();
-    eprintln!("omega: rust {w:.16e} vs oracle {:.16e}, rel {rel:.3e}", fix.omega);
+    eprintln!(
+        "omega: rust {w:.16e} vs oracle {:.16e}, rel {rel:.3e}",
+        fix.omega
+    );
     assert!(rel < 1e-10, "omega parity failed: rel {rel:.3e}");
 
     assert_fields_match_oracle(&fix, &state.fields, grid.dim());

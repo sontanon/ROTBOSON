@@ -22,9 +22,14 @@ fn array_values(xml: &str, tag: &str, name: Option<&str>) -> Vec<f64> {
         ),
         None => format!("<{tag} type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">"),
     };
-    let start = xml.find(&open).unwrap_or_else(|| panic!("{tag}/{name:?} present"))
+    let start = xml
+        .find(&open)
+        .unwrap_or_else(|| panic!("{tag}/{name:?} present"))
         + open.len();
-    let end = start + xml[start..].find(&format!("</{tag}>")).expect("element closes");
+    let end = start
+        + xml[start..]
+            .find(&format!("</{tag}>"))
+            .expect("element closes");
     xml[start..end]
         .split_whitespace()
         .map(|t| t.parse::<f64>().expect("ascii float"))
@@ -52,7 +57,11 @@ fn assert_balanced(xml: &str) {
         let end = xml[i..].find('>').expect("tag ends") + i;
         let inner = &xml[i + 1..end];
         if let Some(name) = inner.strip_prefix('/') {
-            assert_eq!(stack.pop(), Some(name), "close </{name}> matches the innermost open");
+            assert_eq!(
+                stack.pop(),
+                Some(name),
+                "close </{name}> matches the innermost open"
+            );
         } else if !inner.ends_with('/') {
             stack.push(inner.split_whitespace().next().expect("tag name"));
         }
@@ -70,12 +79,16 @@ fn smoke_vtr_selfcheck() {
     std::fs::create_dir_all(&dir).expect("mkdir");
     let path = dir.join("solution.vtr");
     let mut w = VtrWriter::new(&path);
-    w.write_snapshot(&snap.grid, &snap.fields).expect("write vtr");
+    w.write_snapshot(&snap.grid, &snap.fields)
+        .expect("write vtr");
     let xml = std::fs::read_to_string(&path).expect("read vtr");
     let _ = std::fs::remove_dir_all(&dir);
 
     // --- schema ---
-    assert!(xml.starts_with("<?xml version=\"1.0\"?>\n"), "XML declaration");
+    assert!(
+        xml.starts_with("<?xml version=\"1.0\"?>\n"),
+        "XML declaration"
+    );
     assert!(xml.contains("<VTKFile type=\"RectilinearGrid\" version=\"0.1\""));
     assert!(xml.contains(&format!("WholeExtent=\"0 {} 0 {} 0 0\"", nr - 1, nz - 1)));
     assert!(xml.contains(&format!("<Piece Extent=\"0 {} 0 {} 0 0\">", nr - 1, nz - 1)));
@@ -96,8 +109,13 @@ fn smoke_vtr_selfcheck() {
         assert_eq!(vtk[0], f.values[0]); // (i=0, j=0)
         assert_eq!(vtk[1], f.values[nz]); // (i=1, j=0)
         assert_eq!(vtk[nr], f.values[1]); // (i=0, j=1)
-        // Full inverse mapping is bit-identical to the source block.
-        assert_eq!(to_row_major(&vtk, nr, nz), f.values, "{} round-trips", f.name);
+                                          // Full inverse mapping is bit-identical to the source block.
+        assert_eq!(
+            to_row_major(&vtk, nr, nz),
+            f.values,
+            "{} round-trips",
+            f.name
+        );
     }
 
     // --- coordinates: the C cell-centered total grid ---
@@ -111,7 +129,14 @@ fn smoke_vtr_selfcheck() {
     assert!((z[nz - 1] - 16.375).abs() < 1e-12);
 
     // The six field names are exactly the slice fixture's set.
-    let want: BTreeSet<&str> =
-        ["log_alpha_f", "beta_f", "log_h_f", "log_a_f", "psi_f", "lambda_f"].into();
+    let want: BTreeSet<&str> = [
+        "log_alpha_f",
+        "beta_f",
+        "log_h_f",
+        "log_a_f",
+        "psi_f",
+        "lambda_f",
+    ]
+    .into();
     assert_eq!(names.into_iter().collect::<BTreeSet<_>>(), want);
 }

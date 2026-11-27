@@ -10,9 +10,13 @@
 #![allow(clippy::unreadable_literal)]
 
 use rbs_driver::decide::turning_point_estimate;
-use rbs_driver::spec::{AdaptivitySpec, CampaignSpec, GridSpec, OutputSpec, SeedSpec, SolverSpec, Spec};
+use rbs_driver::spec::{
+    AdaptivitySpec, CampaignSpec, GridSpec, OutputSpec, SeedSpec, SolverSpec, Spec,
+};
 use rbs_driver::state::{CampaignState, RegridInfo, RelDiff, StepRecord};
-use rbs_driver::vocab::{Direction, OutputFormat, Psi0StepMode, SeedPolicy, StepMode, StopReason, TIMEOUT_EXIT};
+use rbs_driver::vocab::{
+    Direction, OutputFormat, Psi0StepMode, SeedPolicy, StepMode, StopReason, TIMEOUT_EXIT,
+};
 use rbs_driver::{
     boundary_failure_stop, coarsening_acceptable, decide_action, decide_coarsening,
     detect_turning_point, finished, ghost_of, newtonian_limit_stop, next_target, round15,
@@ -28,10 +32,22 @@ fn approx(a: f64, b: f64, tol: f64) {
     );
 }
 
-fn diag(hwl: Option<f64>, rr_phi_max: Option<f64>, dr: f64, refinements_left: i64, hwl_min: f64) -> StepDiagnostics {
+fn diag(
+    hwl: Option<f64>,
+    rr_phi_max: Option<f64>,
+    dr: f64,
+    refinements_left: i64,
+    hwl_min: f64,
+) -> StepDiagnostics {
     // The Python helper: a well-resolved step's diagnostics (defaults
     // → 'ok' in v2).
-    StepDiagnostics { hwl, rr_phi_max, dr, refinements_left, hwl_min }
+    StepDiagnostics {
+        hwl,
+        rr_phi_max,
+        dr,
+        refinements_left,
+        hwl_min,
+    }
 }
 
 fn well_resolved() -> StepDiagnostics {
@@ -103,7 +119,11 @@ fn spec_down_cfg(direction: Direction, newtonian_delta: f64, boundary_fraction: 
         campaign: CampaignSpec {
             l: 1,
             direction,
-            psi0_target: if direction == Direction::Down { 1.0e-5 } else { 1.0 },
+            psi0_target: if direction == Direction::Down {
+                1.0e-5
+            } else {
+                1.0
+            },
             psi0_step: 0.1,
             m: 1.0,
             omega_target: None,
@@ -213,7 +233,10 @@ mod test_newtonian_limit {
 
     #[test]
     fn test_exit2_far_from_m_is_solver_failure() {
-        assert_eq!(newtonian_limit_stop(&state_failed(2, Some(0.95)), &spec_down()), None);
+        assert_eq!(
+            newtonian_limit_stop(&state_failed(2, Some(0.95)), &spec_down()),
+            None
+        );
         assert_eq!(
             finished(&state_failed(2, Some(0.95)), &spec_down()).unwrap(),
             Some(StopReason::FailedSolver)
@@ -223,7 +246,10 @@ mod test_newtonian_limit {
     #[test]
     fn test_up_direction_never_classifies() {
         let s = spec_down_cfg(Direction::Up, 1.0e-2, 0.95);
-        assert_eq!(newtonian_limit_stop(&state_failed(2, Some(0.995)), &s), None);
+        assert_eq!(
+            newtonian_limit_stop(&state_failed(2, Some(0.995)), &s),
+            None
+        );
         assert_eq!(
             finished(&state_failed(2, Some(0.995)), &s).unwrap(),
             Some(StopReason::FailedSolver)
@@ -232,7 +258,10 @@ mod test_newtonian_limit {
 
     #[test]
     fn test_only_exit2_triggers() {
-        assert_eq!(newtonian_limit_stop(&state_failed(1, Some(0.995)), &spec_down()), None);
+        assert_eq!(
+            newtonian_limit_stop(&state_failed(1, Some(0.995)), &spec_down()),
+            None
+        );
     }
 
     #[test]
@@ -246,7 +275,10 @@ mod test_newtonian_limit {
     #[test]
     fn test_delta_knob() {
         assert_eq!(
-            newtonian_limit_stop(&state_failed(2, Some(0.95)), &spec_down_cfg(Direction::Down, 0.1, 0.95)),
+            newtonian_limit_stop(
+                &state_failed(2, Some(0.95)),
+                &spec_down_cfg(Direction::Down, 0.1, 0.95)
+            ),
             Some(StopReason::StoppedNewtonianLimit)
         );
     }
@@ -278,7 +310,10 @@ mod test_boundary_stop {
         // r99/domain = 16/16.5 = 0.97 > 0.95 — but the guard now YIELDS to
         // available coarsening (dr×2=0.25 ≤ dr_max, budget left): widening
         // is tried first. It stops only when widening is spent.
-        assert_eq!(finished(&state_at(16.0, 0.125, 128), &spec_down()).unwrap(), None);
+        assert_eq!(
+            finished(&state_at(16.0, 0.125, 128), &spec_down()).unwrap(),
+            None
+        );
 
         let mut state = state_at(16.0, 0.125, 128);
         state.widenings_left = Some(0);
@@ -314,7 +349,10 @@ mod test_boundary_stop {
     #[test]
     fn test_comfortable_support_does_not_stop() {
         // r99/domain = 10/16.5 = 0.61
-        assert_eq!(finished(&state_at(10.0, 0.125, 128), &spec_down()).unwrap(), None);
+        assert_eq!(
+            finished(&state_at(10.0, 0.125, 128), &spec_down()).unwrap(),
+            None
+        );
     }
 
     #[test]
@@ -408,25 +446,45 @@ mod test_detect_turning_point {
 
     #[test]
     fn test_decreasing_then_increasing_fires() {
-        let steps = [step(0.10, 0.70), step(0.11, 0.66), step(0.12, 0.65), step(0.13, 0.66)];
+        let steps = [
+            step(0.10, 0.70),
+            step(0.11, 0.66),
+            step(0.12, 0.65),
+            step(0.13, 0.66),
+        ];
         assert!(detect_turning_point(&steps));
     }
 
     #[test]
     fn test_monotone_decreasing_does_not_fire() {
-        let steps = [step(0.10, 0.70), step(0.11, 0.66), step(0.12, 0.65), step(0.13, 0.64)];
+        let steps = [
+            step(0.10, 0.70),
+            step(0.11, 0.66),
+            step(0.12, 0.65),
+            step(0.13, 0.64),
+        ];
         assert!(!detect_turning_point(&steps));
     }
 
     #[test]
     fn test_flat_slope_does_not_fire() {
-        let steps = [step(0.10, 0.70), step(0.11, 0.66), step(0.12, 0.65), step(0.13, 0.65)];
+        let steps = [
+            step(0.10, 0.70),
+            step(0.11, 0.66),
+            step(0.12, 0.65),
+            step(0.13, 0.65),
+        ];
         assert!(!detect_turning_point(&steps));
     }
 
     #[test]
     fn test_repeated_psi0_does_not_fire() {
-        let steps = [step(0.10, 0.70), step(0.11, 0.66), step(0.11, 0.66), step(0.13, 0.66)];
+        let steps = [
+            step(0.10, 0.70),
+            step(0.11, 0.66),
+            step(0.11, 0.66),
+            step(0.13, 0.66),
+        ];
         assert!(!detect_turning_point(&steps));
     }
 
@@ -468,12 +526,8 @@ mod test_turning_point_estimate {
 
     #[test]
     fn test_few_points_falls_back_to_sample() {
-        let rep = turning_point_estimate(
-            &[Some(0.4), Some(0.5)],
-            &[Some(0.7), Some(0.6)],
-            4,
-        )
-        .unwrap();
+        let rep =
+            turning_point_estimate(&[Some(0.4), Some(0.5)], &[Some(0.7), Some(0.6)], 4).unwrap();
         assert_eq!(rep.method, "sample");
         assert_eq!(rep.omega_sample_min, 0.6);
         assert!(rep.psi0.is_none());
@@ -500,11 +554,18 @@ mod test_turning_point_estimate {
         let rep = turning_point_estimate(&psi0s, &omegas, 4).unwrap();
         approx(
             rep.omega.unwrap(),
-            omegas.iter().flatten().copied().fold(f64::INFINITY, f64::min),
+            omegas
+                .iter()
+                .flatten()
+                .copied()
+                .fold(f64::INFINITY, f64::min),
             2e-4,
         );
         let psi0 = rep.psi0.unwrap();
-        assert!((0.44..=0.46).contains(&psi0), "psi0 {psi0} outside [0.44, 0.46]");
+        assert!(
+            (0.44..=0.46).contains(&psi0),
+            "psi0 {psi0} outside [0.44, 0.46]"
+        );
     }
 }
 
@@ -579,9 +640,25 @@ mod test_would_amputate {
     fn test_keep_domain_never_amputates() {
         // N×2 with dr÷2 keeps the interior domain (16 = 16); the ghost-incl.
         // boundary moves 16.5 → 16.25 but the support fits outright.
-        assert!(!would_amputate(Some(15.6), 0.125, 128, 0.0625, 256, 4, 0.95));
+        assert!(!would_amputate(
+            Some(15.6),
+            0.125,
+            128,
+            0.0625,
+            256,
+            4,
+            0.95
+        ));
         // even the seed's 96%-of-boundary support (r99=15.685 of 16.25)
-        assert!(!would_amputate(Some(15.685), 0.125, 128, 0.0625, 256, 4, 0.95));
+        assert!(!would_amputate(
+            Some(15.685),
+            0.125,
+            128,
+            0.0625,
+            256,
+            4,
+            0.95
+        ));
     }
 
     #[test]
@@ -600,10 +677,7 @@ mod test_coarsening_acceptable {
     use super::*;
 
     fn rel(pairs: &[(&str, f64)]) -> RelDiff {
-        pairs
-            .iter()
-            .map(|(k, v)| ((*k).to_owned(), *v))
-            .collect()
+        pairs.iter().map(|(k, v)| ((*k).to_owned(), *v)).collect()
     }
 
     #[test]
@@ -676,19 +750,43 @@ mod test_boundary_failure_stop {
     #[test]
     fn test_support_fills_domain() {
         // r99=15.9 of the 16.5 boundary (N=128, dr=0.125, order 4): 96% > 95%
-        assert!(boundary_failure_stop(Some(15.9), Some(0.125), Some(128), 4, 0.95));
+        assert!(boundary_failure_stop(
+            Some(15.9),
+            Some(0.125),
+            Some(128),
+            4,
+            0.95
+        ));
     }
 
     #[test]
     fn test_support_fits() {
-        assert!(!boundary_failure_stop(Some(13.1), Some(0.125), Some(128), 4, 0.95));
+        assert!(!boundary_failure_stop(
+            Some(13.1),
+            Some(0.125),
+            Some(128),
+            4,
+            0.95
+        ));
     }
 
     #[test]
     fn test_unknown_support() {
-        assert!(!boundary_failure_stop(None, Some(0.125), Some(128), 4, 0.95));
+        assert!(!boundary_failure_stop(
+            None,
+            Some(0.125),
+            Some(128),
+            4,
+            0.95
+        ));
         assert!(!boundary_failure_stop(Some(15.6), None, Some(128), 4, 0.95));
-        assert!(!boundary_failure_stop(Some(15.6), Some(0.125), None, 4, 0.95));
+        assert!(!boundary_failure_stop(
+            Some(15.6),
+            Some(0.125),
+            None,
+            4,
+            0.95
+        ));
     }
 }
 
@@ -788,7 +886,12 @@ mod rust_additions {
 
     #[test]
     fn next_target_absolute_mode_and_down_direction() {
-        let c = campaign(Direction::Up, 0.000346226907097508, 0.000555733907097508, Psi0StepMode::Absolute);
+        let c = campaign(
+            Direction::Up,
+            0.000346226907097508,
+            0.000555733907097508,
+            Psi0StepMode::Absolute,
+        );
         approx(next_target(&c, 0.000209507), 0.000555733907097508, 1e-18);
         // down: max() clamps onto the (lower) target.
         let c = campaign(Direction::Down, 0.1, 1e-5, Psi0StepMode::Relative);
@@ -827,8 +930,14 @@ mod rust_additions {
         use rbs_driver::vocab::Status;
         assert_eq!(status_for_stop(&StopReason::DonePsi0Target), Status::Done);
         assert_eq!(status_for_stop(&StopReason::DoneMaxSteps), Status::Done);
-        assert_eq!(status_for_stop(&StopReason::StoppedTurningPoint), Status::Stopped);
-        assert_eq!(status_for_stop(&StopReason::StoppedBoundary), Status::Stopped);
+        assert_eq!(
+            status_for_stop(&StopReason::StoppedTurningPoint),
+            Status::Stopped
+        );
+        assert_eq!(
+            status_for_stop(&StopReason::StoppedBoundary),
+            Status::Stopped
+        );
         assert_eq!(status_for_stop(&StopReason::FailedSolver), Status::Failed);
         assert_eq!(status_for_stop(&StopReason::ExitCode(7)), Status::Failed);
     }

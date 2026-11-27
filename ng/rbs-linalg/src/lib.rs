@@ -58,8 +58,14 @@ impl fmt::Display for SolveError {
                 write!(f, "dimension mismatch: expected {expected}, got {got}")
             }
             Self::NotImplemented(what) => write!(f, "not implemented: {what}"),
-            Self::NotConverged { iterations, residual } => {
-                write!(f, "Krylov loop not converged: {residual:.3e} after {iterations} iterations")
+            Self::NotConverged {
+                iterations,
+                residual,
+            } => {
+                write!(
+                    f,
+                    "Krylov loop not converged: {residual:.3e} after {iterations} iterations"
+                )
             }
         }
     }

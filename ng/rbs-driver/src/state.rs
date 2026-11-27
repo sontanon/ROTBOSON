@@ -155,9 +155,9 @@ fn st_opt_str(raw: &Jv, key: &str) -> Result<Option<String>, StateError> {
 fn st_opt_i32(raw: &Jv, key: &str) -> Result<Option<i32>, StateError> {
     match st_opt_int(raw, key)? {
         None => Ok(None),
-        Some(i) => i32::try_from(i).map(Some).map_err(|_| {
-            StateError::Corrupt(format!("state.json: exit code {i} out of range"))
-        }),
+        Some(i) => i32::try_from(i)
+            .map(Some)
+            .map_err(|_| StateError::Corrupt(format!("state.json: exit code {i} out of range"))),
     }
 }
 
@@ -335,9 +335,7 @@ impl RegridProbe {
                     "scalars",
                     match &self.scalars {
                         None => Jv::Null,
-                        Some(s) => Jv::Obj(
-                            s.iter().map(|(k, v)| (k.clone(), v.to_jv())).collect(),
-                        ),
+                        Some(s) => Jv::Obj(s.iter().map(|(k, v)| (k.clone(), v.to_jv())).collect()),
                     },
                 ),
                 ("psi0", Jv::opt_float(self.psi0)),
@@ -368,8 +366,9 @@ impl RegridProbe {
     /// or another present key fails the `_st_*` coercion.
     pub fn from_jv(raw: &Jv) -> Result<RegridProbe, StateError> {
         let mode_str = st_str_key(raw, "mode", "regrid-probe")?;
-        let mode = StepMode::from_name(&mode_str)
-            .ok_or_else(|| StateError::Corrupt(format!("state.json: invalid step mode '{mode_str}'")))?;
+        let mode = StepMode::from_name(&mode_str).ok_or_else(|| {
+            StateError::Corrupt(format!("state.json: invalid step mode '{mode_str}'"))
+        })?;
         let scalars = match raw.get("scalars") {
             Some(v) => match obj_pairs(v) {
                 Some(pairs) => Some(
@@ -859,8 +858,9 @@ pub fn load_state(spec: &crate::spec::Spec) -> Result<Option<CampaignState>, Sta
         return Ok(None);
     }
     let text = std::fs::read_to_string(&p)?;
-    let raw = Jv::parse(&text)
-        .map_err(|e| StateError::Corrupt(format!("state.json at {} is corrupt: {e}", p.display())))?;
+    let raw = Jv::parse(&text).map_err(|e| {
+        StateError::Corrupt(format!("state.json at {} is corrupt: {e}", p.display()))
+    })?;
     if raw.as_obj().is_none() {
         return Err(StateError::Corrupt(format!(
             "state.json at {} is corrupt: top level is not a JSON object",
@@ -882,10 +882,7 @@ pub fn load_state(spec: &crate::spec::Spec) -> Result<Option<CampaignState>, Sta
 /// Returns [`StateError::Io`] when creating the parent directory,
 /// writing the temp file, or the rename fails — the Python's uncaught
 /// `OSError` from `open`/`write`, made typed here.
-pub fn save_state(
-    spec: &crate::spec::Spec,
-    state: &CampaignState,
-) -> Result<(), StateError> {
+pub fn save_state(spec: &crate::spec::Spec, state: &CampaignState) -> Result<(), StateError> {
     let p = state_path(spec);
     if let Some(parent) = p.parent() {
         std::fs::create_dir_all(parent)?;

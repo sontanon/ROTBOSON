@@ -287,7 +287,11 @@ fn n64_l1_smoke_matches_the_c_oracle() {
     // Omega is pinned by the constraint row; both solvers carry it
     // exactly.
     let w = rbs_elliptic::omega::omega_calc(state.xi, 1.0);
-    assert!((w - fix.omega).abs() < 1e-15, "omega drifted: {w} vs {}", fix.omega);
+    assert!(
+        (w - fix.omega).abs() < 1e-15,
+        "omega drifted: {w} vs {}",
+        fix.omega
+    );
     let _ = JacobianPattern::build(&grid, &params);
 
     // The tight solution pin at the deeper exit: epsilon = 1e-12 (the

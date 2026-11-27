@@ -310,8 +310,14 @@ impl TurningPointReport {
     pub fn to_pairs(&self) -> Vec<(String, crate::pyjson::Jv)> {
         use crate::pyjson::Jv;
         let mut pairs = vec![
-            ("psi0_sample_min".to_string(), Jv::Float(self.psi0_sample_min)),
-            ("omega_sample_min".to_string(), Jv::Float(self.omega_sample_min)),
+            (
+                "psi0_sample_min".to_string(),
+                Jv::Float(self.psi0_sample_min),
+            ),
+            (
+                "omega_sample_min".to_string(),
+                Jv::Float(self.omega_sample_min),
+            ),
             ("n_points".to_string(), Jv::Int(self.n_points as i64)),
         ];
         if let (Some(p), Some(w)) = (self.psi0, self.omega) {
@@ -571,10 +577,7 @@ pub fn finished(state: &CampaignState, spec: &Spec) -> Result<Option<StopReason>
             }
         }
     }
-    if c.stop_at_turning_point
-        && direction == Direction::Up
-        && detect_turning_point(&state.steps)
-    {
+    if c.stop_at_turning_point && direction == Direction::Up && detect_turning_point(&state.steps) {
         return Ok(Some(StopReason::StoppedTurningPoint));
     }
 
@@ -632,7 +635,11 @@ pub fn round15(x: f64) -> f64 {
 /// golden-ladder semantics, rounded to 15 decimals and clamped to land
 /// exactly on `psi0_target`.
 pub fn next_target(c: &CampaignSpec, base_psi0: f64) -> f64 {
-    let sign = if c.direction == Direction::Up { 1.0 } else { -1.0 };
+    let sign = if c.direction == Direction::Up {
+        1.0
+    } else {
+        -1.0
+    };
     let target = match c.psi0_step_mode {
         crate::vocab::Psi0StepMode::Relative => base_psi0 * (1.0 + sign * c.psi0_step),
         crate::vocab::Psi0StepMode::Absolute => base_psi0 + sign * c.psi0_step,
