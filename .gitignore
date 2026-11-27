@@ -42,6 +42,9 @@ data/convergence/
 # derivations/.
 *.h5
 !tests/fixtures/*.h5
+# NG crates' pinned HDF5 fixtures (rbs-io's Rust-written parity fixture
+# lives at ng/rbs-io/tests/fixtures/).
+!ng/*/tests/fixtures/*.h5
 *.par
 *.asc
 *.cfg
