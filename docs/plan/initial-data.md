@@ -21,15 +21,15 @@ Its output file format is the **interface** a future evolution code will read (d
 
 ## Milestones
 
-| Milestone | Goal | Exit check |
-|---|---|---|
-| **A0 · Consolidate** | One clean, green `master`. Settle the open Rust PRs, build the C oracle on this machine, remove out-of-scope code, format the workspace. | CI green (build, test, clippy, codegen check); C `ctest` passes locally; no stale PRs. |
-| **A0.5 · Near-fold solver spike** | Does the BlockFieldKrylov solver still work near the fold? Compare three preconditioners. | Table: Krylov iterations against distance to the fold (N=128, 256); one Newton solve converging at the closest state; verdict. |
-| **A1 · Single-solve CLI** | `rbs solve config.toml` writes `solution.h5`, with the C contract. Precision and stencil order designed in. Initial-data format v1 written down. | Matches the C oracle at N=64 and N=128. |
-| **A2 · Continuation to the fold** | Rust driver runs real solves; the Python driver retires. | l=1 down-campaign at N=256 reaches the turning point, matching C. |
-| **A3 · Scaling and benchmark** | Rayon over blocks and assembly; measure. | Time and memory table, N=128..512, C (fp64, fp32+IR) against Rust (fp64, fp32 factors), at the initial guess and near the fold. |
-| **A4 · Reproduction with error bars → v1.0** | ω_min for l=1..6 with a resolution study (Richardson, check order p≈4) and a domain-size study. | Table of ω_min ± error against paper Table IX.1; figures; tag v1.0. |
-| **A5 · Numerics beyond the paper → v1.1** | Compactification (after a ρz-vs-rθ spike), then order 6/8, via the mapped-grid abstraction. | Smaller error bars at smaller N than A4; tag v1.1; C and Python retire to a tag. |
+| Milestone | Goal | Exit check | Demo (what you can look at) |
+|---|---|---|---|
+| **A0 · Consolidate** | One clean, green `master`. Settle the open Rust PRs, build the C oracle on this machine, remove out-of-scope code, format the workspace. | CI green (build, test, clippy, codegen check); C `ctest` passes locally; no stale PRs. | An l=1 star solved from scratch in Rust (`cargo run --release -p rbs-elliptic --example l1_star`), opened in ParaView, and a figure of the six fields plus φ = ρ^l ψ next to the C oracle's solution of the same problem, with their difference. `docs/results/A0-demo.md`. |
+| **A0.5 · Near-fold solver spike** | Does the BlockFieldKrylov solver still work near the fold? Compare three preconditioners. | Table: Krylov iterations against distance to the fold (N=128, 256); one Newton solve converging at the closest state; verdict. | `docs/results/A0.5-near-fold.md` with three figures: the l=1 fold curve (ω against ψ0, and mass against ω) with the test states marked; Krylov iterations against distance to the fold, one line per preconditioner; the smallest Jacobian eigenvalue against ψ0, fixed-ω against fixed-φ (the fixed-ω one goes to zero at the fold). |
+| **A1 · Single-solve CLI** | `rbs solve config.toml` writes `solution.h5`, with the C contract. Precision and stencil order designed in. Initial-data format v1 written down. | Matches the C oracle at N=64 and N=128. | `rbs solve` and `rbs plot` on any config; fp64 against fp32-factor runs side by side. |
+| **A2 · Continuation to the fold** | Rust driver runs real solves; the Python driver retires. | l=1 down-campaign at N=256 reaches the turning point, matching C. | The l=1 fold curve drawn by the Rust driver, overlaid on the C campaign. |
+| **A3 · Scaling and benchmark** | Rayon over blocks and assembly; measure. | Time and memory table, N=128..512, C (fp64, fp32+IR) against Rust (fp64, fp32 factors), at the initial guess and near the fold. | Time and memory against N, log-log, C against Rust. |
+| **A4 · Reproduction with error bars → v1.0** | ω_min for l=1..6 with a resolution study (Richardson, check order p≈4) and a domain-size study. | Table of ω_min ± error against paper Table IX.1; figures; tag v1.0. | Fold curves for l=1..6 with error bars; convergence plots. |
+| **A5 · Numerics beyond the paper → v1.1** | Compactification (after a ρz-vs-rθ spike), then order 6/8, via the mapped-grid abstraction. | Smaller error bars at smaller N than A4; tag v1.1; C and Python retire to a tag. | Error against N for orders 4, 6, 8, with and without compactification. |
 
 Specs: `docs/specs/<milestone>-*.md`. A0 and A0.5 are written. The others are written when their milestone is next.
 
