@@ -59,6 +59,7 @@ def build(jobs: int) -> Path:
 def run_par(binary: Path, parfile: Path) -> Path:
     par = parfile.resolve()
     logger.info("running ROTBOSON with %s ...", par.name)
+    before = set(find_solution_dirs(OUT))
     proc = subprocess.run(
         [str(binary), str(par)],
         cwd=OUT,
@@ -74,10 +75,10 @@ def run_par(binary: Path, parfile: Path) -> Path:
         tail = "\n".join(proc.stdout.splitlines()[-25:])
         logger.error("ROTBOSON run failed; last output:\n%s", tail)
         raise SystemExit(1)
-    dirs = find_solution_dirs(OUT)
-    if not dirs:
-        raise SystemExit("no solution directory found in out/")
-    return dirs[-1]
+    new_dirs = sorted(set(find_solution_dirs(OUT)) - before)
+    if len(new_dirs) != 1:
+        raise SystemExit(f"expected 1 new solution directory in out/, found {len(new_dirs)}")
+    return new_dirs[0]
 
 
 def main() -> None:
