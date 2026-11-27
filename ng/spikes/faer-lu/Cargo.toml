@@ -13,6 +13,13 @@ description = "SAN-54: faer sparse-LU envelope measurement on the ROTBOSON 6-fie
 [dependencies]
 faer = "0.24"
 dyn-stack = { version = "0.13", default-features = false, features = ["core-error", "alloc"] }
+# SAN-67: the measurement harnesses drive the REAL assembly (rbs-elliptic)
+# and the block-field Krylov backend (rbs-linalg) via path deps. The spike
+# stays workspace-excluded; building workspace members as path
+# dependencies from this standalone workspace is fine.
+rbs-core = { path = "../../rbs-core" }
+rbs-elliptic = { path = "../../rbs-elliptic" }
+rbs-linalg = { path = "../../rbs-linalg" }
 
 [profile.release]
 debug = false

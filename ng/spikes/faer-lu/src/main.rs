@@ -10,6 +10,7 @@
 //! Output: `key=value` lines (KiB/s units noted per key), greppable.
 
 mod pattern;
+mod real;
 
 use dyn_stack::{MemBuffer, MemStack};
 use faer::sparse::linalg::lu::{
@@ -40,6 +41,11 @@ enum Mode {
     Symbolic,
     Guarded,
     Diag,
+    /// SAN-67: the faer-LU row-equilibration experiment on the real
+    /// first-Newton Jacobian.
+    Equil,
+    /// SAN-67: the field-blocked Newton–Krylov measurements.
+    BlockNk,
 }
 
 fn vmhwm_kib() -> u64 {
@@ -156,8 +162,12 @@ fn main() {
     let cfg = parse_args();
     emit("faer_version", FAER_VERSION);
     emit("n", cfg.n);
-    emit("rows", pattern::expected_rows(cfg.n));
-    emit("nnz", pattern::expected_total_nnz(cfg.n));
+    if !matches!(cfg.mode, Mode::Equil | Mode::BlockNk) {
+        // The SAN-67 modes build the real assembly; the generator's
+        // row/nnz accounting does not apply there.
+        emit("rows", pattern::expected_rows(cfg.n));
+        emit("nnz", pattern::expected_total_nnz(cfg.n));
+    }
     emit("mode", format!("{:?}", cfg.mode).to_lowercase());
     emit("force", format!("{:?}", cfg.force).to_lowercase());
     emit("threads", cfg.threads);
@@ -187,6 +197,8 @@ fn main() {
             run_cgnr(&cfg);
         }
         Mode::Guarded => run_guarded(&cfg),
+        Mode::Equil => real::run_equil_from_env(),
+        Mode::BlockNk => real::run_blocknk_from_env(),
     }
 }
 
@@ -839,6 +851,8 @@ fn parse_args() -> RunConfig {
                     "symbolic" => Mode::Symbolic,
                     "guarded" => Mode::Guarded,
                     "diag" => Mode::Diag,
+                    "equil" => Mode::Equil,
+                    "blocknk" => Mode::BlockNk,
                     _ => Mode::Full,
                 }
             }

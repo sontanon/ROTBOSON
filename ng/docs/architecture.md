@@ -51,20 +51,36 @@ superlinearly. RBS-NG never builds its production path on that exponent.
   solves exist in RBS-NG for exactly two purposes: the oracle parity gates
   at N ≤ 128 (seed solves) and unit tests of the Newton machinery. They
   are parity and scaffolding — **never a scaling path**. Anything that
-  bakes in a global direct solve must be labeled transitional.
-- **Intermediate: per-field block preconditioners.** The Jacobian's
-  6-field structure (each field's operator plus couplings) admits block
-  factorizations that are cheap to invert field-by-field and capture most
-  of the physics coupling; this is the bridge between the LU scaffolding
-  and multigrid, and the analysis target for where multigrid smoothers
-  must be strengthened.
+  bakes in a global direct solve must be labeled transitional. The
+  SAN-67 equilibration experiment closed the SAN-54 accuracy question:
+  on the *real* Jacobians the LU solves honestly at every parity size
+  and spacing (6.4e-12 at N=64, 7.1e-11 at N=128, 1.0e-9 at the N=256
+  spacing; row equilibration changes nothing — the reported collapse
+  was a value-model artifact), so faer LU remains a trustworthy
+  *independent cross-check* backend; its memory/fill scaling still
+  disqualifies it above N=128 (`ng/spikes/faer-lu/REPORT-BACKEND.md`).
+- **N1 backend: field-blocked Newton–Krylov**
+  (`rbs-linalg::BlockFieldKrylov`, SAN-67 — implemented and measured).
+  Each field's diagonal block of the 6-field Jacobian is row-equilibrated
+  and factored with faer (LU; LDLT if a block is ever symmetric) as the
+  preconditioner; a hand-rolled restarted FGMRES cleans up the same-node
+  cross-field couplings and the eigenvalue row. Measured at N=256
+  (4 threads): 7.7 s cold solve / 3.1 s stale campaign step / 1.88 GiB
+  peak — ~12× / ~22× faster than PARDISO at 2.6× less memory — with
+  Krylov iteration counts *independent of N* (12 fresh / 16–18 stale)
+  and end-to-end Newton solves reproducing the oracle fixture inside
+  the parity bars using blocks factored once at the ansatz
+  (`solve_stale`, the stale-LU-CGS analogue). fp64 projections clear
+  N=400 (~4.6 GiB) and N=512 (~7.8 GiB, where the C LU OOMs).
 - **Production: geometric multigrid + FGMRES/Krylov**
   (`rbs-linalg::MgKrylov`, currently an honest placeholder implementing
-  the same `LinearSolver` trait). The hierarchy is geometric over the
-  grid ladder (§1), so rung 4's block refinement and the MG coarsening are
-  the same machinery; the outer Krylov loop handles the eigenvalue row
-  and the near-fold ill-conditioning the C campaign handles with
-  stale-factor CGS reuse.
+  the same `LinearSolver` trait). Block-NK removes the *memory-survival*
+  pressure on MG (N=400/512 project to fit), so MG's mandate is the
+  grid-ladder rungs (stretched radial / compactified domains need a
+  scalable per-field inverter — block-LU's dim^1.1 fill growth is the
+  wrong exponent for the ladder's endgame), per-step wall time beyond
+  N=256, and the near-fold robustness regime; not a memory rescue at
+  the paper sizes.
 
 **Explicit principle: never rely on global sparse LU scaling.** The
 `LinearSolver` trait makes backends swappable precisely so the Newton loop
@@ -166,8 +182,8 @@ First-class from day one (ADR 0001 decision 6):
 |---|---|---|
 | `rbs-core` | grids, fields, stencils, index maps (C-convention ports) | real, tested |
 | `rbs-elliptic` | residual/Jacobian assembly, Newton, ω constraint | kernels generated (SAN-56); assembly/Newton are the SAN-62 port target |
-| `rbs-linalg` | `LinearSolver` trait + faer LU + MG-Krylov placeholder | real, tested |
-| `rbs-io` | HDF5 + VTR writers behind `FieldWriter` | real, parity-pinned (HDF5 C-contract mirror, feature-gated; VTR VTK-order-correct) |
+| `rbs-linalg` | `LinearSolver` trait + faer LU + block-field Krylov (N1, SAN-67) + MG-Krylov placeholder | real, tested |
+| `rbs-io` | HDF5 + VTR writers behind `FieldWriter` | VTR real; HDF5 feature-gated, roundtrip-tested locally |
 | `rbs-driver` | continuation campaigns | parameter skeleton; port target |
 | `rbs-evolve` | 1D-first evolution | formulation roster only |
 | `rbs-viz` | animation/streaming pipeline | placeholder |
