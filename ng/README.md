@@ -14,7 +14,6 @@ frozen golden oracle; every stage here is gated by parity against it.
 | `rbs-linalg` | `LinearSolver` backend trait, faer sparse LU (parity sizes), MG-Krylov placeholder |
 | `rbs-io` | field output: VTR (day one) + HDF5 (feature `hdf5`, the C format contract) |
 | `rbs-driver` | continuation campaigns (port target) |
-| `rbs-evolve` | 1D-first evolution (formulation study) |
 | `rbs-viz` | animation pipeline over the writers |
 
 Each crate's `README.md` states its role and its parity target.

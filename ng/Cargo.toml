@@ -6,7 +6,6 @@ members = [
     "rbs-linalg",
     "rbs-io",
     "rbs-driver",
-    "rbs-evolve",
     "rbs-viz",
 ]
 # Standalone spike crate (PR #21): its own [workspace] table, not a member.
