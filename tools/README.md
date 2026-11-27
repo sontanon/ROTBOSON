@@ -28,8 +28,9 @@ Everything lives in this directory, one script per concern. Shared helpers
 
 | script | purpose |
 |--------|---------|
-| `sympy_system.py` | Independent SymPy re-derivation of the six Einstein–Klein–Gordon residuals and the Jacobian. Single source of truth for the generated kernels. |
+| `sympy_system.py` | Independent SymPy re-derivation of the six Einstein–Klein–Gordon residuals and the Jacobian. Single source of truth for the generated kernels (C and Rust). |
 | `generate_kernels.py` | Emits `src/rhs_vars.c` and `src/csr_vars.c` from the SymPy derivation. Checked in; CI re-runs the generator and asserts byte-identical output (`--check`), an MMS test verifies the residual at design order. |
+| `generate_rust_kernels.py` | Emits the Rust twins of those kernels into `ng/rbs-elliptic/src/generated/` (residual, boundary rows, subtype Jacobian) plus a seeded parity fixture with SymPy-evaluated references. Same CI gate shape (`--check`); `--validate` additionally runs the cargo parity test. See `ng/docs/architecture.md` §3. |
 | `sympy_check.py` | Cross-checks the SymPy Jacobian against the codegen notebook (`derivations/Mathematica CSR Code Generation.ipynb`). |
 | `mms_test.py` | Manufactured-solution test of the discretized residual (4th-order Fornberg stencils). |
 

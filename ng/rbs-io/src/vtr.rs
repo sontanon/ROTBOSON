@@ -6,6 +6,12 @@
 //! as `XCoordinates`/`YCoordinates` (r and z) plus a zero `ZCoordinates`,
 //! so the grid ladder's later non-uniform radial maps need no format
 //! change.
+//!
+//! Data ordering: VTK point arrays vary **x fastest** (r here), while the
+//! solver's field blocks are row-major over `IDX(i, j) = i * nz + j`
+//! (z fastest) — the exact layout the C oracle's `.asc`/HDF5 output uses.
+//! [`snapshot_xml`] transposes each block on emit, so a `ParaView` render
+//! of the VTR and a matplotlib render of the HDF5 show the same field.
 
 use std::fmt::Write as _;
 use std::io::Write;
@@ -61,6 +67,26 @@ fn data_array(tag: &str, name: Option<&str>, values: &[f64]) -> String {
     s
 }
 
+/// Reorder a field block into VTK point order: r (x) fastest, then z (y).
+///
+/// The source is row-major over `IDX(i, j) = i * nz + j`; the VTK linear
+/// index of point `(i, j)` is `i + j * nr`.
+///
+/// # Panics
+///
+/// Panics in debug builds if `values` is not `nr * nz` long (the caller
+/// contract; the HDF5 backend validates the same invariant loudly).
+fn vtk_point_order(values: &[f64], nr: usize, nz: usize) -> Vec<f64> {
+    debug_assert_eq!(values.len(), nr * nz, "field block must cover the grid");
+    let mut out = vec![0.0; nr * nz];
+    for (i, row) in values.chunks_exact(nz).enumerate() {
+        for (j, v) in row.iter().enumerate() {
+            out[i + j * nr] = *v;
+        }
+    }
+    out
+}
+
 /// The XML text of one snapshot (also the unit-test surface).
 ///
 /// # Panics
@@ -82,7 +108,8 @@ pub fn snapshot_xml(grid: &GridTopology, fields: &[FieldBlock]) -> String {
     let names: Vec<&str> = fields.iter().map(|f| f.name.as_str()).collect();
     let _ = writeln!(s, "<PointData Scalars=\"{}\">", names.join(","));
     for f in fields {
-        s.push_str(&data_array("DataArray", Some(&f.name), &f.values));
+        let vtk = vtk_point_order(&f.values, grid.nr, grid.nz);
+        s.push_str(&data_array("DataArray", Some(&f.name), &vtk));
         s.push('\n');
     }
     let _ = write!(s, "</PointData>\n<CellData/>\n");
@@ -128,6 +155,22 @@ fn values_of(xml: &str, tag: &str, name: Option<&str>) -> Vec<f64> {
         .collect()
 }
 
+/// Parse a field block back out of a VTR in VTK point order (r fastest),
+/// returning row-major `IDX(i, j)` values (test helper: the inverse of
+/// `vtk_point_order`).
+#[cfg(test)]
+fn point_order_values(xml: &str, name: &str, nr: usize, nz: usize) -> Vec<f64> {
+    let vtk = values_of(xml, "DataArray", Some(name));
+    assert_eq!(vtk.len(), nr * nz);
+    let mut out = vec![0.0; nr * nz];
+    for (i, row) in out.chunks_exact_mut(nz).enumerate() {
+        for (j, v) in row.iter_mut().enumerate() {
+            *v = vtk[i + j * nr];
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,11 +210,29 @@ mod tests {
     }
 
     #[test]
-    fn values_and_coordinates_roundtrip_exactly() {
+    fn field_values_are_in_vtk_point_order() {
+        // Source is row-major IDX(i, j) = i * nz + j (z fastest); VTK
+        // wants r (x) fastest: point (i, j) lands at i + j * nr.
+        let (g, fields) = demo();
+        assert_eq!((g.nr, g.nz), (3, 2));
+        let x = snapshot_xml(&g, &fields);
+        let psi = values_of(&x, "DataArray", Some("psi"));
+        assert_eq!(psi, vec![0.0, 0.2, 0.4, 0.1, 0.3, 0.5]);
+        // The inverse mapping restores the original block exactly.
+        assert_eq!(
+            point_order_values(&x, "psi", g.nr, g.nz),
+            fields[0].values
+        );
+        assert_eq!(
+            point_order_values(&x, "l_alpha", g.nr, g.nz),
+            fields[1].values
+        );
+    }
+
+    #[test]
+    fn coordinates_roundtrip_exactly() {
         let (g, fields) = demo();
         let x = snapshot_xml(&g, &fields);
-        assert_eq!(values_of(&x, "DataArray", Some("psi")), fields[0].values);
-        assert_eq!(values_of(&x, "DataArray", Some("l_alpha")), fields[1].values);
         assert_eq!(values_of(&x, "XCoordinates", None), g.r);
         assert_eq!(values_of(&x, "YCoordinates", None), g.z);
         assert_eq!(values_of(&x, "ZCoordinates", None), vec![0.0]);
@@ -186,9 +247,78 @@ mod tests {
         w.write_snapshot(&g, &fields).expect("write");
         let text = std::fs::read_to_string(w.path()).expect("read");
         assert_eq!(
-            values_of(&text, "DataArray", Some("psi")),
+            point_order_values(&text, "psi", g.nr, g.nz),
             fields[0].values
         );
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Strict well-formedness for the writer's XML subset: one root
+    /// element, every open tag closed in order, attributes quoted, no
+    /// stray `<`/`&` in text (the writer escapes none because field data
+    /// is plain ascii floats).
+    fn assert_wellformed(xml: &str) {
+        let mut stack: Vec<String> = Vec::new();
+        let bytes = xml.as_bytes();
+        let mut i = 0;
+        let mut in_root_close = false;
+        while i < bytes.len() {
+            match bytes[i] {
+                b'<' if xml[i..].starts_with("<?xml") => {
+                    i = xml[i..].find("?>").expect("xml decl closes") + i + 2;
+                }
+                b'<' if bytes.get(i + 1) == Some(&b'/') => {
+                    let end = xml[i..].find('>').expect("close tag ends") + i;
+                    let name = &xml[i + 2..end];
+                    let open = stack.pop().expect("close matches an open tag");
+                    assert_eq!(name, open, "close tag matches the innermost open");
+                    if stack.is_empty() {
+                        in_root_close = true;
+                    }
+                    i = end + 1;
+                }
+                b'<' => {
+                    assert!(!in_root_close, "content after the root closed");
+                    let end = xml[i..].find('>').expect("open tag ends") + i;
+                    let inner = &xml[i + 1..end];
+                    let mut parts = inner.split_whitespace();
+                    let name = parts.next().expect("tag has a name").to_string();
+                    // Attribute values may contain spaces (extents); the
+                    // quote-balance check below covers quoting as a whole.
+                    assert!(
+                        xml[i..end].matches('"').count() % 2 == 0,
+                        "attributes are quote-balanced"
+                    );
+                    if inner.ends_with('/') {
+                        // Self-closing: <CellData/> etc.
+                    } else {
+                        stack.push(name);
+                    }
+                    i = end + 1;
+                }
+                b'&' => panic!("unexpected entity in writer output"),
+                _ => i += 1,
+            }
+        }
+        assert!(in_root_close, "root element was closed");
+        assert!(stack.is_empty(), "all tags closed");
+    }
+
+    #[test]
+    fn writer_xml_is_wellformed() {
+        let (g, fields) = demo();
+        let x = snapshot_xml(&g, &fields);
+        assert_wellformed(&x);
+        // And the single-element degenerate case.
+        let g1 = GridTopology::uniform(1, 1, 1.0, 1.0);
+        let x1 = snapshot_xml(
+            &g1,
+            &[FieldBlock {
+                name: "a".to_string(),
+                values: vec![0.0],
+            }],
+        );
+        assert!(x1.contains("WholeExtent=\"0 0 0 0 0 0\""));
+        assert_wellformed(&x1);
     }
 }

@@ -26,3 +26,8 @@ serde = { version = "1", features = ["derive"] }
 # byte-identical state.json round-trip). Do not drop either feature.
 serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
 toml = "0.9"
+
+# Inherit the workspace lint policy (port-contract allows included);
+# the standalone-era omission was an integration oversight.
+[lints]
+workspace = true

@@ -19,6 +19,28 @@ pub struct FieldBlock {
     pub values: Vec<f64>,
 }
 
+/// A named 1D data series: scalars (`w_f`), Newton histories
+/// (`norm_du`, `lambda`), radial profiles (`M_ADM`). Written as a
+/// shape-`(n,)` dataset by the HDF5 backend; VTR snapshots ignore series
+/// (they carry grid fields only).
+#[derive(Debug, Clone, PartialEq)]
+pub struct SeriesBlock {
+    /// Series name, e.g. `"w_f"`; written as the dataset `<name>.asc`.
+    pub name: String,
+    /// Values, `n >= 1` of them.
+    pub values: Vec<f64>,
+}
+
+/// A named 1D integer series: error codes, flags, resolutions
+/// (`error_code`, `ergoregion_flag`, `hwl_resolution`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct IntSeriesBlock {
+    /// Series name; written as the dataset `<name>.asc`.
+    pub name: String,
+    /// Values, `n >= 1` of them.
+    pub values: Vec<i64>,
+}
+
 /// A rectilinear (r, z) grid description for output blocks.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridTopology {
@@ -54,6 +76,30 @@ impl GridTopology {
             z: lin(nz, z_max).collect(),
         }
     }
+
+    /// The C oracle's cell-centered total grid (`src/main.c`):
+    /// `r_i = (i - ghost + 0.5) * dr` for `i` in `0..nr`, z likewise —
+    /// a `2*ghost`-layer ghost padding around `nr - 2*ghost` interior
+    /// cells, so the first interior point sits at `dr/2`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `nr <= 2*ghost`, `nz <= 2*ghost`, or `dr`/`dz` are
+    /// non-positive.
+    #[must_use]
+    pub fn centered(nr: usize, nz: usize, dr: f64, dz: f64, ghost: usize) -> Self {
+        assert!(nr > 2 * ghost && nz > 2 * ghost, "grid must have interior");
+        assert!(dr > 0.0 && dz > 0.0, "steps must be positive");
+        #[allow(clippy::cast_precision_loss)]
+        let r: Vec<f64> = (0..nr)
+            .map(|i| ((i as f64) - (ghost as f64) + 0.5) * dr)
+            .collect();
+        #[allow(clippy::cast_precision_loss)]
+        let z: Vec<f64> = (0..nz)
+            .map(|j| ((j as f64) - (ghost as f64) + 0.5) * dz)
+            .collect();
+        Self { nr, nz, r, z }
+    }
 }
 
 /// Output backend contract: write one snapshot (a set of named field
@@ -88,5 +134,22 @@ mod tests {
     #[should_panic(expected = "grid must have points")]
     fn empty_grid_is_rejected() {
         let _ = GridTopology::uniform(0, 2, 1.0, 1.0);
+    }
+
+    #[test]
+    fn centered_topology_matches_the_c_oracle() {
+        // main.c: r_i = (i - ghost + 0.5) * dr, N=64 interior, order=4.
+        let g = GridTopology::centered(68, 68, 0.25, 0.25, 2);
+        assert_eq!(g.r.len(), 68);
+        assert!((g.r[0] + 0.375).abs() < 1e-12); // (0 - 2 + 0.5) * 0.25
+        assert!((g.r[2] - 0.125).abs() < 1e-12); // first interior cell
+        assert!((g.r[67] - 16.375).abs() < 1e-12);
+        assert!((g.z[33] - 7.875).abs() < 1e-12);
+    }
+
+    #[test]
+    #[should_panic(expected = "grid must have interior")]
+    fn all_ghost_centered_grid_is_rejected() {
+        let _ = GridTopology::centered(4, 4, 1.0, 1.0, 2);
     }
 }

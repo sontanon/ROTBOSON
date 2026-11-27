@@ -2,19 +2,23 @@
 //!
 //! The Newton loop (rbs-elliptic) codes against [`LinearSolver`]; this crate
 //! provides the checked-in CSR matrix type and the backends: faer sparse LU
-//! (transitional, parity sizes only) and the MG-Krylov placeholder for the
-//! production path (ADR 0001).
+//! (transitional, parity sizes only), the field-blocked Newton–Krylov
+//! backend ([`BlockFieldKrylov`], the SAN-67 N1 candidate), and the
+//! MG-Krylov placeholder for the far production path (ADR 0001).
 
+pub mod block_field;
 pub mod csr;
 pub mod faer_lu;
 pub mod mg_krylov;
+
+pub use block_field::{BlockFieldKrylov, BlockKrylovConfig, KrylovStats};
 
 pub use csr::CsrMatrix;
 
 use core::fmt;
 
 /// Error reported by linear solver backends.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
 pub enum SolveError {
     /// `solve_into` was called before a successful [`LinearSolver::factor`].
@@ -33,6 +37,15 @@ pub enum SolveError {
     },
     /// The backend is a placeholder and not implemented yet.
     NotImplemented(&'static str),
+    /// The Krylov loop missed its tolerance within the iteration
+    /// budget (strict mode; see
+    /// [`BlockFieldKrylov::last_stats`]).
+    NotConverged {
+        /// Krylov iterations spent.
+        iterations: usize,
+        /// The true relative residual `‖b − Ax‖ / ‖b‖` reached.
+        residual: f64,
+    },
 }
 
 impl fmt::Display for SolveError {
@@ -45,6 +58,9 @@ impl fmt::Display for SolveError {
                 write!(f, "dimension mismatch: expected {expected}, got {got}")
             }
             Self::NotImplemented(what) => write!(f, "not implemented: {what}"),
+            Self::NotConverged { iterations, residual } => {
+                write!(f, "Krylov loop not converged: {residual:.3e} after {iterations} iterations")
+            }
         }
     }
 }
