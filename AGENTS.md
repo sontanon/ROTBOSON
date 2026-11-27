@@ -47,6 +47,10 @@ Report by leaving a comment on the Linear issue if you can, or else by putting a
 
 Run Rust commands from the `ng/` directory.
 
+**Each command may run in a fresh shell.** `cd`, `source` and `export` do not carry over to the next command. When a command needs them, put them in the same command line, joined with `&&`. For example: `cd ng && cargo test --workspace`.
+
+**Pipes hide failures.** In `cmd | tee log`, the exit code is `tee`'s, not `cmd`'s. When an issue asks for an exit code after a pipe, start the line with `set -o pipefail;`.
+
 ```bash
 cd ng
 cargo build --workspace
@@ -79,6 +83,7 @@ This code should be good, idiomatic Rust that people can learn from.
 
 ## Commits
 
+- **Stage files by name** (or by directory, e.g. `git add -A ng`). Never run `git add -A` or `git add .` at the repo root: there are untracked files that must not be committed. Before every commit, run `git status --short` and check that only the files the issue names are staged.
 - One logical change per commit. Message format: `NR-<n>: <what changed, in plain words>`.
   - Good: `NR-14: Remove the rbs-evolve crate from the workspace`
   - Bad: `NR-14: cleanup round 3`, `NR-14: the last two`
