@@ -40,20 +40,60 @@ const PARITY_TOL: f64 = 1e-15;
 /// when computed).
 const SMOKE_ATTRS: [&str; 49] = [
     // provenance
-    "git_hash", "parfile", "output_backend", "created", "format_version",
+    "git_hash",
+    "parfile",
+    "output_backend",
+    "created",
+    "format_version",
     // GRID
-    "dr", "dz", "NrInterior", "NzInterior", "NrTotal", "NzTotal", "dim", "ghost", "order",
+    "dr",
+    "dz",
+    "NrInterior",
+    "NzInterior",
+    "NrTotal",
+    "NzTotal",
+    "dim",
+    "ghost",
+    "order",
     // SCALAR FIELD + FIXED VARIABLE
-    "l", "m", "psi0", "sigmaR", "sigmaZ", "rExt", "w0", "w_idx", "fixedPhi", "fixedPhiR",
-    "fixedPhiZ", "fixedOmega",
+    "l",
+    "m",
+    "psi0",
+    "sigmaR",
+    "sigmaZ",
+    "rExt",
+    "w0",
+    "w_idx",
+    "fixedPhi",
+    "fixedPhiR",
+    "fixedPhiZ",
+    "fixedOmega",
     // INITIAL DATA
-    "readInitialData", "NrTotalInitial", "NzTotalInitial", "ghost_i", "order_i", "dr_i",
+    "readInitialData",
+    "NrTotalInitial",
+    "NzTotalInitial",
+    "ghost_i",
+    "order_i",
+    "dr_i",
     "dz_i",
     // SCALE INITIAL DATA
-    "scale_u0", "scale_u1", "scale_u2", "scale_u3", "scale_u4", "scale_u5", "scale_u6",
+    "scale_u0",
+    "scale_u1",
+    "scale_u2",
+    "scale_u3",
+    "scale_u4",
+    "scale_u5",
+    "scale_u6",
     // SOLVER + GUESS CHECK
-    "solverType", "localSolver", "epsilon", "maxNewtonIter", "lambda0", "lambdaMin",
-    "useLowRank", "max_initial_guess_checks", "norm_f0_target",
+    "solverType",
+    "localSolver",
+    "epsilon",
+    "maxNewtonIter",
+    "lambda0",
+    "lambdaMin",
+    "useLowRank",
+    "max_initial_guess_checks",
+    "norm_f0_target",
 ];
 
 fn expect_i64(f: &hdf5::File, name: &str, v: i64) {
@@ -90,14 +130,11 @@ fn expect_str(f: &hdf5::File, name: &str) -> String {
 /// Assert the smoke spec's attribute values (typed), against the exact
 /// spec numbers from configs/l1_smoke_ci.toml @ epsilon=1e-12.
 fn check_smoke_attrs(f: &hdf5::File, attrs: &SnapshotAttrs) {
-    let names: BTreeSet<String> = f
-        .attr_names()
-        .expect("attr names")
-        .into_iter()
-        .collect();
+    let names: BTreeSet<String> = f.attr_names().expect("attr names").into_iter().collect();
     let want: BTreeSet<String> = SMOKE_ATTRS.iter().map(|s| (*s).to_string()).collect();
     assert_eq!(
-        names, want,
+        names,
+        want,
         "attribute name set is exactly the smoke contract (extra: {:?}, missing: {:?})",
         names.difference(&want).collect::<Vec<_>>(),
         want.difference(&names).collect::<Vec<_>>()
@@ -109,7 +146,10 @@ fn check_smoke_attrs(f: &hdf5::File, attrs: &SnapshotAttrs) {
     assert_eq!(expect_str(f, "output_backend"), attrs.backend);
     let created = expect_str(f, "created");
     assert_eq!(created.len(), 20, "created is ISO 8601 UTC: {created}");
-    assert!(created.ends_with('Z') && created.as_bytes()[10] == b'T', "{created}");
+    assert!(
+        created.ends_with('Z') && created.as_bytes()[10] == b'T',
+        "{created}"
+    );
     expect_i64(f, "format_version", 1);
 
     // GRID (NrTotal/NzTotal/dim synced to the written grid).
@@ -175,7 +215,12 @@ fn check_datasets(f: &hdf5::File, snap: &common::SmokeSnapshot) {
         let d = f
             .dataset(&format!("{}.asc", field.name))
             .unwrap_or_else(|e| panic!("dataset {}.asc: {e}", field.name));
-        assert_eq!(d.shape(), [nr, nz], "{}.asc is (NrTotal, NzTotal)", field.name);
+        assert_eq!(
+            d.shape(),
+            [nr, nz],
+            "{}.asc is (NrTotal, NzTotal)",
+            field.name
+        );
         let got = d.read_raw::<f64>().expect("f64 values");
         let diff = common::max_abs_diff(&got, &field.values);
         assert!(
@@ -251,10 +296,16 @@ fn fresh_write_reproduces_the_committed_fixture() {
     let new = hdf5::File::open(&fresh).expect("open fresh");
 
     // Dataset name sets identical, every dataset bit-identical.
-    let committed_keys: BTreeSet<String> =
-        committed.member_names().expect("committed datasets").into_iter().collect();
-    let new_keys: BTreeSet<String> =
-        new.member_names().expect("fresh datasets").into_iter().collect();
+    let committed_keys: BTreeSet<String> = committed
+        .member_names()
+        .expect("committed datasets")
+        .into_iter()
+        .collect();
+    let new_keys: BTreeSet<String> = new
+        .member_names()
+        .expect("fresh datasets")
+        .into_iter()
+        .collect();
     assert_eq!(committed_keys, new_keys, "same dataset set");
     for k in &committed_keys {
         let a = committed.dataset(k).unwrap().read_raw::<f64>().unwrap();

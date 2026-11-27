@@ -237,14 +237,7 @@ fn array_sum(out: &mut [f64], alpha: f64, x: &[f64], beta: f64, y: &[f64]) {
 
 /// The C `ARRAY_SUM(arr[dst], alpha, arr[src], beta, y)` with
 /// `src < dst`: the same-history form (`u[k + 1] = u[k] + lambda du`).
-fn array_sum_from(
-    arr: &mut [Vec<f64>],
-    dst: usize,
-    src: usize,
-    alpha: f64,
-    beta: f64,
-    y: &[f64],
-) {
+fn array_sum_from(arr: &mut [Vec<f64>], dst: usize, src: usize, alpha: f64, beta: f64, y: &[f64]) {
     let (head, tail) = arr.split_at_mut(dst);
     let out = &mut tail[0];
     let x = &head[src];
@@ -954,8 +947,8 @@ fn nleq_err_qnerr<S: NewtonSystem>(
         }
 
         // alpha_{l+1} = (du_bar^{l+1} . du^l) / ||du^l||^2.
-        alpha[l + 1] = sys.dot(&du_bar[l + 1], &h.du[base + l])
-            / (h.norm_du[base + l] * h.norm_du[base + l]);
+        alpha[l + 1] =
+            sys.dot(&du_bar[l + 1], &h.du[base + l]) / (h.norm_du[base + l] * h.norm_du[base + l]);
         norm_du_bar[l + 1] = sys.norm(&du_bar[l + 1]);
 
         // Theta_l = ||du_bar^{l+1}|| / ||du^l||; exit if > 1/2 (or on a
@@ -981,10 +974,7 @@ fn nleq_err_qnerr<S: NewtonSystem>(
 
         // du^{l+1} = du_bar^{l+1} / (1 - alpha_{l+1}).
         let scale = 1.0 / (1.0 - alpha[l + 1]);
-        for (out, bar) in h.du[base + l + 1]
-            .iter_mut()
-            .zip(du_bar[l + 1].iter())
-        {
+        for (out, bar) in h.du[base + l + 1].iter_mut().zip(du_bar[l + 1].iter()) {
             *out = scale * bar;
         }
         h.norm_du[base + l + 1] = sys.norm(&h.du[base + l + 1]);
@@ -1198,8 +1188,7 @@ pub fn nleq_res<S: NewtonSystem>(
                                             log,
                                         ));
                                     }
-                                    QnresReason::ThetaIncrease
-                                    | QnresReason::IllConditioned => {
+                                    QnresReason::ThetaIncrease | QnresReason::IllConditioned => {
                                         // Restart NLEQ-RES with the
                                         // quarter damping (nleq_res.c
                                         // uses 0.25, not 1.0).
@@ -1372,8 +1361,7 @@ fn nleq_res_qnres<S: NewtonSystem>(
         // The recursion over the residual history (i = l-1 .. 0):
         // v = v - beta * F[i+1].
         for i in (0..l).rev() {
-            let beta =
-                (sys.dot(&h.f[base + i + 1], &v) - sys.dot(&h.f[base + i], &v)) / gamma[i];
+            let beta = (sys.dot(&h.f[base + i + 1], &v) - sys.dot(&h.f[base + i], &v)) / gamma[i];
             for (o, fv) in v.iter_mut().zip(h.f[base + i + 1].iter()) {
                 *o -= beta * fv;
             }
@@ -1622,7 +1610,10 @@ pub fn solve<S: LinearSolver>(
     };
     // Write the final iterate back into the split state.
     let dim = grid.dim();
-    state.fields.as_mut_slice().copy_from_slice(&u[..GNUM * dim]);
+    state
+        .fields
+        .as_mut_slice()
+        .copy_from_slice(&u[..GNUM * dim]);
     state.xi = u[GNUM * dim];
     Ok((status, log))
 }
@@ -1942,8 +1933,8 @@ mod tests {
     fn nleq_err_grows_lambda_then_enters_qnerr() {
         let mut sys = DenseSystem::new(2, smooth_rhs, smooth_jac);
         let mut u = vec![-5.0, 5.0];
-        let (status, log) = nleq_err(&mut sys, &mut u, &NewtonConfig::default())
-            .expect("dense backend ok");
+        let (status, log) =
+            nleq_err(&mut sys, &mut u, &NewtonConfig::default()).expect("dense backend ok");
         if std::env::var("RBS_NEWTON_DEBUG").is_ok() {
             for r in &log {
                 eprintln!(
@@ -1958,9 +1949,15 @@ mod tests {
             }
             eprintln!("status: {status:?}");
         }
-        assert!(matches!(status, NewtonStatus::Converged { .. }), "{status:?}");
+        assert!(
+            matches!(status, NewtonStatus::Converged { .. }),
+            "{status:?}"
+        );
         let events: Vec<_> = log.iter().map(|r| r.event).collect();
-        assert!(events.contains(&NewtonEvent::RejectB), "no REJECT B in {events:?}");
+        assert!(
+            events.contains(&NewtonEvent::RejectB),
+            "no REJECT B in {events:?}"
+        );
         assert!(events.contains(&NewtonEvent::EnterQnerr), "no QNERR entry");
         assert_eq!(events.last(), Some(&NewtonEvent::ConvergedC));
         // The solution: u + u^3/3 = c has the roots near +-1.1..; the
@@ -1989,8 +1986,18 @@ mod tests {
         assert_eq!(log1.len(), log2.len(), "row count changed under scaling");
         for (a, b) in log1.iter().zip(&log2) {
             assert_eq!(a.event, b.event, "event mismatch");
-            assert!((a.lambda - b.lambda).abs() < 1e-6, "lambda {} vs {}", a.lambda, b.lambda);
-            assert!((a.theta - b.theta).abs() < 1e-6, "theta {} vs {}", a.theta, b.theta);
+            assert!(
+                (a.lambda - b.lambda).abs() < 1e-6,
+                "lambda {} vs {}",
+                a.lambda,
+                b.lambda
+            );
+            assert!(
+                (a.theta - b.theta).abs() < 1e-6,
+                "theta {} vs {}",
+                a.theta,
+                b.theta
+            );
         }
         assert!((u1[0] - u2[0]).abs() < 1e-8 && (u1[1] - u2[1]).abs() < 1e-8);
     }
@@ -2019,13 +2026,19 @@ mod tests {
         let (status, log) = nleq_err(&mut sys, &mut u, &NewtonConfig::default()).unwrap();
         assert_eq!(status, NewtonStatus::Diverged, "status {status:?}");
         assert!(log.iter().any(|r| r.event == NewtonEvent::RejectA));
-        assert_eq!(log.last().expect("rows").event, NewtonEvent::RegularityFailure);
+        assert_eq!(
+            log.last().expect("rows").event,
+            NewtonEvent::RegularityFailure
+        );
         // The returned iterate is the last accepted one — finite, and
         // not a fake solution (the fold has no root).
         assert!(u.iter().all(|v| v.is_finite()));
         let mut f = vec![0.0; 2];
         fold_rhs(&u, &mut f);
-        assert!(f[1].abs() > 1e-2, "spurious convergence at u = {u:?}, f = {f:?}");
+        assert!(
+            f[1].abs() > 1e-2,
+            "spurious convergence at u = {u:?}, f = {f:?}"
+        );
     }
 
     /// The fold with a high regularity floor: the damping hits
@@ -2040,7 +2053,10 @@ mod tests {
         };
         let (status, log) = nleq_err(&mut sys, &mut u, &config).unwrap();
         assert_eq!(status, NewtonStatus::Diverged, "status {status:?}");
-        assert_eq!(log.last().expect("rows").event, NewtonEvent::RegularityFailure);
+        assert_eq!(
+            log.last().expect("rows").event,
+            NewtonEvent::RegularityFailure
+        );
     }
 
     /// An exactly singular Jacobian surfaces as the typed backend
@@ -2095,7 +2111,10 @@ mod tests {
         smooth_rhs(&u, &mut f0);
         let norm_f0 = sys.norm(&f0);
         let (status, log) = nleq_res(&mut sys, &mut u, norm_f0, &NewtonConfig::default()).unwrap();
-        assert!(matches!(status, NewtonStatus::Converged { .. }), "{status:?}");
+        assert!(
+            matches!(status, NewtonStatus::Converged { .. }),
+            "{status:?}"
+        );
         let events: Vec<_> = log.iter().map(|r| r.event).collect();
         eprintln!("{events:?}");
         assert!(events.contains(&NewtonEvent::EnterQnres), "no QNRES entry");
@@ -2146,7 +2165,10 @@ mod tests {
             ..NewtonConfig::default()
         };
         let (status, _log) = classic_newton(&mut sys, &mut u, &config).unwrap();
-        assert!(matches!(status, NewtonStatus::Converged { .. }), "{status:?}");
+        assert!(
+            matches!(status, NewtonStatus::Converged { .. }),
+            "{status:?}"
+        );
     }
 
     /// No-QNERR mode: the local region falls back to plain accepted
@@ -2160,7 +2182,10 @@ mod tests {
             ..NewtonConfig::default()
         };
         let (status, log) = nleq_err(&mut sys, &mut u, &config).unwrap();
-        assert!(matches!(status, NewtonStatus::Converged { .. }), "{status:?}");
+        assert!(
+            matches!(status, NewtonStatus::Converged { .. }),
+            "{status:?}"
+        );
         assert!(!log.iter().any(|r| r.event == NewtonEvent::EnterQnerr));
         let mut f = vec![0.0; 2];
         smooth_rhs(&u, &mut f);

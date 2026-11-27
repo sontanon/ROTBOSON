@@ -176,7 +176,14 @@ impl From<Json> for Jv {
 fn indent_of(level: usize) -> &'static str {
     // indent=2: levels are small; static for the common ones, dynamic beyond.
     const SPACES: [&str; 8] = [
-        "", "  ", "    ", "      ", "        ", "          ", "            ", "              ",
+        "",
+        "  ",
+        "    ",
+        "      ",
+        "        ",
+        "          ",
+        "            ",
+        "              ",
     ];
     SPACES.get(level).copied().unwrap_or("                ")
 }
@@ -284,7 +291,11 @@ pub fn python_repr_f64(f: f64) -> String {
     let neg = f.is_sign_negative();
     let a = f.abs();
     if a == 0.0 {
-        return if neg { "-0.0".to_string() } else { "0.0".to_string() };
+        return if neg {
+            "-0.0".to_string()
+        } else {
+            "0.0".to_string()
+        };
     }
 
     // Rust's LowerExp is the shortest correctly-rounding representation
@@ -351,7 +362,10 @@ mod tests {
         assert_eq!(python_repr_f64(15.0), "15.0");
         assert_eq!(python_repr_f64(85.0), "85.0");
         assert_eq!(python_repr_f64(1.0), "1.0");
-        assert_eq!(python_repr_f64(-0.011056135387960665), "-0.011056135387960665");
+        assert_eq!(
+            python_repr_f64(-0.011056135387960665),
+            "-0.011056135387960665"
+        );
         assert_eq!(python_repr_f64(6.5511572566e-05), "6.5511572566e-05");
         assert_eq!(python_repr_f64(1e-05), "1e-05");
         assert_eq!(python_repr_f64(1e-4), "0.0001");
@@ -359,7 +373,10 @@ mod tests {
         assert_eq!(python_repr_f64(1e16), "1e+16");
         assert_eq!(python_repr_f64(1.2345e16), "1.2345e+16");
         assert_eq!(python_repr_f64(1e15), "1000000000000000.0");
-        assert_eq!(python_repr_f64(0.0028385589893570092), "0.0028385589893570092");
+        assert_eq!(
+            python_repr_f64(0.0028385589893570092),
+            "0.0028385589893570092"
+        );
         assert_eq!(python_repr_f64(0.0), "0.0");
         assert_eq!(python_repr_f64(-0.0), "-0.0");
         // round-trip: parse(write(x)) == x
@@ -388,7 +405,10 @@ mod tests {
             ),
             (
                 "nested",
-                Jv::obj(vec![("x", Jv::Bool(true)), ("y", Jv::Str("s\"q\\".to_string()))]),
+                Jv::obj(vec![
+                    ("x", Jv::Bool(true)),
+                    ("y", Jv::Str("s\"q\\".to_string())),
+                ]),
             ),
         ]);
         let expected = concat!(
@@ -419,7 +439,9 @@ mod tests {
     #[test]
     fn parse_preserves_order_and_number_identity() {
         let v = Jv::parse(r#"{"a": 0, "b": 0.0, "c": 1e-05, "d": [1, {}]}"#).unwrap();
-        let Jv::Obj(pairs) = &v else { panic!("not an object") };
+        let Jv::Obj(pairs) = &v else {
+            panic!("not an object")
+        };
         let keys: Vec<&str> = pairs.iter().map(|(k, _)| k.as_str()).collect();
         assert_eq!(keys, ["a", "b", "c", "d"]);
         assert!(matches!(v.get("a"), Some(Jv::Int(0))));

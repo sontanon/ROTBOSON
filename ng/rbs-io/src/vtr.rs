@@ -55,8 +55,10 @@ fn data_array(tag: &str, name: Option<&str>, values: &[f64]) -> String {
             );
         }
         None => {
-            let _ =
-                write!(s, r#"<{tag} type="Float64" NumberOfComponents="1" format="ascii">"#);
+            let _ = write!(
+                s,
+                r#"<{tag} type="Float64" NumberOfComponents="1" format="ascii">"#
+            );
         }
     }
     for v in values {
@@ -148,7 +150,10 @@ fn values_of(xml: &str, tag: &str, name: Option<&str>) -> Vec<f64> {
         None => format!("<{tag} type=\"Float64\" NumberOfComponents=\"1\" format=\"ascii\">"),
     };
     let start = xml.find(&open).expect("element present") + open.len();
-    let end = start + xml[start..].find(&format!("</{tag}>")).expect("close present");
+    let end = start
+        + xml[start..]
+            .find(&format!("</{tag}>"))
+            .expect("close present");
     xml[start..end]
         .split_whitespace()
         .map(|t| t.parse::<f64>().expect("float token"))
@@ -219,10 +224,7 @@ mod tests {
         let psi = values_of(&x, "DataArray", Some("psi"));
         assert_eq!(psi, vec![0.0, 0.2, 0.4, 0.1, 0.3, 0.5]);
         // The inverse mapping restores the original block exactly.
-        assert_eq!(
-            point_order_values(&x, "psi", g.nr, g.nz),
-            fields[0].values
-        );
+        assert_eq!(point_order_values(&x, "psi", g.nr, g.nz), fields[0].values);
         assert_eq!(
             point_order_values(&x, "l_alpha", g.nr, g.nz),
             fields[1].values

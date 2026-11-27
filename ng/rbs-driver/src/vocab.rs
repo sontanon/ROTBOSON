@@ -244,11 +244,18 @@ impl StopReason {
             StopReason::DonePsi0Target | StopReason::DoneOmegaTarget | StopReason::DoneMaxSteps => {
                 "done"
             }
-            StopReason::StoppedNewtonianLimit | StopReason::StoppedBoundary
-            | StopReason::StoppedTurningPoint | StopReason::StoppedDomainBudget => "stopped",
-            StopReason::FailedTimeout | StopReason::FailedNewton | StopReason::FailedSolver
-            | StopReason::FailedConfig | StopReason::FailedIo | StopReason::Signal(_)
-            | StopReason::ExitCode(_) | StopReason::SeedExit(_) => "failed",
+            StopReason::StoppedNewtonianLimit
+            | StopReason::StoppedBoundary
+            | StopReason::StoppedTurningPoint
+            | StopReason::StoppedDomainBudget => "stopped",
+            StopReason::FailedTimeout
+            | StopReason::FailedNewton
+            | StopReason::FailedSolver
+            | StopReason::FailedConfig
+            | StopReason::FailedIo
+            | StopReason::Signal(_)
+            | StopReason::ExitCode(_)
+            | StopReason::SeedExit(_) => "failed",
         }
     }
 }
@@ -390,7 +397,10 @@ mod tests {
     fn vocab_from_name() {
         assert_eq!(Direction::from_name("up"), Some(Direction::Up));
         assert_eq!(Direction::from_name("UP"), None);
-        assert_eq!(StepMode::from_name("regrid-probe"), Some(StepMode::RegridProbe));
+        assert_eq!(
+            StepMode::from_name("regrid-probe"),
+            Some(StepMode::RegridProbe)
+        );
         assert_eq!(Status::from_name("running"), Some(Status::Running));
     }
 }

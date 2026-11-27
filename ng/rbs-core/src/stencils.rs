@@ -276,15 +276,20 @@ mod tests {
             stencil_4th_sc(),
             stencil_4th_ss(),
         ] {
-            let samples: Vec<f64> =
-                (0..st.points.len()).map(|p| 0.1 * f64::from(u32::try_from(p).expect("fits u32"))).collect();
+            let samples: Vec<f64> = (0..st.points.len())
+                .map(|p| 0.1 * f64::from(u32::try_from(p).expect("fits u32")))
+                .collect();
             let center = st
                 .points
                 .iter()
                 .position(|p| p.dr_off == 0 && p.dz_off == 0)
                 .expect("stencil has a center point");
             let value = st.apply_subtype(SUBTYPE_VALUE, &samples);
-            assert!((value - samples[center]).abs() < 1e-15, "stencil {}", st.name);
+            assert!(
+                (value - samples[center]).abs() < 1e-15,
+                "stencil {}",
+                st.name
+            );
         }
     }
 

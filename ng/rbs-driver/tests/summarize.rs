@@ -7,8 +7,11 @@
 use rbs_driver::pyjson::Jv;
 use rbs_driver::spec::{GridSpec, OutputSpec, Spec};
 use rbs_driver::state::{CampaignState, StepRecord};
-use rbs_driver::vocab::{Direction, OutputFormat, Psi0StepMode, SeedPolicy, StepMode, Status};
-use rbs_driver::{summarize, summarize_campaign, CampaignSpec, SeedSpec, SolverSpec, AdaptivitySpec, SummarizeError};
+use rbs_driver::vocab::{Direction, OutputFormat, Psi0StepMode, SeedPolicy, Status, StepMode};
+use rbs_driver::{
+    summarize, summarize_campaign, AdaptivitySpec, CampaignSpec, SeedSpec, SolverSpec,
+    SummarizeError,
+};
 use std::path::PathBuf;
 
 fn approx(a: f64, b: f64, tol: f64) {
@@ -114,7 +117,10 @@ fn summarize_localizes_the_known_minimum() {
     approx(report.psi0_sample_min, 0.46, 1e-12);
     // the campaign bookkeeping keys ride along.
     assert_eq!(summary.status, Status::Stopped);
-    assert_eq!(summary.stop_reason.as_deref(), Some("stopped:turning_point"));
+    assert_eq!(
+        summary.stop_reason.as_deref(),
+        Some("stopped:turning_point")
+    );
     assert_eq!(summary.campaign, dir.to_string_lossy());
 }
 
@@ -126,7 +132,9 @@ fn summary_json_shape_matches_python() {
     let summary = summarize(&spec, &state).unwrap();
     // Key order: the report's fields first, then campaign/status/
     // stop_reason (the Python dict insertion order).
-    let Jv::Obj(pairs) = summary.to_jv() else { panic!("summary is an object") };
+    let Jv::Obj(pairs) = summary.to_jv() else {
+        panic!("summary is an object")
+    };
     let keys: Vec<&str> = pairs.iter().map(|(k, _)| k.as_str()).collect();
     assert_eq!(
         keys,

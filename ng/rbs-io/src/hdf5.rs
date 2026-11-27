@@ -115,7 +115,8 @@ impl Default for GridAttrs {
 
 /// SCALAR FIELD + FIXED VARIABLE root attributes.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ScalarFieldAttrs {    /// `l` — azimuthal number.
+pub struct ScalarFieldAttrs {
+    /// `l` — azimuthal number.
     pub l: i64,
     /// `m` — scalar-field mass.
     pub m: f64,
@@ -338,11 +339,7 @@ impl Hdf5Writer {
 }
 
 impl FieldWriter for Hdf5Writer {
-    fn write_snapshot(
-        &mut self,
-        grid: &GridTopology,
-        fields: &[FieldBlock],
-    ) -> io::Result<()> {
+    fn write_snapshot(&mut self, grid: &GridTopology, fields: &[FieldBlock]) -> io::Result<()> {
         self.write_snapshot_with(grid, fields, &[], &[], &SnapshotAttrs::default())
     }
 }
@@ -374,8 +371,7 @@ impl Hdf5Writer {
             let mut attrs = attrs.clone();
             sync_grid_attrs(&mut attrs, grid);
             validate_blocks(grid, fields, series, int_series)?;
-            write_hdf5(&self.path, grid, fields, series, int_series, &attrs)
-                .map_err(hdf5_to_io)
+            write_hdf5(&self.path, grid, fields, series, int_series, &attrs).map_err(hdf5_to_io)
         }
         #[cfg(not(feature = "hdf5"))]
         {
@@ -450,18 +446,14 @@ fn hdf5_to_io(e: hdf5::Error) -> io::Error {
 /// One root scalar attribute of f64s (mirrors `put_double_attr`).
 #[cfg(feature = "hdf5")]
 fn put_f64(file: &hdf5::File, name: &str, v: f64) -> hdf5::Result<()> {
-    file.new_attr::<f64>()
-        .create(name)?
-        .write_scalar(&v)?;
+    file.new_attr::<f64>().create(name)?.write_scalar(&v)?;
     Ok(())
 }
 
 /// One root scalar attribute of i64s (mirrors `put_llong_attr`).
 #[cfg(feature = "hdf5")]
 fn put_i64(file: &hdf5::File, name: &str, v: i64) -> hdf5::Result<()> {
-    file.new_attr::<i64>()
-        .create(name)?
-        .write_scalar(&v)?;
+    file.new_attr::<i64>().create(name)?.write_scalar(&v)?;
     Ok(())
 }
 
@@ -638,7 +630,11 @@ fn write_hdf5(
     put_f64(&file, "lambda0", s.lambda0)?;
     put_f64(&file, "lambdaMin", s.lambda_min)?;
     put_i64(&file, "useLowRank", s.use_low_rank)?;
-    put_i64(&file, "max_initial_guess_checks", s.max_initial_guess_checks)?;
+    put_i64(
+        &file,
+        "max_initial_guess_checks",
+        s.max_initial_guess_checks,
+    )?;
     put_f64(&file, "norm_f0_target", s.norm_f0_target)?;
 
     // SPHERICAL ANALYSIS GRID (only when the snapshot carries sph_* data).
@@ -745,9 +741,7 @@ mod tests {
 
         // Attributes: names and values round-trip.
         let f = &attrs.field;
-        assert!(
-            (file.attr("m").unwrap().read_scalar::<f64>().unwrap() - 1.0).abs() < 1e-15
-        );
+        assert!((file.attr("m").unwrap().read_scalar::<f64>().unwrap() - 1.0).abs() < 1e-15);
         assert_eq!(
             file.attr("format_version")
                 .unwrap()
@@ -756,10 +750,7 @@ mod tests {
             1
         );
         assert_eq!(file.attr("l").unwrap().read_scalar::<i64>().unwrap(), f.l);
-        assert_eq!(
-            file.attr("w0").unwrap().read_scalar::<f64>().unwrap(),
-            f.w0
-        );
+        assert_eq!(file.attr("w0").unwrap().read_scalar::<f64>().unwrap(), f.w0);
         assert_eq!(
             file.attr("fixedOmega")
                 .unwrap()
@@ -768,10 +759,7 @@ mod tests {
             1
         );
         assert_eq!(
-            file.attr("epsilon")
-                .unwrap()
-                .read_scalar::<f64>()
-                .unwrap(),
+            file.attr("epsilon").unwrap().read_scalar::<f64>().unwrap(),
             attrs.solver.epsilon
         );
         assert_eq!(
@@ -794,10 +782,7 @@ mod tests {
             file.attr("NzTotal").unwrap().read_scalar::<i64>().unwrap(),
             3
         );
-        assert_eq!(
-            file.attr("dim").unwrap().read_scalar::<i64>().unwrap(),
-            12
-        );
+        assert_eq!(file.attr("dim").unwrap().read_scalar::<i64>().unwrap(), 12);
 
         // Optional analysis blocks are absent by default.
         assert!(file.attr("M_KOMAR").is_err());
@@ -839,9 +824,7 @@ mod tests {
             file.attr("NrrTotal").unwrap().read_scalar::<i64>().unwrap(),
             65
         );
-        assert!(
-            (file.attr("rr_inf").unwrap().read_scalar::<f64>().unwrap() - 16.5).abs() < 1e-15
-        );
+        assert!((file.attr("rr_inf").unwrap().read_scalar::<f64>().unwrap() - 16.5).abs() < 1e-15);
         assert!(
             (file.attr("M_KOMAR").unwrap().read_scalar::<f64>().unwrap() - 0.788).abs() < 1e-15
         );

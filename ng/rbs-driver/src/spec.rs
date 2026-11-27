@@ -137,7 +137,10 @@ where
         }
         fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<bool, A::Error> {
             let mut any = false;
-            while map.next_entry::<serde::de::IgnoredAny, serde::de::IgnoredAny>()?.is_some() {
+            while map
+                .next_entry::<serde::de::IgnoredAny, serde::de::IgnoredAny>()?
+                .is_some()
+            {
                 any = true;
             }
             Ok(any)
@@ -514,8 +517,8 @@ impl AdaptivitySpec {
     /// not valid TOML for the table (type errors, unknown keys) or when
     /// validation fails.
     pub fn parse_str(body: &str) -> Result<AdaptivitySpec, SpecError> {
-        let a: AdaptivitySpec = toml::from_str(body)
-            .map_err(|e| SpecError::TomlParse(e.to_string()))?;
+        let a: AdaptivitySpec =
+            toml::from_str(body).map_err(|e| SpecError::TomlParse(e.to_string()))?;
         a.validate()?;
         Ok(a)
     }
@@ -823,10 +826,7 @@ fn check_known(doc: &toml::Table) -> Result<(), SpecError> {
                 .collect();
             extra.sort();
             if !extra.is_empty() {
-                return Err(SpecError::UnknownKeys {
-                    table,
-                    keys: extra,
-                });
+                return Err(SpecError::UnknownKeys { table, keys: extra });
             }
         }
     }
@@ -1050,7 +1050,10 @@ mod tests {
             ("x = 1\nmax_retries = 2\n# c\ny = 2\n", "x = 1\n\ny = 2\n"),
             ("\nmax_steps = 5\n", "\n"),
             ("a=1\n\n\n  # tail comment\nb=2\n", "a=1\n\nb=2\n"),
-            ("[campaign]\nmax_steps = 300\nl = 1\n", "[campaign]\n\nl = 1\n"),
+            (
+                "[campaign]\nmax_steps = 300\nl = 1\n",
+                "[campaign]\n\nl = 1\n",
+            ),
             ("max_steps=1\nmax_steps=2\n", "\n\n"),
         ];
         for (input, expected) in cases {
@@ -1242,7 +1245,10 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains(r#"direction must be "up" or "down""#));
-        let bad = GOOD.replace("psi0_step = 0.03", "psi0_step = 0.03\npsi0_step_mode = \"geometric\"");
+        let bad = GOOD.replace(
+            "psi0_step = 0.03",
+            "psi0_step = 0.03\npsi0_step_mode = \"geometric\"",
+        );
         let path = write_spec(&dir, "v2.toml", &bad);
         assert!(load_spec(&path, &dir)
             .unwrap_err()
@@ -1337,14 +1343,14 @@ mod tests {
         // solution with a real solution directory (relative source).
         let sol_name = "l=1,w=9.50000E-01,dr=1.25000E-01,N=0128";
         std::fs::create_dir_all(dir.join(sol_name)).unwrap();
-        let sol = sol.replace(
-            "[grid]",
-            &format!("source = \"{sol_name}\"\n\n[grid]"),
-        );
+        let sol = sol.replace("[grid]", &format!("source = \"{sol_name}\"\n\n[grid]"));
         let path = write_spec(&dir, "w3.toml", &sol);
         let spec = load_spec(&path, &dir).unwrap();
         // resolved to an absolute, lexically-cleaned path.
-        assert_eq!(spec.seed.source.as_deref(), Some(dir.join(sol_name).to_str().unwrap()));
+        assert_eq!(
+            spec.seed.source.as_deref(),
+            Some(dir.join(sol_name).to_str().unwrap())
+        );
         // a name that is not a solution directory (the relative source is
         // resolved first, so the error carries the resolved path — as the
         // Python does).

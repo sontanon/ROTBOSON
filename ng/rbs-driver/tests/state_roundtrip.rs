@@ -35,7 +35,9 @@ fn raw_steps(raw: &Jv) -> &Vec<Jv> {
 }
 
 fn raw_probes(raw: &Jv) -> &Vec<Jv> {
-    get(raw, "rejected_regrids").as_arr().expect("probes is a list")
+    get(raw, "rejected_regrids")
+        .as_arr()
+        .expect("probes is a list")
 }
 
 fn raw_fold(raw: &Jv) -> &Vec<Jv> {
@@ -135,8 +137,14 @@ mod test_current_writer_byte_round_trip {
                 })
                 .collect()
         };
-        assert_eq!(probes[0].scalars.as_ref().unwrap(), &fixture_scalars(&raw_probes(&raw)[0]));
-        let fold = state.fold_fine_grid_measurement.as_ref().expect("fold present");
+        assert_eq!(
+            probes[0].scalars.as_ref().unwrap(),
+            &fixture_scalars(&raw_probes(&raw)[0])
+        );
+        let fold = state
+            .fold_fine_grid_measurement
+            .as_ref()
+            .expect("fold present");
         assert_eq!(
             fold.iter().map(|m| m.sol_dir.as_str()).collect::<Vec<_>>(),
             raw_fold(&raw)
@@ -252,7 +260,10 @@ mod test_synthetic_records {
         };
         // a StepRecord dict parsed as a CampaignState has no steps key →
         // the lenient loader yields an empty campaign (Python parity).
-        assert_eq!(CampaignState::from_jv(&rec.to_jv()).unwrap().steps, Vec::new());
+        assert_eq!(
+            CampaignState::from_jv(&rec.to_jv()).unwrap().steps,
+            Vec::new()
+        );
         let parsed = StepRecord::from_jv(&rec.to_jv()).unwrap();
         assert_eq!(parsed, rec);
     }
@@ -322,7 +333,10 @@ mod test_synthetic_records {
         // a missing key takes the default instead.
         let bad = Jv::obj(vec![("dr", Jv::Null), ("N", Jv::Int(1))]);
         let err = rbs_driver::state::GridPosition::from_jv(&bad).unwrap_err();
-        assert_eq!(err.to_string(), "state.json: expected a number, got NoneType");
+        assert_eq!(
+            err.to_string(),
+            "state.json: expected a number, got NoneType"
+        );
 
         let bad = Jv::obj(vec![("N", Jv::Str("128".to_string()))]);
         let err = rbs_driver::state::GridPosition::from_jv(&bad).unwrap_err();
@@ -457,7 +471,10 @@ mod rust_additions {
         let spec = spec_with_root(&dir, "hash-1");
         std::fs::write(dir.join("state.json"), "[1, 2, 3]").unwrap();
         let err = load_state(&spec).unwrap_err();
-        assert!(err.to_string().contains("top level is not a JSON object"), "{err}");
+        assert!(
+            err.to_string().contains("top level is not a JSON object"),
+            "{err}"
+        );
         std::fs::write(dir.join("state.json"), "{not json").unwrap();
         let err = load_state(&spec).unwrap_err();
         assert!(err.to_string().contains("is corrupt"), "{err}");
@@ -471,7 +488,10 @@ mod rust_additions {
         assert_eq!(state.spec_hash, "hash-1");
         let grid = state.grid.unwrap();
         assert_eq!((grid.dr, grid.n), (spec.grid.dr, spec.grid.n));
-        assert_eq!(state.refinements_left, Some(spec.adaptivity.max_refinements));
+        assert_eq!(
+            state.refinements_left,
+            Some(spec.adaptivity.max_refinements)
+        );
         assert_eq!(state.widenings_left, Some(spec.adaptivity.max_widenings));
         assert_eq!(state.status, Status::Running);
 

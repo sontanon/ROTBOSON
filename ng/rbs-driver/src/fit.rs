@@ -27,9 +27,7 @@ impl PolyFit {
     pub fn eval(&self, x: f64) -> f64 {
         let t = (x - self.mid) / self.half;
         // Horner over descending coefficients.
-        self.coeffs
-            .iter()
-            .fold(0.0, |acc, c| acc * t + c)
+        self.coeffs.iter().fold(0.0, |acc, c| acc * t + c)
     }
 }
 
@@ -150,7 +148,10 @@ mod tests {
     #[test]
     fn quartic_fit_recovers_exact_quadratic() {
         let xs: Vec<f64> = (0..7).map(|i| 0.40 + 0.02 * f64::from(i)).collect();
-        let ys: Vec<f64> = xs.iter().map(|&x| 0.65 + 50.0 * (x - 0.46).powi(2)).collect();
+        let ys: Vec<f64> = xs
+            .iter()
+            .map(|&x| 0.65 + 50.0 * (x - 0.46).powi(2))
+            .collect();
         let fit = polyfit(&xs, &ys, 4).expect("fit converges");
         for (&x, &y) in xs.iter().zip(&ys) {
             approx(fit.eval(x), y, 1e-9);

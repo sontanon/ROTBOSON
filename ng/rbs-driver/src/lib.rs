@@ -51,13 +51,13 @@ pub mod vocab;
 pub use decide::{
     boundary_failure_stop, coarsening_acceptable, decide_action, decide_coarsening,
     detect_turning_point, finished, ghost_of, near_newtonian_limit, newtonian_limit_stop,
-    next_target, round15, status_for_stop, step_retryable, turning_point_estimate,
-    would_amputate, Action, CoarseningDecision, StepDiagnostics, TurningPointReport,
+    next_target, round15, status_for_stop, step_retryable, turning_point_estimate, would_amputate,
+    Action, CoarseningDecision, StepDiagnostics, TurningPointReport,
 };
 pub use error::{DriverError, SpecError, StateError, SummarizeError};
 pub use spec::{
-    load_spec, spec_hash, AdaptivitySpec, CampaignSpec, GridSpec, OutputSpec, SeedSpec,
-    SolverSpec, Spec,
+    load_spec, spec_hash, AdaptivitySpec, CampaignSpec, GridSpec, OutputSpec, SeedSpec, SolverSpec,
+    Spec,
 };
 pub use state::{
     current_grid, fresh_state, load_state, omega_of_last, psi0_of_last, save_state, state_path,

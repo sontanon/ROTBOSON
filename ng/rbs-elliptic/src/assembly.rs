@@ -184,7 +184,13 @@ impl Workspace {
         // (the REGULARIZATION_AUXILIARIES block of src/rhs.c).  The
         // rescale loop covers the ghost rows too (negative r there);
         // those values are never read, exactly like the C.
-        diff1r(grid, &mut self.scratch, fields.field(0), Parity::Even, order + 2);
+        diff1r(
+            grid,
+            &mut self.scratch,
+            fields.field(0),
+            Parity::Even,
+            order + 2,
+        );
         for i in 0..grid.nr_total() {
             let r = grid.r(i);
             for j in 0..grid.nz_total() {
@@ -193,7 +199,13 @@ impl Workspace {
                 self.u_aux[idx] = self.scratch[idx] * fields.at(0, idx).exp() / r;
             }
         }
-        diff1r(grid, &mut self.scratch, fields.field(2), Parity::Even, order + 2);
+        diff1r(
+            grid,
+            &mut self.scratch,
+            fields.field(2),
+            Parity::Even,
+            order + 2,
+        );
         for i in 0..grid.nr_total() {
             let r = grid.r(i);
             for j in 0..grid.nz_total() {
@@ -422,7 +434,10 @@ pub fn nnz_per_field_4th(nr_interior: usize, nz_interior: usize) -> [usize; GNUM
 /// (`nnz_jacobian` of `src/csr.c`, order-4 branch).
 #[must_use]
 pub fn nnz_jacobian_4th(nr_interior: usize, nz_interior: usize) -> usize {
-    nnz_per_field_4th(nr_interior, nz_interior).iter().sum::<usize>() + 1
+    nnz_per_field_4th(nr_interior, nz_interior)
+        .iter()
+        .sum::<usize>()
+        + 1
 }
 
 /// Structural nonzeros of the subtype Jacobian rows, extracted from the
@@ -432,12 +447,36 @@ pub fn nnz_jacobian_4th(nr_interior: usize, nz_interior: usize) -> usize {
 /// `dF_row/dsubtype_k` of field `g`; the last flag is the omega column
 /// `dw/dxi * dF/dw`.
 const JAC_NZ: [[bool; JAC_COLS]; GNUM] = [
-    [true, true, true, true, true, true, true, true, false, false, true, true, true, false, false, true, false, false, false, false, true, false, false, false, false, false, false, false, false, false, true], // residual 0
-    [false, true, true, false, false, true, true, true, true, true, true, true, true, false, false, true, false, false, false, false, true, false, false, false, false, false, false, false, false, false, true], // residual 1
-    [true, true, true, false, false, false, true, true, false, false, true, true, true, true, true, true, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false], // residual 2
-    [true, true, true, false, false, true, true, true, false, false, true, true, true, false, false, true, false, false, true, true, true, true, true, false, false, false, false, false, false, false, true], // residual 3
-    [true, true, true, false, false, true, false, false, false, false, true, true, true, false, false, true, false, false, false, false, true, true, true, true, true, true, false, false, false, false, true], // residual 4
-    [true, true, true, true, false, false, true, true, false, false, true, true, true, true, false, false, false, false, false, false, true, true, false, false, false, true, true, true, true, true, false], // residual 5
+    [
+        true, true, true, true, true, true, true, true, false, false, true, true, true, false,
+        false, true, false, false, false, false, true, false, false, false, false, false, false,
+        false, false, false, true,
+    ], // residual 0
+    [
+        false, true, true, false, false, true, true, true, true, true, true, true, true, false,
+        false, true, false, false, false, false, true, false, false, false, false, false, false,
+        false, false, false, true,
+    ], // residual 1
+    [
+        true, true, true, false, false, false, true, true, false, false, true, true, true, true,
+        true, true, false, false, false, false, true, false, false, false, false, false, false,
+        false, false, false, false,
+    ], // residual 2
+    [
+        true, true, true, false, false, true, true, true, false, false, true, true, true, false,
+        false, true, false, false, true, true, true, true, true, false, false, false, false, false,
+        false, false, true,
+    ], // residual 3
+    [
+        true, true, true, false, false, true, false, false, false, false, true, true, true, false,
+        false, true, false, false, false, false, true, true, true, true, true, true, false, false,
+        false, false, true,
+    ], // residual 4
+    [
+        true, true, true, true, false, false, true, true, false, false, true, true, true, true,
+        false, false, false, false, false, false, true, true, false, false, false, true, true,
+        true, true, true, false,
+    ], // residual 5
 ];
 
 /// One emitted Jacobian entry of an interior-family row: the source
@@ -735,10 +774,7 @@ fn row_columns(
             let mut cols: Vec<usize> = emits
                 .get(kernel, gnum)
                 .iter()
-                .map(|e| {
-                    e.g * dim
-                        + grid.idx(ias(e.dr_off, i), ias(e.dz_off, j))
-                })
+                .map(|e| e.g * dim + grid.idx(ias(e.dr_off, i), ias(e.dz_off, j)))
                 .collect();
             if JAC_NZ[gnum][JAC_COLS - 1] {
                 cols.push(w_idx);
@@ -927,9 +963,7 @@ fn classify(grid: &Grid2d, gnum: usize, i: usize, j: usize) -> RowKind {
             one_sided: true,
         }
     } else if i == nr - 1 && j == nz - 1 {
-        RowKind::CornerBoundary {
-            n: robin_n(gnum),
-        }
+        RowKind::CornerBoundary { n: robin_n(gnum) }
     } else {
         unreachable!("row classification exhausted at ({i}, {j})")
     }
@@ -1019,17 +1053,46 @@ pub fn assemble_jacobian_values(
             }
             RowKind::ZBoundary { n, one_sided } => {
                 boundary_vals(
-                    grid, fields, params, gnum, i, j, BoundaryAxis::Z, one_sided, n, vals, &mut cursor,
+                    grid,
+                    fields,
+                    params,
+                    gnum,
+                    i,
+                    j,
+                    BoundaryAxis::Z,
+                    one_sided,
+                    n,
+                    vals,
+                    &mut cursor,
                 );
             }
             RowKind::RBoundary { n, one_sided } => {
                 boundary_vals(
-                    grid, fields, params, gnum, i, j, BoundaryAxis::R, one_sided, n, vals, &mut cursor,
+                    grid,
+                    fields,
+                    params,
+                    gnum,
+                    i,
+                    j,
+                    BoundaryAxis::R,
+                    one_sided,
+                    n,
+                    vals,
+                    &mut cursor,
                 );
             }
             RowKind::CornerBoundary { n } => {
                 boundary_vals(
-                    grid, fields, params, gnum, i, j, BoundaryAxis::Corner, false, n, vals,
+                    grid,
+                    fields,
+                    params,
+                    gnum,
+                    i,
+                    j,
+                    BoundaryAxis::Corner,
+                    false,
+                    n,
+                    vals,
                     &mut cursor,
                 );
             }
@@ -1084,13 +1147,7 @@ pub fn assemble_jacobian(
 // Fourth-order Fornberg weights of the boundary rows (`csr_robin.c`):
 // centered D1 (offsets -2..2), one-sided S1 (offsets -4..0) and
 // semi-onesided SO1 (offsets -3..1).
-const D1_4: [f64; 5] = [
-    1.0 / 12.0,
-    -2.0 / 3.0,
-    0.0,
-    2.0 / 3.0,
-    -1.0 / 12.0,
-];
+const D1_4: [f64; 5] = [1.0 / 12.0, -2.0 / 3.0, 0.0, 2.0 / 3.0, -1.0 / 12.0];
 const S1_4: [f64; 5] = [0.25, -4.0 / 3.0, 3.0, -4.0, 25.0 / 12.0];
 const SO1_4: [f64; 5] = [-1.0 / 12.0, 0.5, -1.5, 5.0 / 6.0, 0.25];
 
@@ -1155,12 +1212,16 @@ fn boundary_vals(
 
     // Directional derivative samples of psi (decay rows only).
     let dr_psi = if is_decay(gnum) {
-        (0..5).map(|k| rw[k] * psi_at(roff + i32::try_from(k).expect("k fits i32"), 0)).sum::<f64>()
+        (0..5)
+            .map(|k| rw[k] * psi_at(roff + i32::try_from(k).expect("k fits i32"), 0))
+            .sum::<f64>()
     } else {
         0.0
     };
     let dz_psi = if is_decay(gnum) {
-        (0..5).map(|k| zw[k] * psi_at(0, zoff + i32::try_from(k).expect("k fits i32"))).sum::<f64>()
+        (0..5)
+            .map(|k| zw[k] * psi_at(0, zoff + i32::try_from(k).expect("k fits i32")))
+            .sum::<f64>()
     } else {
         0.0
     };
@@ -1351,25 +1412,19 @@ mod tests {
                         let z = grid.z(j);
                         let idx = grid.idx(i, j);
                         let v = amp * (wr * r).cos() * (wr * z).cos();
-                        state
-                            .fields
-                            .set(k, idx, state.fields.at(k, idx) + v);
+                        state.fields.set(k, idx, state.fields.at(k, idx) + v);
                     }
                 }
                 for i in 0..g {
                     for j in 0..nz {
                         let m = grid.idx(2 * g - 1 - i, j);
-                        state
-                            .fields
-                            .set(k, grid.idx(i, j), state.fields.at(k, m));
+                        state.fields.set(k, grid.idx(i, j), state.fields.at(k, m));
                     }
                 }
                 for i in 0..nr {
                     for j in 0..g {
                         let m = grid.idx(i, 2 * g - 1 - j);
-                        state
-                            .fields
-                            .set(k, grid.idx(i, j), state.fields.at(k, m));
+                        state.fields.set(k, grid.idx(i, j), state.fields.at(k, m));
                     }
                 }
             }
@@ -1405,8 +1460,7 @@ mod tests {
                 let r = grid.r(i);
                 for j in g..nz {
                     let z = grid.z(j);
-                    e[k * dim + grid.idx(i, j)] =
-                        amp * (wr * r).cos() * (wz * z).cos();
+                    e[k * dim + grid.idx(i, j)] = amp * (wr * r).cos() * (wz * z).cos();
                 }
             }
             // Mirror into ghosts: axis, equator (corner follows).
@@ -1494,4 +1548,3 @@ mod tests {
         let _ = &mut f0;
     }
 }
-
