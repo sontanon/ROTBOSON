@@ -57,6 +57,7 @@ cargo build --workspace
 cargo test --workspace                    # fast tests
 cargo test --workspace --release -- --include-ignored   # also the slow parity tests (minutes)
 cargo clippy --workspace --all-targets -- -D warnings
+cargo fmt --all
 ```
 
 HDF5 support is behind a feature flag and needs the system library `libhdf5-dev`:
@@ -73,7 +74,7 @@ The C solver (only if an issue asks): see `README.md`. It needs Intel oneAPI MKL
 
 This code should be good, idiomatic Rust that people can learn from.
 
-- **Do not run `cargo fmt` yet.** The workspace is not rustfmt-formatted, so `cargo fmt` would rewrite hundreds of unrelated lines and break the generated-code check. Match the style of the code around you. (When the formatting issue in milestone A0 is done, this rule changes to "run `cargo fmt --all` before committing".)
+- Run `cargo fmt --all` (from `ng/`) before committing. CI checks formatting.
 - Clippy must pass with `-D warnings`.
 - Every public item gets a doc comment (`///`) that says what it is in plain words.
 - Library code returns `Result` for anything that can fail. Do not use `unwrap()` or `expect()` in library code. Tests may use them.
