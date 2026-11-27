@@ -35,6 +35,8 @@ Total Test time (real) =   1.47 sec
 [smoke] DONE
 ```
 
+Note: the solver ran and exited 0. The "solution directory" line above is wrong: `tools/smoke.py` prints the last solution directory in `out/` sorted by name, here an old N=384 run from 2026-09-14, so `error_code = N/A` belongs to that old run. This run wrote `out/l=1,w=9.50000E-01,dr=2.50000E-01,N=0064/`. The helper bug is tracked separately.
+
 ## Rust HDF5 tests
 ```
 test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
