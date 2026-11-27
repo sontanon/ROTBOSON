@@ -389,6 +389,7 @@ impl Hdf5Writer {
     }
 }
 
+#[cfg(feature = "hdf5")]
 /// Fill the topology-derived GRID attributes from the grid being written
 /// (the C writer emits `ctx->NrTotal` for exactly these datasets).
 fn sync_grid_attrs(attrs: &mut SnapshotAttrs, grid: &GridTopology) {
@@ -400,6 +401,7 @@ fn sync_grid_attrs(attrs: &mut SnapshotAttrs, grid: &GridTopology) {
 }
 
 /// Reject blocks that cannot be written as described.
+#[cfg(feature = "hdf5")]
 fn validate_blocks(
     grid: &GridTopology,
     fields: &[FieldBlock],
@@ -481,8 +483,7 @@ fn put_str(file: &hdf5::File, name: &str, v: &str) -> hdf5::Result<()> {
 pub fn iso8601_utc_now() -> String {
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
+        .map_or(0, |d| d.as_secs() as i64);
     let days = secs.div_euclid(86_400);
     let sod = secs.rem_euclid(86_400);
     let (y, m, d) = civil_from_days(days);

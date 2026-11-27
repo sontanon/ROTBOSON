@@ -915,7 +915,9 @@ mod tests {
     /// 2), the one-sided boundary rules up to quartics).
     #[test]
     fn mixed_derivative_is_exact_on_polynomial_states() {
-        let cases: [(fn(f64, f64) -> f64, fn(f64, f64) -> f64, Parity, Parity, u32); 8] = [
+        // (state, D_rz state, sym_r, sym_z, order)
+        type Case = (fn(f64, f64) -> f64, fn(f64, f64) -> f64, Parity, Parity, u32);
+        let cases: [Case; 8] = [
             // (state, D_rz state, sym_r, sym_z, order)
             (
                 |r, z| 2.0 + r * r + 2.0 * z * z + 0.5 * r * r * z * z,

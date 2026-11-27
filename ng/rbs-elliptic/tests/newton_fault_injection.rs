@@ -84,6 +84,8 @@ impl<S: LinearSolver> LinearSolver for RowScaledSolver<S> {
         self.inner.factor(&faulted)
     }
 
+    // rhs_scale is either exactly 1.0 (no fault) or a set fault factor.
+    #[allow(clippy::float_cmp)]
     fn solve_into(&mut self, b: &[f64], x: &mut [f64]) -> Result<(), SolveError> {
         if self.rhs_scale == 1.0 {
             return self.inner.solve_into(b, x);

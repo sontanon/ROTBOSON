@@ -10,7 +10,7 @@
 //! Data ordering: VTK point arrays vary **x fastest** (r here), while the
 //! solver's field blocks are row-major over `IDX(i, j) = i * nz + j`
 //! (z fastest) — the exact layout the C oracle's `.asc`/HDF5 output uses.
-//! [`snapshot_xml`] transposes each block on emit, so a ParaView render
+//! [`snapshot_xml`] transposes each block on emit, so a `ParaView` render
 //! of the VTR and a matplotlib render of the HDF5 show the same field.
 
 use std::fmt::Write as _;

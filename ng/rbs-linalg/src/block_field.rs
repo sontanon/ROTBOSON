@@ -122,6 +122,10 @@ pub struct KrylovStats {
 }
 
 /// One factored field block.
+///
+/// The LU variant is much larger than the LDLT one, but there are only
+/// six blocks per solve, so boxing it would buy nothing.
+#[allow(clippy::large_enum_variant)]
 enum BlockFactor {
     /// Sparse LU (faer, COLAMD ordering, AUTO supernodal threshold) —
     /// the live path on real (nonsymmetric) Jacobians.
@@ -173,10 +177,10 @@ impl BlockFactor {
                 par,
                 ..
             } => {
-                let mut stack = MemStack::new(&mut **scratch);
+                let stack = MemStack::new(scratch);
                 let lu = LuRef::new_unchecked(symbolic, numeric);
                 let mat = MatMut::<f64>::from_column_major_slice_mut(rhs, n, 1);
-                lu.solve_in_place_with_conj(Conj::No, mat, *par, &mut stack);
+                lu.solve_in_place_with_conj(Conj::No, mat, *par, stack);
             }
             Self::Ldlt {
                 symbolic,
@@ -185,10 +189,10 @@ impl BlockFactor {
                 par,
                 ..
             } => {
-                let mut stack = MemStack::new(&mut **scratch);
+                let stack = MemStack::new(scratch);
                 let ldlt = SimplicialLdltRef::new(symbolic, values);
                 let mat = MatMut::<f64>::from_column_major_slice_mut(rhs, n, 1);
-                ldlt.solve_in_place_with_conj(Conj::No, mat, *par, &mut stack);
+                ldlt.solve_in_place_with_conj(Conj::No, mat, *par, stack);
             }
         }
     }
@@ -361,12 +365,13 @@ struct Factored {
     dim: usize,
     /// The full-system operator kept for the Krylov matvec.
     operator: CsrMatrix,
-    /// Krylov arenas: `V` (restart_length + 1 vectors) then `Z`
-    /// (restart_length), each of length nrows.
+    /// Krylov arenas: `V` (`restart_length` + 1 vectors) then `Z`
+    /// (`restart_length`), each of length nrows.
     arena: Vec<f64>,
 }
 
 /// Which matrix the Krylov loop iterates on.
+#[derive(Clone, Copy)]
 enum Operator<'a> {
     /// The matrix kept from [`LinearSolver::factor`] (the
     /// `solve_into` flow: fresh blocks).
@@ -481,21 +486,20 @@ impl BlockFieldKrylov {
         let mat = SparseColMatRef::<usize, f64>::new(sym_mat, &csc.vals);
 
         if csc.is_symmetric(self.config.symmetric_tol) {
-            match self.factor_block_ldlt(sym_mat, mat, csc, par) {
+            match Self::factor_block_ldlt(sym_mat, mat, csc, par) {
                 Ok(block) => Ok(block),
                 // Indefinite symmetric blocks still deserve a working
                 // preconditioner: fall back to LU.
-                Err(_) => self.factor_block_lu(sym_mat, mat, csc, par),
+                Err(_) => Self::factor_block_lu(sym_mat, mat, csc, par),
             }
         } else {
-            self.factor_block_lu(sym_mat, mat, csc, par)
+            Self::factor_block_lu(sym_mat, mat, csc, par)
         }
     }
 
     /// The LDLT path for symmetric blocks (faer simplicial, natural
     /// order — the input is read from its upper triangle).
     fn factor_block_ldlt(
-        &self,
         sym_mat: SymbolicSparseColMatRef<'_, usize>,
         mat: SparseColMatRef<'_, usize, f64>,
         csc: &BlockCsc,
@@ -508,33 +512,33 @@ impl BlockFieldKrylov {
         ]);
         let mut mem =
             MemBuffer::try_new(sym_req).map_err(|_| SolveError::InvalidMatrix("LDLT scratch"))?;
-        let mut stack = MemStack::new(&mut mem);
+        let stack = MemStack::new(&mut mem);
         let mut etree = vec![0isize; dim];
         let mut col_counts = vec![0usize; dim];
         let etree = simplicial::prefactorize_symbolic_cholesky(
             &mut etree,
             &mut col_counts,
             sym_mat,
-            &mut stack,
+            stack,
         );
         let symbolic = simplicial::factorize_simplicial_symbolic_cholesky(
             sym_mat,
             etree,
             &col_counts,
-            &mut stack,
+            stack,
         )
         .map_err(|_| SolveError::InvalidMatrix("LDLT symbolic"))?;
         let num_req = simplicial::factorize_simplicial_numeric_ldlt_scratch::<usize, f64>(dim);
         let mut mem =
             MemBuffer::try_new(num_req).map_err(|_| SolveError::InvalidMatrix("LDLT numeric"))?;
-        let mut stack = MemStack::new(&mut mem);
+        let stack = MemStack::new(&mut mem);
         let mut values = vec![0.0; symbolic.len_val()];
         simplicial::factorize_simplicial_numeric_ldlt(
             &mut values,
             mat,
             faer::linalg::cholesky::ldlt::factor::LdltRegularization::default(),
             &symbolic,
-            &mut stack,
+            stack,
         )
         .map_err(|_| SolveError::Singular)?;
         let scratch = MemBuffer::new(symbolic.solve_in_place_scratch::<f64>(1));
@@ -549,7 +553,6 @@ impl BlockFieldKrylov {
 
     /// The LU path (the live branch on real Jacobians).
     fn factor_block_lu(
-        &self,
         sym_mat: SymbolicSparseColMatRef<'_, usize>,
         mat: SparseColMatRef<'_, usize, f64>,
         csc: &BlockCsc,
@@ -557,17 +560,17 @@ impl BlockFieldKrylov {
     ) -> Result<BlockFactor, SolveError> {
         let symbolic = lu::factorize_symbolic_lu(sym_mat, lu::LuSymbolicParams::default())
             .map_err(|_| SolveError::InvalidMatrix("LU symbolic"))?;
-        let req = symbolic.factorize_numeric_lu_scratch::<f64>(par, Default::default());
+        let req = symbolic.factorize_numeric_lu_scratch::<f64>(par, faer::Spec::default());
         let mut mem =
             MemBuffer::try_new(req).map_err(|_| SolveError::InvalidMatrix("LU numeric"))?;
-        let mut stack = MemStack::new(&mut mem);
+        let stack = MemStack::new(&mut mem);
         let mut numeric = NumericLu::<usize, f64>::new();
         match symbolic.factorize_numeric_lu::<f64>(
             &mut numeric,
             mat,
             par,
-            &mut stack,
-            Default::default(),
+            stack,
+            faer::Spec::default(),
         ) {
             Ok(_) => {
                 let scratch = MemBuffer::new(symbolic.solve_in_place_scratch::<f64>(1, par));
@@ -628,7 +631,7 @@ fn fgmres(
 
     // Trivial solve: zero right-hand side.
     if bnorm == 0.0 {
-        x.iter_mut().for_each(|v| *v = 0.0);
+        x.fill(0.0);
         return Ok((
             KrylovStats {
                 iterations: 0,
@@ -652,7 +655,7 @@ fn fgmres(
     let mut cs = vec![0.0; m];
     let mut sn = vec![0.0; m];
 
-    x.iter_mut().for_each(|v| *v = 0.0);
+    x.fill(0.0);
     r.copy_from_slice(b);
     let mut total_iters = 0usize;
     let mut cycles_used = 0usize;
@@ -801,6 +804,7 @@ impl core::fmt::Debug for BlockFieldKrylov {
         f.debug_struct("BlockFieldKrylov")
             .field("config", &self.config)
             .field("factored", &self.factored.as_ref().map(|f| f.blocks.len()))
+            .field("stats", &self.stats)
             .finish()
     }
 }

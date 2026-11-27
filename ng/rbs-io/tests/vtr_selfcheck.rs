@@ -1,10 +1,10 @@
 //! VTR structural + value self-check on the real N=64 smoke snapshot.
 //!
-//! No ParaView in this container: the gate is (a) the rectilinear-grid
+//! No `ParaView` in this container: the gate is (a) the rectilinear-grid
 //! schema — declaration, extents matching the grid, one `Piece`,
 //! `PointData` arrays in VTK x-fastest order, coordinate axes, balanced
 //! tags — and (b) an exact read-back of every value against the slice
-//! parity fixture. The host-side ParaView eyeball check (six panels,
+//! parity fixture. The host-side `ParaView` eyeball check (six panels,
 //! no transposition) is recorded in `ng/rbs-io/README.md`.
 
 mod common;

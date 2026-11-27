@@ -229,7 +229,7 @@ fn n64_l1_smoke_matches_the_c_oracle() {
     // The oracle's k = 0 row: lambda' = 0.128601 (the mu-prime
     // regularization capping the REJECT B growth).
     assert!(
-        (log[0].lambda_prime - 0.128601).abs() < 1e-3 * 0.128601,
+        (log[0].lambda_prime - 0.128_601).abs() < 1e-3 * 0.128_601,
         "k=0 lambda' {} vs oracle 0.128601",
         log[0].lambda_prime
     );

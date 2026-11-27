@@ -13,7 +13,7 @@
 //! | `src/vector_algebra.c` | [`norm2_all_variables`], [`dot_all_variables`], [`norm2_interior_all_variables`] |
 //! | `src/main.c` `run_newton` | the [`NewtonKind`] dispatch in [`solve`] (the C's `solverType` switch) |
 //!
-//! # The damping semantics (nleq_err.c)
+//! # The damping semantics (`nleq_err.c`)
 //!
 //! NLEQ-ERR is Deuflhard's affine-invariant damped Newton. Each outer
 //! step solves `J(u^k) du^k = -f(u^k)`, then tries the damped iterate
@@ -53,7 +53,7 @@
 //! round — the restart path the C oracle exercises on the seed spec at
 //! `epsilon = 1e-12`.
 //!
-//! # The residual pair (nleq_res.c / qnres.c)
+//! # The residual pair (`nleq_res.c` / qnres.c)
 //!
 //! NLEQ-RES monitors the trial by the residual ratio `Theta_k =
 //! ||f(u^{k+1})|| / ||f(u^k)||` instead of a second solve, rejects on
@@ -374,17 +374,15 @@ impl NewtonEvent {
     #[must_use]
     pub fn status_str(self) -> &'static str {
         match self {
-            Self::Accept => "ACCEPT",
+            Self::Accept | Self::QnerrAccept | Self::QnresAccept => "ACCEPT",
             Self::RejectA => "REJECT A",
             Self::RejectB => "REJECT B",
             Self::EnterQnerr => "ENTER QNERR",
-            Self::QnerrAccept => "ACCEPT",
             Self::ExitQnerr => "EXIT QNERR",
             Self::ConvergedA => "CONVERGED A",
             Self::ConvergedB => "CONVERGED B",
             Self::ConvergedC => "CONVERGED C",
             Self::EnterQnres => "ENTER QNRES",
-            Self::QnresAccept => "ACCEPT",
             Self::ExitQnres => "EXIT QNRES",
             Self::RegularityFailure => "ERROR -1",
         }
@@ -477,6 +475,21 @@ impl Default for NewtonConfig {
 // nleq_err.c constants.
 /// `LOCAL_LAMBDA`: the full-step damping factor.
 const LOCAL_LAMBDA: f64 = 1.0;
+/// The two stages of a damped Newton step: the C's `REGULARITY_TEST` /
+/// `TRIAL_ITERATE` goto pair, written as a loop over this state.
+#[derive(Clone, Copy, PartialEq)]
+enum Stage {
+    RegularityTest,
+    TrialIterate,
+}
+
+/// How a trial iterate ended: accepted, or restart at the given iteration.
+#[derive(Clone, Copy)]
+enum TrialOutcome {
+    Accept,
+    Restart(usize),
+}
+
 /// `THETA_MAX` of `nleq_err.c`: the contraction ceiling of the reject
 /// rule.
 const THETA_MAX: f64 = 1.0;
@@ -658,16 +671,6 @@ pub fn nleq_err<S: NewtonSystem>(
 
         // The trial-iterate machinery: the C's REGULARITY_TEST /
         // TRIAL_ITERATE goto pair as a stage loop.
-        #[derive(Clone, Copy, PartialEq)]
-        enum Stage {
-            RegularityTest,
-            TrialIterate,
-        }
-        #[derive(Clone, Copy)]
-        enum TrialOutcome {
-            Accept,
-            Restart(usize),
-        }
         let mut stage = Stage::RegularityTest;
         let outcome = loop {
             match stage {
@@ -734,8 +737,13 @@ pub fn nleq_err<S: NewtonSystem>(
                         // A proper lambda was found: reset the A budget.
                         l_a = 0;
 
-                        // Local region: lambda' = lambda = 1.
-                        if lambda_prime == h.lambda[k] && h.lambda[k] == LOCAL_LAMBDA {
+                        // Local region: lambda' = lambda = 1. Exact float
+                        // comparison on purpose: in the local region both
+                        // are set to exactly 1.0, as in the C.
+                        #[allow(clippy::float_cmp)]
+                        let in_local_region =
+                            lambda_prime == h.lambda[k] && h.lambda[k] == LOCAL_LAMBDA;
+                        if in_local_region {
                             // Convergence test B on the trial's second
                             // solve.
                             if h.norm_du_bar[k + 1] < config.epsilon * norm_u {
@@ -804,18 +812,17 @@ pub fn nleq_err<S: NewtonSystem>(
                                             return Ok((NewtonStatus::MaxIterations, log));
                                         }
                                     }
-                                } else {
-                                    // The no-QNERR global algorithm.
-                                    log.push(NewtonLog {
-                                        iter: k,
-                                        norm_du: h.norm_du[k] / norm_u,
-                                        lambda: h.lambda[k],
-                                        theta: h.theta[k],
-                                        lambda_prime,
-                                        event: NewtonEvent::Accept,
-                                    });
-                                    break TrialOutcome::Accept;
                                 }
+                                // The no-QNERR global algorithm.
+                                log.push(NewtonLog {
+                                    iter: k,
+                                    norm_du: h.norm_du[k] / norm_u,
+                                    lambda: h.lambda[k],
+                                    theta: h.theta[k],
+                                    lambda_prime,
+                                    event: NewtonEvent::Accept,
+                                });
+                                break TrialOutcome::Accept;
                             }
                             // Theta >= 1/2 in the local region: the C's
                             // if/else chain skips every branch — the
@@ -1096,16 +1103,6 @@ pub fn nleq_res<S: NewtonSystem>(
             h.lambda[k] = 1.0_f64.min(mu);
         }
 
-        #[derive(Clone, Copy, PartialEq)]
-        enum Stage {
-            RegularityTest,
-            TrialIterate,
-        }
-        #[derive(Clone, Copy)]
-        enum TrialOutcome {
-            Accept,
-            Restart(usize),
-        }
         let mut stage = Stage::RegularityTest;
         let outcome = loop {
             match stage {
@@ -1167,10 +1164,12 @@ pub fn nleq_res<S: NewtonSystem>(
                         // Local region: lambda' = lambda = 1 and
                         // Theta < 1/2 (the gate is part of the test
                         // here, unlike the error driver).
-                        if lambda_prime == h.lambda[k]
+                        // Exact float comparison on purpose, as in the C.
+                        #[allow(clippy::float_cmp)]
+                        let in_local_region = lambda_prime == h.lambda[k]
                             && h.lambda[k] == 1.0
-                            && h.theta[k] < RESIDUAL_THETA_MAX
-                        {
+                            && h.theta[k] < RESIDUAL_THETA_MAX;
+                        if in_local_region {
                             if config.local_solver {
                                 log.push(NewtonLog {
                                     iter: k,
@@ -1212,17 +1211,16 @@ pub fn nleq_res<S: NewtonSystem>(
                                         return Ok((NewtonStatus::MaxIterations, log));
                                     }
                                 }
-                            } else {
-                                log.push(NewtonLog {
-                                    iter: k,
-                                    norm_du: h.norm_f[k],
-                                    lambda: h.lambda[k],
-                                    theta: h.theta[k],
-                                    lambda_prime,
-                                    event: NewtonEvent::Accept,
-                                });
-                                break TrialOutcome::Accept;
                             }
+                            log.push(NewtonLog {
+                                iter: k,
+                                norm_du: h.norm_f[k],
+                                lambda: h.lambda[k],
+                                theta: h.theta[k],
+                                lambda_prime,
+                                event: NewtonEvent::Accept,
+                            });
+                            break TrialOutcome::Accept;
                         }
                         if lambda_prime > 4.0 * h.lambda[k] {
                             // REJECT B.
@@ -2031,7 +2029,7 @@ mod tests {
     }
 
     /// The fold with a high regularity floor: the damping hits
-    /// lambda_min first and the status is the C's -1.
+    /// `lambda_min` first and the status is the C's -1.
     #[test]
     fn fold_hits_the_regularity_floor_when_lambda_min_is_high() {
         let mut sys = DenseSystem::new(2, fold_rhs, fold_jac);
@@ -2131,6 +2129,7 @@ mod tests {
     /// far start within the budget (the C oracle's own classic path on
     /// the seed); with lambda0 = 1 it does.
     #[test]
+    #[allow(clippy::float_cmp)] // lambda is copied, never computed
     fn classic_newton_fixed_damping_semantics() {
         let mut sys = DenseSystem::new(2, smooth_rhs, smooth_jac);
         let mut u = vec![-5.0, 5.0];

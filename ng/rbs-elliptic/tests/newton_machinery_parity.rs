@@ -54,7 +54,7 @@ fn n32_setup() -> (Grid2d, SolveState) {
 }
 
 /// NLEQ-ERR + QNERR on the N=32 seed spec vs the C oracle
-/// (`l1_smoke_ci.toml` at NrInterior = 32, dr = 0.5):
+/// (`l1_smoke_ci.toml` at `NrInterior` = 32, dr = 0.5):
 ///
 /// ```text
 /// | 0 | 6.31924E+01 | 1.00000E-03 | 9.98996E-01 | 1.28233E-01 | REJECT B    |
@@ -276,7 +276,7 @@ fn n32_all_drivers_agree_on_the_solution() {
 /// tail's contraction monitor exceeds 1/2 at l = 10 (Θ = 0.532525),
 /// the tail EXITS, NLEQ-ERR RESTARTS from its last update at k = 14
 /// with lambda = 1, and the restarted iteration converges on the
-/// du_bar test (CONVERGED B, 15 iterations total):
+/// `du_bar` test (CONVERGED B, 15 iterations total):
 ///
 /// ```text
 /// | 0 REJECT B | 0 ACCEPT | 1 ACCEPT | 2 ENTER QNERR |
@@ -311,7 +311,7 @@ fn n64_eps12_restart_path_matches_the_oracle() {
     assert_eq!(events.last(), Some(&NewtonEvent::ConvergedB));
     // The exit's Theta: 0.532525 > 1/2 (the restart trigger).
     assert!(
-        close(log[14].theta, 0.532525, 1e-3),
+        close(log[14].theta, 0.532_525, 1e-3),
         "exit theta {} vs oracle 0.532525",
         log[14].theta
     );

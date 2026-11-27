@@ -30,6 +30,7 @@ mod common;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
+#[cfg(feature = "hdf5")]
 use rbs_io::hdf5::Hdf5Writer;
 use rbs_io::vtr::VtrWriter;
 use rbs_io::FieldWriter;
@@ -37,20 +38,13 @@ use rbs_io::FieldWriter;
 fn main() -> ExitCode {
     let out_dir = std::env::args()
         .nth(1)
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from("."));
+        .map_or_else(|| PathBuf::from("."), PathBuf::from);
     if let Err(e) = std::fs::create_dir_all(&out_dir) {
         eprintln!("cannot create {}: {e}", out_dir.display());
         return ExitCode::FAILURE;
     }
 
     let snap = common::load_smoke();
-    let git_hash =
-        std::env::var("GIT_HASH").unwrap_or_else(|_| "unknown".to_string());
-    let parfile = "configs/l1_smoke_ci.toml (epsilon=1.0E-12, maxNewtonIter=40 \
-                   scratch protocol; fields: ng/rbs-elliptic parity fixture)"
-        .to_string();
-    let attrs = common::smoke_attrs(&git_hash, &parfile);
 
     // solution.vtr — ParaView rectilinear grid, always available.
     let vtr_path = out_dir.join("solution.vtr");
@@ -66,6 +60,12 @@ fn main() -> ExitCode {
     // solution.h5 — the C-oracle HDF5 contract, behind the `hdf5` feature.
     #[cfg(feature = "hdf5")]
     {
+        let git_hash =
+            std::env::var("GIT_HASH").unwrap_or_else(|_| "unknown".to_string());
+        let parfile = "configs/l1_smoke_ci.toml (epsilon=1.0E-12, maxNewtonIter=40 \
+                       scratch protocol; fields: ng/rbs-elliptic parity fixture)"
+            .to_string();
+        let attrs = common::smoke_attrs(&git_hash, &parfile);
         let h5_path = out_dir.join("solution.h5");
         let mut h5 = Hdf5Writer::new(&h5_path);
         let w_f = snap.w_f();
