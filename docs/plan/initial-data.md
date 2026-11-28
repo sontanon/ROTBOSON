@@ -48,3 +48,4 @@ Specs: `docs/specs/<milestone>-*.md`. A0 and A0.5 are written. The others are wr
 | 2026-11-27 | Python byte-compatibility of the driver's JSON is dropped once the Rust driver works (A2). |
 | 2026-11-27 | Release split: v1.0 = faithful reproduction with error bars, v1.1 = better numerics. |
 | 2026-11-27 | Linear: new team NR; old projects ROTBOSON and RBS-NG closed. |
+| 2026-11-27 | **A0.5 verdict: GO.** BlockFieldKrylov is the linear solver for A1 and A2, with the bordered block-Jacobi preconditioner (the ψ block factored together with the frequency slot). Plain block Jacobi fails at every converged state because the ψ block is singular there. See `docs/notes/bordered-omega-system.md`. |
