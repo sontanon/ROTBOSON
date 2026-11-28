@@ -1,0 +1,3 @@
+N,step,psi0,dist,self_check_residual,solver,threads,start_step,status,newton_iterations,linear_solves,krylov_iterations,omega,omega_c,max_rel_field_diff,worst_field,max_rel_field_diff_interior,worst_field_interior,seconds
+128,164,0.36175303195152353,0.014405206335406151,2.005e-11,bordered,8,163,converged,5,11,212,0.647079629955808,0.6470796299558079,2.932e-2,psi,3.363e-12,lambda,7.8
+256,166,0.37651056457551846,-0.0003523262885887779,2.063e-10,bordered,8,167,converged,4,8,152,0.6457644139468055,0.6457644139507639,3.000e-2,psi,4.116e-11,lambda,34.0
