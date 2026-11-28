@@ -1,192 +1,136 @@
-# RBS-NG architecture
+# Architecture of the Rust initial-data solver
 
-**RBS-NG** is the pure-Rust next generation of ROTBOSON (ADR 0001,
-`docs/adr/0001-pivot-to-rbs-ng.md`). The C codebase is the frozen golden
-oracle: every stage of the Rust rewrite is gated by parity against its
-1e-13-validated solutions. This document is the working architecture the
-`ng/` workspace implements.
+The `ng/` workspace is a pure-Rust solver for **rotating boson star initial data**. The scope is set by ADR 0002 (`docs/adr/0002-initial-data-scope.md`). The milestones are in `docs/plan/initial-data.md`. The C code in `src/` is frozen and serves as the oracle: Rust results are compared against it until Rust surpasses it.
 
-The problem being solved (unchanged): axisymmetric rotating boson star
-initial data — six coupled nonlinear elliptic PDEs plus the scalar-field
-frequency eigenvalue ω in quasi-isotropic coordinates, solved as one
-global Newton system.
+This document describes what exists today and where the planned pieces will go. Planned items are marked **(planned)**.
 
-## 1. Grid ladder
+## 1. The problem
 
-The ladder buys, one rung at a time, the domain reach that uniform grids
-turn into a memory wall (the l=4 down-campaign died at `stopped:boundary`
-six steps in; N=512 OOMs at 12 GiB; LU fill grows ~rows^1.20):
+Axisymmetric, stationary, rotating boson stars in quasi-isotropic coordinates (ρ, z), with azimuthal number l. There are six unknown fields on the grid:
 
-1. **Uniform (r, z)** — the parity rung. Identical to the C oracle's grid
-   (`NrTotal`/`NzTotal`/`ghost`, cell centers at `r = dr(i + 0.5 - ghost)`)
-   so the direct parity gates at N=64/128 are meaningful. No new physics,
-   no new numerics — just the port.
-2. **Stretched radial coordinate** — the first domain lever. A smooth
-   radial map `r = r(ξ)` concentrates resolution near the star and spares
-   it in the dilute tail; the finite differences move to Fornberg
-   non-uniform weights on the mapped grid (the C code already validates
-   Fornberg stencils — `tests/fornberg.c`, and the same machinery
-   generates the kernel subtype layout). Gate: reproduce the uniform-grid
-   solution on the mapped grid to discretization error at fixed dr.
-3. **Compactified outer domain / multiblock** — the rung that removes the
-   boundary entirely: Robin conditions applied at radial infinity on a
-   compactified block, matched to the interior block. This is what the
-   dilute l>4 branches actually need (their support fills any finite box).
-4. **Block-structured refinement** — resolution where the star is, coupled
-   through the multigrid hierarchy that the solver strategy (§2) already
-   requires; AMR-like behavior falls out of block refinement plus the
-   continuation driver's triggers rather than a separate machinery.
-
-Each rung is additive: the previous rung's gates keep running, and the
-oracle C solves stay the reference at every rung the oracle can still
-reach.
-
-## 2. Solver strategy
-
-The measured profile motivates everything here: in the C code, ≥95% of
-wall time is vendor sparse-direct factorization/solve, and that cost grows
-superlinearly. RBS-NG never builds its production path on that exponent.
-
-- **Transitional: faer sparse LU** (`rbs-linalg::FaerSparseLu`). Direct
-  solves exist in RBS-NG for exactly two purposes: the oracle parity gates
-  at N ≤ 128 (seed solves) and unit tests of the Newton machinery. They
-  are parity and scaffolding — **never a scaling path**. Anything that
-  bakes in a global direct solve must be labeled transitional. The
-  SAN-67 equilibration experiment closed the SAN-54 accuracy question:
-  on the *real* Jacobians the LU solves honestly at every parity size
-  and spacing (6.4e-12 at N=64, 7.1e-11 at N=128, 1.0e-9 at the N=256
-  spacing; row equilibration changes nothing — the reported collapse
-  was a value-model artifact), so faer LU remains a trustworthy
-  *independent cross-check* backend; its memory/fill scaling still
-  disqualifies it above N=128 (`ng/spikes/faer-lu/REPORT-BACKEND.md`).
-- **N1 backend: field-blocked Newton–Krylov**
-  (`rbs-linalg::BlockFieldKrylov`, SAN-67 — implemented and measured).
-  Each field's diagonal block of the 6-field Jacobian is row-equilibrated
-  and factored with faer (LU; LDLT if a block is ever symmetric) as the
-  preconditioner; a hand-rolled restarted FGMRES cleans up the same-node
-  cross-field couplings and the eigenvalue row. Measured at N=256
-  (4 threads): 7.7 s cold solve / 3.1 s stale campaign step / 1.88 GiB
-  peak — ~12× / ~22× faster than PARDISO at 2.6× less memory — with
-  Krylov iteration counts *independent of N* (12 fresh / 16–18 stale)
-  and end-to-end Newton solves reproducing the oracle fixture inside
-  the parity bars using blocks factored once at the ansatz
-  (`solve_stale`, the stale-LU-CGS analogue). fp64 projections clear
-  N=400 (~4.6 GiB) and N=512 (~7.8 GiB, where the C LU OOMs).
-- **Production: geometric multigrid + FGMRES/Krylov**
-  (`rbs-linalg::MgKrylov`, currently an honest placeholder implementing
-  the same `LinearSolver` trait). Block-NK removes the *memory-survival*
-  pressure on MG (N=400/512 project to fit), so MG's mandate is the
-  grid-ladder rungs (stretched radial / compactified domains need a
-  scalable per-field inverter — block-LU's dim^1.1 fill growth is the
-  wrong exponent for the ladder's endgame), per-step wall time beyond
-  N=256, and the near-fold robustness regime; not a memory rescue at
-  the paper sizes.
-
-**Explicit principle: never rely on global sparse LU scaling.** The
-`LinearSolver` trait makes backends swappable precisely so the Newton loop
-can be developed against faer at parity sizes and moved to MG-Krylov
-without touching assembly or the driver.
-
-## 3. Codegen plan
-
-The symbolic chain is the single source of truth and it already exists:
-`tools/sympy_system.py` re-derives the six residuals and the 6×31
-Jacobian in SymPy and regenerates the checked-in C kernels
-(`tools/generate_kernels.py` → `src/rhs_vars.c`, `src/csr_vars.c`) with a
-byte-identical CI gate (`uv run tools/generate_kernels.py --check`).
-
-RBS-NG retargets the emitter, not the mathematics
-(`tools/generate_rust_kernels.py`):
-
-- it emits the same system as Rust into
-  `ng/rbs-elliptic/src/generated/kernels.rs` — the interior residual
-  (physical-derivative form, mirroring `rhs_vars.c`), the Robin/decay
-  boundary rows (mirroring `rhs_bdry`), and the step-scaled subtype
-  Jacobian (mirroring the `jacobian_submatrix_*` assignments of
-  `csr_vars.c`);
-- a `--check` gate regenerates and asserts byte-identical output, exactly
-  like the C gate;
-- the checked-in C kernels remain the **structural cross-reference**: the
-  Rust kernels are the same equations term-for-term, and any kernel edit
-  flows through `tools/sympy_system.py` so both languages regenerate
-  together;
-- numerical parity is pinned by a checked-in fixture
-  (`ng/rbs-elliptic/tests/fixtures/kernel_parity.txt`): seeded random
-  field states with SymPy-evaluated reference values, asserted by
-  `cargo test` (a few ULP of evaluation-order noise).
-
-The C generator is untouched — the oracle's chain stays frozen.
-
-## 4. Validation gates
-
-Every gate is parity against the frozen C oracle, and every gate number
-below is an already-measured C result that the Rust solve must reproduce:
-
-| gate | what | target |
+| Index | Field | Meaning |
 |---|---|---|
-| G1 | kernel parity vs SymPy | exact to evaluation-order noise (checked-in fixture, `cargo test`) |
-| G2 | **N=64 seed solve** (l=1) | oracle solution fields to solver tolerance — the SAN-62 vertical slice |
-| G3 | **N=128 seed solve** (l=1) | same, at the size where faer direct is still parity-honest |
-| G4 | **N=256 l=1 down-campaign fold** | fold vertex ω_min = 0.6460482 (paper 0.64561, the +0.068% dr=0.0625 C result — `RUNBOOK.md` §c) |
-| G5 | **stretch N=400 fold** | ω_min = 0.6456114 on the stretched radial rung — the first gate that must beat the uniform box |
+| 0 | `log_alpha` | log of the lapse α |
+| 1 | `beta` | the shift (frame dragging) |
+| 2 | `log_h` | log of the metric function h |
+| 3 | `log_a` | log of the metric function a |
+| 4 | `psi` | the regularized scalar field; the physical field is φ = ρ^l ψ |
+| 5 | `lambda` | the regularization field |
 
-Gates are cumulative: nothing above G2 may proceed while a lower gate
-fails, and the fold gates double as the accuracy contract for the grid
-ladder rungs. The stretch gate (G5) is where RBS-NG first exceeds the
-oracle's reach rather than matching it.
+There is also the scalar-field frequency ω, which is an eigenvalue. The solver works with ξ, where ω = ½ m (1 + tanh ξ), so that ω stays in (0, m). The equations come from `tools/sympy_system.py`.
 
-## 5. Evolution path
+All unknowns form one vector: the six fields field-major (field g occupies `[g·dim, (g+1)·dim)`, dim = NrTotal·NzTotal, ghost cells included), then ξ in the last slot. Newton solves
 
-Staged per ADR 0001 (3D/AMR gated at the far end):
+```
+J = [ A    b  ]     A = ∂F/∂u (the fixed-ω Jacobian),  b = ∂F/∂ξ
+    [ cᵀ   c_w ]     last row: the constraint row
+```
 
-1. **1D spherical full-GR Einstein–Klein–Gordon** — the formulation study
-   first (`rbs-evolve::Formulation`): BSSN vs CCZ4 vs generalized-harmonic
-   in 1D, evaluated on constraint preservation, collapse robustness, and
-   how naturally each fits the multigrid + Krylov solver stack (the same
-   backend the elliptic side already needs).
-2. **Stationary-hold validation** — evolve the elliptic initial data and
-   require the stationary solution to hold: drift bounded by solver
-   tolerance over many dynamical times. This is the evolution track's
-   parity gate, and it needs no C reference — the oracle for it *is* the
-   elliptic solve.
-3. **Collapse thresholds** — the scalar-field amplitude ladder in 1D:
-   where does the stationary branch end in time? The thresholds are the
-   physics deliverable of the evolution track.
-4. **Axisymmetric evolution** — the (r, z) system evolved with the chosen
-   formulation; the grid ladder and solver stack carry over. 3D/AMR stays
-   gated behind all of the above.
+The constraint row selects the mode:
 
-## 6. Visualization
+- **Fixed-ω** (`ProblemParams::fixed_phi = None`): ξ is given.
+- **Fixed-φ** (`fixed_phi = Some((i, j))`): ψ at one grid node is given, and ω is solved for. Continuation near the fold uses this mode, because there the fixed-ω A is singular and the fixed-φ J is not.
 
-First-class from day one (ADR 0001 decision 6):
+`docs/notes/bordered-omega-system.md` derives all of this and gives the numerical evidence.
 
-- **VTR/VTH export** (`rbs-io::VtrWriter`, real): ParaView-native
-  rectilinear-grid XML for every field snapshot, plus VTH series
-  collection for campaign trajectories (the `rbs-viz` pipeline consumes
-  these).
-- **HDF5 export** (`rbs-io::Hdf5Writer`, feature `hdf5`): mirrors the C
-  writer's self-describing contract — `<field>.asc` datasets with
-  `(nr, nz)` C-order layout, `r`/`z` meshgrids, and the full root
-  attribute set — so `tools/rotboson_io.py` reads Rust output
-  **unchanged**; the format contract is pinned on the C side by the
-  fixture roundtrip test and on the Rust side by the SAN-55 parity
-  fixture (`ng/rbs-io/tests/fixtures/l1_smoke_n64_rust.h5`).
-- **Animation pipeline** (`rbs-viz`, placeholder): field movies along
-  continuation campaigns, fold-approach visualizations, and
-  collapse-threshold sequences — the campaign driver writes VTRs as it
-  steps, so the animation is a post-process, never a solver-time cost.
+## 2. Crates
 
-## The workspace map
+| Crate | Role |
+|---|---|
+| `rbs-core` | The uniform (ρ, z) grid with ghost cells, the field-major `FieldSet`, and the finite-difference stencils (orders 2, 4, 6), with the C code's index and coordinate conventions. |
+| `rbs-elliptic` | Residual and Jacobian assembly from the generated kernels, the initial guess, the ω map, and the Newton drivers. |
+| `rbs-linalg` | The `LinearSolver` trait, the CSR matrix type, and the backends: `BlockFieldKrylov` (production) and `FaerSparseLu` (cross-check). |
+| `rbs-io` | Output: VTR for ParaView, and HDF5 (feature `hdf5`) in the C code's format, readable by `tools/rotboson_io.py`. |
+| `rbs-driver` | The solver-independent half of the continuation driver, ported from `tools/sweep_driver.py`: the campaign spec, `state.json`, step decisions and the fold fit. Driving real solves is A2 **(planned)**. |
+| `rbs-viz` | Placeholder for a visualization pipeline. Today plots come from `tools/plot_star.py` and `tools/plot_fold_curve.py`. |
 
-| crate | role | status |
+Spikes live under `ng/spikes/`. Each is a standalone crate outside the workspace:
+
+- `faer-lu` decided the backend;
+- `nearfold` tested it near the fold (A0.5).
+
+## 3. The solver stack
+
+```
+Newton (rbs-elliptic::newton)
+   │  NLEQ-ERR (+QNERR), NLEQ-RES (+QNRES), or plain damped Newton, ported from src/
+   ▼
+LinearSolver trait (rbs-linalg)
+   ├── BlockFieldKrylov: per-field sparse LU blocks (faer) as preconditioner + FGMRES
+   └── FaerSparseLu:     full sparse LU, for parity tests at N ≤ 128 only
+```
+
+**BlockFieldKrylov** row-equilibrates each field's diagonal block of the Jacobian and factors it with faer (sparse LU, or LDLT when the block is symmetric). These factors precondition a restarted FGMRES, which handles the couplings between fields and the ξ row. `solve_stale` reuses the factors across Newton steps and continuation steps. The `Preconditioner` option selects how the blocks are combined:
+
+| Variant | What | Use |
 |---|---|---|
-| `rbs-core` | grids, fields, stencils, index maps (C-convention ports) | real, tested |
-| `rbs-elliptic` | residual/Jacobian assembly, Newton, ω constraint | kernels generated (SAN-56); assembly/Newton are the SAN-62 port target |
-| `rbs-linalg` | `LinearSolver` trait + faer LU + block-field Krylov (N1, SAN-67) + MG-Krylov placeholder | real, tested |
-| `rbs-io` | HDF5 + VTR writers behind `FieldWriter` | VTR real; HDF5 feature-gated, roundtrip-tested locally |
-| `rbs-driver` | continuation campaigns | parameter skeleton; port target |
-| `rbs-evolve` | 1D-first evolution | formulation roster only |
-| `rbs-viz` | animation/streaming pipeline | placeholder |
+| `BorderedBlockJacobi` | The pinned field's block (ψ) is factored together with the ξ column and the constraint row, as one (dim+1) block. | **Fixed-φ solves: always.** The A0.5 verdict. |
+| `BlockJacobi` | Plain block diagonal; identity on ξ. | Currently the default. It fails at converged states, because the ψ block is singular at every solution. |
+| `BlockGaussSeidel` | Forward substitution over the lower block couplings. | Fails for the same reason. Kept for comparison. |
 
-See each crate's `README.md` for its role and parity target, and
-`ng/README.md` for build, test, and codegen instructions.
+Measured at N=256 on 4 threads, at the initial guess (`ng/spikes/faer-lu/REPORT-BACKEND.md`):
+
+| N=256, 4 threads | C (PARDISO) | BlockFieldKrylov |
+|---|---|---|
+| cold solve (factor + 1 solve) | 92 s | 7.7–7.9 s (5.3 s factor + 2.4 s Krylov, 12 iterations) |
+| campaign step (stale preconditioner) | ~69 s | 3.0–3.3 s (16–17 iterations) |
+| peak memory | 4.95 GB | 1.88 GiB |
+| full cold-start Newton solve | ≈ 14 min | ≈ 29 s |
+
+Near the fold (A0.5, `docs/results/A0.5-near-fold.md`), with the bordered preconditioner: 21–25 iterations at N=128 and 33–35 at N=256, flat through the fold. A Newton solve at the state closest to the fold converges and matches C (ω to 6e-12 at N=256).
+
+**Rule:** the production path never depends on a global sparse LU. faer LU is a cross-check for small problems.
+
+## 4. Code generation
+
+`tools/sympy_system.py` is the single source of truth for the equations. Two generators read it:
+
+- `tools/generate_kernels.py` writes the C kernels in `src/`. This generator is frozen together with the C code.
+- `tools/generate_rust_kernels.py` writes `ng/rbs-elliptic/src/generated/kernels.rs`: the interior residual, the boundary rows and the step-scaled Jacobian, term for term the same as the C.
+
+Both generators have a `--check` mode, which CI runs: it regenerates the file and fails unless the result is byte-identical. The fixture `ng/rbs-elliptic/tests/fixtures/kernel_parity.txt` holds SymPy-evaluated reference values, so `cargo test` checks the kernels numerically without Python. Never edit `generated/` by hand: change the SymPy source and regenerate.
+
+## 5. Validation
+
+The tests that exist today:
+
+| Test | What it pins |
+|---|---|
+| `rbs-elliptic` `kernel_parity` (unit) | Generated kernels against SymPy values, to evaluation-order noise. |
+| `rbs-elliptic/tests/l1_smoke_n64_parity.rs` | The l=1, N=64 fixed-ω solve against the C oracle's fields. |
+| `rbs-elliptic/tests/fixedphi_jacobian_parity.rs` | The full fixed-φ CSR Jacobian, including the ω column, against a dump from the C code. |
+| `rbs-elliptic/tests/fixedphi_n64_parity.rs` | The fixed-φ N=64 state: ω, the pin and the fields. |
+| `rbs-elliptic/tests/newton_machinery_parity.rs`, `newton_fault_injection.rs` | The Newton drivers' iteration histories and their failure paths. |
+| `rbs-linalg` unit tests | Every preconditioner in both modes, stale blocks, and a singular field block. |
+| `rbs-io/tests/hdf5_parity.rs`, `vtr_selfcheck.rs` | The HDF5 file contract and the VTR layout. |
+| `rbs-driver/tests/*` | The ported Python driver tests (decisions, `state.json` round trip, summarize). |
+
+Results by milestone (in `docs/results/`):
+
+- **A0:** an l=1 star solved from scratch in Rust agrees with C to 1.6e-12 in the fields and 8e-13 in ω (`A0-demo.md`).
+- **A0.5:** the near-fold behavior described above (`A0.5-near-fold.md`).
+- **Later milestones** each add a result: A1 C parity at N=64 and N=128 through the CLI; A2 the l=1 fold at N=256 against the C campaign; A4 ω_min for l=1..6 with error bars.
+
+## 6. Planned (A1 and later)
+
+None of these exist yet.
+
+- **A1: the `rbs solve` CLI.** It reads a TOML config and writes `solution.h5`, with a versioned initial-data format v1 that a future evolution code will read.
+- **A1: a precision parameter.** fp64 residuals always; fp32 optional for the preconditioner factors.
+- **A1: stencil order as a parameter.** A grid/stencil abstraction that admits mapped (non-uniform) coordinates. It will live in `rbs-core` and be used by `rbs-elliptic`'s assembly.
+- **A1: make `BorderedBlockJacobi` the default** for fixed-φ. Add ψ deflation for fixed-ω.
+- **A2:** the solver-facing half of `rbs-driver`, which replaces `tools/sweep_driver.py`.
+- **A3:** rayon parallelism over blocks and assembly.
+- **A5:** compactification, and stencil orders 6 and 8, on the mapped-grid abstraction.
+
+## Parked
+
+These are not part of this repository's plan (ADR 0002):
+
+- multigrid (only if grids beyond N=512 are needed, as a per-block replacement for block LU);
+- time evolution and mesh refinement (a separate future project that reads the A1 file format);
+- spectral methods.
+
+## History
+
+This workspace began as "RBS-NG" under ADR 0001 (`docs/adr/0001-pivot-to-rbs-ng.md`), tracked in the old Linear team SAN. That plan had a grid ladder, multigrid as the production path, and an evolution track. ADR 0002 replaced it on 2026-11-27. The backend measurements above come from SAN-67. The spike reports under `ng/spikes/faer-lu/` are records of that period and keep their original wording.

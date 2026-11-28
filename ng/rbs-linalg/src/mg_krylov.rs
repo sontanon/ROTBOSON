@@ -1,25 +1,16 @@
-//! Geometric multigrid + Krylov backend — the **production path**
-//! placeholder (ADR 0001 decision 2).
+//! Geometric multigrid + Krylov backend: a **parked** placeholder.
 //!
-//! Design sketch for the implementing stage:
+//! ADR 0002 withdrew multigrid as the production path; `BlockFieldKrylov`
+//! is the backend. Multigrid comes back only if grids beyond N=512 are
+//! needed, as a per-block replacement for the block LU factors.
 //!
-//! * grid ladder: uniform (r, z) -> stretched radial -> compactified /
-//!   multiblock (`ng/docs/architecture.md`), so the hierarchy is geometric,
-//!   not algebraic;
-//! * per-field block preconditioner over the 6-field Jacobian structure as
-//!   the intermediate step before full MG;
-//! * FGMRES-class outer iteration with the MG cycle as flexible
-//!   preconditioner, matching the C campaign's stale-factor robustness
-//!   near folds.
-//!
-//! **Never rely on global sparse LU scaling** — see ADR 0001.
+//! **Never rely on global sparse LU scaling.**
 
 use crate::{csr::CsrMatrix, LinearSolver, SolveError};
 
 /// Placeholder geometric-multigrid + Krylov backend.
 ///
-/// Implements the [`LinearSolver`] contract so the Newton loop can already
-/// be written against the production interface; every operation reports
+/// Implements the [`LinearSolver`] contract; every operation reports
 /// [`SolveError::NotImplemented`] until the backend lands.
 #[derive(Debug, Default)]
 pub struct MgKrylov {

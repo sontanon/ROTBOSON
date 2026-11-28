@@ -1,10 +1,10 @@
 //! rbs-linalg: sparse linear solver backends behind one trait.
 //!
 //! The Newton loop (rbs-elliptic) codes against [`LinearSolver`]; this crate
-//! provides the checked-in CSR matrix type and the backends: faer sparse LU
-//! (transitional, parity sizes only), the field-blocked Newton–Krylov
-//! backend ([`BlockFieldKrylov`], the SAN-67 N1 candidate), and the
-//! MG-Krylov placeholder for the far production path (ADR 0001).
+//! provides the checked-in CSR matrix type and the backends: the
+//! field-blocked Newton–Krylov backend ([`BlockFieldKrylov`], the
+//! production backend), faer sparse LU (a cross-check at parity sizes
+//! only), and the MG-Krylov placeholder (parked, ADR 0002).
 
 pub mod block_field;
 pub mod csr;
