@@ -1,0 +1,40 @@
+[package]
+name = "nearfold-spike"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "NR-11: does the block-field Krylov solver still work near the l=1 omega_min fold?"
+
+# Standalone on purpose, like ng/spikes/faer-lu: an empty [workspace]
+# table makes this package its own workspace root.
+[workspace]
+
+[dependencies]
+faer = { version = "0.24", features = ["sparse"] }
+rbs-core = { path = "../../rbs-core" }
+rbs-elliptic = { path = "../../rbs-elliptic" }
+rbs-linalg = { path = "../../rbs-linalg" }
+
+[profile.release]
+debug = false
+debug-assertions = true
+
+# The workspace lint settings (ng/Cargo.toml), copied: a spike outside
+# the workspace cannot inherit them.
+[lints.rust]
+unsafe_code = "warn"
+missing_docs = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+similar_names = "allow"
+cast_precision_loss = "allow"
+too_many_arguments = "allow"
+many_single_char_names = "allow"
+cast_possible_wrap = "allow"
+cast_sign_loss = "allow"
+cast_possible_truncation = "allow"
+must_use_candidate = "allow"
+too_many_lines = "allow"
+needless_range_loop = "allow"

@@ -10,7 +10,7 @@ members = [
 ]
 # Standalone spike crate (PR #21): its own [workspace] table, not a member.
 # Excluded so the root workspace never tries to adopt it.
-exclude = ["spikes/faer-lu"]
+exclude = ["spikes/faer-lu", "spikes/nearfold"]
 
 [workspace.package]
 version = "0.1.0"
