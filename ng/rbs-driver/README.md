@@ -1,20 +1,22 @@
-# rbs-driver — the pure half of the RBS-NG continuation driver (SAN-60, part 1)
+# rbs-driver
 
-Rust port of the **solver-independent** logic of the Python continuation
-driver (`tools/sweep_driver.py`, the specification for this port; line
-references cite the SAN-59 head `06b4ff2`). Blocked on the Rust solver,
-the driver's second half (driving real solves) is **deferred** — this
-crate is everything that can be built and pinned now: the campaign-spec
-parsing, the `state.json` model, the adaptive decision functions and the
-fold summarize.
+**Role.** The solver-independent half of the continuation driver, ported from `tools/sweep_driver.py`:
+- parsing the campaign spec;
+- the `state.json` model;
+- the adaptive step decisions;
+- the fold fit and summary.
 
-```
-cargo test          # from inside this directory — 108 tests, no solver, ~1s
-```
+The other half, which runs real solves, is milestone A2 **(planned)**. That half replaces the Python driver. After A2 the Python byte-compatibility described below may be dropped (ADR 0002).
+
+**Tests** (`cargo test -p rbs-driver`, about 1 s, no solver):
+- `tests/driver_decisions.rs`: all 53 cases of `tests/test_driver_decisions.py`;
+- `tests/state_roundtrip.rs`: all 10 cases of `tests/test_state_roundtrip.py`, with the archived fixtures in `tests/fixtures/`;
+- `tests/summarize.rs`: a synthetic branch walk with a known minimum;
+- unit tests in each module.
 
 ## Ported
 
-| module | contents | Python source (sweep_driver.py @ 06b4ff2) |
+| module | contents | Python source (`sweep_driver.py` at commit 06b4ff2) |
 |---|---|---|
 | `spec` | `[campaign]`/`[seed]`/`[grid]`/`[solver]`/`[output]`/`[adaptivity]` models, `load_spec`, unknown-key rejection, `spec_hash`, `is_solution_dir` | `KNOWN`, `*_Spec.parse`, `load_spec` (L266–616) |
 | `state` | `GridPosition`, `StepRecord`, `RegridInfo`, `RegridProbe`, `FoldMeasurement`, `PendingRefinement`, `CampaignState`, atomic `save_state`, hash-guarded `load_state` | L643–1043 |
@@ -26,20 +28,7 @@ cargo test          # from inside this directory — 108 tests, no solver, ~1s
 | `sha256` | FIPS 180-4 by hand (the spec hash) | `hashlib.sha256` in `load_spec` |
 | `error` | `SpecError`, `StateError`, `DriverError`, `SummarizeError` — typed errors, no panics | `SpecError`, `SystemExit`s, uncaught `ValueError`s |
 
-Ported unit-test suites (same cases, same expected outcomes):
-
-* `tests/driver_decisions.rs` — all **53** cases of
-  `tests/test_driver_decisions.py`.
-* `tests/state_roundtrip.rs` — all **10** cases of
-  `tests/test_state_roundtrip.py` (the archived fixtures are copied
-  under `tests/fixtures/`; they are force-added past the repo-wide
-  `*.json` ignore rule, like the originals).
-* Rust-side additions: the summarize round-trip (`tests/summarize.rs`,
-  a synthetic branch walk with a known minimum localized within the
-  Python tolerances) and pure helpers the Python exercised only through
-  the campaign loop (`next_target`, retry policy, `status_for_stop`).
-
-## Deferred (SAN-60's solver-facing half)
+## Not yet ported (A2)
 
 Everything that shells out to or feeds the C/Rust solver: `run_binary`
 (env plumbing, wall-clock timeout), seed-field rendering
@@ -77,7 +66,7 @@ Python's `bool(...)`-coercion quirks are preserved (`direct = 1` →
 `true`; NaN passes `hwl_min`/`regrid_rtol` validation but fails the
 chained comparisons — each check is written exactly as the Python wrote
 it). `[solver]` accepts `numThreads`/`precision`/`direct`/`fp32_ir`
-(the SAN-32/M3 revision; master's `KNOWN[solver]` would reject the
+(a later revision of the Python spec; the older `KNOWN[solver]` would reject the
 repo's own runbook configs).
 
 **state.json**: a Python-written state.json re-serializes
@@ -112,28 +101,6 @@ canonicalization (control/comment lines stripped with `re`'s greedy
   keeps the hash stable but *adding/removing* lines does not — faithful
   to the Python, just worth knowing.
 
-## Integration notes (for the merge into the RBS-NG workspace)
+## History
 
-* **Standalone on purpose**: this crate has its own `Cargo.toml` and
-  *no* `[workspace]` section; the workspace root being scaffolded by
-  the parallel agent must adopt it (add `rbs-driver` to `[workspace]
-  members`, or `exclude` it until adoption). Until it is a member,
-  running cargo from inside `ng/` while a parent workspace exists will
-  complain — expected.
-* **Dependencies**: `serde` (derive), `serde_json` (**must** keep both
-  the `preserve_order` and `float_roundtrip` features — key order and
-  correctly-rounded float parsing are what make the state round-trip
-  byte-identical), `toml` 0.9. Edition 2021, `rust-version` 1.75.
-  `Cargo.lock` is committed; regenerate freely at merge time.
-* Tuned constants carried over with citations (`hwl_min = 8`,
-  `newtonian_delta = 1e-2`, `boundary_fraction = 0.95`,
-  `support_fraction = 0.85`, `regrid_rtol = 2e-2`, the `numThreads = 4`
-  sweet spot, the fp32+direct+IR recipe, the `±3/+4` localization
-  window, the 4001-point fit grid, the 1e-9 ψ₀ landing tolerance,
-  `TIMEOUT_EXIT = -999`).
-* The solver-facing half should sit behind a cargo feature in this same
-  crate (e.g. `solver`) or a sibling crate `rbs-driver-runner`; the
-  seams it needs are all public: `finished`, `decide_*`,
-  `next_target`, `step_retryable`, `near_newtonian_limit`,
-  `status_for_stop`, `save_state`/`load_state`/`fresh_state`,
-  `with_grid`, and the `RegridProbe`/`FoldMeasurement` appenders.
+Ported as SAN-60 (part 1) in the old Linear team SAN, as a standalone crate that was later adopted into the workspace. Line references in the table above cite the SAN-59 head `06b4ff2` of `tools/sweep_driver.py`.

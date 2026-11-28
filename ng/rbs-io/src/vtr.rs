@@ -4,7 +4,7 @@
 //! `<Piece>` spanning the (r, z) slice; the third extent is degenerate
 //! (`0 0`), the standard way VTK encodes 2D data. Coordinates are written
 //! as `XCoordinates`/`YCoordinates` (r and z) plus a zero `ZCoordinates`,
-//! so the grid ladder's later non-uniform radial maps need no format
+//! so mapped (non-uniform) coordinates, planned for A1, need no format
 //! change.
 //!
 //! Data ordering: VTK point arrays vary **x fastest** (r here), while the

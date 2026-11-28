@@ -1,24 +1,18 @@
 # rbs-linalg
 
-Sparse linear solver backends behind one trait.
+**Role.** The linear solvers that Newton calls, behind one trait, `LinearSolver`. The matrix type `CsrMatrix` mirrors the C code's 3-array CSR (`src/tools.h`), 0-based. Conversion to faer's CSC happens inside the backends.
 
-**Role:** the [`LinearSolver`] contract the Newton loop codes against, plus
-the checked-in backends: `BlockFieldKrylov` (field-blocked Newton–Krylov,
-the SAN-67 N1 backend), `FaerSparseLu` (faer sparse LU — the parity-gate
-cross-check, N ≤ 128 only) and the MG-Krylov placeholder for the far
-production path. The matrix contract type [`CsrMatrix`] mirrors the C
-oracle's `csr_matrix` (`src/tools.h`: ia/ja/a, 0-based here).
+| Backend | Use |
+|---|---|
+| `BlockFieldKrylov` | **Production.** Each field's diagonal block is row-equilibrated and factored with faer (sparse LU, or LDLT when the block is symmetric). The blocks precondition a restarted FGMRES. `solve_stale` reuses old factors. `Preconditioner` selects block Jacobi, bordered block Jacobi or block Gauss–Seidel. For fixed-φ solves use `BorderedBlockJacobi`: the ψ block is singular at every converged state, and only the bordered variant handles that (`../docs/notes/bordered-omega-system.md`). |
+| `FaerSparseLu` | Full sparse LU. A cross-check for parity tests at N ≤ 128. Never a scaling path. |
+| `MgKrylov` | Placeholder. Multigrid is parked (ADR 0002). |
 
-**Parity target:** PARDISO at N <= 128 — same matrix in, same solution out
-to LU working precision. Per ADR 0001 the full-matrix direct backend is
-*transitional*: it exists for the parity gates and unit tests, never for
-production scaling. The N1 campaign path is the field-blocked Krylov
-backend (block preconditioners + restarted FGMRES, `block_field` module);
-the far production path is geometric multigrid + FGMRES (`mg_krylov`
-module). Measured evidence and the backend decision:
-`ng/spikes/faer-lu/REPORT-BACKEND.md`.
+Measurements: `../spikes/faer-lu/REPORT-BACKEND.md` (at the initial guess) and `../../docs/results/A0.5-near-fold.md` (near the fold).
 
-**Dependency choice:** we ship our own minimal CSR type rather than `sprs`
-(or similar) so the port contract stays dependency-free and structurally
-identical to the C 3-array layout; converting to faer's CSC happens inside
-the faer backends only.
+**Tests** (`cargo test -p rbs-linalg`):
+- every preconditioner solves small bordered systems in both constraint modes, with fresh and with stale blocks;
+- the bordered preconditioner solves a system whose field block is exactly singular, where block Jacobi does not;
+- block equilibration, strict and lenient convergence modes, and error paths;
+- CSR validation and the matrix-vector product;
+- the faer LU solve, factor reuse, and singular or invalid input.
