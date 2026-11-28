@@ -102,8 +102,14 @@ pub struct BlockKrylovConfig {
 /// part (`nfields·dim` square), `b` the frequency column, and the last
 /// row the constraint (`c = 0, c_w = 1` for fixed ω; `c = e_k, c_w = 0`
 /// for fixed φ). `D` is the block diagonal of `A`: the factored field
-/// blocks. All three use the same factorizations; see
-/// `docs/specs/A0.5-near-fold-spike.md`.
+/// blocks. See `docs/specs/A0.5-near-fold-spike.md`.
+///
+/// **Why bordering matters.** The scalar-field equation is linear in ψ,
+/// so at every solution the ψ block maps ψ to zero: `D_ψψ ψ = 0`. The
+/// ψ block is singular at *every* converged state (ω is its eigenvalue),
+/// and block Jacobi then applies a near-singular inverse. Bordering that
+/// block with the frequency column and the constraint row gives the
+/// regular eigenvalue-bordered matrix (NR-11).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Preconditioner {
     /// `M = blockdiag(D, 1)`: field blocks only, identity on the
@@ -111,31 +117,17 @@ pub enum Preconditioner {
     /// cross-field couplings.
     #[default]
     BlockJacobi,
-    /// `M = [D b; cᵀ c_w]`: keeps the frequency column and the
-    /// constraint row exactly, through the Schur scalar
-    /// `s = c_w − cᵀD⁻¹b`. One extra block solve per factorization.
-    /// Built for the minimum-frequency fold, where `A` is singular but `J` and `D`
-    /// are not.
+    /// Block Jacobi, except that the pinned field's block is factored
+    /// together with the frequency slot: `[D_gg b_g; c_gᵀ c_w]`, of size
+    /// `dim + 1`, where `g` is the field of the constraint row's entries
+    /// (ψ in fixed-φ mode). In fixed-ω mode (`c = 0`), `g` is the field
+    /// with the largest frequency column. Same cost as block Jacobi.
     BorderedBlockJacobi,
     /// `M` = the block lower triangle of `A` (forward substitution over
     /// the fields), identity on the frequency slot. Extra cost: the
     /// below-diagonal coupling mat-vecs.
     BlockGaussSeidel,
 }
-
-/// The bordered preconditioner's Schur scalar, for logs and tests.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SchurInfo {
-    /// `s = c_w − cᵀD⁻¹b`.
-    pub value: f64,
-    /// The size `s` is judged against: `‖c‖·‖D⁻¹b‖ + |c_w|`. The
-    /// factorization fails as singular when `|s| ≤ 1e-12 · scale`.
-    pub scale: f64,
-}
-
-/// `|s| ≤ SCHUR_FLOOR · scale` means the bordered preconditioner is
-/// singular to working precision.
-const SCHUR_FLOOR: f64 = 1e-12;
 
 impl Default for BlockKrylovConfig {
     fn default() -> Self {
@@ -273,7 +265,7 @@ fn block_diagonal_solve(
 }
 
 /// Apply the preconditioner, `z = M⁻¹ v`. `buf` is scratch of length
-/// `2·dim`.
+/// `2·(dim + 1)`.
 fn apply_preconditioner(
     blocks: &mut [BlockFactor],
     extra: &PreconditionerData,
@@ -283,36 +275,43 @@ fn apply_preconditioner(
     buf: &mut [f64],
 ) {
     let n = z.len();
-    let (rhs, out) = buf.split_at_mut(dim);
+    let (rhs, out) = buf.split_at_mut(dim + 1);
     match extra {
         PreconditionerData::BlockJacobi => {
-            block_diagonal_solve(blocks, dim, v, z, out);
+            block_diagonal_solve(blocks, dim, v, z, &mut out[..dim]);
             z[n - 1] = v[n - 1];
         }
-        PreconditionerData::Bordered(border) => {
-            // y = D⁻¹ v; z_w = (v_w − cᵀy) / s; z = y − z_w · D⁻¹b.
-            block_diagonal_solve(blocks, dim, v, z, out);
-            let c_dot_y: f64 = border.constraint.iter().map(|&(c, w)| w * z[c]).sum();
-            let z_w = (v[n - 1] - c_dot_y) / border.schur.value;
-            for (zi, yb) in z[..n - 1].iter_mut().zip(&border.d_inv_b) {
-                *zi -= z_w * yb;
+        PreconditionerData::Bordered { field } => {
+            // The other fields as in block Jacobi; the bordered field
+            // and the frequency slot in one augmented solve.
+            for (g, block) in blocks.iter_mut().enumerate() {
+                let fields = g * dim..(g + 1) * dim;
+                if g == *field {
+                    rhs[..dim].copy_from_slice(&v[fields.clone()]);
+                    rhs[dim] = v[n - 1];
+                    solve_field(block, rhs, out);
+                    z[fields].copy_from_slice(&out[..dim]);
+                    z[n - 1] = out[dim];
+                } else {
+                    solve_field(block, &v[fields.clone()], &mut out[..dim]);
+                    z[fields].copy_from_slice(&out[..dim]);
+                }
             }
-            z[n - 1] = z_w;
         }
         PreconditionerData::GaussSeidel(lower) => {
             // z_g = A_gg⁻¹ (v_g − Σ_{h<g} A_gh z_h), in field order.
             for (g, block) in blocks.iter_mut().enumerate() {
                 let base = g * dim;
                 let couplings = &lower[g];
-                for (i, r) in rhs.iter_mut().enumerate() {
+                for (i, r) in rhs[..dim].iter_mut().enumerate() {
                     let mut acc = v[base + i];
                     for k in couplings.row_ptrs[i]..couplings.row_ptrs[i + 1] {
                         acc -= couplings.vals[k] * z[couplings.col_inds[k]];
                     }
                     *r = acc;
                 }
-                solve_field(block, rhs, out);
-                z[base..base + dim].copy_from_slice(out);
+                solve_field(block, &rhs[..dim], &mut out[..dim]);
+                z[base..base + dim].copy_from_slice(&out[..dim]);
             }
             z[n - 1] = v[n - 1];
         }
@@ -323,64 +322,66 @@ fn apply_preconditioner(
 enum PreconditionerData {
     /// Nothing.
     BlockJacobi,
-    /// The frequency column and constraint row, pre-solved.
-    Bordered(Border),
+    /// `blocks[field]` is the augmented `(dim + 1)` block.
+    Bordered {
+        /// The bordered field.
+        field: usize,
+    },
     /// Per field `g`, the couplings to fields `h < g`.
     GaussSeidel(Vec<LowerCouplings>),
 }
 
-/// The bordered preconditioner's data, computed once per factorization.
-struct Border {
-    /// `D⁻¹b`: the block-diagonal solve of the frequency column.
-    d_inv_b: Vec<f64>,
-    /// The constraint row's field entries `(column, value)`: `c`.
-    constraint: Vec<(usize, f64)>,
-    /// The Schur scalar and its scale.
-    schur: SchurInfo,
+/// Which field the bordered preconditioner augments: the field of the
+/// constraint row's entries, or, with no entries (fixed ω), the field
+/// with the largest frequency column.
+fn bordered_field(a: &CsrMatrix, dim: usize, nfields: usize) -> usize {
+    let slot = a.nrows - 1;
+    if let Some(k) =
+        (a.row_ptrs[slot]..a.row_ptrs[slot + 1]).find(|&k| a.col_inds[k] < slot && a.vals[k] != 0.0)
+    {
+        return a.col_inds[k] / dim;
+    }
+    let mut column_norm = vec![0.0_f64; nfields];
+    for r in 0..slot {
+        let end = a.row_ptrs[r + 1];
+        if end > a.row_ptrs[r] && a.col_inds[end - 1] == slot {
+            column_norm[r / dim] += a.vals[end - 1] * a.vals[end - 1];
+        }
+    }
+    (0..nfields)
+        .max_by(|&p, &q| column_norm[p].total_cmp(&column_norm[q]))
+        .unwrap_or(0)
 }
 
-impl Border {
-    /// Read `b`, `c` and `c_w` from `a`, solve `D⁻¹b`, and form `s`.
-    fn build(a: &CsrMatrix, blocks: &mut [BlockFactor], dim: usize) -> Result<Self, SolveError> {
-        let slot = a.nrows - 1;
-        // The frequency column: rows are sorted, so it is each row's
-        // last entry when present.
-        let mut column = vec![0.0; slot];
-        for (r, value) in column.iter_mut().enumerate() {
-            let end = a.row_ptrs[r + 1];
-            if end > a.row_ptrs[r] && a.col_inds[end - 1] == slot {
-                *value = a.vals[end - 1];
+/// Field `g`'s block bordered by the frequency slot, as a `(dim + 1)`
+/// square CSR matrix: `[A_gg b_g; c_gᵀ c_w]`. Constraint entries in other
+/// fields are left to FGMRES.
+fn augmented_block(a: &CsrMatrix, g: usize, dim: usize) -> CsrMatrix {
+    let slot = a.nrows - 1;
+    let base = g * dim;
+    let mut row_ptrs = Vec::with_capacity(dim + 2);
+    let mut col_inds = Vec::new();
+    let mut vals = Vec::new();
+    row_ptrs.push(0);
+    for r in (base..base + dim).chain(std::iter::once(slot)) {
+        for k in a.row_ptrs[r]..a.row_ptrs[r + 1] {
+            let c = a.col_inds[k];
+            if (base..base + dim).contains(&c) {
+                col_inds.push(c - base);
+                vals.push(a.vals[k]);
+            } else if c == slot {
+                col_inds.push(dim);
+                vals.push(a.vals[k]);
             }
         }
-        let mut d_inv_b = vec![0.0; slot];
-        let mut buf = vec![0.0; dim];
-        block_diagonal_solve(blocks, dim, &column, &mut d_inv_b, &mut buf);
-
-        let mut constraint = Vec::new();
-        let mut corner = 0.0;
-        for k in a.row_ptrs[slot]..a.row_ptrs[slot + 1] {
-            if a.col_inds[k] == slot {
-                corner = a.vals[k];
-            } else {
-                constraint.push((a.col_inds[k], a.vals[k]));
-            }
-        }
-        let c_dot_y: f64 = constraint.iter().map(|&(c, w)| w * d_inv_b[c]).sum();
-        let c_norm = constraint.iter().map(|&(_, w)| w * w).sum::<f64>().sqrt();
-        let schur = SchurInfo {
-            value: corner - c_dot_y,
-            scale: c_norm * norm2(&d_inv_b) + corner.abs(),
-        };
-        if !schur.value.is_finite()
-            || schur.value.abs() <= SCHUR_FLOOR * schur.scale.max(f64::MIN_POSITIVE)
-        {
-            return Err(SolveError::Singular);
-        }
-        Ok(Self {
-            d_inv_b,
-            constraint,
-            schur,
-        })
+        row_ptrs.push(col_inds.len());
+    }
+    CsrMatrix {
+        nrows: dim + 1,
+        ncols: dim + 1,
+        row_ptrs,
+        col_inds,
+        vals,
     }
 }
 
@@ -624,17 +625,6 @@ impl BlockFieldKrylov {
         self.stats
     }
 
-    /// The bordered preconditioner's Schur scalar from the last
-    /// factorization; `None` for the other preconditioners or before
-    /// the first factorization.
-    #[must_use]
-    pub fn schur(&self) -> Option<SchurInfo> {
-        match self.factored.as_ref().map(|f| &f.extra) {
-            Some(PreconditionerData::Bordered(border)) => Some(border.schur),
-            _ => None,
-        }
-    }
-
     /// Solve `a_current · x = b` against the blocks kept from the last
     /// [`LinearSolver::factor`] — the stale-block reuse the C campaign
     /// runs near folds (stale-LU CGS, `docs/profiling.md` §3). The
@@ -849,7 +839,7 @@ fn fgmres(
     let mut r = vec![0.0; n];
     let mut w = vec![0.0; n];
     let mut ax = vec![0.0; n];
-    let mut pbuf = vec![0.0; 2 * *dim];
+    let mut pbuf = vec![0.0; 2 * (*dim + 1)];
     let mut y = vec![0.0; m];
     let mut g = vec![0.0; m + 1];
     // H is (m+1) x m, hand-indexed `h[i * m + j]`.
@@ -1026,16 +1016,27 @@ impl LinearSolver for BlockFieldKrylov {
         }
         let dim = (a.nrows - 1) / nfields;
 
+        let bordered = (self.config.preconditioner == Preconditioner::BorderedBlockJacobi)
+            .then(|| bordered_field(a, dim, nfields));
         let mut blocks = Vec::with_capacity(nfields);
         for g in 0..nfields {
-            let csc = BlockCsc::extract(a, g, dim, self.config.equilibrate_blocks);
+            let csc = if bordered == Some(g) {
+                BlockCsc::extract(
+                    &augmented_block(a, g, dim),
+                    0,
+                    dim + 1,
+                    self.config.equilibrate_blocks,
+                )
+            } else {
+                BlockCsc::extract(a, g, dim, self.config.equilibrate_blocks)
+            };
             blocks.push(self.factor_block(&csc)?);
         }
         let extra = match self.config.preconditioner {
             Preconditioner::BlockJacobi => PreconditionerData::BlockJacobi,
-            Preconditioner::BorderedBlockJacobi => {
-                PreconditionerData::Bordered(Border::build(a, &mut blocks, dim)?)
-            }
+            Preconditioner::BorderedBlockJacobi => PreconditionerData::Bordered {
+                field: bordered.unwrap_or(0),
+            },
             Preconditioner::BlockGaussSeidel => PreconditionerData::GaussSeidel(
                 (0..nfields)
                     .map(|g| LowerCouplings::extract(a, g, dim))
@@ -1525,105 +1526,63 @@ mod tests {
         }
     }
 
-    /// The fold situation: the field part `A` has a null vector that
-    /// couples both fields, but pinning one unknown makes the bordered
-    /// matrix `J` regular. The field blocks `D` stay regular, so the
-    /// bordered preconditioner is well defined and its Schur scalar is
-    /// far from zero.
-    #[test]
-    fn bordered_preconditioner_handles_a_singular_field_part() {
-        let dim = 12;
-        let n_fields = 2 * dim;
-        let mut d = to_dense(&toy_matrix(dim, 0.5, false));
-        // A coupled mode: smooth in field 0, opposite sign in field 1.
-        #[allow(clippy::cast_precision_loss)]
-        let u: Vec<f64> = (0..n_fields)
-            .map(|i| {
-                let t = (i % dim) as f64 / dim as f64;
-                if i < dim {
-                    1.0 + t
-                } else {
-                    -0.5 - t * t
-                }
-            })
-            .collect();
-        // A ← A − (A u) uᵀ / (uᵀ u), so that A u = 0.
-        let au: Vec<f64> = (0..n_fields)
-            .map(|r| (0..n_fields).map(|c| d[r][c] * u[c]).sum())
+    /// Make field 0's diagonal block exactly singular, with null vector
+    /// `u` (smooth, nonzero at every node): `A_00 ← A_00 − (A_00 u) uᵀ/(uᵀu)`.
+    /// This is the real solver's structure: the ψ equation is linear in
+    /// ψ, so the ψ block annihilates ψ at every solution.
+    fn with_singular_field_zero_block(a: &CsrMatrix, dim: usize) -> CsrMatrix {
+        let mut d = to_dense(a);
+        let u: Vec<f64> = (0..dim).map(|i| 1.0 + i as f64 / dim as f64).collect();
+        let au: Vec<f64> = (0..dim)
+            .map(|r| (0..dim).map(|c| d[r][c] * u[c]).sum())
             .collect();
         let uu: f64 = u.iter().map(|x| x * x).sum();
-        for r in 0..n_fields {
-            for c in 0..n_fields {
+        for r in 0..dim {
+            for c in 0..dim {
                 d[r][c] -= au[r] * u[c] / uu;
             }
         }
-        let null_residual = (0..n_fields)
-            .map(|r| (0..n_fields).map(|c| d[r][c] * u[c]).sum::<f64>().abs())
+        let null = (0..dim)
+            .map(|r| (0..dim).map(|c| d[r][c] * u[c]).sum::<f64>().abs())
             .fold(0.0_f64, f64::max);
-        assert!(null_residual < 1e-12, "A u = {null_residual:.3e}, not 0");
+        assert!(null < 1e-12, "A_00 u = {null:.3e}, not 0");
+        from_dense(&d)
+    }
 
-        let a = with_constraint(&from_dense(&d), Constraint::FixedPhi(4));
-        let (b, _) = rhs_of(&a, 0xf01d);
-        let mut solver = solver_with(Preconditioner::BorderedBlockJacobi);
-        solver.factor(&a).expect("factor");
-        let schur = solver.schur().expect("bordered keeps the Schur scalar");
-        assert!(
-            schur.value.abs() > 1e-3 * schur.scale,
-            "Schur scalar {:.3e} too small against {:.3e}",
-            schur.value,
-            schur.scale
+    /// The frequency column and the pin make the full matrix regular even
+    /// though field 0's block is singular. The bordered preconditioner
+    /// factors exactly that regular bordered block, so it solves the
+    /// system accurately and fast; block Jacobi has to invert the
+    /// singular block.
+    #[test]
+    fn bordered_preconditioner_handles_a_singular_field_block() {
+        let dim = 12;
+        let a = with_constraint(
+            &with_singular_field_zero_block(&toy_matrix(dim, 0.5, false), dim),
+            Constraint::FixedPhi(4),
         );
-        let x = solver.solve(&b).expect("solve");
-        let rel = rel_residual(&a, &b, &x);
-        assert!(rel < 1e-8, "residual {rel:.3e}");
-    }
-
-    /// `D` is block diagonal, so `cᵀD⁻¹b` only sees the frequency
-    /// column inside the pinned field's own rows. Pin a field whose
-    /// equations do not contain the frequency and `s = 0` exactly: the
-    /// bordered preconditioner cannot be used, and says so. (The real
-    /// solver pins psi, whose equation contains omega.)
-    #[test]
-    fn pinning_a_field_without_the_frequency_column_is_singular() {
-        let dim = 10;
-        let a = with_constraint(&toy_matrix(dim, 0.5, false), Constraint::FixedPhi(dim + 2));
-        let mut solver = solver_with(Preconditioner::BorderedBlockJacobi);
-        assert_eq!(solver.factor(&a), Err(SolveError::Singular));
-        // Block Jacobi does not need s and still solves the system.
-        solve_and_check(&a, Preconditioner::BlockJacobi);
-    }
-
-    #[test]
-    fn a_zero_constraint_row_is_singular_for_the_bordered_preconditioner() {
-        let mut d = to_dense(&toy_matrix(10, 0.5, false));
-        let n = d.len();
-        d[n - 1].fill(0.0);
-        let a = from_dense(&d);
-        let mut solver = solver_with(Preconditioner::BorderedBlockJacobi);
-        assert_eq!(solver.factor(&a), Err(SolveError::Singular));
-    }
-
-    #[test]
-    fn only_the_bordered_preconditioner_reports_a_schur_scalar() {
-        let a = toy_matrix(10, 0.5, false);
-        for preconditioner in ALL_PRECONDITIONERS {
-            let mut solver = solver_with(preconditioner);
-            assert!(solver.schur().is_none(), "no factorization yet");
-            solver.factor(&a).expect("factor");
-            assert_eq!(
-                solver.schur().is_some(),
-                preconditioner == Preconditioner::BorderedBlockJacobi
-            );
-        }
-    }
-
-    #[test]
-    fn fixed_omega_schur_scalar_is_one() {
-        // c = 0 and c_w = 1, so s = 1 exactly.
-        let a = with_constraint(&toy_matrix(10, 0.5, false), Constraint::FixedOmega);
+        let (b, x_true) = rhs_of(&a, 0xf01d);
         let mut solver = solver_with(Preconditioner::BorderedBlockJacobi);
         solver.factor(&a).expect("factor");
-        let schur = solver.schur().expect("bordered");
-        assert!((schur.value - 1.0).abs() < 1e-15);
+        let x = solver.solve(&b).expect("solve");
+        assert!(rel_residual(&a, &b, &x) < 1e-8);
+        let error = x
+            .iter()
+            .zip(&x_true)
+            .fold(0.0_f64, |m, (p, q)| m.max((p - q).abs()));
+        assert!(error < 1e-6, "max error {error:.3e}");
+        let bordered_iterations = solver.last_stats().iterations;
+
+        let mut jacobi = BlockFieldKrylov::new(BlockKrylovConfig {
+            nfields: 2,
+            strict: false,
+            ..BlockKrylovConfig::default()
+        });
+        let jacobi_iterations = jacobi
+            .factor(&a)
+            .and_then(|()| jacobi.solve(&b))
+            .map_or(usize::MAX, |_| jacobi.last_stats().iterations);
+        eprintln!("singular block: bordered {bordered_iterations}, Jacobi {jacobi_iterations}");
+        assert!(bordered_iterations < jacobi_iterations);
     }
 }
