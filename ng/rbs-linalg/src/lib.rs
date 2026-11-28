@@ -11,9 +11,7 @@ pub mod csr;
 pub mod faer_lu;
 pub mod mg_krylov;
 
-pub use block_field::{
-    BlockFieldKrylov, BlockKrylovConfig, KrylovStats, Preconditioner, SchurInfo,
-};
+pub use block_field::{BlockFieldKrylov, BlockKrylovConfig, KrylovStats, Preconditioner};
 
 pub use csr::CsrMatrix;
 
